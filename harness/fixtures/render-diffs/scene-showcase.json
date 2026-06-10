@@ -1,0 +1,69 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "handle": 1,
+      "parent": null,
+      "node": {
+        "geometry": { "shape": "cube" },
+        "material": { "color": [1, 1, 1, 1], "wireframe": false },
+        "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "visible": true,
+        "layer": "scene",
+        "metadata": { "source": 1, "tags": [], "label": "cube" }
+      }
+    },
+    {
+      "op": "create",
+      "handle": 2,
+      "parent": null,
+      "node": {
+        "geometry": { "shape": "sphere" },
+        "material": { "color": [1, 0, 0, 1], "wireframe": false },
+        "transform": { "translation": [2, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "visible": true,
+        "layer": "scene",
+        "metadata": { "source": 2, "tags": [], "label": "sphere" }
+      }
+    },
+    {
+      "op": "create",
+      "handle": 3,
+      "parent": null,
+      "node": {
+        "geometry": { "shape": "quad" },
+        "material": { "color": [0, 0, 1, 1], "wireframe": false },
+        "transform": { "translation": [-2, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "visible": false,
+        "layer": "scene",
+        "metadata": { "source": 3, "tags": [], "label": "quad" }
+      }
+    },
+    {
+      "op": "create",
+      "handle": 4,
+      "parent": null,
+      "node": {
+        "geometry": { "shape": "point" },
+        "material": { "color": [1, 1, 0, 1], "wireframe": true },
+        "transform": { "translation": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "visible": true,
+        "layer": "debug",
+        "metadata": { "source": 1, "tags": [], "label": "#1" }
+      }
+    },
+    {
+      "op": "create",
+      "handle": 5,
+      "parent": null,
+      "node": {
+        "geometry": { "shape": "line", "a": [0, 0, 0], "b": [1, 1, 0] },
+        "material": { "color": [0, 1, 0, 1], "wireframe": false },
+        "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "visible": true,
+        "layer": "debug",
+        "metadata": { "source": null, "tags": [], "label": "axis" }
+      }
+    }
+  ]
+}

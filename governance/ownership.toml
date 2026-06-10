@@ -171,19 +171,19 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 # ─── Rust: Render ────────────────────────────────────────────────────────────
 
 [crate."engine-rs/crates/render/render-bridge"]
-lane = "rust-rule"
+lane = "rust-render"
 may_depend_on = ["core-ids", "core-error", "core-state", "protocol-render"]
 may_not_depend_on = ["wasm-api"]
 
 [crate."engine-rs/crates/render/render-debug"]
-lane = "rust-rule"
+lane = "rust-render"
 may_depend_on = ["core-ids", "core-error", "core-state", "protocol-render", "render-bridge"]
 may_not_depend_on = ["wasm-api"]
 
 # ─── Rust: WASM ──────────────────────────────────────────────────────────────
 
 [crate."engine-rs/crates/wasm/wasm-api"]
-lane = "rust-rule"
+lane = "rust-wasm-bridge"
 may_depend_on = [
   "core-ids", "core-error", "core-state", "core-events", "core-commands",
   "core-snapshot", "protocol-script", "protocol-render", "protocol-replay",
@@ -199,41 +199,41 @@ may_import = []
 [package."ts/packages/script-sdk"]
 lane = "ts-policy"
 may_import = ["@asha/contracts"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 
 [package."ts/packages/script-host"]
 lane = "ts-policy"
 may_import = ["@asha/contracts", "@asha/script-sdk"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/electron-main"]
 
 [package."ts/packages/policy-core"]
 lane = "ts-policy"
 may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
 
 [package."ts/packages/policy-examples"]
 lane = "ts-policy"
 may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core", "@asha/policy-core"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
 
 [package."ts/packages/catalog-core"]
 lane = "ts-catalog"
 may_import = ["@asha/contracts"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 
 [package."ts/packages/catalog-examples"]
 lane = "ts-catalog"
 may_import = ["@asha/contracts", "@asha/catalog-core"]
-may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 
 [package."ts/packages/wasm-bridge"]
 lane = "ts-shell"
 may_import = ["@asha/contracts"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
 
-[package."ts/packages/renderer-babylon"]
+[package."ts/packages/renderer-three"]
 lane = "ts-shell"
 may_import = ["@asha/contracts", "@asha/wasm-bridge"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
@@ -245,7 +245,7 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
 
 [package."ts/packages/cosmetic"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/renderer-babylon"]
+may_import = ["@asha/contracts", "@asha/renderer-three"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
 
 [package."ts/packages/devtools"]
@@ -259,5 +259,5 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
 
 [package."ts/packages/app"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/wasm-bridge", "@asha/renderer-babylon", "@asha/ui-dom", "@asha/script-host"]
+may_import = ["@asha/contracts", "@asha/wasm-bridge", "@asha/renderer-three", "@asha/ui-dom", "@asha/script-host"]
 may_not_import = ["@asha/electron-main"]

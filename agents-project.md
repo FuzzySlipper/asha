@@ -41,7 +41,7 @@ See `docs/design.md` for the full system design.
       /policy-core      # default/noop policies
       /catalog-core     # typed catalog definitions
       /wasm-bridge      # WASM loading and protocol encode/decode
-      /renderer-babylon # scene projection from render diffs
+      /renderer-three # scene projection from render diffs
       /ui-dom           # panels, inspectors, command palette
       /app              # composition and wiring
       /electron-main    # thin wrapper
@@ -93,6 +93,8 @@ pnpm test --filter @agent-engine/policy-core
 | rust-state | Rust | engine-rs/crates/state/* | Know about render/UI/TS |
 | rust-service | Rust | engine-rs/crates/services/* | Introduce policy concepts |
 | rust-rule | Rust | engine-rs/crates/rules/* | Domain-specific nouns |
+| rust-render | Rust | engine-rs/crates/render/* | Render (emit diffs only); import wasm-api |
+| rust-wasm-bridge | Rust | engine-rs/crates/wasm/* | Product/policy/render decisions |
 | contract-steward | Rust/TS | engine-rs/crates/protocol/*, ts/packages/contracts/ | Hand-edit generated files |
 | ts-policy | TS | ts/packages/policy-* | Import renderer/UI/bridge |
 | ts-catalog | TS | ts/packages/catalog-* | Mutate state |

@@ -1,0 +1,5 @@
+handle 1  layer scene  shape cube  pos 0,0,0  scale 1,1,1  visible true  color 1,1,1  label "cube"
+handle 2  layer scene  shape sphere  pos 2,0,0  scale 1,1,1  visible true  color 1,0,0  label "sphere"
+handle 3  layer scene  shape quad  pos -2,0,0  scale 1,1,1  visible false  color 0,0,1  label "quad"
+handle 4  layer debug  shape point  pos 0,1,0  scale 1,1,1  visible true  color 1,1,0  label "#1"
+handle 5  layer debug  shape line  pos 0,0,0  scale 1,1,1  visible true  color 0,1,0  label "axis"

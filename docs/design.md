@@ -97,7 +97,7 @@ It should not introduce specific product concepts, domain rules, or authored con
 | Policy/catalog layer | TypeScript | authored policy, data catalogs, high-level command proposals | authoritative mutation, DOM, renderer, WASM memory, wall-clock randomness |
 | Script host | TypeScript | loading policy packs, sandboxing, deterministic invocation, command collection | command validation, canonical event application |
 | WASM bridge | TypeScript | WASM loading, memory views, protocol encode/decode | product-domain decisions, renderer-specific behavior |
-| Renderer | TypeScript + Babylon.js | scene projection from render diffs | authoritative state, policy, validation |
+| Renderer | TypeScript + Three.js | scene projection from render diffs | authoritative state, policy, validation |
 | UI shell | TypeScript + DOM | panels, input collection, inspectors, user-facing controls | direct state mutation, hidden state model |
 | Cosmetic layer | TypeScript + renderer runtime | visual-only particles, screen effects, non-authoritative animation | replay truth, simulation authority |
 | Wrapper | Electron | process/window/platform integration | product-domain logic, policy, renderer decisions |
@@ -982,7 +982,7 @@ It should not contain product-domain logic, renderer logic, or policy logic.
         src/commandEncode.ts
         src/renderDiffStream.ts
 
-      /renderer-babylon
+      /renderer-three
         package.json
         tsconfig.json
         src/index.ts
@@ -1114,7 +1114,7 @@ contracts
   ↓
 wasm-bridge
   ↓
-renderer-babylon / ui-dom / devtools
+renderer-three / ui-dom / devtools
   ↓
 app
   ↓
@@ -1175,7 +1175,7 @@ may_import = [
   "@agent-engine/catalog-core"
 ]
 may_not_import = [
-  "@agent-engine/renderer-babylon",
+  "@agent-engine/renderer-three",
   "@agent-engine/ui-dom",
   "@agent-engine/wasm-bridge",
   "@agent-engine/electron-main"
@@ -1236,7 +1236,7 @@ Examples:
 cargo test -p svc-pathfinding
 cargo clippy -p svc-pathfinding
 pnpm test --filter @agent-engine/policy-core
-pnpm typecheck --filter @agent-engine/renderer-babylon
+pnpm typecheck --filter @agent-engine/renderer-three
 pnpm lint --filter @agent-engine/script-host
 ```
 
@@ -1561,7 +1561,7 @@ Build:
 - retained render diff protocol
 - render bridge
 - WASM bridge decode path
-- placeholder Babylon scene
+- placeholder Three.js scene
 - handle registry
 - basic screenshot fixture
 
@@ -1620,6 +1620,23 @@ The project can selectively adopt focused crates/packages where they preserve th
 - framework that owns execution and inverts control: suspect
 - macro magic that hides behavior from reviewers: suspect
 - dependency that crosses authority/render/policy boundaries: reject by default
+
+### Renderer choice
+
+The initial renderer is **Three.js** (`@asha/renderer-three`), chosen to match
+the "libraries the engine calls, not frameworks that call the engine" posture:
+the Rust authority core owns the loop, state, and timing and emits retained-mode
+render diffs, so the renderer is a thin projector that submits to our loop and
+applies our `RenderFrameDiff`s. Three.js's library shape, agent-authorability,
+and minimal surface fit the abstract renderables (handles, transforms, primitive
+geometry, labels, overlays) better than a full engine.
+
+The renderer must stay **loosely coupled**: it is reached only through the
+generated `render.ts` contract and the `ts-shell` lane boundary, never owns
+authoritative state, and is swappable. Keep engine-specific code behind a small
+`applyFrameDiff(scene, diff)` seam so the choice can be revisited (or A/B'd)
+without touching the contract. Apply authoritative diffs imperatively — do not
+introduce a second reconciler (e.g. react-three-fiber) that re-diffs the scene.
 
 ---
 
@@ -1711,7 +1728,7 @@ Allowed imports:
   approved catalog packages
 
 Forbidden imports:
-  @agent-engine/renderer-babylon
+  @agent-engine/renderer-three
   @agent-engine/ui-dom
   @agent-engine/wasm-bridge
   @agent-engine/electron-main
@@ -1758,7 +1775,7 @@ Required checks:
 
 ```txt
 Assignment:
-  Package: ts/packages/renderer-babylon
+  Package: ts/packages/renderer-three
 
 Allowed:
   Consume render diffs.
@@ -1773,8 +1790,8 @@ Forbidden:
   Do not submit authority commands except through approved UI/app paths.
 
 Required checks:
-  pnpm typecheck --filter @agent-engine/renderer-babylon
-  pnpm test --filter @agent-engine/renderer-babylon
+  pnpm typecheck --filter @agent-engine/renderer-three
+  pnpm test --filter @agent-engine/renderer-three
   render fixture update
 ```
 

@@ -12,24 +12,51 @@ import type { EntityId, TagId } from './ids.js';
 export type RenderHandle = number & { readonly __brand: 'RenderHandle' };
 export const renderHandle = (raw: number): RenderHandle => raw as RenderHandle;
 
-// Minimal affine transform placeholder for a render node.
+// Minimal affine transform for a render node.
 export interface Transform {
   readonly translation: readonly [number, number, number];
   readonly rotation: readonly [number, number, number, number];
   readonly scale: readonly [number, number, number];
 }
 
-// Minimal metadata placeholder carried on a render node.
+// An abstract primitive shape; extents come from the node transform.
+export type Geometry =
+  | { readonly shape: 'cube' }
+  | { readonly shape: 'sphere' }
+  | { readonly shape: 'quad' }
+  | { readonly shape: 'point' }
+  | { readonly shape: 'line'; readonly a: readonly [number, number, number]; readonly b: readonly [number, number, number] };
+
+// Placeholder appearance: flat linear-RGBA colour and a wireframe flag.
+export interface Material {
+  readonly color: readonly [number, number, number, number];
+  readonly wireframe: boolean;
+}
+
+// Which retained layer a node belongs to.
+export type RenderLayer = 'scene' | 'debug';
+
+// Descriptive metadata carried on a render node.
 export interface RenderMetadata {
   readonly source: EntityId | null;
   readonly tags: readonly TagId[];
   readonly label: string | null;
 }
 
+// The full description of a node at creation time.
+export interface RenderNode {
+  readonly geometry: Geometry;
+  readonly material: Material;
+  readonly transform: Transform;
+  readonly visible: boolean;
+  readonly layer: RenderLayer;
+  readonly metadata: RenderMetadata;
+}
+
 // A single retained-mode change against the render scene.
 export type RenderDiff =
-  | { readonly op: 'create'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly transform: Transform; readonly metadata: RenderMetadata }
-  | { readonly op: 'update'; readonly handle: RenderHandle; readonly transform: Transform | null; readonly metadata: RenderMetadata | null }
+  | { readonly op: 'create'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly node: RenderNode }
+  | { readonly op: 'update'; readonly handle: RenderHandle; readonly transform: Transform | null; readonly material: Material | null; readonly visible: boolean | null; readonly metadata: RenderMetadata | null }
   | { readonly op: 'destroy'; readonly handle: RenderHandle };
 
 // All retained-mode changes emitted for a single tick, in apply order.

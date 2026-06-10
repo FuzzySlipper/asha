@@ -20,6 +20,10 @@ fn string() -> TsType {
     TsType::Prim(TsPrim::String)
 }
 
+fn boolean() -> TsType {
+    TsType::Prim(TsPrim::Boolean)
+}
+
 fn r(name: &str) -> TsType {
     TsType::reference(name)
 }
@@ -278,7 +282,7 @@ pub fn render_module() -> Module {
             name: "RenderHandle".to_string(),
         },
         iface(
-            "Minimal affine transform placeholder for a render node.",
+            "Minimal affine transform for a render node.",
             "Transform",
             vec![
                 f("translation", tuple3()),
@@ -286,13 +290,47 @@ pub fn render_module() -> Module {
                 f("scale", tuple3()),
             ],
         ),
+        union(
+            "An abstract primitive shape; extents come from the node transform.",
+            "Geometry",
+            "shape",
+            vec![
+                v("cube", vec![]),
+                v("sphere", vec![]),
+                v("quad", vec![]),
+                v("point", vec![]),
+                v("line", vec![f("a", tuple3()), f("b", tuple3())]),
+            ],
+        ),
         iface(
-            "Minimal metadata placeholder carried on a render node.",
+            "Placeholder appearance: flat linear-RGBA colour and a wireframe flag.",
+            "Material",
+            vec![f("color", tuple4()), f("wireframe", boolean())],
+        ),
+        Item::Alias {
+            doc: "Which retained layer a node belongs to.".to_string(),
+            name: "RenderLayer".to_string(),
+            ty: TsType::StringEnum(vec!["scene".to_string(), "debug".to_string()]),
+        },
+        iface(
+            "Descriptive metadata carried on a render node.",
             "RenderMetadata",
             vec![
                 f("source", TsType::nullable(r("EntityId"))),
                 f("tags", TsType::array(r("TagId"))),
                 f("label", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "The full description of a node at creation time.",
+            "RenderNode",
+            vec![
+                f("geometry", r("Geometry")),
+                f("material", r("Material")),
+                f("transform", r("Transform")),
+                f("visible", boolean()),
+                f("layer", r("RenderLayer")),
+                f("metadata", r("RenderMetadata")),
             ],
         ),
         union(
@@ -305,8 +343,7 @@ pub fn render_module() -> Module {
                     vec![
                         f("handle", r("RenderHandle")),
                         f("parent", TsType::nullable(r("RenderHandle"))),
-                        f("transform", r("Transform")),
-                        f("metadata", r("RenderMetadata")),
+                        f("node", r("RenderNode")),
                     ],
                 ),
                 v(
@@ -314,6 +351,8 @@ pub fn render_module() -> Module {
                     vec![
                         f("handle", r("RenderHandle")),
                         f("transform", TsType::nullable(r("Transform"))),
+                        f("material", TsType::nullable(r("Material"))),
+                        f("visible", TsType::nullable(boolean())),
                         f("metadata", TsType::nullable(r("RenderMetadata"))),
                     ],
                 ),

@@ -2,7 +2,7 @@
 
 ## Owns
 - `ts/packages/wasm-bridge` — WASM loading, memory views, protocol encode/decode, render diff stream
-- `ts/packages/renderer-babylon` — Babylon.js scene, handle registry, geometry/material registries, diff application
+- `ts/packages/renderer-three` — Three.js scene, handle registry, geometry/material registries, diff application
 - `ts/packages/ui-dom` — DOM panels, inspectors, command palette, state view-models
 - `ts/packages/cosmetic` — non-authoritative particles, transient animation, screen effects
 - `ts/packages/electron-main` — window/process/IPC/platform integration (main process only)
@@ -11,7 +11,7 @@
 ## May import
 - `@asha/contracts` in all packages
 - `wasm-bridge` may import contracts only
-- `renderer-babylon`, `ui-dom`, `cosmetic`, `app` may import `@asha/wasm-bridge`
+- `renderer-three`, `ui-dom`, `cosmetic`, `app` may import `@asha/wasm-bridge`
 - `app` may import `@asha/script-host`
 - `electron-main` runs in its own process; it may not import runtime packages
 
@@ -22,7 +22,7 @@
 
 ## Required tests
 - `wasm-bridge`: WASM load + one command encode/decode round-trip.
-- `renderer-babylon`: render diff fixture test — apply a diff batch, assert handle registry state.
+- `renderer-three`: render diff fixture test — apply a diff batch, assert handle registry state.
 - `ui-dom`: command palette emits correct command type on user action.
 - `app`: runtime loop wiring test (headless, no renderer).
 

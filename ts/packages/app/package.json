@@ -19,7 +19,7 @@
   "dependencies": {
     "@asha/contracts": "workspace:*",
     "@asha/wasm-bridge": "workspace:*",
-    "@asha/renderer-babylon": "workspace:*",
+    "@asha/renderer-three": "workspace:*",
     "@asha/ui-dom": "workspace:*",
     "@asha/script-host": "workspace:*"
   }

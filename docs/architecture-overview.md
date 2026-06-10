@@ -17,7 +17,7 @@ Every crate and package is an agent assignment cell with machine-checkable depen
 | Policy/catalog | TypeScript | authored policy, data catalogs, proposed commands |
 | Script host | TypeScript | policy loading, sandboxing, deterministic invocation |
 | WASM bridge | TypeScript | WASM loading, memory views, protocol encode/decode |
-| Renderer | TypeScript + Babylon.js | scene projection from render diffs |
+| Renderer | TypeScript + Three.js | scene projection from render diffs |
 | UI shell | TypeScript + DOM | panels, input collection, inspectors |
 | Cosmetic | TypeScript + renderer | non-authoritative visual effects |
 | Wrapper | Electron | process/window/platform integration |

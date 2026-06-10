@@ -7,7 +7,7 @@ import tsParser from "@typescript-eslint/parser";
 // feedback with a lane-routing message.
 const FORBIDDEN_SHELL_IMPORTS = [
   {
-    name: "@asha/renderer-babylon",
+    name: "@asha/renderer-three",
     message:
       "ts-policy/ts-catalog may not import the ts-shell renderer. Route rendering through the generated contract border, not a direct import.",
   },

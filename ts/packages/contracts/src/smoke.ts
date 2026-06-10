@@ -52,7 +52,24 @@ const view: ScriptView = {
 
 const outcome: ScriptOutcome = { status: 'accepted' };
 
-// A retained-mode render diff value.
+// A retained-mode render diff value: create an abstract cube node, then destroy.
+const createDiff: RenderDiff = {
+  op: 'create',
+  handle: renderHandle(5),
+  parent: null,
+  node: {
+    geometry: { shape: 'cube' },
+    material: { color: [1, 1, 1, 1], wireframe: false },
+    transform: {
+      translation: [0, 0, 0],
+      rotation: [0, 0, 0, 1],
+      scale: [1, 1, 1],
+    },
+    visible: true,
+    layer: 'scene',
+    metadata: { source: entity, tags: [tagId(2)], label: 'cube' },
+  },
+};
 const diff: RenderDiff = { op: 'destroy', handle: renderHandle(5) };
 
 // A replay record value, with the format version sourced from the contract.
@@ -78,6 +95,7 @@ export const __contractSmoke = {
   envelope,
   view,
   outcome,
+  createDiff,
   diff,
   record,
 } as const;

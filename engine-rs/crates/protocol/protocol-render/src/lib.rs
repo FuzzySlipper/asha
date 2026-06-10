@@ -18,13 +18,14 @@
 //! These are the shapes Phase 2 codegen turns into TypeScript so a renderer
 //! bridge can consume diffs in a type-safe way.
 //!
-//! # Placeholders
+//! # Abstract renderables
 //!
-//! [`Transform`] and [`RenderMetadata`] are intentionally minimal placeholders.
-//! Phase 2's job is to prove the *border* — handle lifecycle and diff framing —
-//! not to design a material system or scene-graph schema. Their fields are
-//! concrete enough to generate meaningful TypeScript and to be extended
-//! additively later.
+//! Phase 5 fixes the vocabulary to *abstract* renderables only: a node is a
+//! [`Geometry`] primitive (cube, sphere, quad, point, line) with a placeholder
+//! [`Material`], a [`Transform`], a visibility flag, a [`RenderLayer`]
+//! (scene vs. debug overlay), and [`RenderMetadata`] (source entity, tags,
+//! label). [`Material`] is deliberately a placeholder (flat colour + wireframe);
+//! there is no texture/shader system here, and no product-domain geometry.
 //!
 //! # Forbidden convenience logic
 //!
@@ -58,9 +59,9 @@ impl RenderHandle {
     }
 }
 
-// ── Placeholders ──────────────────────────────────────────────────────────────
+// ── Transform ─────────────────────────────────────────────────────────────────
 
-/// Minimal affine transform placeholder for a render node.
+/// Minimal affine transform for a render node.
 ///
 /// Translation, a quaternion rotation, and a non-uniform scale. Enough to place
 /// a node; deliberately not a full transform hierarchy or matrix type.
@@ -87,19 +88,112 @@ impl Default for Transform {
     }
 }
 
-/// Minimal metadata placeholder carried on a render node.
+// ── Geometry ──────────────────────────────────────────────────────────────────
+
+/// An abstract primitive shape. Concrete extents come from the node's
+/// [`Transform`] scale; primitives are unit-sized in local space.
+///
+/// This is intentionally a tiny, product-agnostic vocabulary — enough to draw
+/// boxes, markers, and debug lines, not a mesh/asset system.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Geometry {
+    /// A unit cube.
+    Cube,
+    /// A unit sphere.
+    Sphere,
+    /// A flat unit quad (e.g. a ground tile or billboard backing).
+    Quad,
+    /// A single point marker.
+    Point,
+    /// A line segment between two local-space endpoints (debug overlays).
+    Line { a: [f32; 3], b: [f32; 3] },
+}
+
+// ── Material ──────────────────────────────────────────────────────────────────
+
+/// Placeholder visual appearance for a node: a flat linear-RGBA colour and an
+/// optional wireframe flag. No textures, shaders, or PBR — that is out of scope
+/// for the abstract border.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Material {
+    /// Linear RGBA, each component in `0.0..=1.0`.
+    pub color: [f32; 4],
+    /// Draw as wireframe (common for debug overlays).
+    pub wireframe: bool,
+}
+
+impl Material {
+    /// Opaque white, filled.
+    pub const DEFAULT: Material = Material {
+        color: [1.0, 1.0, 1.0, 1.0],
+        wireframe: false,
+    };
+}
+
+impl Default for Material {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+// ── Layer ─────────────────────────────────────────────────────────────────────
+
+/// Which retained layer a node belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RenderLayer {
+    /// The main projected scene.
+    #[default]
+    Scene,
+    /// A debug overlay drawn on top of the scene (gizmos, labels, lines).
+    Debug,
+}
+
+// ── Metadata ──────────────────────────────────────────────────────────────────
+
+/// Descriptive metadata carried on a render node.
 ///
 /// Links a node back to the abstract sim vocabulary (an optional source entity
-/// and any descriptive tags) plus a human label. Real material/visual data is
-/// out of scope for the Phase 2 border.
+/// and any descriptive tags) plus a human label for inspection/overlay text.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RenderMetadata {
     /// The sim entity this node visualizes, if any.
     pub source: Option<EntityId>,
     /// Descriptive tags, in ascending order.
     pub tags: Vec<TagId>,
-    /// Optional human-readable label for debugging/inspection.
+    /// Optional human-readable label (also used as overlay text).
     pub label: Option<String>,
+}
+
+// ── Node ──────────────────────────────────────────────────────────────────────
+
+/// The full description of a node at creation time.
+///
+/// Geometry is fixed for a node's lifetime — changing the primitive means
+/// destroy + create. Everything else (transform, material, visibility,
+/// metadata) is independently mutable via [`RenderDiff::Update`].
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderNode {
+    pub geometry: Geometry,
+    pub material: Material,
+    pub transform: Transform,
+    pub visible: bool,
+    pub layer: RenderLayer,
+    pub metadata: RenderMetadata,
+}
+
+impl RenderNode {
+    /// A visible scene node with the given geometry and otherwise default
+    /// transform/material/metadata.
+    pub fn new(geometry: Geometry) -> Self {
+        Self {
+            geometry,
+            material: Material::DEFAULT,
+            transform: Transform::IDENTITY,
+            visible: true,
+            layer: RenderLayer::Scene,
+            metadata: RenderMetadata::default(),
+        }
+    }
 }
 
 // ── Diff operations ───────────────────────────────────────────────────────────
@@ -107,20 +201,21 @@ pub struct RenderMetadata {
 /// A single retained-mode change against the render scene.
 ///
 /// `Update` carries optional fields so a tick can change only a transform, only
-/// metadata, or both, without re-sending the whole node.
+/// visibility, only material, or only metadata, without re-sending the node.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RenderDiff {
     /// Introduce a new node, optionally parented under an existing one.
     Create {
         handle: RenderHandle,
         parent: Option<RenderHandle>,
-        transform: Transform,
-        metadata: RenderMetadata,
+        node: RenderNode,
     },
-    /// Mutate an existing node's transform and/or metadata.
+    /// Mutate an existing node's mutable facets.
     Update {
         handle: RenderHandle,
         transform: Option<Transform>,
+        material: Option<Material>,
+        visible: Option<bool>,
         metadata: Option<RenderMetadata>,
     },
     /// Remove a node (and, by renderer convention, its descendants).
@@ -164,8 +259,6 @@ mod tests {
     fn handle_roundtrip_and_distinct_from_entity() {
         let h = RenderHandle::new(7);
         assert_eq!(h.raw(), 7);
-        // A handle and an entity with the same raw value are different types;
-        // metadata links them explicitly rather than by collision.
         let meta = RenderMetadata {
             source: Some(EntityId::new(7)),
             ..RenderMetadata::default()
@@ -174,9 +267,16 @@ mod tests {
     }
 
     #[test]
-    fn identity_transform_is_default() {
+    fn defaults_are_sensible() {
         assert_eq!(Transform::default(), Transform::IDENTITY);
-        assert_eq!(Transform::IDENTITY.scale, [1.0, 1.0, 1.0]);
+        assert_eq!(Material::default(), Material::DEFAULT);
+        assert_eq!(RenderLayer::default(), RenderLayer::Scene);
+
+        let node = RenderNode::new(Geometry::Cube);
+        assert!(node.visible);
+        assert_eq!(node.layer, RenderLayer::Scene);
+        assert_eq!(node.material, Material::DEFAULT);
+        assert_eq!(node.geometry, Geometry::Cube);
     }
 
     #[test]
@@ -187,18 +287,19 @@ mod tests {
         frame.push(RenderDiff::Create {
             handle: RenderHandle::new(1),
             parent: None,
-            transform: Transform::IDENTITY,
-            metadata: RenderMetadata {
-                source: Some(EntityId::new(42)),
-                tags: vec![TagId::new(1)],
-                label: Some("root".to_string()),
+            node: RenderNode {
+                metadata: RenderMetadata {
+                    source: Some(EntityId::new(42)),
+                    tags: vec![TagId::new(1)],
+                    label: Some("root".to_string()),
+                },
+                ..RenderNode::new(Geometry::Cube)
             },
         });
         frame.push(RenderDiff::Create {
             handle: RenderHandle::new(2),
             parent: Some(RenderHandle::new(1)),
-            transform: Transform::IDENTITY,
-            metadata: RenderMetadata::default(),
+            node: RenderNode::new(Geometry::Sphere),
         });
         frame.push(RenderDiff::Update {
             handle: RenderHandle::new(2),
@@ -206,6 +307,8 @@ mod tests {
                 translation: [1.0, 0.0, 0.0],
                 ..Transform::IDENTITY
             }),
+            material: None,
+            visible: Some(false),
             metadata: None,
         });
         frame.push(RenderDiff::Destroy {
@@ -230,24 +333,46 @@ mod tests {
 
     #[test]
     fn update_can_change_only_one_facet() {
-        let only_meta = RenderDiff::Update {
+        let only_visibility = RenderDiff::Update {
             handle: RenderHandle::new(3),
             transform: None,
-            metadata: Some(RenderMetadata {
-                label: Some("renamed".to_string()),
-                ..RenderMetadata::default()
-            }),
+            material: None,
+            visible: Some(false),
+            metadata: None,
         };
         if let RenderDiff::Update {
             transform,
+            material,
+            visible,
             metadata,
             ..
-        } = only_meta
+        } = only_visibility
         {
             assert!(transform.is_none());
-            assert!(metadata.is_some());
+            assert!(material.is_none());
+            assert!(metadata.is_none());
+            assert_eq!(visible, Some(false));
         } else {
             panic!("wrong variant");
         }
+    }
+
+    #[test]
+    fn debug_overlay_line_node() {
+        let node = RenderNode {
+            geometry: Geometry::Line {
+                a: [0.0, 0.0, 0.0],
+                b: [1.0, 1.0, 0.0],
+            },
+            layer: RenderLayer::Debug,
+            material: Material {
+                color: [1.0, 0.0, 0.0, 1.0],
+                wireframe: true,
+            },
+            ..RenderNode::new(Geometry::Point)
+        };
+        assert_eq!(node.layer, RenderLayer::Debug);
+        assert!(matches!(node.geometry, Geometry::Line { .. }));
+        assert!(node.material.wireframe);
     }
 }

@@ -56,7 +56,7 @@ layers = [
 
 [ts.forbidden_imports]
 # Policy/catalog may never import shell packages.
-"policy"   = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
-"catalog"  = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+"policy"   = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+"catalog"  = ["@asha/renderer-three", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
 # Renderer must not import policy.
-"renderer-babylon" = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
+"renderer-three" = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]

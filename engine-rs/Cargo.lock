@@ -105,10 +105,21 @@ version = "0.1.0"
 [[package]]
 name = "render-bridge"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "core-state",
+ "protocol-render",
+]
 
 [[package]]
 name = "render-debug"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "core-state",
+ "protocol-render",
+ "render-bridge",
+]
 
 [[package]]
 name = "replay-tool"

@@ -41,7 +41,7 @@ ts/                 pnpm workspace (14 packages)
     policy-*/       constrained policy packages
     catalog-*/      typed catalog definitions
     wasm-bridge/    WASM loading, memory views, protocol encode/decode
-    renderer-babylon/ Babylon.js scene, handle registry, render diff application
+    renderer-three/ Three.js scene, handle registry, render diff application
     ui-dom/         DOM panels, inspectors, command palette
     cosmetic/       non-authoritative visual effects
     devtools/       replay viewer, debug dashboard, state inspector
@@ -119,7 +119,7 @@ Architecture and protocol docs live in `docs/`.
 | 2 | Protocol generation — Rust protocol crates, TS contract codegen | Pending |
 | 3 | Constrained TypeScript policy — script SDK, host, sandbox lint | Pending |
 | 4 | Replay audit path — recording, playback, divergence reports | Pending |
-| 5 | Render projection — retained render diffs, WASM bridge, Babylon scene | Pending |
+| 5 | Render projection — retained render diffs, WASM bridge, Three.js scene | Pending |
 | 6 | Parallel agent fan-out trial | Pending |
 
 ---

@@ -13,7 +13,7 @@
 - Node built-ins for script-host only (file loading, module resolution)
 
 ## Must never import
-- `@asha/renderer-babylon`
+- `@asha/renderer-three`
 - `@asha/ui-dom`
 - `@asha/wasm-bridge`
 - `@asha/electron-main`
@@ -30,7 +30,7 @@
 - `harness/fixtures/policy-outputs/` — expected `PolicyCommand[]` arrays for golden tests.
 
 ## Drift smells reviewers should flag
-- Import of `renderer-babylon`, `ui-dom`, `wasm-bridge`, or `electron-main` in any policy package.
+- Import of `renderer-three`, `ui-dom`, `wasm-bridge`, or `electron-main` in any policy package.
 - Use of `Date`, `Math.random`, or any browser global inside policy functions.
 - Policy function that mutates an object received in its view parameter.
 - Script host performing command validation (belongs in Rust).

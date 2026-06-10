@@ -16,7 +16,7 @@ emit debug overlay
 ```
 
 The renderer maintains a scene graph keyed by handles. It applies each diff operation
-to the relevant handle and lets Babylon.js manage the actual draw calls.
+to the relevant handle and lets Three.js manage the actual draw calls.
 
 ## Why retained-mode
 
@@ -32,10 +32,12 @@ Defined in `engine-rs/crates/protocol/protocol-render`. Generated TypeScript liv
 
 Key types:
 - `RenderHandle` — opaque stable ID for a renderable object
-- `RenderDiff` — one diff operation (create/update/destroy/overlay)
-- `RenderDiffBatch` — ordered list of diffs for one tick
-- `GeometryPayload` — descriptor for mesh data (references a memory handle for large buffers)
-- `MaterialRef` — reference to a material by name/ID
+- `RenderDiff` — one diff operation (`create`/`update`/`destroy`)
+- `RenderFrameDiff` — ordered list of diffs for one tick
+- `RenderNode` — a node's full description at create time (geometry, material, transform, visibility, layer, metadata)
+- `Geometry` — abstract primitive (`cube`/`sphere`/`quad`/`point`/`line`)
+- `Material` — placeholder appearance (flat RGBA colour + wireframe flag)
+- `RenderLayer` — `scene` vs `debug` overlay
 
 ## Large payloads
 
@@ -44,7 +46,7 @@ Large geometry or buffer data travels through bridge-owned memory views, not str
 Rules:
 - Structured `RenderDiff` carries small metadata only.
 - Large buffers use stable bridge memory views referenced by pointer+length or handle.
-- Renderer upload behavior is isolated inside `wasm-bridge` and `renderer-babylon`.
+- Renderer upload behavior is isolated inside `wasm-bridge` and `renderer-three`.
 - No policy package may access raw WASM memory.
 
 ## Renderer boundary rule
@@ -56,7 +58,31 @@ The renderer consumes diffs. It does not:
 
 ## Debug overlays
 
-`render-debug` emits debug overlay diffs (bounding boxes, nav-mesh visualization, labels).
-These are non-authoritative and stripped in release builds.
-They are defined in `protocol-render` as a distinct diff variant so the renderer can
-opt them in or out without changing the core diff stream.
+`render-debug` emits debug overlay diffs (point/line markers, labels) on the
+`debug` `RenderLayer`. These are non-authoritative. They reuse the same retained
+diff protocol, so the renderer can route them into a separate layer group and
+toggle them without changing the core diff stream.
+
+## Phase 5 dataflow and failure routing
+
+The implemented dataflow, end to end:
+
+```
+Rust render-bridge (RenderProjector::project)
+  → RenderFrameDiff  → render-bridge::json::encode_sequence
+  → harness/fixtures/render-diffs/*.json   (shared, inspectable artifact)
+  → wasm-bridge decodeRenderFrameDiff       (TS: validate into contract types)
+  → renderer-three ThreeRenderer.applyFrame (TS: apply to handle registry + Three.js scene)
+```
+
+The renderer's scene changes **only** through applied diffs — never by reading
+`StateStore` or importing policy/core packages (enforced by the depgraph).
+
+When the cross-language fixture path breaks, the failing layer routes the repair:
+
+| Symptom | Likely lane / crate |
+|---|---|
+| `render-bridge` golden test `bridge_emits_the_committed_render_fixture` fails | `rust-render` (bridge projection) or `contract-steward` (render protocol shape) — regenerate the fixture |
+| generated `render.ts` drift (`check-contracts`) | `contract-steward` (`protocol-render` + codegen) |
+| `wasm-bridge` `RenderDecodeError` | `ts-shell` (`wasm-bridge` decoder) or a fixture/contract mismatch |
+| `renderer-three` `RenderApplyError` (duplicate/unknown/stale handle) | `ts-shell` (`renderer-three` handle registry) |

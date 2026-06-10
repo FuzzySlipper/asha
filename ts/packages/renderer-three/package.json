@@ -1,0 +1,27 @@
+{
+  "name": "@asha/renderer-three",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "tsc --build && node --test 'dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "@asha/contracts": "workspace:*",
+    "@asha/wasm-bridge": "workspace:*",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1"
+  }
+}

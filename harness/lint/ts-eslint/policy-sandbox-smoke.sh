@@ -17,7 +17,7 @@ trap cleanup EXIT
 cat > "$SMOKE_FILE" <<'TS'
 // Intentionally illegal policy source — used only by the sandbox smoke.
 import { readFileSync } from 'node:fs';
-import '@asha/renderer-babylon';
+import '@asha/renderer-three';
 
 export const broken = (): number => {
   readFileSync('/etc/hostname');
@@ -35,7 +35,7 @@ echo "    eslint rejected it (as required)"
 
 echo "==> dependency-graph check must reject the forbidden import"
 if bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" >/dev/null 2>&1; then
-    fail "depgraph accepted a forbidden @asha/renderer-babylon import"
+    fail "depgraph accepted a forbidden @asha/renderer-three import"
 fi
 echo "    depgraph rejected it (as required)"
 

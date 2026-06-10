@@ -8,7 +8,7 @@ Any `@asha/*` package for inspection purposes.
 Tool-level omniscience is intentional and permitted.
 
 ## Must never do
-- Allow tool-only imports to leak into runtime packages (`app`, `renderer-babylon`, `ui-dom`, etc.).
+- Allow tool-only imports to leak into runtime packages (`app`, `renderer-three`, `ui-dom`, etc.).
 - Mutate authoritative runtime state at runtime (read-only inspection only).
 - Introduce runtime dependencies on devtools from non-tool packages.
 
@@ -22,7 +22,7 @@ Tool-level omniscience is intentional and permitted.
 - `harness/goldens/snapshots/` — state snapshots for inspector tests.
 
 ## Drift smells reviewers should flag
-- Any non-tool package (`app`, `renderer-babylon`, `policy-core`, etc.) importing from `devtools`.
+- Any non-tool package (`app`, `renderer-three`, `policy-core`, etc.) importing from `devtools`.
 - Devtools gaining a code path that submits authority commands at runtime without explicit user action.
 - Debug state or overlay logic appearing in `app` instead of `devtools`.
 

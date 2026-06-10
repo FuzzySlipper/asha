@@ -5,3 +5,9 @@ edition.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+core-state      = { path = "../../state/core-state" }
+protocol-render = { path = "../../protocol/protocol-render" }
+core-ids        = { path = "../../foundation/core-ids" }
+render-bridge   = { path = "../render-bridge" }
