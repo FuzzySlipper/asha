@@ -9,6 +9,9 @@ version = "0.1.0"
 [[package]]
 name = "core-commands"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+]
 
 [[package]]
 name = "core-error"
@@ -17,6 +20,9 @@ version = "0.1.0"
 [[package]]
 name = "core-events"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+]
 
 [[package]]
 name = "core-ids"
@@ -29,10 +35,17 @@ version = "0.1.0"
 [[package]]
 name = "core-snapshot"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "core-state",
+]
 
 [[package]]
 name = "core-state"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+]
 
 [[package]]
 name = "core-time"
@@ -45,6 +58,10 @@ version = "0.1.0"
 [[package]]
 name = "protocol-codegen"
 version = "0.1.0"
+dependencies = [
+ "protocol-ids",
+ "protocol-replay",
+]
 
 [[package]]
 name = "protocol-dump"
@@ -53,18 +70,33 @@ version = "0.1.0"
 [[package]]
 name = "protocol-ids"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+]
 
 [[package]]
 name = "protocol-render"
 version = "0.1.0"
+dependencies = [
+ "core-ids",
+]
 
 [[package]]
 name = "protocol-replay"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-events",
+ "core-ids",
+]
 
 [[package]]
 name = "protocol-script"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-ids",
+]
 
 [[package]]
 name = "protocol-telemetry"
@@ -105,10 +137,21 @@ version = "0.1.0"
 [[package]]
 name = "sim-applier"
 version = "0.1.0"
+dependencies = [
+ "core-events",
+ "core-ids",
+ "core-state",
+]
 
 [[package]]
 name = "sim-kernel"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-events",
+ "core-ids",
+ "core-state",
+]
 
 [[package]]
 name = "sim-replay"
@@ -117,10 +160,26 @@ version = "0.1.0"
 [[package]]
 name = "sim-runner"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-events",
+ "core-ids",
+ "core-snapshot",
+ "core-state",
+ "sim-applier",
+ "sim-kernel",
+ "sim-validator",
+]
 
 [[package]]
 name = "sim-validator"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-events",
+ "core-ids",
+ "core-state",
+]
 
 [[package]]
 name = "snapshot-diff"

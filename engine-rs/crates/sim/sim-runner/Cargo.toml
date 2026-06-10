@@ -5,3 +5,15 @@ edition.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+core-ids      = { path = "../../foundation/core-ids" }
+core-state    = { path = "../../state/core-state" }
+core-commands = { path = "../../state/core-commands" }
+core-events   = { path = "../../state/core-events" }
+sim-kernel    = { path = "../sim-kernel" }
+sim-validator = { path = "../sim-validator" }
+sim-applier   = { path = "../sim-applier" }
+
+[dev-dependencies]
+core-snapshot = { path = "../../state/core-snapshot" }

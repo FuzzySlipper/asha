@@ -1,6 +1,6 @@
 # ASHA Local Bootstrap
 
-Project-specific live guidance lives in Den at `[doc: asha/design]` and `[doc: _global/asha-project-soul]`.
+Project-specific live guidance lives in Den at `[doc: asha/design]`.
 
 Use project ID `asha` for Den tasks, messages, documents, librarian queries, and guidance lookups.
 
