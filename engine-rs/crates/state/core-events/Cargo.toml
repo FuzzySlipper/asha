@@ -1,0 +1,7 @@
+[package]
+name    = "core-events"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true

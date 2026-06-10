@@ -1,0 +1,11 @@
+[package]
+name    = "replay-tool"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "replay-tool"
+path = "src/main.rs"
+
+[lints]
+workspace = true

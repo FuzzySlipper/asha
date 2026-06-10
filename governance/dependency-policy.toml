@@ -1,0 +1,62 @@
+# Dependency layer ordering and cross-layer rules.
+# The dep-graph verifier reads this alongside ownership.toml.
+
+[rust.layer_order]
+# Lower index = lower in the stack = may not depend on higher layers.
+layers = [
+    "foundation",
+    "state",
+    "protocol",
+    "sim",
+    "services",
+    "rules",
+    "render",
+    "wasm",
+    "tools",
+]
+
+[rust.forbidden_cross_layer]
+# Entries: [from, to] — 'from' crates must never depend on 'to' layer.
+pairs = [
+    ["foundation", "state"],
+    ["foundation", "protocol"],
+    ["foundation", "sim"],
+    ["foundation", "services"],
+    ["foundation", "rules"],
+    ["foundation", "render"],
+    ["foundation", "wasm"],
+    ["foundation", "tools"],
+    ["state",      "protocol"],
+    ["state",      "render"],
+    ["state",      "wasm"],
+    ["state",      "tools"],
+    ["protocol",   "sim"],
+    ["protocol",   "services"],
+    ["protocol",   "rules"],
+    ["protocol",   "render"],
+    ["protocol",   "wasm"],
+    ["services",   "render"],
+    ["services",   "wasm"],
+    ["rules",      "wasm"],
+    ["render",     "wasm"],
+]
+
+[ts.lane_order]
+# TypeScript lane ordering for import direction enforcement.
+layers = [
+    "contracts",
+    "script-sdk",
+    "policy",
+    "catalog",
+    "script-host",
+    "wasm-bridge",
+    "shell",
+    "tools",
+]
+
+[ts.forbidden_imports]
+# Policy/catalog may never import shell packages.
+"policy"   = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+"catalog"  = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+# Renderer must not import policy.
+"renderer-babylon" = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]

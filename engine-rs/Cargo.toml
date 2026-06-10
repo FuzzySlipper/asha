@@ -1,0 +1,71 @@
+[workspace]
+resolver = "2"
+
+members = [
+    # Foundation
+    "crates/foundation/core-ids",
+    "crates/foundation/core-math",
+    "crates/foundation/core-time",
+    "crates/foundation/core-error",
+    "crates/foundation/core-collections",
+
+    # State
+    "crates/state/core-state",
+    "crates/state/core-events",
+    "crates/state/core-commands",
+    "crates/state/core-snapshot",
+
+    # Protocol
+    "crates/protocol/protocol-ids",
+    "crates/protocol/protocol-script",
+    "crates/protocol/protocol-render",
+    "crates/protocol/protocol-replay",
+    "crates/protocol/protocol-telemetry",
+    "crates/protocol/protocol-codegen",
+
+    # Sim
+    "crates/sim/sim-kernel",
+    "crates/sim/sim-validator",
+    "crates/sim/sim-applier",
+    "crates/sim/sim-replay",
+    "crates/sim/sim-runner",
+
+    # Services
+    "crates/services/svc-rng",
+    "crates/services/svc-spatial",
+    "crates/services/svc-collision",
+    "crates/services/svc-physics",
+    "crates/services/svc-pathfinding",
+    "crates/services/svc-serialization",
+    "crates/services/svc-volume",
+    "crates/services/svc-mesh",
+
+    # Rules
+    "crates/rules/rule-lifecycle",
+    "crates/rules/rule-process",
+    "crates/rules/rule-scheduler",
+    "crates/rules/rule-relationship",
+    "crates/rules/rule-state-machine",
+
+    # Render
+    "crates/render/render-bridge",
+    "crates/render/render-debug",
+
+    # WASM
+    "crates/wasm/wasm-api",
+
+    # Tools
+    "crates/tools/replay-tool",
+    "crates/tools/snapshot-diff",
+    "crates/tools/protocol-dump",
+    "crates/tools/state-inspector",
+    "crates/tools/fixture-maker",
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2021"
+license     = "UNLICENSED"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"

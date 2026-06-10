@@ -1,0 +1,11 @@
+[package]
+name    = "fixture-maker"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "fixture-maker"
+path = "src/main.rs"
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+[package]
+name    = "protocol-codegen"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "protocol-codegen"
+path = "src/main.rs"
+
+[lints]
+workspace = true

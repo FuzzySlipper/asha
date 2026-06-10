@@ -1,0 +1,11 @@
+[package]
+name    = "snapshot-diff"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "snapshot-diff"
+path = "src/main.rs"
+
+[lints]
+workspace = true

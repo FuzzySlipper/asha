@@ -1,0 +1,11 @@
+[package]
+name    = "state-inspector"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "state-inspector"
+path = "src/main.rs"
+
+[lints]
+workspace = true

@@ -1,0 +1,263 @@
+# Ownership and lane assignments for all crates and packages.
+# Machine-readable by the dep-graph verifier and agent orchestrators.
+
+# ─── Rust: Foundation ────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/foundation/core-ids"]
+lane = "rust-foundation"
+may_depend_on = []
+
+[crate."engine-rs/crates/foundation/core-math"]
+lane = "rust-foundation"
+may_depend_on = []
+
+[crate."engine-rs/crates/foundation/core-time"]
+lane = "rust-foundation"
+may_depend_on = []
+
+[crate."engine-rs/crates/foundation/core-error"]
+lane = "rust-foundation"
+may_depend_on = []
+
+[crate."engine-rs/crates/foundation/core-collections"]
+lane = "rust-foundation"
+may_depend_on = []
+
+# ─── Rust: State ─────────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/state/core-state"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-collections"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/state/core-events"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/state/core-commands"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/state/core-snapshot"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+# ─── Rust: Protocol ──────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/protocol/protocol-ids"]
+lane = "contract-steward"
+may_depend_on = ["core-ids"]
+
+[crate."engine-rs/crates/protocol/protocol-script"]
+lane = "contract-steward"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-commands"]
+
+[crate."engine-rs/crates/protocol/protocol-render"]
+lane = "contract-steward"
+may_depend_on = ["core-ids", "core-error"]
+may_not_depend_on = ["core-state", "sim-kernel"]
+
+[crate."engine-rs/crates/protocol/protocol-replay"]
+lane = "contract-steward"
+may_depend_on = ["core-ids", "core-error", "core-events", "core-commands"]
+
+[crate."engine-rs/crates/protocol/protocol-telemetry"]
+lane = "contract-steward"
+may_depend_on = ["core-ids"]
+
+[crate."engine-rs/crates/protocol/protocol-codegen"]
+lane = "contract-steward"
+may_depend_on = ["protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry"]
+
+# ─── Rust: Sim ───────────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/sim/sim-kernel"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/sim/sim-validator"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/sim/sim-applier"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/sim/sim-replay"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands", "core-snapshot", "protocol-replay"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/sim/sim-runner"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands", "sim-kernel", "sim-validator", "sim-applier", "sim-replay"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+# ─── Rust: Services ──────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/services/svc-rng"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-error"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-spatial"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-collision"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error", "svc-spatial"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-physics"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error", "svc-spatial"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-pathfinding"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error", "core-state"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-serialization"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-volume"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/services/svc-mesh"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-math", "core-error", "svc-volume"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+# ─── Rust: Rules ─────────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/rules/rule-lifecycle"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/rules/rule-process"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/rules/rule-scheduler"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-time", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/rules/rule-relationship"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+[crate."engine-rs/crates/rules/rule-state-machine"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
+# ─── Rust: Render ────────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/render/render-bridge"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "protocol-render"]
+may_not_depend_on = ["wasm-api"]
+
+[crate."engine-rs/crates/render/render-debug"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-error", "core-state", "protocol-render", "render-bridge"]
+may_not_depend_on = ["wasm-api"]
+
+# ─── Rust: WASM ──────────────────────────────────────────────────────────────
+
+[crate."engine-rs/crates/wasm/wasm-api"]
+lane = "rust-rule"
+may_depend_on = [
+  "core-ids", "core-error", "core-state", "core-events", "core-commands",
+  "core-snapshot", "protocol-script", "protocol-render", "protocol-replay",
+  "protocol-telemetry", "sim-runner", "render-bridge",
+]
+
+# ─── TypeScript ──────────────────────────────────────────────────────────────
+
+[package."ts/packages/contracts"]
+lane = "contract-steward"
+may_import = []
+
+[package."ts/packages/script-sdk"]
+lane = "ts-policy"
+may_import = ["@asha/contracts"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+
+[package."ts/packages/script-host"]
+lane = "ts-policy"
+may_import = ["@asha/contracts", "@asha/script-sdk"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/electron-main"]
+
+[package."ts/packages/policy-core"]
+lane = "ts-policy"
+may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
+
+[package."ts/packages/policy-examples"]
+lane = "ts-policy"
+may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core", "@asha/policy-core"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
+
+[package."ts/packages/catalog-core"]
+lane = "ts-catalog"
+may_import = ["@asha/contracts"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+
+[package."ts/packages/catalog-examples"]
+lane = "ts-catalog"
+may_import = ["@asha/contracts", "@asha/catalog-core"]
+may_not_import = ["@asha/renderer-babylon", "@asha/ui-dom", "@asha/wasm-bridge", "@asha/electron-main"]
+
+[package."ts/packages/wasm-bridge"]
+lane = "ts-shell"
+may_import = ["@asha/contracts"]
+may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
+
+[package."ts/packages/renderer-babylon"]
+lane = "ts-shell"
+may_import = ["@asha/contracts", "@asha/wasm-bridge"]
+may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
+
+[package."ts/packages/ui-dom"]
+lane = "ts-shell"
+may_import = ["@asha/contracts", "@asha/wasm-bridge"]
+may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
+
+[package."ts/packages/cosmetic"]
+lane = "ts-shell"
+may_import = ["@asha/contracts", "@asha/renderer-babylon"]
+may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
+
+[package."ts/packages/devtools"]
+lane = "ts-tools"
+may_import = ["@asha/contracts", "@asha/wasm-bridge"]
+
+[package."ts/packages/electron-main"]
+lane = "ts-shell"
+may_import = []
+may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
+
+[package."ts/packages/app"]
+lane = "ts-shell"
+may_import = ["@asha/contracts", "@asha/wasm-bridge", "@asha/renderer-babylon", "@asha/ui-dom", "@asha/script-host"]
+may_not_import = ["@asha/electron-main"]
