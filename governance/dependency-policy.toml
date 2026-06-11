@@ -62,14 +62,15 @@ layers = [
     "native-bridge",
     "runtime-bridge",
     "wasm-replay-bridge",
+    "editor-tools",
     "shell",
     "tools",
 ]
 
 [ts.forbidden_imports]
-# Policy/catalog may never import shell or transport packages.
-"policy"   = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
-"catalog"  = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
+# Policy/catalog may never import shell, transport, or editor-state packages.
+"policy"   = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/editor-tools", "@asha/electron-main"]
+"catalog"  = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/editor-tools", "@asha/electron-main"]
 # Renderer must not import policy.
 "renderer-three" = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host"]
 # Only the runtime-bridge facade may import the raw native addon.

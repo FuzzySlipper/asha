@@ -8,19 +8,20 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "types":  "./dist/index.d.ts"
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
-    "build":     "tsc --build",
-    "typecheck": "tsc --noEmit",
-    "test":      "echo no tests yet"
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "tsc --build && node --test 'dist/**/*.test.js'"
   },
   "dependencies": {
     "@asha/contracts": "workspace:*",
     "@asha/runtime-bridge": "workspace:*",
     "@asha/renderer-three": "workspace:*",
     "@asha/ui-dom": "workspace:*",
-    "@asha/script-host": "workspace:*"
+    "@asha/script-host": "workspace:*",
+    "@asha/editor-tools": "workspace:*"
   }
 }

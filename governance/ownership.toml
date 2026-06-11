@@ -250,9 +250,16 @@ lane = "ts-shell"
 may_import = ["@asha/contracts", "@asha/runtime-bridge"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/native-bridge", "@asha/wasm-replay-bridge"]
 
+# Persistent editor tool context (ADR 0008). Forward-declared by #2264; the dir
+# lands in #2265. Pure TS state model: imports contracts only — no DOM/three/policy/bridge.
+[package."ts/packages/editor-tools"]
+lane = "ts-shell"
+may_import = ["@asha/contracts"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/electron-main"]
+
 [package."ts/packages/ui-dom"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/runtime-bridge"]
+may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/editor-tools"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/native-bridge", "@asha/wasm-replay-bridge"]
 
 [package."ts/packages/cosmetic"]
@@ -262,7 +269,7 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-ho
 
 [package."ts/packages/devtools"]
 lane = "ts-tools"
-may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/wasm-replay-bridge"]
+may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/wasm-replay-bridge", "@asha/editor-tools"]
 may_not_import = ["@asha/native-bridge"]
 
 [package."ts/packages/electron-main"]
@@ -272,7 +279,7 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
 
 [package."ts/packages/app"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/ui-dom", "@asha/script-host"]
+may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/ui-dom", "@asha/editor-tools", "@asha/script-host"]
 may_not_import = ["@asha/electron-main", "@asha/native-bridge", "@asha/wasm-replay-bridge"]
 
 # ─── Runtime bridge boundary (ADR 0006) ──────────────────────────────────────
