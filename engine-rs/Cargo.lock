@@ -585,6 +585,12 @@ dependencies = [
 [[package]]
 name = "svc-mesh"
 version = "0.1.0"
+dependencies = [
+ "core-space",
+ "core-voxel",
+ "svc-spatial",
+ "svc-volume",
+]
 
 [[package]]
 name = "svc-pathfinding"

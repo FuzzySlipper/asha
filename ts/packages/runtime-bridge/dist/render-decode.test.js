@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
+import { decodeRenderDiff, decodeRenderFrameDiff, decodeMeshPayloadDescriptor, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 const fixturesRoot = resolve(import.meta.dirname, '../../../../harness/fixtures/render-diffs');
 function loadFixture(name) {
     return JSON.parse(readFileSync(resolve(fixturesRoot, `${name}.json`), 'utf8'));
@@ -117,5 +117,59 @@ test('FrameMemory enforces its single-frame lifetime', () => {
     mem.invalidate();
     assert.ok(!mem.valid);
     assert.throws(() => mem.bytes(), RenderDecodeError);
+});
+// ── mesh payload descriptor (ADR 0007 / #2262) ────────────────────────────────
+function oneTriangleInline() {
+    return {
+        layout: {
+            vertexCount: 3,
+            indexCount: 3,
+            indexWidth: 'u32',
+            attributes: [
+                { name: 'position', components: 3, kind: 'f32' },
+                { name: 'normal', components: 3, kind: 'f32' },
+            ],
+        },
+        groups: [{ materialSlot: 1, start: 0, count: 3 }],
+        bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+        source: {
+            kind: 'inline',
+            positions: [0, 0, 0, 1, 0, 0, 1, 1, 0],
+            normals: [0, 0, 1, 0, 0, 1, 0, 0, 1],
+            indices: [0, 1, 2],
+        },
+    };
+}
+test('decodes a valid inline mesh payload and the replaceMeshPayload diff', () => {
+    const d = decodeMeshPayloadDescriptor(oneTriangleInline());
+    assert.equal(d.layout.vertexCount, 3);
+    assert.equal(d.groups.length, 1);
+    assert.equal(d.source.kind, 'inline');
+    const diff = decodeRenderDiff({ op: 'replaceMeshPayload', handle: 5, payload: oneTriangleInline() });
+    assert.equal(diff.op, 'replaceMeshPayload');
+});
+test('decodes a handle-source mesh payload', () => {
+    const p = oneTriangleInline();
+    p.source = { kind: 'handle', buffer: 7, positionsByteOffset: 0, normalsByteOffset: 36, indicesByteOffset: 72 };
+    const d = decodeMeshPayloadDescriptor(p);
+    assert.equal(d.source.kind, 'handle');
+});
+test('rejects malformed mesh payloads with path-bearing errors', () => {
+    // wrong positions length
+    const badPos = oneTriangleInline();
+    badPos.source.positions = [0, 0, 0];
+    assert.throws(() => decodeMeshPayloadDescriptor(badPos), RenderDecodeError);
+    // index out of range
+    const badIdx = oneTriangleInline();
+    badIdx.source.indices = [0, 1, 9];
+    assert.throws(() => decodeMeshPayloadDescriptor(badIdx), RenderDecodeError);
+    // groups do not tile
+    const badGroup = oneTriangleInline();
+    badGroup.groups[0].count = 2;
+    assert.throws(() => decodeMeshPayloadDescriptor(badGroup), RenderDecodeError);
+    // unknown attribute name
+    const badAttr = oneTriangleInline();
+    badAttr.layout.attributes[0].name = 'tangent';
+    assert.throws(() => decodeMeshPayloadDescriptor(badAttr), RenderDecodeError);
 });
 //# sourceMappingURL=render-decode.test.js.map

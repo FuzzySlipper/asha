@@ -12,6 +12,7 @@ import { decodeRenderFrameDiff } from '@asha/runtime-bridge';
 import type {
   Geometry,
   Material,
+  MeshPayloadDescriptor,
   RenderDiff,
   RenderFrameDiff,
   RenderHandle,
@@ -46,6 +47,8 @@ export class ThreeRenderer {
   readonly #sceneGroup = new THREE.Group();
   readonly #debugGroup = new THREE.Group();
   readonly #handles = new Map<RenderHandle, NodeEntry>();
+  /** Per-material-slot colours for the initial flat/debug material strategy. */
+  readonly #slotColors = new Map<number, THREE.Color>();
 
   constructor() {
     this.#sceneGroup.name = 'scene';
@@ -81,7 +84,30 @@ export class ThreeRenderer {
       case 'destroy':
         this.#destroy(diff);
         break;
+      case 'replaceMeshPayload':
+        this.#replaceMeshPayload(diff);
+        break;
     }
+  }
+
+  /**
+   * Register the flat colour used for a material slot (the initial flat/debug
+   * material strategy — ADR 0007). Unregistered slots fall back to a deterministic
+   * per-slot colour, so a payload always maps to *some* visible material.
+   */
+  registerSlotColor(slot: number, r: number, g: number, b: number): void {
+    this.#slotColors.set(slot, new THREE.Color(r, g, b));
+  }
+
+  #slotColor(slot: number): THREE.Color {
+    const registered = this.#slotColors.get(slot);
+    if (registered) {
+      return registered.clone();
+    }
+    // Deterministic fallback hue per slot (golden angle), so missing slots are
+    // visible and stable rather than silently skipped.
+    const hue = (slot * 0.61803398875) % 1;
+    return new THREE.Color().setHSL(hue, 0.7, 0.5);
   }
 
   /** Whether a handle is currently live in the scene. */
@@ -168,6 +194,38 @@ export class ThreeRenderer {
     this.#handles.delete(diff.handle);
   }
 
+  /**
+   * Replace a node's geometry with an uploaded voxel mesh payload. Uploads the
+   * descriptor's attribute/index streams directly into a `BufferGeometry` (typed-
+   * array views only — no per-frame transcoding) and maps material slots to flat
+   * materials. The old geometry + materials are disposed.
+   */
+  #replaceMeshPayload(diff: Extract<RenderDiff, { op: 'replaceMeshPayload' }>): void {
+    const entry = this.#require(diff.handle, 'replaceMeshPayload');
+    const object = entry.object;
+    if (!(object instanceof THREE.Mesh)) {
+      throw new RenderApplyError(`replaceMeshPayload: handle ${diff.handle} is not a mesh`);
+    }
+    const geometry = buildMeshGeometry(diff.payload);
+    const materials = diff.payload.groups.map((g) => {
+      const m = new THREE.MeshBasicMaterial({ color: this.#slotColor(g.materialSlot) });
+      return m;
+    });
+
+    const oldGeometry = object.geometry;
+    const oldMaterial = object.material;
+    object.geometry = geometry;
+    // A multi-group geometry uses an array of materials indexed by group order.
+    object.material = materials.length === 1 ? materials[0]! : materials;
+
+    oldGeometry.dispose();
+    if (Array.isArray(oldMaterial)) {
+      oldMaterial.forEach((m) => m.dispose());
+    } else {
+      oldMaterial.dispose();
+    }
+  }
+
   #require(handle: RenderHandle, ctx: string): NodeEntry {
     const entry = this.#handles.get(handle);
     if (entry === undefined) {
@@ -229,6 +287,32 @@ function buildMaterial(shape: Geometry['shape'], material: Material): THREE.Mate
         wireframe: material.wireframe,
       });
   }
+}
+
+/**
+ * Build a `THREE.BufferGeometry` from a mesh payload descriptor. Inline sources
+ * wrap the contract number arrays as typed arrays directly; handle sources need a
+ * runtime buffer provider (deferred — runtime-bridge wiring), so they are rejected
+ * here with a classified error rather than silently producing an empty mesh.
+ */
+function buildMeshGeometry(payload: MeshPayloadDescriptor): THREE.BufferGeometry {
+  if (payload.source.kind !== 'inline') {
+    throw new RenderApplyError(
+      'replaceMeshPayload: handle-source payloads need a runtime buffer provider (not wired yet)',
+    );
+  }
+  const { positions, normals, indices } = payload.source;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+  geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+  // One draw group per material slot (BufferGeometry.addGroup(start, count, index)).
+  payload.groups.forEach((g, i) => geometry.addGroup(g.start, g.count, i));
+  geometry.boundingBox = new THREE.Box3(
+    new THREE.Vector3(payload.bounds.min[0], payload.bounds.min[1], payload.bounds.min[2]),
+    new THREE.Vector3(payload.bounds.max[0], payload.bounds.max[1], payload.bounds.max[2]),
+  );
+  return geometry;
 }
 
 function pointGeometry(): THREE.BufferGeometry {

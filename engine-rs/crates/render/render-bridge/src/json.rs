@@ -2,14 +2,15 @@
 //!
 //! The workspace has zero external dependencies, so this hand-writes the exact
 //! JSON shape of the generated `render.ts` contract. It exists so a Rust test
-//! can emit a fixture that the TypeScript `wasm-bridge` decoder consumes — the
-//! shared, inspectable artifact at the render boundary.
+//! can emit a fixture that the TypeScript `@asha/runtime-bridge` render decoder
+//! consumes — the shared, inspectable artifact at the render boundary.
 //!
 //! Each diff op is written on one line (compact) inside an indented frame array,
 //! which keeps the committed fixture small and reviewable.
 
 use protocol_render::{
-    Geometry, Material, RenderDiff, RenderFrameDiff, RenderMetadata, RenderNode, Transform,
+    Geometry, Material, MeshAttributeName, MeshPayloadDescriptor, MeshPayloadSource, RenderDiff,
+    RenderFrameDiff, RenderMetadata, RenderNode, Transform,
 };
 
 /// Encode a sequence of frames as a pretty JSON array of frame objects.
@@ -83,7 +84,94 @@ fn encode_diff(out: &mut String, diff: &RenderDiff) {
                 handle.raw()
             ));
         }
+        RenderDiff::ReplaceMeshPayload { handle, payload } => {
+            out.push_str(&format!(
+                "{{ \"op\": \"replaceMeshPayload\", \"handle\": {}, \"payload\": ",
+                handle.raw()
+            ));
+            encode_mesh_payload(out, payload);
+            out.push_str(" }");
+        }
     }
+}
+
+fn attr_name(name: MeshAttributeName) -> &'static str {
+    match name {
+        MeshAttributeName::Position => "position",
+        MeshAttributeName::Normal => "normal",
+        MeshAttributeName::Uv => "uv",
+        MeshAttributeName::Color => "color",
+    }
+}
+
+fn encode_mesh_payload(out: &mut String, payload: &MeshPayloadDescriptor) {
+    let layout = &payload.layout;
+    out.push_str(&format!(
+        "{{ \"layout\": {{ \"vertexCount\": {}, \"indexCount\": {}, \"indexWidth\": \"u32\", \"attributes\": [",
+        layout.vertex_count, layout.index_count
+    ));
+    for (i, a) in layout.attributes.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!(
+            "{{ \"name\": \"{}\", \"components\": {}, \"kind\": \"f32\" }}",
+            attr_name(a.name),
+            a.components
+        ));
+    }
+    out.push_str("] }, \"groups\": [");
+    for (i, g) in payload.groups.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!(
+            "{{ \"materialSlot\": {}, \"start\": {}, \"count\": {} }}",
+            g.material_slot, g.start, g.count
+        ));
+    }
+    out.push_str("], \"bounds\": { \"min\": ");
+    encode_f32_array(out, &payload.bounds.min);
+    out.push_str(", \"max\": ");
+    encode_f32_array(out, &payload.bounds.max);
+    out.push_str(" }, \"source\": ");
+    match &payload.source {
+        MeshPayloadSource::Inline {
+            positions,
+            normals,
+            indices,
+        } => {
+            out.push_str("{ \"kind\": \"inline\", \"positions\": ");
+            encode_f32_array(out, positions);
+            out.push_str(", \"normals\": ");
+            encode_f32_array(out, normals);
+            out.push_str(", \"indices\": ");
+            encode_u32_array(out, indices);
+            out.push_str(" }");
+        }
+        MeshPayloadSource::Handle {
+            buffer,
+            positions_byte_offset,
+            normals_byte_offset,
+            indices_byte_offset,
+        } => {
+            out.push_str(&format!(
+                "{{ \"kind\": \"handle\", \"buffer\": {buffer}, \"positionsByteOffset\": {positions_byte_offset}, \"normalsByteOffset\": {normals_byte_offset}, \"indicesByteOffset\": {indices_byte_offset} }}"
+            ));
+        }
+    }
+    out.push_str(" }");
+}
+
+fn encode_u32_array(out: &mut String, values: &[u32]) {
+    out.push('[');
+    for (i, v) in values.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&v.to_string());
+    }
+    out.push(']');
 }
 
 fn encode_node(out: &mut String, node: &RenderNode) {

@@ -53,11 +53,62 @@ export interface RenderNode {
   readonly metadata: RenderMetadata;
 }
 
+// Vertex attribute element type (only f32 today).
+export type MeshAttributeKind = 'f32';
+
+// Which vertex attribute a stream carries (uv/color reserved).
+export type MeshAttributeName = 'position' | 'normal' | 'uv' | 'color';
+
+// One declared vertex attribute stream.
+export interface MeshAttribute {
+  readonly name: MeshAttributeName;
+  readonly components: number;
+  readonly kind: MeshAttributeKind;
+}
+
+// Index buffer element width (u32 everywhere today).
+export type MeshIndexWidth = 'u32';
+
+// Buffer layout for BufferGeometry upload without transcoding.
+export interface MeshBufferLayout {
+  readonly vertexCount: number;
+  readonly indexCount: number;
+  readonly indexWidth: MeshIndexWidth;
+  readonly attributes: readonly MeshAttribute[];
+}
+
+// One material-slot draw group over a contiguous index range.
+export interface MeshGroupDescriptor {
+  readonly materialSlot: number;
+  readonly start: number;
+  readonly count: number;
+}
+
+// Axis-aligned mesh bounds (chunk-local).
+export interface MeshBoundsDescriptor {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+
+// Where the bulk vertex/index bytes live: inline (fixtures) or by handle (runtime).
+export type MeshPayloadSource =
+  | { readonly kind: 'inline'; readonly positions: readonly number[]; readonly normals: readonly number[]; readonly indices: readonly number[] }
+  | { readonly kind: 'handle'; readonly buffer: number; readonly positionsByteOffset: number; readonly normalsByteOffset: number; readonly indicesByteOffset: number };
+
+// The full mesh-payload border: layout + groups + bounds + data source.
+export interface MeshPayloadDescriptor {
+  readonly layout: MeshBufferLayout;
+  readonly groups: readonly MeshGroupDescriptor[];
+  readonly bounds: MeshBoundsDescriptor;
+  readonly source: MeshPayloadSource;
+}
+
 // A single retained-mode change against the render scene.
 export type RenderDiff =
   | { readonly op: 'create'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly node: RenderNode }
   | { readonly op: 'update'; readonly handle: RenderHandle; readonly transform: Transform | null; readonly material: Material | null; readonly visible: boolean | null; readonly metadata: RenderMetadata | null }
-  | { readonly op: 'destroy'; readonly handle: RenderHandle };
+  | { readonly op: 'destroy'; readonly handle: RenderHandle }
+  | { readonly op: 'replaceMeshPayload'; readonly handle: RenderHandle; readonly payload: MeshPayloadDescriptor };
 
 // All retained-mode changes emitted for a single tick, in apply order.
 export interface RenderFrameDiff {

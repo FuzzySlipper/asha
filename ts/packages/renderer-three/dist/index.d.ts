@@ -21,6 +21,12 @@ export declare class ThreeRenderer {
     applyEncodedFrame(payload: unknown): void;
     /** Apply a single diff. Throws `RenderApplyError` on a bad handle. */
     applyDiff(diff: RenderDiff): void;
+    /**
+     * Register the flat colour used for a material slot (the initial flat/debug
+     * material strategy — ADR 0007). Unregistered slots fall back to a deterministic
+     * per-slot colour, so a payload always maps to *some* visible material.
+     */
+    registerSlotColor(slot: number, r: number, g: number, b: number): void;
     /** Whether a handle is currently live in the scene. */
     has(handle: RenderHandle): boolean;
     /** Number of live scene handles. */

@@ -133,3 +133,123 @@ test('applies the Rust render-bridge fixture sequence end-to-end', () => {
   // The update carried the new tag onto handle 1's scene object metadata.
   assert.deepEqual(r.objectFor(renderHandle(1))?.userData.tags, [5]);
 });
+
+// ── mesh payload upload (ADR 0007 / #2263) ────────────────────────────────────
+
+import * as THREE from 'three';
+import type { MeshPayloadDescriptor } from '@asha/contracts';
+
+function meshNode(): RenderNode {
+  return {
+    geometry: { shape: 'cube' },
+    material: { color: [1, 1, 1, 1], wireframe: false },
+    transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+    visible: true,
+    layer: 'scene',
+    metadata: { source: null, tags: [], label: 'chunk' },
+  };
+}
+
+// A quad (4 verts, 6 indices) split into two material-slot groups.
+function quadPayload(): MeshPayloadDescriptor {
+  return {
+    layout: {
+      vertexCount: 4,
+      indexCount: 6,
+      indexWidth: 'u32',
+      attributes: [
+        { name: 'position', components: 3, kind: 'f32' },
+        { name: 'normal', components: 3, kind: 'f32' },
+      ],
+    },
+    groups: [
+      { materialSlot: 1, start: 0, count: 3 },
+      { materialSlot: 2, start: 3, count: 3 },
+    ],
+    bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+    source: {
+      kind: 'inline',
+      positions: [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+      normals: [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+      indices: [0, 1, 2, 0, 2, 3],
+    },
+  };
+}
+
+test('replaceMeshPayload uploads a BufferGeometry with groups and material slots', () => {
+  const r = new ThreeRenderer();
+  const h = renderHandle(1);
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+
+  const mesh = r.objectFor(h) as THREE.Mesh;
+  const geo = mesh.geometry;
+  assert.equal(geo.getAttribute('position').count, 4);
+  assert.equal(geo.getAttribute('normal').count, 4);
+  assert.equal(geo.getIndex()!.count, 6);
+  assert.equal(geo.groups.length, 2);
+  assert.deepEqual(
+    geo.groups.map((g) => [g.start, g.count, g.materialIndex]),
+    [[0, 3, 0], [3, 3, 1]],
+  );
+  // Two materials, one per group.
+  assert.ok(Array.isArray(mesh.material));
+  assert.equal((mesh.material as THREE.Material[]).length, 2);
+});
+
+test('registered slot colour maps to the group material; unregistered uses a fallback', () => {
+  const r = new ThreeRenderer();
+  r.registerSlotColor(1, 1, 0, 0); // slot 1 → red
+  const h = renderHandle(1);
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+
+  const mats = (r.objectFor(h) as THREE.Mesh).material as THREE.MeshBasicMaterial[];
+  assert.deepEqual([mats[0]!.color.r, mats[0]!.color.g, mats[0]!.color.b], [1, 0, 0]);
+  // Slot 2 was never registered → a deterministic non-red fallback colour.
+  assert.notDeepEqual([mats[1]!.color.r, mats[1]!.color.g, mats[1]!.color.b], [1, 0, 0]);
+});
+
+test('replaceMeshPayload disposes the previous geometry and material', () => {
+  const r = new ThreeRenderer();
+  const h = renderHandle(1);
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  const mesh = r.objectFor(h) as THREE.Mesh;
+  const oldGeo = mesh.geometry;
+  let disposed = false;
+  oldGeo.addEventListener('dispose', () => { disposed = true; });
+
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+  assert.ok(disposed, 'old geometry should be disposed on replace');
+  assert.notEqual(mesh.geometry, oldGeo);
+
+  // A second replace disposes the first uploaded geometry too.
+  const firstUpload = mesh.geometry;
+  let secondDisposed = false;
+  firstUpload.addEventListener('dispose', () => { secondDisposed = true; });
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+  assert.ok(secondDisposed);
+});
+
+test('replaceMeshPayload on an unknown handle throws', () => {
+  const r = new ThreeRenderer();
+  assert.throws(
+    () => r.applyDiff({ op: 'replaceMeshPayload', handle: renderHandle(9), payload: quadPayload() }),
+    RenderApplyError,
+  );
+});
+
+test('handle-source payloads are rejected until runtime buffer wiring exists', () => {
+  const r = new ThreeRenderer();
+  const h = renderHandle(1);
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  const p = quadPayload();
+  (p as { source: unknown }).source = {
+    kind: 'handle',
+    buffer: 7,
+    positionsByteOffset: 0,
+    normalsByteOffset: 48,
+    indicesByteOffset: 96,
+  };
+  assert.throws(() => r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: p }), RenderApplyError);
+});

@@ -1,10 +1,12 @@
-import { type RenderFrameDiff, type RenderDiff } from '@asha/contracts';
+import { type RenderFrameDiff, type RenderDiff, type MeshPayloadDescriptor } from '@asha/contracts';
 /** Raised when a payload does not match the render-diff contract shape. */
 export declare class RenderDecodeError extends Error {
     readonly path: string;
     constructor(message: string, path: string);
 }
-/** Decode a single render diff (`create` / `update` / `destroy`). */
+/** Decode and structurally validate a mesh payload descriptor. */
+export declare function decodeMeshPayloadDescriptor(v: unknown, path?: string): MeshPayloadDescriptor;
+/** Decode a single render diff (`create` / `update` / `destroy` / `replaceMeshPayload`). */
 export declare function decodeRenderDiff(v: unknown, path?: string): RenderDiff;
 /** Decode a whole frame of render diffs into the generated contract type. */
 export declare function decodeRenderFrameDiff(v: unknown, path?: string): RenderFrameDiff;

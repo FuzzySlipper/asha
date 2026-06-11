@@ -129,8 +129,104 @@ function decodeNode(v, path) {
         metadata: decodeMetadata(o.metadata, `${path}.metadata`),
     };
 }
+// ── Mesh payload validators (ADR 0007) ────────────────────────────────────────
+function asU32(v, path) {
+    const n = asNumber(v, path);
+    if (!Number.isInteger(n) || n < 0) {
+        throw new RenderDecodeError('expected a non-negative integer', path);
+    }
+    return n;
+}
+function decodeMeshAttribute(v, path) {
+    const o = asObject(v, path);
+    const name = o.name;
+    if (name !== 'position' && name !== 'normal' && name !== 'uv' && name !== 'color') {
+        throw new RenderDecodeError(`unknown mesh attribute name ${JSON.stringify(name)}`, `${path}.name`);
+    }
+    if (o.kind !== 'f32') {
+        throw new RenderDecodeError(`unknown mesh attribute kind ${JSON.stringify(o.kind)}`, `${path}.kind`);
+    }
+    return { name, components: asU32(o.components, `${path}.components`), kind: 'f32' };
+}
+function decodeMeshLayout(v, path) {
+    const o = asObject(v, path);
+    if (o.indexWidth !== 'u32') {
+        throw new RenderDecodeError(`unknown index width ${JSON.stringify(o.indexWidth)}`, `${path}.indexWidth`);
+    }
+    return {
+        vertexCount: asU32(o.vertexCount, `${path}.vertexCount`),
+        indexCount: asU32(o.indexCount, `${path}.indexCount`),
+        indexWidth: 'u32',
+        attributes: asArray(o.attributes, `${path}.attributes`).map((a, i) => decodeMeshAttribute(a, `${path}.attributes[${i}]`)),
+    };
+}
+function decodeMeshGroup(v, path) {
+    const o = asObject(v, path);
+    return {
+        materialSlot: asU32(o.materialSlot, `${path}.materialSlot`),
+        start: asU32(o.start, `${path}.start`),
+        count: asU32(o.count, `${path}.count`),
+    };
+}
+function decodeMeshBounds(v, path) {
+    const o = asObject(v, path);
+    return { min: tuple3(o.min, `${path}.min`), max: tuple3(o.max, `${path}.max`) };
+}
+function decodeMeshSource(v, path) {
+    const o = asObject(v, path);
+    switch (o.kind) {
+        case 'inline':
+            return {
+                kind: 'inline',
+                positions: asArray(o.positions, `${path}.positions`).map((x, i) => asNumber(x, `${path}.positions[${i}]`)),
+                normals: asArray(o.normals, `${path}.normals`).map((x, i) => asNumber(x, `${path}.normals[${i}]`)),
+                indices: asArray(o.indices, `${path}.indices`).map((x, i) => asU32(x, `${path}.indices[${i}]`)),
+            };
+        case 'handle':
+            return {
+                kind: 'handle',
+                buffer: asU32(o.buffer, `${path}.buffer`),
+                positionsByteOffset: asU32(o.positionsByteOffset, `${path}.positionsByteOffset`),
+                normalsByteOffset: asU32(o.normalsByteOffset, `${path}.normalsByteOffset`),
+                indicesByteOffset: asU32(o.indicesByteOffset, `${path}.indicesByteOffset`),
+            };
+        default:
+            throw new RenderDecodeError(`unknown mesh payload source ${JSON.stringify(o.kind)}`, `${path}.kind`);
+    }
+}
+/** Decode and structurally validate a mesh payload descriptor. */
+export function decodeMeshPayloadDescriptor(v, path = '$') {
+    const o = asObject(v, path);
+    const layout = decodeMeshLayout(o.layout, `${path}.layout`);
+    const groups = asArray(o.groups, `${path}.groups`).map((g, i) => decodeMeshGroup(g, `${path}.groups[${i}]`));
+    const bounds = decodeMeshBounds(o.bounds, `${path}.bounds`);
+    const source = decodeMeshSource(o.source, `${path}.source`);
+    // Cross-field checks mirroring protocol-render's MeshDescriptorError.
+    if (source.kind === 'inline') {
+        const expectV = layout.vertexCount * 3;
+        if (source.positions.length !== expectV) {
+            throw new RenderDecodeError(`positions length ${source.positions.length}, expected ${expectV}`, `${path}.source.positions`);
+        }
+        if (source.normals.length !== expectV) {
+            throw new RenderDecodeError(`normals length ${source.normals.length}, expected ${expectV}`, `${path}.source.normals`);
+        }
+        if (source.indices.length !== layout.indexCount) {
+            throw new RenderDecodeError(`indices length ${source.indices.length}, expected ${layout.indexCount}`, `${path}.source.indices`);
+        }
+        for (let i = 0; i < source.indices.length; i++) {
+            if (source.indices[i] >= layout.vertexCount) {
+                throw new RenderDecodeError(`index ${source.indices[i]} out of range for ${layout.vertexCount} vertices`, `${path}.source.indices[${i}]`);
+            }
+        }
+    }
+    const covered = groups.reduce((a, g) => a + g.count, 0);
+    if (covered !== layout.indexCount) {
+        throw new RenderDecodeError(`groups cover ${covered} indices, expected ${layout.indexCount}`, `${path}.groups`);
+    }
+    return { layout, groups, bounds, source };
+}
 // ── Diff validators ───────────────────────────────────────────────────────────
-/** Decode a single render diff (`create` / `update` / `destroy`). */
+/** Decode a single render diff (`create` / `update` / `destroy` / `replaceMeshPayload`). */
 export function decodeRenderDiff(v, path = '$') {
     const o = asObject(v, path);
     switch (o.op) {
@@ -154,6 +250,12 @@ export function decodeRenderDiff(v, path = '$') {
             return {
                 op: 'destroy',
                 handle: decodeHandle(o.handle, `${path}.handle`),
+            };
+        case 'replaceMeshPayload':
+            return {
+                op: 'replaceMeshPayload',
+                handle: decodeHandle(o.handle, `${path}.handle`),
+                payload: decodeMeshPayloadDescriptor(o.payload, `${path}.payload`),
             };
         default:
             throw new RenderDecodeError(`unknown render diff op ${JSON.stringify(o.op)}`, `${path}.op`);

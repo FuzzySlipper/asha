@@ -39,6 +39,47 @@ export interface RenderNode {
     readonly layer: RenderLayer;
     readonly metadata: RenderMetadata;
 }
+export type MeshAttributeKind = 'f32';
+export type MeshAttributeName = 'position' | 'normal' | 'uv' | 'color';
+export interface MeshAttribute {
+    readonly name: MeshAttributeName;
+    readonly components: number;
+    readonly kind: MeshAttributeKind;
+}
+export type MeshIndexWidth = 'u32';
+export interface MeshBufferLayout {
+    readonly vertexCount: number;
+    readonly indexCount: number;
+    readonly indexWidth: MeshIndexWidth;
+    readonly attributes: readonly MeshAttribute[];
+}
+export interface MeshGroupDescriptor {
+    readonly materialSlot: number;
+    readonly start: number;
+    readonly count: number;
+}
+export interface MeshBoundsDescriptor {
+    readonly min: readonly [number, number, number];
+    readonly max: readonly [number, number, number];
+}
+export type MeshPayloadSource = {
+    readonly kind: 'inline';
+    readonly positions: readonly number[];
+    readonly normals: readonly number[];
+    readonly indices: readonly number[];
+} | {
+    readonly kind: 'handle';
+    readonly buffer: number;
+    readonly positionsByteOffset: number;
+    readonly normalsByteOffset: number;
+    readonly indicesByteOffset: number;
+};
+export interface MeshPayloadDescriptor {
+    readonly layout: MeshBufferLayout;
+    readonly groups: readonly MeshGroupDescriptor[];
+    readonly bounds: MeshBoundsDescriptor;
+    readonly source: MeshPayloadSource;
+}
 export type RenderDiff = {
     readonly op: 'create';
     readonly handle: RenderHandle;
@@ -54,6 +95,10 @@ export type RenderDiff = {
 } | {
     readonly op: 'destroy';
     readonly handle: RenderHandle;
+} | {
+    readonly op: 'replaceMeshPayload';
+    readonly handle: RenderHandle;
+    readonly payload: MeshPayloadDescriptor;
 };
 export interface RenderFrameDiff {
     readonly ops: readonly RenderDiff[];

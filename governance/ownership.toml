@@ -150,7 +150,7 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/services/svc-mesh"]
 lane = "rust-service"
-may_depend_on = ["core-ids", "core-math", "core-error", "svc-volume"]
+may_depend_on = ["core-ids", "core-math", "core-error", "core-space", "core-voxel", "svc-volume", "svc-spatial"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 # ─── Rust: Rules ─────────────────────────────────────────────────────────────

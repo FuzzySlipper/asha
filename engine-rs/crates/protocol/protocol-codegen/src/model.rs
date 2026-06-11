@@ -333,6 +333,94 @@ pub fn render_module() -> Module {
                 f("metadata", r("RenderMetadata")),
             ],
         ),
+        // ── voxel mesh payload descriptors (ADR 0007) ──────────────────────────
+        Item::Alias {
+            doc: "Vertex attribute element type (only f32 today).".to_string(),
+            name: "MeshAttributeKind".to_string(),
+            ty: TsType::StringEnum(vec!["f32".to_string()]),
+        },
+        Item::Alias {
+            doc: "Which vertex attribute a stream carries (uv/color reserved).".to_string(),
+            name: "MeshAttributeName".to_string(),
+            ty: TsType::StringEnum(vec![
+                "position".to_string(),
+                "normal".to_string(),
+                "uv".to_string(),
+                "color".to_string(),
+            ]),
+        },
+        iface(
+            "One declared vertex attribute stream.",
+            "MeshAttribute",
+            vec![
+                f("name", r("MeshAttributeName")),
+                f("components", num()),
+                f("kind", r("MeshAttributeKind")),
+            ],
+        ),
+        Item::Alias {
+            doc: "Index buffer element width (u32 everywhere today).".to_string(),
+            name: "MeshIndexWidth".to_string(),
+            ty: TsType::StringEnum(vec!["u32".to_string()]),
+        },
+        iface(
+            "Buffer layout for BufferGeometry upload without transcoding.",
+            "MeshBufferLayout",
+            vec![
+                f("vertexCount", num()),
+                f("indexCount", num()),
+                f("indexWidth", r("MeshIndexWidth")),
+                f("attributes", TsType::array(r("MeshAttribute"))),
+            ],
+        ),
+        iface(
+            "One material-slot draw group over a contiguous index range.",
+            "MeshGroupDescriptor",
+            vec![
+                f("materialSlot", num()),
+                f("start", num()),
+                f("count", num()),
+            ],
+        ),
+        iface(
+            "Axis-aligned mesh bounds (chunk-local).",
+            "MeshBoundsDescriptor",
+            vec![f("min", tuple3()), f("max", tuple3())],
+        ),
+        union(
+            "Where the bulk vertex/index bytes live: inline (fixtures) or by handle (runtime).",
+            "MeshPayloadSource",
+            "kind",
+            vec![
+                v(
+                    "inline",
+                    vec![
+                        f("positions", TsType::array(num())),
+                        f("normals", TsType::array(num())),
+                        f("indices", TsType::array(num())),
+                    ],
+                ),
+                v(
+                    "handle",
+                    vec![
+                        f("buffer", num()),
+                        f("positionsByteOffset", num()),
+                        f("normalsByteOffset", num()),
+                        f("indicesByteOffset", num()),
+                    ],
+                ),
+            ],
+        ),
+        iface(
+            "The full mesh-payload border: layout + groups + bounds + data source.",
+            "MeshPayloadDescriptor",
+            vec![
+                f("layout", r("MeshBufferLayout")),
+                f("groups", TsType::array(r("MeshGroupDescriptor"))),
+                f("bounds", r("MeshBoundsDescriptor")),
+                f("source", r("MeshPayloadSource")),
+            ],
+        ),
         union(
             "A single retained-mode change against the render scene.",
             "RenderDiff",
@@ -357,6 +445,13 @@ pub fn render_module() -> Module {
                     ],
                 ),
                 v("destroy", vec![f("handle", r("RenderHandle"))]),
+                v(
+                    "replaceMeshPayload",
+                    vec![
+                        f("handle", r("RenderHandle")),
+                        f("payload", r("MeshPayloadDescriptor")),
+                    ],
+                ),
             ],
         ),
         iface(
