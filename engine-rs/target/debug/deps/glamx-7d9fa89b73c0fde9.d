@@ -1,0 +1,14 @@
+/home/dev/asha/engine-rs/target/debug/deps/glamx-7d9fa89b73c0fde9.d: /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/lib.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/matrix_ext.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd3.rs
+
+/home/dev/asha/engine-rs/target/debug/deps/libglamx-7d9fa89b73c0fde9.rmeta: /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/lib.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/matrix_ext.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot3.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd2.rs /home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd3.rs
+
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/lib.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen2.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/eigen3.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/matrix_ext.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose2.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/pose3.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot2.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/rot3.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd2.rs:
+/home/agent/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glamx-0.3.0/src/svd3.rs:

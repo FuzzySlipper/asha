@@ -67,4 +67,14 @@ export type VoxelEditRejection = {
     readonly expected: number;
     readonly actual: number;
 };
+export type Face = 'posX' | 'negX' | 'posY' | 'negY' | 'posZ' | 'negZ';
+export type PickRejection = {
+    readonly reason: 'noHit';
+} | {
+    readonly reason: 'hitMismatch';
+    readonly authoritativeVoxel: VoxelCoord;
+    readonly authoritativeFace: Face;
+    readonly claimedVoxel: VoxelCoord;
+    readonly claimedFace: Face;
+};
 //# sourceMappingURL=voxel.d.ts.map

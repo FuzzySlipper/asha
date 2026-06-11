@@ -23,6 +23,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod picking;
+
 use core_commands::VoxelCommand;
 use core_events::VoxelEditEvent;
 use core_space::{ChunkCoord, ChunkRegion, VoxelCoord, VoxelGridSpec, VoxelRegion};

@@ -120,9 +120,12 @@ lane = "rust-service"
 may_depend_on = ["core-ids", "core-math", "core-error", "core-space", "core-voxel", "svc-volume"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
+# svc-collision is the ONLY crate permitted the `parry3d-f64` collision dependency
+# (voxel-capability-11): it owns the derived parry-backed projection; no other
+# crate should pull parry/nalgebra into the authority graph.
 [crate."engine-rs/crates/services/svc-collision"]
 lane = "rust-service"
-may_depend_on = ["core-ids", "core-math", "core-error", "svc-spatial"]
+may_depend_on = ["core-ids", "core-math", "core-error", "core-space", "core-voxel", "svc-volume", "svc-spatial"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/services/svc-physics"]
@@ -179,7 +182,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-voxel-edit"]
 lane = "rust-rule"
-may_depend_on = ["core-space", "core-voxel", "core-commands", "core-events", "svc-volume", "svc-spatial"]
+may_depend_on = ["core-space", "core-voxel", "core-commands", "core-events", "svc-volume", "svc-spatial", "svc-collision"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 # ─── Rust: Render ────────────────────────────────────────────────────────────

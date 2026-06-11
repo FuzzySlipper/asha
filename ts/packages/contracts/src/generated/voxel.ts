@@ -43,3 +43,11 @@ export type VoxelEditRejection =
   | { readonly reason: 'emptyRegion'; readonly min: VoxelCoord; readonly max: VoxelCoord }
   | { readonly reason: 'chunkNotResident'; readonly chunk: ChunkCoord }
   | { readonly reason: 'generationDivergence'; readonly chunk: ChunkCoord; readonly expected: number; readonly actual: number };
+
+// A cube face / axis-aligned outward normal direction.
+export type Face = 'posX' | 'negX' | 'posY' | 'negY' | 'posZ' | 'negZ';
+
+// Why an authority-revalidated renderer pick was refused (picking).
+export type PickRejection =
+  | { readonly reason: 'noHit' }
+  | { readonly reason: 'hitMismatch'; readonly authoritativeVoxel: VoxelCoord; readonly authoritativeFace: Face; readonly claimedVoxel: VoxelCoord; readonly claimedFace: Face };

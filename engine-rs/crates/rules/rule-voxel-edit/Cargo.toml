@@ -13,3 +13,4 @@ core-commands = { path = "../../state/core-commands" }
 core-events   = { path = "../../state/core-events" }
 svc-volume    = { path = "../../services/svc-volume" }
 svc-spatial   = { path = "../../services/svc-spatial" }
+svc-collision = { path = "../../services/svc-collision" }

@@ -596,6 +596,35 @@ pub fn voxel_module() -> Module {
                 ),
             ],
         ),
+        Item::Alias {
+            doc: "A cube face / axis-aligned outward normal direction.".to_string(),
+            name: "Face".to_string(),
+            ty: TsType::StringEnum(vec![
+                "posX".to_string(),
+                "negX".to_string(),
+                "posY".to_string(),
+                "negY".to_string(),
+                "posZ".to_string(),
+                "negZ".to_string(),
+            ]),
+        },
+        union(
+            "Why an authority-revalidated renderer pick was refused (picking).",
+            "PickRejection",
+            "reason",
+            vec![
+                v("noHit", vec![]),
+                v(
+                    "hitMismatch",
+                    vec![
+                        f("authoritativeVoxel", r("VoxelCoord")),
+                        f("authoritativeFace", r("Face")),
+                        f("claimedVoxel", r("VoxelCoord")),
+                        f("claimedFace", r("Face")),
+                    ],
+                ),
+            ],
+        ),
     ];
     Module {
         name: "voxel",
