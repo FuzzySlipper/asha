@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": 200,
+  "metadata": { "name": "invalid-cycle", "authoringFormatVersion": 1 },
+  "dependencies": [],
+  "nodes": [
+    { "id": 1, "parent": 2, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } },
+    { "id": 2, "parent": 1, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } }
+  ]
+}

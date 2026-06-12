@@ -1,0 +1,13 @@
+[package]
+name    = "core-scene"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids    = { path = "../../foundation/core-ids" }
+core-assets = { path = "../../foundation/core-assets" }
+core-math   = { path = "../../foundation/core-math" }
+core-error  = { path = "../../foundation/core-error" }

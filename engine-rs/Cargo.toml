@@ -9,9 +9,11 @@ members = [
     "crates/foundation/core-error",
     "crates/foundation/core-collections",
     "crates/foundation/core-space",
+    "crates/foundation/core-assets",
 
     # State
     "crates/state/core-voxel",
+    "crates/state/core-scene",
     "crates/state/core-state",
     "crates/state/core-events",
     "crates/state/core-commands",

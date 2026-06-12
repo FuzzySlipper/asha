@@ -13,3 +13,16 @@
    (`@asha/wasm-replay-bridge`). Only the facade imports the native addon. (ADR 0006)
 10. `napi-rs` is the runtime transport; WASM is the replay/golden verification target. Neither
     is a public interface. Generated contracts remain the semantic/governance border.
+11. Scene documents describe an *authored* initial arrangement; the live Rust `WorldState`
+    (`core-scene`) owns runtime truth after bootstrap. An authored `SceneDocument` /
+    `FlatSceneDocument` is never runtime authority and is never mutated by runtime movement.
+    Scene bootstrap is one atomic authority initialization, not N ordinary create commands.
+12. Render handles and the render scene graph are derived projection, never durable/save
+    authority. Authority identity is `SceneNodeId` / `EntityId` (`core-ids`); a `RenderHandle`
+    must not be treated as authority, save-file truth, or a stable durable id. Renderer/UI/
+    devtools packages consume scene/world projections — they may not treat scene documents or
+    render handles as authority.
+13. Asset references that enter scene/save authority use the typed `AssetRef<T>` vocabulary
+    (`core-assets`) with kind-prefixed scoped-kebab-case `AssetId`s — never free strings or
+    source paths. Asset catalogs may be TS-authored, but Rust validates asset identity, kind,
+    and references before authority accepts them; catalogs do not bypass Rust validation.

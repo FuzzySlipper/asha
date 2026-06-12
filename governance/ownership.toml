@@ -27,11 +27,20 @@ may_depend_on = []
 lane = "rust-foundation"
 may_depend_on = []
 
+[crate."engine-rs/crates/foundation/core-assets"]
+lane = "rust-foundation"
+may_depend_on = []
+
 # ─── Rust: State ─────────────────────────────────────────────────────────────
 
 [crate."engine-rs/crates/state/core-voxel"]
 lane = "rust-state"
 may_depend_on = []
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
+
+[crate."engine-rs/crates/state/core-scene"]
+lane = "rust-state"
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-error"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/state/core-state"]

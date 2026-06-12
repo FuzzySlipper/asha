@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": 100,
+  "metadata": { "name": "sample", "authoringFormatVersion": 1 },
+  "dependencies": [
+    { "id": "mesh/static-mesh-fixture-a", "version": { "req": "any" }, "hash": null }
+  ],
+  "nodes": [
+    { "id": 1, "parent": null, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } },
+    { "id": 2, "parent": 1, "childOrder": 0, "label": "mesh-a", "tags": ["a-tag", "b-tag"], "transform": { "translation": [1, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "staticMesh", "asset": { "id": "mesh/static-mesh-fixture-a", "version": { "req": "any" }, "hash": null } } },
+    { "id": 3, "parent": 1, "childOrder": 1, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } },
+    { "id": 4, "parent": 3, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } }
+  ]
+}

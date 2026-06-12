@@ -86,6 +86,43 @@ id_type!(
     TagId
 );
 
+// ── Scene / world identifiers ─────────────────────────────────────────────────
+//
+// Added for the scene/world foundation (scene-capability-01). These are *durable*
+// authored/authority identities. They are deliberately distinct newtypes from
+// `EntityId` (runtime authority) and from `protocol-render`'s `RenderHandle`
+// (a derived projection handle, not save-file truth): a `SceneNodeId` is a stable
+// authored identity, never a render handle. The source trace
+// `SceneNodeId → EntityId → RenderHandle` reuses these existing newtypes; the
+// trace *record* type itself lands with bootstrap work (subtask #2316).
+
+id_type!(
+    /// Identifies an authored, loadable scene document (`SceneDocument`).
+    ///
+    /// Stable across project moves and independent of array position; never a
+    /// render handle.
+    SceneId
+);
+
+id_type!(
+    /// Identifies a live runtime world (`WorldState`) bootstrapped from a scene.
+    ///
+    /// A scene document is loaded *into* a world; the two identities are kept
+    /// separate so a world save is authority-owned rather than tied to the
+    /// originating scene document.
+    WorldId
+);
+
+id_type!(
+    /// Identifies one node within a scene document, stable across tree⇄flat
+    /// transforms and serialization.
+    ///
+    /// This is the durable authored identity used for duplicate/cycle checks,
+    /// parent lookup, and source tracing. It is **not** a render handle and must
+    /// not depend on array position.
+    SceneNodeId
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,6 +135,27 @@ mod tests {
         assert_eq!(ModeId::new(1).raw(), 1);
         assert_eq!(SignalId::new(99).raw(), 99);
         assert_eq!(TagId::new(7).raw(), 7);
+        assert_eq!(SceneId::new(3).raw(), 3);
+        assert_eq!(WorldId::new(4).raw(), 4);
+        assert_eq!(SceneNodeId::new(5).raw(), 5);
+    }
+
+    /// Scene/world IDs are independent newtypes: a `SceneNodeId` cannot be passed
+    /// where an `EntityId` (or any other ID) is expected, which is what keeps a
+    /// stable authored node identity from being confused with a runtime entity or
+    /// a derived render handle.
+    #[test]
+    fn scene_ids_are_distinct_types() {
+        let scene = SceneId::new(1);
+        let world = WorldId::new(1);
+        let node = SceneNodeId::new(1);
+        assert_eq!(scene.raw(), world.raw());
+        assert_eq!(scene.raw(), node.raw());
+        // `assert_eq!(scene, world)` / `assert_eq!(node, EntityId::new(1))` would
+        // be compile errors — the types do not unify.
+        assert_eq!(format!("{scene:?}"), "SceneId(1)");
+        assert_eq!(format!("{world:?}"), "WorldId(1)");
+        assert_eq!(format!("{node}"), "SceneNodeId(1)");
     }
 
     #[test]
