@@ -17,3 +17,4 @@ workspace = true
 [dependencies]
 protocol-ids = { path = "../protocol-ids" }
 protocol-replay = { path = "../protocol-replay" }
+protocol-diagnostics = { path = "../protocol-diagnostics" }

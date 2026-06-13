@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=error blocksLoad=false
+[error] assetCatalog/assetCycle ref=material/b asset=material/b :: asset dependency cycle: material/b -> texture/c -> mesh/a -> material/b | remedy=breakCycle: remove one dependency edge in the reported cycle

@@ -1,0 +1,22 @@
+[package]
+name    = "scene-diagnostics"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids             = { path = "../../foundation/core-ids" }
+core-assets          = { path = "../../foundation/core-assets" }
+core-space           = { path = "../../foundation/core-space" }
+core-voxel           = { path = "../../state/core-voxel" }
+core-events          = { path = "../../state/core-events" }
+core-scene           = { path = "../../state/core-scene" }
+core-catalog         = { path = "../../state/core-catalog" }
+svc-volume           = { path = "../../services/svc-volume" }
+svc-spatial          = { path = "../../services/svc-spatial" }
+svc-serialization    = { path = "../../services/svc-serialization" }
+rule-voxel-edit      = { path = "../../rules/rule-voxel-edit" }
+rule-world-bundle    = { path = "../../rules/rule-world-bundle" }
+protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }

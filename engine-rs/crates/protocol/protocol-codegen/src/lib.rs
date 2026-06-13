@@ -150,6 +150,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/render.ts"),
                 format!("{OUTPUT_DIR}/replay.ts"),
                 format!("{OUTPUT_DIR}/voxel.ts"),
+                format!("{OUTPUT_DIR}/diagnostics.ts"),
                 format!("{OUTPUT_DIR}/index.ts"),
             ],
         );
@@ -206,6 +207,36 @@ mod tests {
         assert!(script.contains(
             "  | { readonly kind: 'addTag'; readonly id: EntityId; readonly tag: TagId }"
         ));
+    }
+
+    /// Focused behavior test for the `diagnostics` family: every stable code,
+    /// severity, scope, and remedy from `protocol-diagnostics` is emitted, plus
+    /// the report/trace/resource shapes. This is the "Rust and generated TS
+    /// diagnostic contracts agree" guard for #2330.
+    #[test]
+    fn diagnostics_family_emits_codes_and_report_shapes() {
+        let d = file("diagnostics.ts");
+        for code in protocol_diagnostics::DIAGNOSTIC_CODES {
+            assert!(d.contains(&format!("'{code}'")), "missing code {code}");
+        }
+        for sev in protocol_diagnostics::DIAGNOSTIC_SEVERITIES {
+            assert!(d.contains(&format!("'{sev}'")), "missing severity {sev}");
+        }
+        for scope in protocol_diagnostics::DIAGNOSTIC_SCOPES {
+            assert!(d.contains(&format!("'{scope}'")), "missing scope {scope}");
+        }
+        for action in protocol_diagnostics::REMEDY_ACTIONS {
+            assert!(
+                d.contains(&format!("'{action}'")),
+                "missing remedy {action}"
+            );
+        }
+        assert!(d.contains("export interface DiagnosticReport {"));
+        assert!(d.contains("export interface DiagnosticReportSet {"));
+        assert!(d.contains("export interface DiagnosticSourceRef {"));
+        assert!(d.contains("export interface SourceTrace {"));
+        assert!(d.contains("export interface RendererResourceReport {"));
+        assert!(d.contains("readonly chunkCoord: readonly [number, number, number] | null;"));
     }
 
     #[test]

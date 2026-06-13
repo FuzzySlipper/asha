@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=error blocksLoad=false
+[error] assetCatalog/missingAsset ref=texture/hard-hat-atlas asset=texture/hard-hat-atlas :: `material/hard-hat` depends on `texture/hard-hat-atlas` which is not present in the catalog | remedy=provideAsset: add the missing dependency to the catalog

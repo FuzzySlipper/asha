@@ -1,0 +1,4 @@
+diagnostics count=3 maxSeverity=warning blocksLoad=false
+[warning] renderProjection/missingSourceTrace ref=handle:43 handle=43 :: render handle 43 cannot be fully traced to authority: no scene node | remedy=inspect: attach scene-node / asset source metadata to the render object
+[warning] renderProjection/missingSourceTrace ref=handle:44 sceneNode=8 asset=sprite/hard-hat handle=44 :: render handle 44 cannot be fully traced to authority: asset `sprite/hard-hat` did not resolve | remedy=inspect: attach scene-node / asset source metadata to the render object
+[warning] renderProjection/fallbackUsed ref=handle:44 asset=sprite/hard-hat handle=44 :: render handle 44 drew a fallback material/texture for `sprite/hard-hat` | remedy=acceptFallback: provide the real asset, or accept the fallback

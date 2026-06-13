@@ -1,1 +1,1 @@
-{"version":3,"file":"smoke.d.ts","sourceRoot":"","sources":["../src/smoke.ts"],"names":[],"mappings":"AAcA,OAAO,EAQL,KAAK,QAAQ,EAEb,KAAK,eAAe,EACpB,KAAK,UAAU,EAGf,KAAK,YAAY,EAClB,MAAM,YAAY,CAAC;AA8DpB,eAAO,MAAM,eAAe;;;;;;;;;;;;;;;;;;;;;;CASlB,CAAC"}
+{"version":3,"file":"smoke.d.ts","sourceRoot":"","sources":["../src/smoke.ts"],"names":[],"mappings":"AAcA,OAAO,EAQL,KAAK,QAAQ,EAEb,KAAK,eAAe,EACpB,KAAK,UAAU,EAGf,KAAK,YAAY,EAEjB,KAAK,mBAAmB,EACxB,KAAK,WAAW,EAChB,KAAK,sBAAsB,EAC5B,MAAM,YAAY,CAAC;AAyHpB,eAAO,MAAM,eAAe;;;;;;;;;;;;;;;;;;;;;;;;;CAYlB,CAAC"}

@@ -1,0 +1,5 @@
+resources handles=3 geometries=2 materials=2 sprites=1 spritesUpdated=1 created=12 disposed=9 outstanding=3 fallbacks=1 leak=true
+diagnostics count=3 maxSeverity=warning blocksLoad=false
+[info] rendererResources/rendererResourceSummary ref=renderer :: handles=3 geometries=2 materials=2 sprites=1 created=12 disposed=9
+[warning] rendererResources/suspectedResourceLeak ref=renderer :: renderer created 12 resources but disposed 9 (3 outstanding) | remedy=inspect: check geometry/material disposal on destroy
+[warning] renderProjection/fallbackUsed ref=renderer :: 1 fallback material(s)/texture(s) currently substituted | remedy=provideAsset: provide the real materials, or accept the fallbacks

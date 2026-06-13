@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=error blocksLoad=false
+[error] scene/duplicateSceneId ref=node:1 sceneNode=1 :: two scene nodes share id 1 | remedy=fixReference: give each node a unique stable id

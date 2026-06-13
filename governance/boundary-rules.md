@@ -78,3 +78,20 @@
     source scene/entity IDs and named attachment points, never a durable `RenderHandle` (rule 12).
     A sprite **pick** is traced to authority identity (handle + source ids + asset ref); the renderer
     reports the trace and decides no gameplay action — authority revalidates and acts.
+21. **Diagnostics are observational and protocol-typed.** Scene/asset/world-bundle/render
+    diagnostics are generated `protocol-diagnostics` reports (`DiagnosticReport` with a stable
+    `DiagnosticCode` + `DiagnosticSourceRef` + `SuggestedRemedy`), never ad-hoc JSON or prose
+    logs. Emitting a diagnostic must never mutate authority or silently repair data — first
+    report, repair is separate, later, explicit tooling. `DiagnosticCode` string values are a
+    contract: add variants, never rename an existing string. **Severity ties to recovery policy** —
+    only `Fatal` blocks a load; `Error` degrades one node/entity/asset; `Warning`/`Info` never
+    block — so an agent can tell "the world cannot load" from "one object is degraded". Source
+    traces are populated where the data exists and left absent where a hop does not apply (so
+    "no scene node" is distinct from "unknown"). The diagnostic emitters live in a `tools`-layer
+    crate (`scene-diagnostics`); their omniscience never leaks back into runtime lanes.
+22. **No ASHA→Den coupling.** ASHA emits stable, generic diagnostics/artifacts (codes, source
+    refs, artifact paths); an external workflow system such as Den may consume them, but ASHA
+    engine crates/packages must not import, name, or depend on Den. Enforced by
+    `harness/ci/check-no-den-coupling.sh`. A save→load **round-trip** that does not reproduce
+    authority-equivalent state (per-chunk voxel hashes + overall state hash) is a `Fatal` corrupt
+    diagnostic, never a silently wrong load.

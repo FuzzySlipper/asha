@@ -5,10 +5,5 @@
 //
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
-export * from './ids.js';
-export * from './script.js';
-export * from './render.js';
-export * from './replay.js';
-export * from './voxel.js';
-export * from './diagnostics.js';
-//# sourceMappingURL=index.js.map
+export {};
+//# sourceMappingURL=diagnostics.js.map

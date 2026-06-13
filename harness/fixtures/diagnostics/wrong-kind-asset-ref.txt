@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=error blocksLoad=false
+[error] assetCatalog/wrongKindAssetRef ref=material/surface-a asset=mesh/surface-a :: `material/surface-a` slot `material.style.texture` expects a `texture` but references `mesh/surface-a` (a `mesh`) | remedy=fixReference: point the typed slot at an asset of the expected kind

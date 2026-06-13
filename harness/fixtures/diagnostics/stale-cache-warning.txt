@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=warning blocksLoad=false
+[warning] worldBundle/missingCacheWarning ref=cache/mesh/0_0_0.bin bundlePath=cache/mesh/0_0_0.bin :: optional cache artifact `cache/mesh/0_0_0.bin` is absent; it will be rebuilt | remedy=refreshCache: no action required; the cache is reproducible

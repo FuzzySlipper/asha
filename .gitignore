@@ -1,0 +1,31 @@
+# ── Rust ────────────────────────────────────────────────────────────────────────
+engine-rs/target/
+**/*.rs.bk
+
+# ── Node / TypeScript ──────────────────────────────────────────────────────────
+node_modules/
+ts/node_modules/
+ts/packages/*/node_modules/
+**/*.tsbuildinfo
+coverage/
+.nyc_output/
+.vite/
+
+# ── IDE / editor ────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+
+# ── OS junk ─────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Environment / secrets ───────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example

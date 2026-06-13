@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=fatal blocksLoad=true
+[fatal] worldBundle/manifestProtocolMismatch ref=manifest :: bundle schema version 99 is newer than supported 1 (fail closed) | remedy=inspect: open the bundle with a build that supports its schema/protocol version

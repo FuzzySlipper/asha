@@ -27,6 +27,10 @@ import {
   type ScriptOutcome,
   type RenderDiff,
   type ReplayRecord,
+  type DiagnosticReport,
+  type DiagnosticReportSet,
+  type SourceTrace,
+  type RendererResourceReport,
 } from './index.js';
 
 // Branded IDs are nominally typed and built through their constructors.
@@ -87,6 +91,65 @@ const record: ReplayRecord = {
   snapshots: [],
 };
 
+// A diagnostic report value, authored the way a devtools panel would consume
+// one: a broken source trace pointing at a missing sprite texture, plus a
+// fatal corrupt-bundle report. Proves the generated diagnostic contracts are
+// importable and usable (scene-capability-06, #2330).
+const missingAsset: DiagnosticReport = {
+  scope: 'scene',
+  severity: 'error',
+  code: 'sceneAssetMissing',
+  reference: 'person-spawn-03',
+  source: {
+    sceneNodeId: 3,
+    runtimeEntityId: 456,
+    assetId: 'sprite/hard-hat',
+    chunkCoord: null,
+    renderHandle: 43,
+    bundlePath: null,
+  },
+  message: 'scene node references a sprite the catalog does not contain',
+  remedy: { action: 'provideAsset', detail: 'add sprite/hard-hat to the catalog' },
+};
+
+const corruptArtifact: DiagnosticReport = {
+  scope: 'worldBundle',
+  severity: 'fatal',
+  code: 'corruptBundleArtifact',
+  reference: 'chunks/0_0_0.snap',
+  source: {
+    sceneNodeId: null,
+    runtimeEntityId: null,
+    assetId: null,
+    chunkCoord: [0, 0, 0],
+    renderHandle: null,
+    bundlePath: 'chunks/0_0_0.snap',
+  },
+  message: 'durable artifact failed its content hash',
+  remedy: { action: 'restoreArtifact', detail: 'restore from a known-good bundle copy' },
+};
+
+const reportSet: DiagnosticReportSet = { reports: [missingAsset, corruptArtifact] };
+
+const trace: SourceTrace = {
+  renderHandle: 43,
+  sceneNodeId: 3,
+  runtimeEntityId: 456,
+  assetId: 'sprite/hard-hat',
+  assetResolved: false,
+};
+
+const resources: RendererResourceReport = {
+  liveHandles: 2,
+  geometries: 1,
+  materials: 1,
+  spriteInstances: 1,
+  spritesUpdatedLastTick: 1,
+  resourcesCreated: 4,
+  resourcesDisposed: 4,
+  fallbackMaterials: 0,
+};
+
 // Exported so the values are "used" (lint-clean) and tree-shakeable. Consumers
 // of @asha/contracts never see this — it is not re-exported by index.ts.
 export const __contractSmoke = {
@@ -98,4 +161,7 @@ export const __contractSmoke = {
   createDiff,
   diff,
   record,
+  reportSet,
+  trace,
+  resources,
 } as const;

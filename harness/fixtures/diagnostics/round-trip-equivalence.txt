@@ -1,0 +1,2 @@
+roundtrip equivalent=true stateB=6183c2613603b87d stateC=6183c2613603b87d compacted=2 retained=1
+diagnostics count=0 maxSeverity=none blocksLoad=false

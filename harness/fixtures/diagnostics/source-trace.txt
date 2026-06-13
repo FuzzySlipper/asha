@@ -1,0 +1,3 @@
+trace handle=42 sceneNode=7 entity=123 asset=mesh/belt-straight resolved=true
+trace handle=43 sceneNode=- entity=- asset=- resolved=false BROKEN
+trace handle=44 sceneNode=8 entity=456 asset=sprite/hard-hat resolved=false BROKEN

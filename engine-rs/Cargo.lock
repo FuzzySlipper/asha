@@ -336,9 +336,14 @@ dependencies = [
 name = "protocol-codegen"
 version = "0.1.0"
 dependencies = [
+ "protocol-diagnostics",
  "protocol-ids",
  "protocol-replay",
 ]
+
+[[package]]
+name = "protocol-diagnostics"
+version = "0.1.0"
 
 [[package]]
 name = "protocol-dump"
@@ -505,6 +510,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f7caad094bd561859bcd467734a720c3c1f5d1f338995351fefe2190c45efed"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "scene-diagnostics"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-catalog",
+ "core-events",
+ "core-ids",
+ "core-scene",
+ "core-space",
+ "core-voxel",
+ "protocol-diagnostics",
+ "rule-voxel-edit",
+ "rule-world-bundle",
+ "svc-serialization",
+ "svc-spatial",
+ "svc-volume",
 ]
 
 [[package]]

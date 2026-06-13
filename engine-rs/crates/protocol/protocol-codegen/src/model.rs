@@ -878,6 +878,114 @@ pub fn voxel_module() -> Module {
     }
 }
 
+// ── diagnostics.ts — scene/asset/bundle/render diagnostic reports ─────────────
+//
+// Mirrors `protocol-diagnostics`. The string-enum members are sourced directly
+// from that crate's canonical tables (`DIAGNOSTIC_*`/`REMEDY_ACTIONS`) so the
+// codes have a single home and drift is impossible; the report/trace/resource
+// shapes are described by hand to match the Rust structs.
+
+fn string_enum(doc: &str, name: &str, values: &[&str]) -> Item {
+    Item::Alias {
+        doc: doc.to_string(),
+        name: name.to_string(),
+        ty: TsType::StringEnum(values.iter().map(|s| s.to_string()).collect()),
+    }
+}
+
+pub fn diagnostics_module() -> Module {
+    let tuple3 = || TsType::Tuple(vec![num(), num(), num()]);
+
+    let items = vec![
+        string_enum(
+            "How serious a diagnostic is, and which recovery path applies (only 'fatal' blocks a load).",
+            "DiagnosticSeverity",
+            protocol_diagnostics::DIAGNOSTIC_SEVERITIES,
+        ),
+        string_enum(
+            "Which subsystem / lane a diagnostic belongs to.",
+            "DiagnosticScope",
+            protocol_diagnostics::DIAGNOSTIC_SCOPES,
+        ),
+        string_enum(
+            "A stable, machine-routable diagnostic code. The string form is a contract.",
+            "DiagnosticCode",
+            protocol_diagnostics::DIAGNOSTIC_CODES,
+        ),
+        string_enum(
+            "A suggested next action (advisory only — diagnostics never authorize mutation).",
+            "RemedyAction",
+            protocol_diagnostics::REMEDY_ACTIONS,
+        ),
+        iface(
+            "A suggested remedy: a categorized action plus a human-readable detail.",
+            "SuggestedRemedy",
+            vec![f("action", r("RemedyAction")), f("detail", string())],
+        ),
+        iface(
+            "Where a diagnostic points in authority terms; absent hops are null.",
+            "DiagnosticSourceRef",
+            vec![
+                f("sceneNodeId", TsType::nullable(num())),
+                f("runtimeEntityId", TsType::nullable(num())),
+                f("assetId", TsType::nullable(string())),
+                f("chunkCoord", TsType::nullable(tuple3())),
+                f("renderHandle", TsType::nullable(num())),
+                f("bundlePath", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "One structured diagnostic: scope + severity + stable code + locus + remedy.",
+            "DiagnosticReport",
+            vec![
+                f("scope", r("DiagnosticScope")),
+                f("severity", r("DiagnosticSeverity")),
+                f("code", r("DiagnosticCode")),
+                f("reference", string()),
+                f("source", r("DiagnosticSourceRef")),
+                f("message", string()),
+                f("remedy", TsType::nullable(r("SuggestedRemedy"))),
+            ],
+        ),
+        iface(
+            "A collection of diagnostic reports.",
+            "DiagnosticReportSet",
+            vec![f("reports", TsType::array(r("DiagnosticReport")))],
+        ),
+        iface(
+            "A render-handle to scene-node to entity to asset trace; absent hops are null.",
+            "SourceTrace",
+            vec![
+                f("renderHandle", num()),
+                f("sceneNodeId", TsType::nullable(num())),
+                f("runtimeEntityId", TsType::nullable(num())),
+                f("assetId", TsType::nullable(string())),
+                f("assetResolved", boolean()),
+            ],
+        ),
+        iface(
+            "An observational snapshot of renderer resource usage (counts only).",
+            "RendererResourceReport",
+            vec![
+                f("liveHandles", num()),
+                f("geometries", num()),
+                f("materials", num()),
+                f("spriteInstances", num()),
+                f("spritesUpdatedLastTick", num()),
+                f("resourcesCreated", num()),
+                f("resourcesDisposed", num()),
+                f("fallbackMaterials", num()),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "diagnostics",
+        imports: vec![],
+        items,
+    }
+}
+
 // ── index.ts — barrel ─────────────────────────────────────────────────────────
 
 pub fn index_module() -> Module {
@@ -900,6 +1008,9 @@ pub fn index_module() -> Module {
             Item::ReExport {
                 from: "./voxel.js".to_string(),
             },
+            Item::ReExport {
+                from: "./diagnostics.js".to_string(),
+            },
         ],
     }
 }
@@ -912,6 +1023,7 @@ pub fn all_modules() -> Vec<Module> {
         render_module(),
         replay_module(),
         voxel_module(),
+        diagnostics_module(),
         index_module(),
     ]
 }

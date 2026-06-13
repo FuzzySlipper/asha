@@ -88,3 +88,30 @@ Layer order (lowest to highest): foundation → state → protocol → sim/servi
 - The renderer maps material asset ids → appearance via its slot/colour registry; full catalog
   `RenderMaterial` wiring, lit/shadow shaders, runtime buffer-handle mesh sources, and the offline
   glTF importer remain deferred.
+
+## Scene / asset devtools diagnostics
+
+- `protocol-diagnostics` (protocol) — the generated-contract border for diagnostic reports,
+  mirrored to `@asha/contracts` by `protocol-codegen`. Types and **stable codes** only — no
+  product logic, and (matching `protocol-render`) ids/coords are plain integers/strings at the
+  border, so the crate needs no other crate:
+  - `DiagnosticReport` / `DiagnosticReportSet` (scope + severity + stable `DiagnosticCode` +
+    `DiagnosticSourceRef` + message + `SuggestedRemedy`), `SourceTrace` (render handle → scene
+    node → entity → asset), and `RendererResourceReport` (observational counts).
+  - `DiagnosticSeverity` ties to recovery policy: only `Fatal` blocks a load; `Error` degrades
+    one node/entity/asset; `Warning`/`Info` never block. `DiagnosticCode` strings are a contract
+    (added, never renamed); the codegen tables (`DIAGNOSTIC_*`) are sourced from the crate.
+- `scene-diagnostics` (tools) — observational emitters that map the existing classified
+  validators (`core-scene`, `core-catalog`, `svc-serialization`, `rule-world-bundle`) and
+  projection/resource state into those reports: scene/catalog/bundle diagnostics, render source
+  traces, renderer resource reports, a deterministic text rendering for goldens, and a save→load
+  **round-trip equivalence** check. Never mutates authority.
+- Intentionally-broken fixtures + diagnostic goldens live under `harness/fixtures/diagnostics/`
+  (regenerate with `BLESS=1 cargo test -p scene-diagnostics --test goldens`).
+- **No Den coupling.** ASHA emits generic diagnostics/artifacts; an external workflow system may
+  consume the codes/refs, but ASHA never imports or depends on Den. Enforced by
+  `harness/ci/check-no-den-coupling.sh`.
+- Deferred: TS devtools/UI panels that *display* these reports (the generated contracts are
+  importable now — proven by the `@asha/contracts` smoke); a live renderer-side resource report
+  built from the actual `renderer-three` handle registry; and explicit repair tooling (diagnostics
+  report, they never auto-repair).

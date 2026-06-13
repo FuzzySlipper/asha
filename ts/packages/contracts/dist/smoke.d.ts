@@ -1,4 +1,4 @@
-import { type EntityId, type CommandEnvelope, type ScriptView, type ReplayRecord } from './index.js';
+import { type EntityId, type CommandEnvelope, type ScriptView, type ReplayRecord, type DiagnosticReportSet, type SourceTrace, type RendererResourceReport } from './index.js';
 export declare const __contractSmoke: {
     readonly entity: EntityId;
     readonly addTag: {
@@ -21,5 +21,8 @@ export declare const __contractSmoke: {
         readonly handle: import("./index.js").RenderHandle;
     };
     readonly record: ReplayRecord;
+    readonly reportSet: DiagnosticReportSet;
+    readonly trace: SourceTrace;
+    readonly resources: RendererResourceReport;
 };
 //# sourceMappingURL=smoke.d.ts.map

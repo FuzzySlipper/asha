@@ -1,0 +1,2 @@
+diagnostics count=1 maxSeverity=error blocksLoad=false
+[error] scene/sceneAssetMissing ref=mesh/belt-straight sceneNode=7 asset=mesh/belt-straight :: scene node 7 references asset `mesh/belt-straight` not present in the catalog | remedy=provideAsset: add `mesh/belt-straight` to the catalog or fix the reference

@@ -91,9 +91,17 @@ may_depend_on = ["core-ids", "core-error", "core-events", "core-commands"]
 lane = "contract-steward"
 may_depend_on = ["core-ids"]
 
+# Scene/asset/world-bundle/render diagnostic report border types (scene-capability-06).
+# Types and stable codes only — no product logic, no other crate (ids/coords are
+# plain integers/strings at the border). No Den coupling, ever.
+[crate."engine-rs/crates/protocol/protocol-diagnostics"]
+lane = "contract-steward"
+may_depend_on = []
+may_not_depend_on = ["protocol-render", "core-state", "wasm-api", "render-bridge"]
+
 [crate."engine-rs/crates/protocol/protocol-codegen"]
 lane = "contract-steward"
-may_depend_on = ["protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry"]
+may_depend_on = ["protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics"]
 
 # ─── Rust: Sim ───────────────────────────────────────────────────────────────
 
@@ -232,6 +240,16 @@ may_depend_on = [
 lane = "rust-tools"
 may_depend_on = ["core-space", "core-voxel", "core-events", "svc-volume", "svc-spatial", "svc-mesh", "svc-collision", "rule-voxel-edit", "rule-scheduler"]
 may_not_depend_on = ["render-bridge"]
+
+# Scene/asset/world-bundle/render diagnostic emitters (scene-capability-06, #2331).
+# Observational: maps scene/catalog/bundle validators + projection/resource state
+# into generated `protocol-diagnostics` reports. Never mutates authority; emits
+# generic ASHA artifacts (no Den coupling). Uses border diagnostic types only, so
+# it stays off `protocol-render`/`render-bridge`.
+[crate."engine-rs/crates/tools/scene-diagnostics"]
+lane = "rust-tools"
+may_depend_on = ["core-ids", "core-assets", "core-space", "core-voxel", "core-events", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-world-bundle", "protocol-diagnostics"]
+may_not_depend_on = ["render-bridge", "protocol-render", "wasm-api"]
 
 # ─── TypeScript ──────────────────────────────────────────────────────────────
 

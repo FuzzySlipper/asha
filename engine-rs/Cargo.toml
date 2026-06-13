@@ -26,6 +26,7 @@ members = [
     "crates/protocol/protocol-render",
     "crates/protocol/protocol-replay",
     "crates/protocol/protocol-telemetry",
+    "crates/protocol/protocol-diagnostics",
     "crates/protocol/protocol-codegen",
 
     # Sim
@@ -73,6 +74,7 @@ members = [
     "crates/tools/state-inspector",
     "crates/tools/fixture-maker",
     "crates/tools/voxel-diagnostics",
+    "crates/tools/scene-diagnostics",
 ]
 
 # native-bridge needs `napi` + a native build toolchain + network to fetch crates.
