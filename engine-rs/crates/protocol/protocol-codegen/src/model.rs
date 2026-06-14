@@ -969,6 +969,47 @@ pub fn voxel_module() -> Module {
                 ),
             ],
         ),
+        // ── pick_voxel border (launchable-voxel picking, #2437) ───────────────
+        // The renderer/UI builds a world-space `PickRay` from camera + pointer and
+        // hands it to the runtime facade `pick_voxel` verb; Rust authority owns the
+        // voxel-grid raycast (no parallel TS DDA) and returns a classified
+        // `PickResult`. Mirrors `runtime_bridge_api::{PickRay, VoxelHit, PickResult}`.
+        iface(
+            "A world-space pick ray built by the renderer/UI from camera + pointer. \
+             The ray is plain geometry; Rust authority owns the voxel-grid raycast.",
+            "PickRay",
+            vec![
+                f("grid", num()),
+                f("origin", TsType::Tuple(vec![num(), num(), num()])),
+                f("direction", TsType::Tuple(vec![num(), num(), num()])),
+                f("maxDistance", num()),
+            ],
+        ),
+        iface(
+            "An authoritative voxel ray hit: the solid voxel struck, its chunk, the \
+             struck face (outward normal — the anchor a place edit builds against), \
+             and the world-space impact point + distance along the ray. Derived from \
+             authority voxel state; a renderer pick is only a hint until revalidated.",
+            "VoxelHit",
+            vec![
+                f("grid", num()),
+                f("voxel", r("VoxelCoord")),
+                f("chunk", r("ChunkCoord")),
+                f("face", r("Face")),
+                f("point", TsType::Tuple(vec![num(), num(), num()])),
+                f("distance", num()),
+            ],
+        ),
+        union(
+            "The classified outcome of an authority voxel pick: a hit, or a \
+             classified miss carrying the PickRejection reason.",
+            "PickResult",
+            "outcome",
+            vec![
+                v("hit", vec![f("hit", r("VoxelHit"))]),
+                v("miss", vec![f("rejection", r("PickRejection"))]),
+            ],
+        ),
     ];
     Module {
         name: "voxel",

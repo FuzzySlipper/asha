@@ -77,26 +77,59 @@ fn identity() -> Pose {
     Pose::from_translation(Vector::ZERO)
 }
 
-/// Map an axis-aligned outward normal (from a cuboid hit) to a [`Face`].
-fn normal_to_face(n: Vector) -> Face {
-    let (ax, ay, az) = (n.x.abs(), n.y.abs(), n.z.abs());
-    if ax >= ay && ax >= az {
-        if n.x >= 0.0 {
-            Face::PosX
-        } else {
-            Face::NegX
+/// How a face is chosen when a ray strikes exactly on a shared **edge or corner**,
+/// where the surface normal is ambiguous between two or three axes.
+///
+/// This is a *signposted* policy rather than an accident of float-comparison order:
+/// an exact edge/corner hit must always name the same face so picking is
+/// deterministic and reproducible across platforms. New policies (e.g. "prefer the
+/// face most opposed to the ray direction") can be added as variants without
+/// changing the raycast call sites.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FaceAmbiguityPolicy {
+    /// Default: pick the axis with the largest `|component|`; break ties by the
+    /// fixed axis priority **X > Y > Z**, then **positive over negative** within
+    /// the winning axis. So a normal of `(1,1,0)` resolves to `+X`, `(0,1,1)` to
+    /// `+Y`, `(1,1,1)` to `+X`, and `(-1,-1,0)` to `-X`.
+    #[default]
+    AxisPriorityXyzPositiveFirst,
+}
+
+impl FaceAmbiguityPolicy {
+    /// Resolve a (possibly ambiguous) outward normal to a single [`Face`] under
+    /// this policy. Axis-aligned normals are unambiguous; the tie-break only bites
+    /// on exact edge/corner hits where two or three components are equal.
+    pub fn resolve(self, n: Vector) -> Face {
+        match self {
+            FaceAmbiguityPolicy::AxisPriorityXyzPositiveFirst => {
+                let (ax, ay, az) = (n.x.abs(), n.y.abs(), n.z.abs());
+                // `>=` encodes the X > Y > Z priority: on a tie the earlier axis wins.
+                if ax >= ay && ax >= az {
+                    if n.x >= 0.0 {
+                        Face::PosX
+                    } else {
+                        Face::NegX
+                    }
+                } else if ay >= az {
+                    if n.y >= 0.0 {
+                        Face::PosY
+                    } else {
+                        Face::NegY
+                    }
+                } else if n.z >= 0.0 {
+                    Face::PosZ
+                } else {
+                    Face::NegZ
+                }
+            }
         }
-    } else if ay >= az {
-        if n.y >= 0.0 {
-            Face::PosY
-        } else {
-            Face::NegY
-        }
-    } else if n.z >= 0.0 {
-        Face::PosZ
-    } else {
-        Face::NegZ
     }
+}
+
+/// Map an axis-aligned outward normal (from a cuboid hit) to a [`Face`] using the
+/// default [`FaceAmbiguityPolicy`].
+fn normal_to_face(n: Vector) -> Face {
+    FaceAmbiguityPolicy::default().resolve(n)
 }
 
 // ── Query vocabulary ───────────────────────────────────────────────────────────
@@ -610,5 +643,24 @@ mod tests {
         assert!(
             proj.aabb_overlaps_solid(WorldPos::new(7.5, 0.5, 0.5), WorldPos::new(8.5, 0.5, 0.5))
         );
+    }
+
+    #[test]
+    fn face_ambiguity_policy_resolves_edge_and_corner_ties_deterministically() {
+        use parry3d_f64::math::Vector;
+        let p = FaceAmbiguityPolicy::default();
+        // Axis-aligned normals are unambiguous.
+        assert_eq!(p.resolve(Vector::new(1.0, 0.0, 0.0)), Face::PosX);
+        assert_eq!(p.resolve(Vector::new(0.0, -1.0, 0.0)), Face::NegY);
+        assert_eq!(p.resolve(Vector::new(0.0, 0.0, 1.0)), Face::PosZ);
+        // Exact EDGE hits (two equal components) → fixed axis priority X > Y > Z.
+        assert_eq!(p.resolve(Vector::new(1.0, 1.0, 0.0)), Face::PosX);
+        assert_eq!(p.resolve(Vector::new(0.0, 1.0, 1.0)), Face::PosY);
+        assert_eq!(p.resolve(Vector::new(1.0, 0.0, 1.0)), Face::PosX);
+        // Exact CORNER hit (three equal components) → X wins.
+        assert_eq!(p.resolve(Vector::new(1.0, 1.0, 1.0)), Face::PosX);
+        // Sign tie-break keeps the winning axis's own sign.
+        assert_eq!(p.resolve(Vector::new(-1.0, -1.0, 0.0)), Face::NegX);
+        assert_eq!(p.resolve(Vector::new(0.0, -1.0, -1.0)), Face::NegY);
     }
 }

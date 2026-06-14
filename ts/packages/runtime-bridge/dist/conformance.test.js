@@ -98,6 +98,22 @@ test('an ad-hoc `{ kind }` command is NOT the launch path (compile-time guard)',
     const bad = { commands: [{ kind: 'smoke-edit' }] };
     assert.equal(bad.commands.length, 1);
 });
+test('mock: pickVoxel carries a PickRay and returns a classified PickResult', () => {
+    const bridge = createMockRuntimeBridge();
+    bridge.initializeEngine({ seed: 1 });
+    const result = bridge.pickVoxel({
+        grid: 1,
+        origin: [0, 0, 0],
+        direction: [1, 0, 0],
+        maxDistance: 10,
+    });
+    // The mock hosts no geometry, so it classifies as a miss (Rust authority owns hits).
+    assert.deepEqual(result, { outcome: 'miss', rejection: { reason: 'noHit' } });
+});
+test('mock: pickVoxel before init fails closed', () => {
+    const bridge = createMockRuntimeBridge();
+    assert.throws(() => bridge.pickVoxel({ grid: 1, origin: [0, 0, 0], direction: [1, 0, 0], maxDistance: 10 }), (e) => e instanceof RuntimeBridgeError && e.kind === 'not_initialized');
+});
 test('native factory classifies a missing addon path', () => {
     assert.throws(() => createNativeRuntimeBridge('./definitely-not-built.node'), (e) => e instanceof RuntimeBridgeError && e.kind === 'native_unavailable');
 });

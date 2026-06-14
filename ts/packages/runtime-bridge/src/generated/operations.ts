@@ -17,6 +17,7 @@ export const MANIFEST_OPERATIONS: readonly BridgeOperation[] = [
   { manifestName: 'initialize_engine', facadeMethod: 'initializeEngine', surface: 'stable' },
   { manifestName: 'step_simulation', facadeMethod: 'stepSimulation', surface: 'stable' },
   { manifestName: 'submit_commands', facadeMethod: 'submitCommands', surface: 'stable' },
+  { manifestName: 'pick_voxel', facadeMethod: 'pickVoxel', surface: 'stable' },
   { manifestName: 'read_render_diffs', facadeMethod: 'readRenderDiffs', surface: 'stable' },
   { manifestName: 'get_buffer', facadeMethod: 'getBuffer', surface: 'stable' },
   { manifestName: 'release_buffer', facadeMethod: 'releaseBuffer', surface: 'stable' },

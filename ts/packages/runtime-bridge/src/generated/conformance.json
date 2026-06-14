@@ -27,6 +27,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "pick_voxel",
+      "facadeMethod": "pickVoxel",
+      "surface": "stable",
+      "input": "protocol_voxel::PickRay",
+      "output": "protocol_voxel::PickResult",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "read_render_diffs",
       "facadeMethod": "readRenderDiffs",
       "surface": "stable",

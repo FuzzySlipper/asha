@@ -20,9 +20,12 @@
 
 use core_commands::VoxelCommand;
 use core_error::ErrorCategory;
-use core_space::{ChunkCoord, ChunkDims, GridId, VoxelGridSpec};
+use core_space::{
+    ChunkCoord, ChunkDims, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,
+};
 use core_voxel::{MaterialCatalog, VoxelMaterialId};
 use rule_voxel_edit::VoxelEditRejection;
+use svc_collision::{CollisionProjection, Ray};
 use svc_spatial::VoxelWorld;
 use svc_volume::VoxelChunk;
 
@@ -235,6 +238,52 @@ pub struct CommandResult {
     pub rejections: Vec<VoxelEditRejection>,
 }
 
+// ── Pick (voxel raycast) payloads (launchable-voxel picking, #2437) ───────────
+//
+// The renderer/UI builds a world-space ray from camera + pointer and hands it to
+// `pick_voxel`. Rust authority owns the voxel-grid raycast (`svc-collision`); the
+// renderer never owns authoritative voxel coordinates. Mirrors the generated
+// `voxel.ts` `PickRay` / `VoxelHit` / `PickResult` border shapes.
+
+/// A world-space pick ray. `grid` selects which authority grid to cast against;
+/// `origin`/`direction` are world-space `[x, y, z]`; `max_distance` bounds the cast.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PickRay {
+    pub grid: u64,
+    pub origin: [f64; 3],
+    pub direction: [f64; 3],
+    pub max_distance: f64,
+}
+
+/// An authoritative voxel ray hit (the border mirror of `svc_collision::VoxelHit`,
+/// carrying the grid id so the border is self-describing).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct VoxelHit {
+    pub grid: u64,
+    pub voxel: VoxelCoord,
+    pub chunk: ChunkCoord,
+    pub face: Face,
+    pub point: [f64; 3],
+    pub distance: f64,
+}
+
+/// Why a pick produced no authoritative hit. Mirrors the `noHit` arm of the
+/// generated `PickRejection`; `hitMismatch` is reserved for the renderer-hint
+/// revalidation path (a later picking slice), so the raw-ray pick only ever
+/// reports `NoHit`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PickRejection {
+    #[default]
+    NoHit,
+}
+
+/// The classified outcome of an authority voxel pick.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum PickResult {
+    Hit(VoxelHit),
+    Miss(PickRejection),
+}
+
 // ── The bridge surface ────────────────────────────────────────────────────────
 
 /// The bounded set of verbs every transport implements. There is no generic
@@ -246,6 +295,11 @@ pub trait RuntimeBridge {
     /// (mirrors manifest `submit_commands`). Accepted commands mutate authority and
     /// mark dirty chunks; rejected commands are classified and leave state unchanged.
     fn submit_commands(&mut self, batch: CommandBatch) -> BridgeResult<CommandResult>;
+    /// Raycast a world-space [`PickRay`] against authority voxel state and return the
+    /// nearest classified [`PickResult`] (mirrors manifest `pick_voxel`). Rust owns
+    /// the voxel-grid raycast; the renderer only builds the ray. Reads authority —
+    /// never mutates it.
+    fn pick_voxel(&self, ray: PickRay) -> BridgeResult<PickResult>;
     fn get_buffer(&self, handle: RuntimeBufferHandle) -> BridgeResult<RuntimeBufferView<'_>>;
     fn release_buffer(&mut self, handle: RuntimeBufferHandle) -> BridgeResult<()>;
 
@@ -367,6 +421,41 @@ impl RuntimeBridge for ReferenceBridge {
             rejected: rejections.len() as u32,
             rejections,
         })
+    }
+
+    fn pick_voxel(&self, ray: PickRay) -> BridgeResult<PickResult> {
+        let world = self.voxel.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "pick_voxel called before initialize_engine",
+            )
+        })?;
+        // Fail closed on a ray that names a grid the runtime is not hosting, rather
+        // than silently casting against the wrong (only) grid.
+        if ray.grid != world.grid().id().raw() as u64 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "pick_voxel ray targets an unknown grid",
+            ));
+        }
+
+        // Authority owns the raycast: build the collision projection from authority
+        // voxel state and cast. (The reference bridge rebuilds per pick; a native
+        // bridge can cache the projection — this stays the correctness reference.)
+        let projection = CollisionProjection::build(world);
+        let origin = WorldPos::new(ray.origin[0], ray.origin[1], ray.origin[2]);
+        let dir = WorldVec::new(ray.direction[0], ray.direction[1], ray.direction[2]);
+        match projection.raycast(Ray::new(origin, dir), ray.max_distance) {
+            Some(hit) => Ok(PickResult::Hit(VoxelHit {
+                grid: ray.grid,
+                voxel: hit.voxel,
+                chunk: hit.chunk,
+                face: hit.face,
+                point: [hit.point.x, hit.point.y, hit.point.z],
+                distance: hit.distance,
+            })),
+            None => Ok(PickResult::Miss(PickRejection::NoHit)),
+        }
     }
 
     fn step_simulation(&mut self, input: StepInputEnvelope) -> BridgeResult<StepResult> {
@@ -656,6 +745,65 @@ mod tests {
             result.rejections[0],
             VoxelEditRejection::UnknownMaterial(_)
         ));
+    }
+
+    // ── Voxel picking → Rust authority raycast (launchable-voxel, #2437) ──
+
+    /// A ray from x=-5 toward +X along y=0.5,z=0.5 — through voxel (0,0,0)'s span.
+    fn pick_ray_plus_x() -> PickRay {
+        PickRay {
+            grid: 1,
+            origin: [-5.0, 0.5, 0.5],
+            direction: [1.0, 0.0, 0.0],
+            max_distance: 100.0,
+        }
+    }
+
+    #[test]
+    fn pick_before_init_fails_closed() {
+        let bridge = ReferenceBridge::new();
+        let err = bridge.pick_voxel(pick_ray_plus_x()).unwrap_err();
+        assert_eq!(err.kind, RuntimeBridgeErrorKind::NotInitialized);
+    }
+
+    #[test]
+    fn pick_hits_solid_voxel_with_authoritative_face() {
+        let mut bridge = init_bridge();
+        bridge
+            .submit_commands(CommandBatch {
+                commands: vec![set_voxel(VoxelCoord::new(0, 0, 0), 1)],
+            })
+            .unwrap();
+        match bridge.pick_voxel(pick_ray_plus_x()).unwrap() {
+            PickResult::Hit(hit) => {
+                assert_eq!(hit.grid, 1);
+                assert_eq!(hit.voxel, VoxelCoord::new(0, 0, 0));
+                assert_eq!(hit.chunk, ChunkCoord::new(0, 0, 0));
+                // The +X-travelling ray strikes the voxel's -X face.
+                assert_eq!(hit.face, Face::NegX);
+                assert!((hit.distance - 5.0).abs() < 1e-6);
+            }
+            PickResult::Miss(r) => panic!("expected a hit, got {r:?}"),
+        }
+    }
+
+    #[test]
+    fn pick_empty_space_misses() {
+        // The resident origin chunk is seeded empty: nothing to hit.
+        let bridge = init_bridge();
+        assert_eq!(
+            bridge.pick_voxel(pick_ray_plus_x()).unwrap(),
+            PickResult::Miss(PickRejection::NoHit)
+        );
+    }
+
+    #[test]
+    fn pick_unknown_grid_fails_closed() {
+        let bridge = init_bridge();
+        let mut ray = pick_ray_plus_x();
+        ray.grid = 999;
+        let err = bridge.pick_voxel(ray).unwrap_err();
+        assert_eq!(err.kind, RuntimeBridgeErrorKind::InvalidInput);
     }
 
     #[test]

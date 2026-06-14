@@ -85,4 +85,25 @@ export type PickRejection = {
     readonly claimedVoxel: VoxelCoord;
     readonly claimedFace: Face;
 };
+export interface PickRay {
+    readonly grid: number;
+    readonly origin: readonly [number, number, number];
+    readonly direction: readonly [number, number, number];
+    readonly maxDistance: number;
+}
+export interface VoxelHit {
+    readonly grid: number;
+    readonly voxel: VoxelCoord;
+    readonly chunk: ChunkCoord;
+    readonly face: Face;
+    readonly point: readonly [number, number, number];
+    readonly distance: number;
+}
+export type PickResult = {
+    readonly outcome: 'hit';
+    readonly hit: VoxelHit;
+} | {
+    readonly outcome: 'miss';
+    readonly rejection: PickRejection;
+};
 //# sourceMappingURL=voxel.d.ts.map

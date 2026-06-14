@@ -9,17 +9,24 @@
 // The public facade is hand-written for readability but MUST satisfy the
 // manifest-derived conformance test (see conformance.test.ts).
 
-import type { CommandBatch, CommandResult, RenderFrameDiff } from '@asha/contracts';
+import type {
+  CommandBatch,
+  CommandResult,
+  PickRay,
+  PickResult,
+  RenderFrameDiff,
+} from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
 import { MANIFEST_OPERATIONS } from './generated/operations.js';
 
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
 
-// `submit_commands` carries the generated voxel command border (manifest
-// `protocol_voxel::{CommandBatch, CommandResult}`). Re-exported so consumers still
-// couple only to this facade package for the runtime surface (ADR 0006).
-export type { CommandBatch, CommandResult } from '@asha/contracts';
+// `submit_commands` / `pick_voxel` carry the generated voxel border (manifest
+// `protocol_voxel::{CommandBatch, CommandResult, PickRay, PickResult}`). Re-exported
+// so consumers still couple only to this facade package for the runtime surface
+// (ADR 0006).
+export type { CommandBatch, CommandResult, PickRay, PickResult } from '@asha/contracts';
 
 // Render-diff decode (moved from the former @asha/wasm-bridge). Transport-neutral
 // payload → contract types; backs `readRenderDiffs`. See render-decode.ts.
@@ -129,6 +136,7 @@ export interface RuntimeBridge {
   initializeEngine(config: EngineConfig): EngineHandle;
   stepSimulation(input: StepInputEnvelope): StepResult;
   submitCommands(batch: CommandBatch): CommandResult;
+  pickVoxel(ray: PickRay): PickResult;
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
   getBuffer(handle: RuntimeBufferHandle): RuntimeBufferView;
   releaseBuffer(handle: RuntimeBufferHandle): void;
@@ -181,6 +189,19 @@ export class MockRuntimeBridge implements RuntimeBridge {
     // It fail-closes on transport preconditions (init) and accepts well-typed
     // commands, returning the classified result shape with no rejections.
     return { accepted: batch.commands.length, rejected: 0, rejections: [] };
+  }
+
+  pickVoxel(ray: PickRay): PickResult {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'pickVoxel before initializeEngine');
+    }
+    // The mock hosts no authority voxel geometry (Rust `svc-collision` owns the
+    // raycast on the native path), so a pick always classifies as a miss. It still
+    // fail-closes on the transport precondition (init) and validates the ray shape.
+    if (ray.direction.every((c) => c === 0)) {
+      throw new RuntimeBridgeError('invalid_input', 'pick ray direction must be non-zero');
+    }
+    return { outcome: 'miss', rejection: { reason: 'noHit' } };
   }
 
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff {
@@ -317,6 +338,10 @@ export class NativeRuntimeBridge implements RuntimeBridge {
   // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
   submitCommands(): CommandResult {
     throw nativeUnimplemented('submit_commands');
+  }
+
+  pickVoxel(): PickResult {
+    throw nativeUnimplemented('pick_voxel');
   }
 
   readRenderDiffs(): RenderFrameDiff {

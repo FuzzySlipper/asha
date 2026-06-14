@@ -50,6 +50,7 @@ function bridgeWith(overrides) {
         initializeEngine: base.initializeEngine.bind(base),
         stepSimulation: base.stepSimulation.bind(base),
         submitCommands: base.submitCommands.bind(base),
+        pickVoxel: base.pickVoxel.bind(base),
         readRenderDiffs: base.readRenderDiffs.bind(base),
         getBuffer: base.getBuffer.bind(base),
         releaseBuffer: base.releaseBuffer.bind(base),

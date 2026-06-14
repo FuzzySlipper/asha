@@ -63,3 +63,26 @@ export type Face = 'posX' | 'negX' | 'posY' | 'negY' | 'posZ' | 'negZ';
 export type PickRejection =
   | { readonly reason: 'noHit' }
   | { readonly reason: 'hitMismatch'; readonly authoritativeVoxel: VoxelCoord; readonly authoritativeFace: Face; readonly claimedVoxel: VoxelCoord; readonly claimedFace: Face };
+
+// A world-space pick ray built by the renderer/UI from camera + pointer. The ray is plain geometry; Rust authority owns the voxel-grid raycast.
+export interface PickRay {
+  readonly grid: number;
+  readonly origin: readonly [number, number, number];
+  readonly direction: readonly [number, number, number];
+  readonly maxDistance: number;
+}
+
+// An authoritative voxel ray hit: the solid voxel struck, its chunk, the struck face (outward normal — the anchor a place edit builds against), and the world-space impact point + distance along the ray. Derived from authority voxel state; a renderer pick is only a hint until revalidated.
+export interface VoxelHit {
+  readonly grid: number;
+  readonly voxel: VoxelCoord;
+  readonly chunk: ChunkCoord;
+  readonly face: Face;
+  readonly point: readonly [number, number, number];
+  readonly distance: number;
+}
+
+// The classified outcome of an authority voxel pick: a hit, or a classified miss carrying the PickRejection reason.
+export type PickResult =
+  | { readonly outcome: 'hit'; readonly hit: VoxelHit }
+  | { readonly outcome: 'miss'; readonly rejection: PickRejection };

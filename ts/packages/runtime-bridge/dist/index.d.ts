@@ -1,8 +1,8 @@
-import type { CommandBatch, CommandResult, RenderFrameDiff } from '@asha/contracts';
+import type { CommandBatch, CommandResult, PickRay, PickResult, RenderFrameDiff } from '@asha/contracts';
 import { type NativeAddon } from '@asha/native-bridge';
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
-export type { CommandBatch, CommandResult } from '@asha/contracts';
+export type { CommandBatch, CommandResult, PickRay, PickResult } from '@asha/contracts';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export type EngineHandle = number & {
     readonly __brand: 'EngineHandle';
@@ -67,6 +67,7 @@ export interface RuntimeBridge {
     initializeEngine(config: EngineConfig): EngineHandle;
     stepSimulation(input: StepInputEnvelope): StepResult;
     submitCommands(batch: CommandBatch): CommandResult;
+    pickVoxel(ray: PickRay): PickResult;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
     getBuffer(handle: RuntimeBufferHandle): RuntimeBufferView;
     releaseBuffer(handle: RuntimeBufferHandle): void;
@@ -82,6 +83,7 @@ export declare class MockRuntimeBridge implements RuntimeBridge {
     initializeEngine(config: EngineConfig): EngineHandle;
     stepSimulation(input: StepInputEnvelope): StepResult;
     submitCommands(batch: CommandBatch): CommandResult;
+    pickVoxel(ray: PickRay): PickResult;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
     getBuffer(handle: RuntimeBufferHandle): RuntimeBufferView;
     releaseBuffer(handle: RuntimeBufferHandle): void;
@@ -108,6 +110,7 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     initializeEngine(config: EngineConfig): EngineHandle;
     stepSimulation(input: StepInputEnvelope): StepResult;
     submitCommands(): CommandResult;
+    pickVoxel(): PickResult;
     readRenderDiffs(): RenderFrameDiff;
     getBuffer(): RuntimeBufferView;
     releaseBuffer(): void;

@@ -48,6 +48,14 @@ errors = "RuntimeBridgeError"
 summary = "Submit a batch of proposed voxel commands (generated VoxelCommand union) for Rust-side validation + apply."
 
 [[operation]]
+name = "pick_voxel"
+surface = "stable"
+input = "protocol_voxel::PickRay"
+output = "protocol_voxel::PickResult"
+errors = "RuntimeBridgeError"
+summary = "Raycast a world-space PickRay against authority voxel state and return the nearest classified VoxelHit (or a classified miss). Rust owns the voxel-grid raycast; the renderer only builds the ray."
+
+[[operation]]
 name = "read_render_diffs"
 surface = "stable"
 input = "FrameCursor"

@@ -60,6 +60,18 @@ export class MockRuntimeBridge {
         // commands, returning the classified result shape with no rejections.
         return { accepted: batch.commands.length, rejected: 0, rejections: [] };
     }
+    pickVoxel(ray) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'pickVoxel before initializeEngine');
+        }
+        // The mock hosts no authority voxel geometry (Rust `svc-collision` owns the
+        // raycast on the native path), so a pick always classifies as a miss. It still
+        // fail-closes on the transport precondition (init) and validates the ray shape.
+        if (ray.direction.every((c) => c === 0)) {
+            throw new RuntimeBridgeError('invalid_input', 'pick ray direction must be non-zero');
+        }
+        return { outcome: 'miss', rejection: { reason: 'noHit' } };
+    }
     readRenderDiffs(cursor) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'readRenderDiffs before initializeEngine');
@@ -171,6 +183,9 @@ export class NativeRuntimeBridge {
     // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
     submitCommands() {
         throw nativeUnimplemented('submit_commands');
+    }
+    pickVoxel() {
+        throw nativeUnimplemented('pick_voxel');
     }
     readRenderDiffs() {
         throw nativeUnimplemented('read_render_diffs');

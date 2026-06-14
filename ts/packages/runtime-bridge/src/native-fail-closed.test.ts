@@ -38,6 +38,10 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
   ['initializeEngine', (b) => b.initializeEngine({ seed: 7 })],
   ['stepSimulation', (b) => b.stepSimulation({ tick: 6 })],
   ['submitCommands', (b) => b.submitCommands({ commands: [] })],
+  [
+    'pickVoxel',
+    (b) => b.pickVoxel({ grid: 1, origin: [0, 0, 0], direction: [1, 0, 0], maxDistance: 10 }),
+  ],
   ['readRenderDiffs', (b) => b.readRenderDiffs(frameCursor(0))],
   ['getBuffer', (b) => b.getBuffer(0 as RuntimeBufferHandle)],
   ['releaseBuffer', (b) => b.releaseBuffer(0 as RuntimeBufferHandle)],
