@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { EditorStore, initialEditorContext, type EditorContext } from '@asha/editor-tools';
+import { EditorStore, initialEditorContext, reduce, type EditorContext } from '@asha/editor-tools';
 import {
   defaultCamera,
   cameraPointerRay,
@@ -10,7 +10,12 @@ import {
   clampCameraOutOfSolid,
   inspect,
   previewOverlayDiffs,
+  materialPalette,
+  buildEditorControls,
+  controlToAction,
+  MAX_BRUSH_SIZE,
   OVERLAY_HANDLE_BASE,
+  type EditorControl,
   type Vec3,
 } from './index.js';
 
@@ -51,14 +56,15 @@ test('camera collision clamps out of a solid using the injected query', () => {
 // ── inspector (pure read model) ───────────────────────────────────────────────
 
 test('inspector is a pure function of editor context + diagnostics, holding no copy', () => {
-  const ctx = selectedContext({ brushSize: 3, material: 9 });
+  const ctx = selectedContext({ brushShape: 'box', brushSize: 3, material: 9 });
   const readout = inspect(ctx, { residentChunks: 4, lastMeshQuads: 96 });
   assert.equal(readout.tool, 'place');
+  assert.equal(readout.brushShape, 'box');
   assert.equal(readout.brushSize, 3);
   assert.equal(readout.material, 9);
   assert.deepEqual(readout.selectedVoxel, { x: 5, y: 0, z: 0 });
   assert.equal(readout.selectedFace, 'negX');
-  assert.equal(readout.affectedCells, 27); // 3³ brush
+  assert.equal(readout.affectedCells, 27); // 3³ box fill
   assert.equal(readout.diagnostics.residentChunks, 4);
 
   // Same inputs → identical readout (no hidden state).
@@ -74,7 +80,7 @@ test('inspector reflects store changes without storing a voxel-state copy', () =
   assert.equal(after.tool, 'remove');
   // The readout exposes the picked anchor, never voxel contents.
   assert.deepEqual(Object.keys(after).sort(), [
-    'affectedCells', 'brushSize', 'diagnostics', 'material', 'previewEnabled',
+    'affectedCells', 'brushShape', 'brushSize', 'diagnostics', 'material', 'previewEnabled',
     'selectedFace', 'selectedVoxel', 'selectionMode', 'snapping', 'tool',
   ]);
 });
@@ -121,4 +127,94 @@ test('cameraPointerRay: a right-of-centre pointer aims further along +x in world
   assert.ok(right.direction[0]! > 0, 'a right pointer tilts the ray toward +x');
   // It is a unit direction (pure geometry, not a DDA).
   assert.ok(Math.abs(Math.hypot(...right.direction) - 1) < 1e-9);
+});
+
+// ── material palette + accessible editor controls (#2438) ──────────────────────
+
+test('materialPalette is built from the loaded catalog ids, not a hardcoded palette', () => {
+  // Ids come from the loaded fixture/catalog read model.
+  assert.deepEqual(materialPalette([1, 2, 3]), [
+    { id: 1, label: 'Material 1' },
+    { id: 2, label: 'Material 2' },
+    { id: 3, label: 'Material 3' },
+  ]);
+  // A caller may supply catalog-sourced names.
+  assert.deepEqual(materialPalette([7], (id) => `stone-${id}`), [{ id: 7, label: 'stone-7' }]);
+});
+
+const findControl = (controls: readonly EditorControl[], id: string): EditorControl => {
+  const c = controls.find((x) => x.id === id);
+  assert.ok(c, `control ${id} present`);
+  return c;
+};
+
+test('buildEditorControls exposes accessible labels + roles for every control (agent-navigable)', () => {
+  const ctx = { ...initialEditorContext(0), tool: 'paint' as const, material: 2 };
+  const controls = buildEditorControls(ctx, materialPalette([1, 2, 3]));
+  // Every control has a stable id, an ARIA role, and a non-empty accessible label.
+  for (const c of controls) {
+    assert.ok(c.id.length > 0);
+    assert.ok(c.role.length > 0);
+    assert.ok(c.label.length > 0, `control ${c.id} has an accessible label`);
+  }
+  // Ids are unique (stable test handles for Playwright/agents).
+  assert.equal(new Set(controls.map((c) => c.id)).size, controls.length);
+  // The full editor surface is offered.
+  for (const id of ['tool', 'material', 'brush-shape', 'brush-size', 'snapping', 'preview', 'commit', 'cancel']) {
+    findControl(controls, id);
+  }
+  // Selected options reflect the context.
+  const tool = findControl(controls, 'tool');
+  assert.equal(tool.options?.find((o) => o.selected)?.value, 'paint');
+  const material = findControl(controls, 'material');
+  assert.deepEqual(material.options?.map((o) => o.label), ['Material 1', 'Material 2', 'Material 3']);
+  assert.equal(material.options?.find((o) => o.selected)?.value, '2');
+});
+
+test('control enablement: commit needs a proposal, cancel needs a selection, brush-size needs box', () => {
+  const palette = materialPalette([1, 2, 3]);
+  // No selection → commit + cancel disabled; single shape → brush-size disabled.
+  const empty = buildEditorControls(initialEditorContext(0), palette);
+  assert.equal(findControl(empty, 'commit').disabled, true);
+  assert.equal(findControl(empty, 'cancel').disabled, true);
+  assert.equal(findControl(empty, 'brush-size').disabled, true);
+
+  // A place tool with a selection → commit + cancel enabled.
+  const active = buildEditorControls(
+    { ...initialEditorContext(0), tool: 'place', selection: { voxel: { x: 0, y: 0, z: 0 }, face: 'posX' } },
+    palette,
+  );
+  assert.equal(findControl(active, 'commit').disabled, false);
+  assert.equal(findControl(active, 'cancel').disabled, false);
+
+  // Box shape → brush-size enabled, with first-scope bounds.
+  const box = buildEditorControls({ ...initialEditorContext(0), brushShape: 'box' }, palette);
+  const size = findControl(box, 'brush-size');
+  assert.equal(size.disabled, false);
+  assert.equal(size.min, 1);
+  assert.equal(size.max, MAX_BRUSH_SIZE);
+});
+
+test('controlToAction maps interactions to editor actions and round-trips through reduce', () => {
+  let ctx = initialEditorContext(0);
+  const apply = (id: string, value: string): void => {
+    const action = controlToAction(id, value);
+    assert.ok(action, `${id} yields an action`);
+    ctx = reduce(ctx, action);
+  };
+  apply('tool', 'paint');
+  apply('material', '3');
+  apply('brush-shape', 'box');
+  apply('brush-size', '5');
+  apply('snapping', 'off');
+  apply('preview', 'off');
+  assert.equal(ctx.tool, 'paint');
+  assert.equal(ctx.material, 3);
+  assert.equal(ctx.brushShape, 'box');
+  assert.equal(ctx.brushSize, 5);
+  assert.equal(ctx.snapping, false);
+  assert.equal(ctx.preview.enabled, false);
+  // Command buttons are app-level, not editor actions.
+  assert.equal(controlToAction('commit', 'commit'), null);
+  assert.equal(controlToAction('cancel', 'cancel'), null);
 });

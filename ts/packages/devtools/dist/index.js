@@ -28,6 +28,8 @@ export function summarizeScene(report) {
 export function inspectEditor(ctx) {
     return {
         tool: ctx.tool,
+        brushShape: ctx.brushShape,
+        material: ctx.material,
         selectedVoxel: ctx.selection ? [ctx.selection.voxel.x, ctx.selection.voxel.y, ctx.selection.voxel.z] : null,
         selectedFace: ctx.selection?.face ?? null,
         affectedCells: previewTargets(ctx).length,

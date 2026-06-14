@@ -7,7 +7,7 @@
 // render diffs that mutate nothing. Imports `@asha/contracts` + `@asha/editor-tools`
 // only — no `three`, no policy, no native bridge.
 import { renderHandle } from '@asha/contracts';
-import { previewTargets } from '@asha/editor-tools';
+import { previewTargets, proposeCommand, } from '@asha/editor-tools';
 /** A fixed default camera (deterministic): looking at the origin from +X/+Y/+Z. */
 export function defaultCamera() {
     return { position: [8, 8, 8], target: [0, 0, 0], up: [0, 1, 0], fovDegrees: 60 };
@@ -95,6 +95,7 @@ export function clampCameraOutOfSolid(cam, isSolid, step = 0.5, maxSteps = 64) {
 export function inspect(ctx, diagnostics = {}) {
     return {
         tool: ctx.tool,
+        brushShape: ctx.brushShape,
         brushSize: ctx.brushSize,
         material: ctx.material,
         selectionMode: ctx.selectionMode,
@@ -105,6 +106,123 @@ export function inspect(ctx, diagnostics = {}) {
         affectedCells: previewTargets(ctx).length,
         diagnostics,
     };
+}
+/**
+ * Build the material palette from the loaded fixture/catalog material ids. Labels
+ * default to `Material <id>` but a caller may pass catalog-sourced names. The
+ * palette is data the UI offers — the editor never hardcodes a product palette.
+ */
+export function materialPalette(materialIds, labelFor = (id) => `Material ${id}`) {
+    return materialIds.map((id) => ({ id, label: labelFor(id) }));
+}
+const TOOL_LABELS = {
+    place: 'Place',
+    remove: 'Remove',
+    paint: 'Paint',
+    select: 'Select',
+    inspect: 'Inspect',
+};
+const SHAPE_LABELS = {
+    single: 'Single cell',
+    box: 'Box fill',
+};
+const opt = (value, label, current) => ({
+    value,
+    label,
+    selected: value === current,
+});
+/** The maximum box side the brush-size slider offers (first-scope cap). */
+export const MAX_BRUSH_SIZE = 8;
+/**
+ * The full accessible control set for the editor toolbar, derived purely from the
+ * editor context and the (catalog-sourced) material palette. Commit is disabled
+ * when there is no proposable edit; cancel when there is nothing selected; brush
+ * size only applies to the `box` shape.
+ */
+export function buildEditorControls(ctx, palette) {
+    const tools = ['place', 'remove', 'paint', 'select', 'inspect'];
+    return [
+        {
+            id: 'tool',
+            role: 'radiogroup',
+            label: 'Tool',
+            value: ctx.tool,
+            options: tools.map((t) => opt(t, TOOL_LABELS[t], ctx.tool)),
+        },
+        {
+            id: 'material',
+            role: 'listbox',
+            label: 'Material',
+            value: String(ctx.material),
+            options: palette.map((m) => opt(String(m.id), m.label, String(ctx.material))),
+        },
+        {
+            id: 'brush-shape',
+            role: 'radiogroup',
+            label: 'Brush shape',
+            value: ctx.brushShape,
+            options: ['single', 'box'].map((s) => opt(s, SHAPE_LABELS[s], ctx.brushShape)),
+        },
+        {
+            id: 'brush-size',
+            role: 'slider',
+            label: 'Brush size',
+            value: String(ctx.brushSize),
+            min: 1,
+            max: MAX_BRUSH_SIZE,
+            disabled: ctx.brushShape !== 'box',
+        },
+        {
+            id: 'snapping',
+            role: 'switch',
+            label: 'Snapping',
+            value: ctx.snapping ? 'on' : 'off',
+        },
+        {
+            id: 'preview',
+            role: 'switch',
+            label: 'Preview overlay',
+            value: ctx.preview.enabled ? 'on' : 'off',
+        },
+        {
+            id: 'commit',
+            role: 'button',
+            label: 'Commit edit',
+            value: 'commit',
+            disabled: proposeCommand(ctx) === null,
+        },
+        {
+            id: 'cancel',
+            role: 'button',
+            label: 'Cancel edit',
+            value: 'cancel',
+            disabled: ctx.selection === null,
+        },
+    ];
+}
+/**
+ * Map a control interaction (`id` + chosen `value`) to the editor action to
+ * dispatch, or `null` for the app-level command buttons (`commit`/`cancel`) which
+ * the app handles (submit / clear draft). Centralises the control→action contract
+ * so the DOM/agent layer only forwards interactions.
+ */
+export function controlToAction(id, value) {
+    switch (id) {
+        case 'tool':
+            return { type: 'setTool', tool: value };
+        case 'material':
+            return { type: 'setMaterial', material: Number(value) };
+        case 'brush-shape':
+            return { type: 'setBrushShape', shape: value };
+        case 'brush-size':
+            return { type: 'setBrushSize', size: Number(value) };
+        case 'snapping':
+            return { type: 'setSnapping', snapping: value === 'on' };
+        case 'preview':
+            return { type: 'setPreviewEnabled', enabled: value === 'on' };
+        default:
+            return null; // commit / cancel are app-level
+    }
 }
 // ── Debug overlay (non-authoritative `debug`-layer render diffs) ───────────────
 /** Reserved handle base for editor overlay nodes; well above projected scene handles. */

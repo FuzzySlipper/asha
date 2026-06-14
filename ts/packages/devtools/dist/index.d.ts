@@ -20,6 +20,8 @@ export declare function summarizeScene(report: SceneReportSummary): string[];
 /** Observational inspector view of the editor tool context (no hidden state). */
 export interface EditorInspection {
     readonly tool: EditorContext['tool'];
+    readonly brushShape: EditorContext['brushShape'];
+    readonly material: number;
     readonly selectedVoxel: readonly [number, number, number] | null;
     readonly selectedFace: string | null;
     readonly affectedCells: number;

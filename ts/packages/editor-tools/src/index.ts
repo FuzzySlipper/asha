@@ -16,8 +16,22 @@ export * from './scene-authoring.js';
 
 // ── Editor tool context ────────────────────────────────────────────────────────
 
-export type ToolMode = 'place' | 'remove' | 'select' | 'inspect';
+// Authoring tools: `place` adds a voxel across the struck face; `remove` clears the
+// struck voxel; `paint` recolours the struck voxel with the current material (same
+// SetVoxel command, different anchor — not a new command variant). `select`/`inspect`
+// author nothing.
+export type ToolMode = 'place' | 'remove' | 'paint' | 'select' | 'inspect';
 export type SelectionMode = 'voxel' | 'face';
+
+/** Brush shape: a single cell, or an axis-aligned box of side `brushSize` (fill). */
+export type BrushShape = 'single' | 'box';
+
+/** The editing tools that author voxels (have a preview + a proposal). */
+export const EDITING_TOOLS: readonly ToolMode[] = ['place', 'remove', 'paint'];
+
+function isEditingTool(tool: ToolMode): boolean {
+  return EDITING_TOOLS.includes(tool);
+}
 
 /** A picked anchor (from collision/picking) — a coord + the struck face. */
 export interface VoxelSelection {
@@ -30,9 +44,11 @@ export interface EditorContext {
   /** Which voxel grid edits target (GridId raw). */
   readonly grid: number;
   readonly tool: ToolMode;
-  /** Brush side length in voxels (>= 1). */
+  /** Whether an edit affects a single cell or a box (explicit fill mode). */
+  readonly brushShape: BrushShape;
+  /** Box side length in voxels (>= 1); used only when `brushShape === 'box'`. */
   readonly brushSize: number;
-  /** Material id used by the `place` tool (VoxelMaterialId raw). */
+  /** Material id used by the `place`/`paint` tools (VoxelMaterialId raw). */
   readonly material: number;
   readonly snapping: boolean;
   readonly selectionMode: SelectionMode;
@@ -46,6 +62,7 @@ export function initialEditorContext(grid = 0): EditorContext {
   return {
     grid,
     tool: 'place',
+    brushShape: 'single',
     brushSize: 1,
     material: 1,
     snapping: true,
@@ -59,6 +76,7 @@ export function initialEditorContext(grid = 0): EditorContext {
 
 export type EditorAction =
   | { readonly type: 'setTool'; readonly tool: ToolMode }
+  | { readonly type: 'setBrushShape'; readonly shape: BrushShape }
   | { readonly type: 'setBrushSize'; readonly size: number }
   | { readonly type: 'setMaterial'; readonly material: number }
   | { readonly type: 'setSnapping'; readonly snapping: boolean }
@@ -72,6 +90,8 @@ export function reduce(state: EditorContext, action: EditorAction): EditorContex
   switch (action.type) {
     case 'setTool':
       return { ...state, tool: action.tool };
+    case 'setBrushShape':
+      return { ...state, brushShape: action.shape };
     case 'setBrushSize':
       return { ...state, brushSize: Math.max(1, Math.floor(action.size)) };
     case 'setMaterial':
@@ -166,15 +186,28 @@ const EMPTY: VoxelValue = { kind: 'empty' };
 // ── Proposals & preview (pure; never submit, never mutate) ─────────────────────
 
 /**
- * The voxel coordinates a brush action would affect — for the non-authoritative
- * preview overlay. `select`/`inspect`, or no selection, affect nothing.
+ * The anchor cell + value an editing tool would write, or `null` for a non-editing
+ * tool / no selection. `place` builds across the struck face; `remove` clears the
+ * struck voxel; `paint` recolours the struck voxel with the current material.
  */
-export function previewTargets(ctx: EditorContext): VoxelCoord[] {
-  if (ctx.selection === null || (ctx.tool !== 'place' && ctx.tool !== 'remove')) {
-    return [];
+function editTarget(ctx: EditorContext): { center: VoxelCoord; value: VoxelValue } | null {
+  if (ctx.selection === null || !isEditingTool(ctx.tool)) {
+    return null;
   }
-  const center = ctx.tool === 'place' ? faceNeighbor(ctx.selection.voxel, ctx.selection.face) : ctx.selection.voxel;
-  const { min, max } = brushBox(center, ctx.brushSize);
+  switch (ctx.tool) {
+    case 'place':
+      return { center: faceNeighbor(ctx.selection.voxel, ctx.selection.face), value: solid(ctx.material) };
+    case 'remove':
+      return { center: ctx.selection.voxel, value: EMPTY };
+    case 'paint':
+      return { center: ctx.selection.voxel, value: solid(ctx.material) };
+    default:
+      return null;
+  }
+}
+
+/** Expand `[min, max)` into its cells in deterministic z,y,x order. */
+function boxCells(min: VoxelCoord, max: VoxelCoord): VoxelCoord[] {
   const out: VoxelCoord[] = [];
   for (let z = min.z; z < max.z; z++) {
     for (let y = min.y; y < max.y; y++) {
@@ -187,25 +220,35 @@ export function previewTargets(ctx: EditorContext): VoxelCoord[] {
 }
 
 /**
+ * The voxel coordinates a brush action would affect — for the non-authoritative
+ * preview overlay. `select`/`inspect`, or no selection, affect nothing. `single`
+ * affects one cell; `box` affects the `brushSize`-sided box around the anchor.
+ */
+export function previewTargets(ctx: EditorContext): VoxelCoord[] {
+  const target = editTarget(ctx);
+  if (target === null) {
+    return [];
+  }
+  if (ctx.brushShape === 'single') {
+    return [target.center];
+  }
+  const { min, max } = brushBox(target.center, ctx.brushSize);
+  return boxCells(min, max);
+}
+
+/**
  * Turn the editor context + selection into a generated `VoxelCommand` proposal, or
  * `null` when there is nothing to commit (no selection, or a non-editing tool).
- * Pure — it does not submit; the `app` command path does that on commit.
+ * `single` → `SetVoxel`; `box` → `FillRegion`. Pure — it does not submit; the `app`
+ * command path does that on commit.
  */
 export function proposeCommand(ctx: EditorContext): VoxelCommand | null {
-  if (ctx.selection === null) {
+  const target = editTarget(ctx);
+  if (target === null) {
     return null;
   }
-  if (ctx.tool === 'place') {
-    const anchor = faceNeighbor(ctx.selection.voxel, ctx.selection.face);
-    return ctx.brushSize === 1
-      ? { op: 'setVoxel', grid: ctx.grid, coord: anchor, value: solid(ctx.material) }
-      : { op: 'fillRegion', grid: ctx.grid, ...brushBox(anchor, ctx.brushSize), value: solid(ctx.material) };
+  if (ctx.brushShape === 'single') {
+    return { op: 'setVoxel', grid: ctx.grid, coord: target.center, value: target.value };
   }
-  if (ctx.tool === 'remove') {
-    const target = ctx.selection.voxel;
-    return ctx.brushSize === 1
-      ? { op: 'setVoxel', grid: ctx.grid, coord: target, value: EMPTY }
-      : { op: 'fillRegion', grid: ctx.grid, ...brushBox(target, ctx.brushSize), value: EMPTY };
-  }
-  return null; // select / inspect propose no edit
+  return { op: 'fillRegion', grid: ctx.grid, ...brushBox(target.center, ctx.brushSize), value: target.value };
 }

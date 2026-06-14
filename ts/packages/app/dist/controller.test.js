@@ -56,6 +56,14 @@ test('commit with nothing to do does not call the sink', () => {
     assert.equal(ctrl.commit(), null);
     assert.equal(submitted.length, 0);
 });
+test('cancel clears the draft selection without submitting (symmetric with commit)', () => {
+    const { ctrl, submitted } = controller();
+    assert.ok(ctrl.proposal(), 'there is a draft to cancel');
+    ctrl.cancel();
+    assert.equal(ctrl.store.getState().selection, null, 'the draft/preview is cleared');
+    assert.equal(ctrl.proposal(), null, 'nothing remains to commit');
+    assert.equal(submitted.length, 0, 'cancel never calls the command sink');
+});
 // ── Picking → selection (launch path) ──────────────────────────────────────────
 test('pickAndSelect selects the struck voxel + face on an authority hit (pure action)', () => {
     const store = new EditorStore();

@@ -1,5 +1,5 @@
 import type { Face, PickRay, RenderDiff, VoxelCoord } from '@asha/contracts';
-import { type EditorContext } from '@asha/editor-tools';
+import { type BrushShape, type EditorAction, type EditorContext } from '@asha/editor-tools';
 export type Vec3 = readonly [number, number, number];
 /** A deterministic camera description — stable for screenshot/golden configs. */
 export interface CameraConfig {
@@ -43,6 +43,7 @@ export interface Diagnostics {
  */
 export interface InspectorReadout {
     readonly tool: EditorContext['tool'];
+    readonly brushShape: BrushShape;
     readonly brushSize: number;
     readonly material: number;
     readonly selectionMode: EditorContext['selectionMode'];
@@ -55,6 +56,57 @@ export interface InspectorReadout {
 }
 /** Build the inspector readout from editor context + (optional) projected diagnostics. */
 export declare function inspect(ctx: EditorContext, diagnostics?: Diagnostics): InspectorReadout;
+/** One selectable material in the palette: its id and a human/agent-readable label. */
+export interface MaterialOption {
+    readonly id: number;
+    readonly label: string;
+}
+/**
+ * Build the material palette from the loaded fixture/catalog material ids. Labels
+ * default to `Material <id>` but a caller may pass catalog-sourced names. The
+ * palette is data the UI offers — the editor never hardcodes a product palette.
+ */
+export declare function materialPalette(materialIds: readonly number[], labelFor?: (id: number) => string): MaterialOption[];
+export type ControlRole = 'radiogroup' | 'listbox' | 'slider' | 'switch' | 'button';
+/** One selectable option of a radiogroup/listbox control. */
+export interface ControlOption {
+    readonly value: string;
+    readonly label: string;
+    readonly selected: boolean;
+}
+/** An accessible, render-agnostic editor control descriptor. */
+export interface EditorControl {
+    /** Stable id / test handle (e.g. `data-testid`); also the `controlToAction` key. */
+    readonly id: string;
+    readonly role: ControlRole;
+    /** Accessible label (aria-label) — what `getByLabel` / a screen reader sees. */
+    readonly label: string;
+    /** Current value as a string. */
+    readonly value: string;
+    /** Choices, for `radiogroup` / `listbox`. */
+    readonly options?: readonly ControlOption[];
+    /** Bounds, for `slider`. */
+    readonly min?: number;
+    readonly max?: number;
+    /** Whether the control is currently actionable (e.g. commit needs a proposal). */
+    readonly disabled?: boolean;
+}
+/** The maximum box side the brush-size slider offers (first-scope cap). */
+export declare const MAX_BRUSH_SIZE = 8;
+/**
+ * The full accessible control set for the editor toolbar, derived purely from the
+ * editor context and the (catalog-sourced) material palette. Commit is disabled
+ * when there is no proposable edit; cancel when there is nothing selected; brush
+ * size only applies to the `box` shape.
+ */
+export declare function buildEditorControls(ctx: EditorContext, palette: readonly MaterialOption[]): EditorControl[];
+/**
+ * Map a control interaction (`id` + chosen `value`) to the editor action to
+ * dispatch, or `null` for the app-level command buttons (`commit`/`cancel`) which
+ * the app handles (submit / clear draft). Centralises the control→action contract
+ * so the DOM/agent layer only forwards interactions.
+ */
+export declare function controlToAction(id: string, value: string): EditorAction | null;
 /** Reserved handle base for editor overlay nodes; well above projected scene handles. */
 export declare const OVERLAY_HANDLE_BASE = 1000000;
 /**

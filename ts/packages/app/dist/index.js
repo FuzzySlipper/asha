@@ -53,6 +53,14 @@ export class VoxelEditController {
         this.#sink([command]);
         return command;
     }
+    /**
+     * Cancel the current draft: clear the selection (and therefore the preview)
+     * without submitting anything. Symmetric with {@link commit} — the edit lifecycle
+     * ends either by committing the proposal or cancelling it. Never calls the sink.
+     */
+    cancel() {
+        this.store.dispatch({ type: 'clearSelection' });
+    }
 }
 /** The real picker: route the ray through the runtime facade's `pickVoxel` verb. */
 export function bridgePicker(bridge) {

@@ -18,14 +18,18 @@ test('inspectEditor is a pure read of the editor context (no authority copy)', (
     const ctx = {
         ...initialEditorContext(0),
         tool: 'place',
+        brushShape: 'box',
         brushSize: 3,
+        material: 2,
         selection: { voxel: { x: 5, y: 0, z: 0 }, face: 'negX' },
     };
     const view = inspectEditor(ctx);
     assert.equal(view.tool, 'place');
+    assert.equal(view.brushShape, 'box');
+    assert.equal(view.material, 2);
     assert.deepEqual(view.selectedVoxel, [5, 0, 0]);
     assert.equal(view.selectedFace, 'negX');
-    assert.equal(view.affectedCells, 27);
+    assert.equal(view.affectedCells, 27); // 3³ box fill
     assert.deepEqual(inspectEditor(ctx), view); // pure
 });
 //# sourceMappingURL=devtools.test.js.map

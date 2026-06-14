@@ -55,15 +55,39 @@ test('remove tool proposes a setVoxel Empty at the selected voxel', () => {
         value: { kind: 'empty' },
     });
 });
-test('box brush (size > 1) proposes a fillRegion', () => {
-    const ctx = withSelection({ tool: 'place', brushSize: 3, material: 2 });
-    const cmd = proposeCommand(ctx);
+test('paint tool proposes a setVoxel that recolours the selected voxel itself', () => {
+    // Paint targets the struck voxel (not its face-neighbour) with the current
+    // material — the same SetVoxel command, a different anchor (not a new variant).
+    const ctx = withSelection({ tool: 'paint', material: 5 });
+    assert.deepEqual(proposeCommand(ctx), {
+        op: 'setVoxel',
+        grid: 0,
+        coord: { x: 5, y: 0, z: 0 },
+        value: { kind: 'solid', material: 5 },
+    });
+});
+test('box shape proposes a fillRegion; single ignores brushSize', () => {
+    const box = withSelection({ tool: 'place', brushShape: 'box', brushSize: 3, material: 2 });
+    const cmd = proposeCommand(box);
     assert.equal(cmd?.op, 'fillRegion');
     if (cmd?.op === 'fillRegion') {
         // anchor = (4,0,0); 3³ box centred there.
         assert.deepEqual(cmd.min, { x: 3, y: -1, z: -1 });
         assert.deepEqual(cmd.max, { x: 6, y: 2, z: 2 });
         assert.deepEqual(cmd.value, { kind: 'solid', material: 2 });
+    }
+    // Single shape ignores brushSize — it is always one cell (a SetVoxel).
+    const single = withSelection({ tool: 'place', brushShape: 'single', brushSize: 3 });
+    assert.equal(proposeCommand(single)?.op, 'setVoxel');
+});
+test('box shape paint/remove fill the selected voxel region', () => {
+    const remove = withSelection({ tool: 'remove', brushShape: 'box', brushSize: 3 });
+    const cmd = proposeCommand(remove);
+    assert.equal(cmd?.op, 'fillRegion');
+    if (cmd?.op === 'fillRegion') {
+        // remove anchors on the selected voxel (5,0,0), not its neighbour.
+        assert.deepEqual(cmd.min, { x: 4, y: -1, z: -1 });
+        assert.deepEqual(cmd.value, { kind: 'empty' });
     }
 });
 test('select/inspect and no-selection propose nothing', () => {
@@ -72,9 +96,17 @@ test('select/inspect and no-selection propose nothing', () => {
     assert.equal(proposeCommand(initialEditorContext(0)), null); // no selection
 });
 test('previewTargets enumerates the affected cells without proposing/mutating', () => {
-    assert.deepEqual(previewTargets(withSelection({ tool: 'place', brushSize: 1 })), [{ x: 4, y: 0, z: 0 }]);
-    assert.equal(previewTargets(withSelection({ tool: 'place', brushSize: 3 })).length, 27);
+    assert.deepEqual(previewTargets(withSelection({ tool: 'place', brushShape: 'single' })), [{ x: 4, y: 0, z: 0 }]);
+    assert.equal(previewTargets(withSelection({ tool: 'place', brushShape: 'box', brushSize: 3 })).length, 27);
+    assert.deepEqual(previewTargets(withSelection({ tool: 'paint' })), [{ x: 5, y: 0, z: 0 }]);
     assert.deepEqual(previewTargets(withSelection({ tool: 'select' })), []);
     assert.deepEqual(previewTargets(initialEditorContext(0)), []);
+});
+test('proposeCommand and previewTargets are pure: they never mutate the context', () => {
+    const ctx = withSelection({ tool: 'place', brushShape: 'box', brushSize: 2, material: 3 });
+    const snapshot = JSON.stringify(ctx);
+    proposeCommand(ctx);
+    previewTargets(ctx);
+    assert.equal(JSON.stringify(ctx), snapshot, 'the draft/proposal path mutates nothing');
 });
 //# sourceMappingURL=editor.test.js.map

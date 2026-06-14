@@ -9,7 +9,14 @@
 
 import type { Face, PickRay, RenderDiff, RenderHandle, VoxelCoord } from '@asha/contracts';
 import { renderHandle } from '@asha/contracts';
-import { type EditorContext, previewTargets } from '@asha/editor-tools';
+import {
+  type BrushShape,
+  type EditorAction,
+  type EditorContext,
+  type ToolMode,
+  previewTargets,
+  proposeCommand,
+} from '@asha/editor-tools';
 
 // ── Camera (deterministic data; renderer builds the THREE camera) ──────────────
 
@@ -148,6 +155,7 @@ export interface Diagnostics {
  */
 export interface InspectorReadout {
   readonly tool: EditorContext['tool'];
+  readonly brushShape: BrushShape;
   readonly brushSize: number;
   readonly material: number;
   readonly selectionMode: EditorContext['selectionMode'];
@@ -163,6 +171,7 @@ export interface InspectorReadout {
 export function inspect(ctx: EditorContext, diagnostics: Diagnostics = {}): InspectorReadout {
   return {
     tool: ctx.tool,
+    brushShape: ctx.brushShape,
     brushSize: ctx.brushSize,
     material: ctx.material,
     selectionMode: ctx.selectionMode,
@@ -173,6 +182,179 @@ export function inspect(ctx: EditorContext, diagnostics: Diagnostics = {}): Insp
     affectedCells: previewTargets(ctx).length,
     diagnostics,
   };
+}
+
+// ── Material palette (read model from the loaded catalog — never hardcoded) ─────
+
+/** One selectable material in the palette: its id and a human/agent-readable label. */
+export interface MaterialOption {
+  readonly id: number;
+  readonly label: string;
+}
+
+/**
+ * Build the material palette from the loaded fixture/catalog material ids. Labels
+ * default to `Material <id>` but a caller may pass catalog-sourced names. The
+ * palette is data the UI offers — the editor never hardcodes a product palette.
+ */
+export function materialPalette(
+  materialIds: readonly number[],
+  labelFor: (id: number) => string = (id) => `Material ${id}`,
+): MaterialOption[] {
+  return materialIds.map((id) => ({ id, label: labelFor(id) }));
+}
+
+// ── Accessible editor controls (pure model; a DOM/Playwright layer renders these) ──
+//
+// The toolbar is described as data so both a user (via the DOM) and an agent (via
+// Playwright `getByRole`/`getByLabel`) can drive the editor. Each control carries a
+// stable `id` (test handle), an ARIA `role`, an accessible `label`, its current
+// `value`, and (for choices) `options`. State changes route through
+// `controlToAction` → an `EditorAction`; the two command buttons are app-level.
+
+export type ControlRole = 'radiogroup' | 'listbox' | 'slider' | 'switch' | 'button';
+
+/** One selectable option of a radiogroup/listbox control. */
+export interface ControlOption {
+  readonly value: string;
+  readonly label: string;
+  readonly selected: boolean;
+}
+
+/** An accessible, render-agnostic editor control descriptor. */
+export interface EditorControl {
+  /** Stable id / test handle (e.g. `data-testid`); also the `controlToAction` key. */
+  readonly id: string;
+  readonly role: ControlRole;
+  /** Accessible label (aria-label) — what `getByLabel` / a screen reader sees. */
+  readonly label: string;
+  /** Current value as a string. */
+  readonly value: string;
+  /** Choices, for `radiogroup` / `listbox`. */
+  readonly options?: readonly ControlOption[];
+  /** Bounds, for `slider`. */
+  readonly min?: number;
+  readonly max?: number;
+  /** Whether the control is currently actionable (e.g. commit needs a proposal). */
+  readonly disabled?: boolean;
+}
+
+const TOOL_LABELS: Record<ToolMode, string> = {
+  place: 'Place',
+  remove: 'Remove',
+  paint: 'Paint',
+  select: 'Select',
+  inspect: 'Inspect',
+};
+
+const SHAPE_LABELS: Record<BrushShape, string> = {
+  single: 'Single cell',
+  box: 'Box fill',
+};
+
+const opt = (value: string, label: string, current: string): ControlOption => ({
+  value,
+  label,
+  selected: value === current,
+});
+
+/** The maximum box side the brush-size slider offers (first-scope cap). */
+export const MAX_BRUSH_SIZE = 8;
+
+/**
+ * The full accessible control set for the editor toolbar, derived purely from the
+ * editor context and the (catalog-sourced) material palette. Commit is disabled
+ * when there is no proposable edit; cancel when there is nothing selected; brush
+ * size only applies to the `box` shape.
+ */
+export function buildEditorControls(
+  ctx: EditorContext,
+  palette: readonly MaterialOption[],
+): EditorControl[] {
+  const tools: ToolMode[] = ['place', 'remove', 'paint', 'select', 'inspect'];
+  return [
+    {
+      id: 'tool',
+      role: 'radiogroup',
+      label: 'Tool',
+      value: ctx.tool,
+      options: tools.map((t) => opt(t, TOOL_LABELS[t], ctx.tool)),
+    },
+    {
+      id: 'material',
+      role: 'listbox',
+      label: 'Material',
+      value: String(ctx.material),
+      options: palette.map((m) => opt(String(m.id), m.label, String(ctx.material))),
+    },
+    {
+      id: 'brush-shape',
+      role: 'radiogroup',
+      label: 'Brush shape',
+      value: ctx.brushShape,
+      options: (['single', 'box'] as BrushShape[]).map((s) => opt(s, SHAPE_LABELS[s], ctx.brushShape)),
+    },
+    {
+      id: 'brush-size',
+      role: 'slider',
+      label: 'Brush size',
+      value: String(ctx.brushSize),
+      min: 1,
+      max: MAX_BRUSH_SIZE,
+      disabled: ctx.brushShape !== 'box',
+    },
+    {
+      id: 'snapping',
+      role: 'switch',
+      label: 'Snapping',
+      value: ctx.snapping ? 'on' : 'off',
+    },
+    {
+      id: 'preview',
+      role: 'switch',
+      label: 'Preview overlay',
+      value: ctx.preview.enabled ? 'on' : 'off',
+    },
+    {
+      id: 'commit',
+      role: 'button',
+      label: 'Commit edit',
+      value: 'commit',
+      disabled: proposeCommand(ctx) === null,
+    },
+    {
+      id: 'cancel',
+      role: 'button',
+      label: 'Cancel edit',
+      value: 'cancel',
+      disabled: ctx.selection === null,
+    },
+  ];
+}
+
+/**
+ * Map a control interaction (`id` + chosen `value`) to the editor action to
+ * dispatch, or `null` for the app-level command buttons (`commit`/`cancel`) which
+ * the app handles (submit / clear draft). Centralises the control→action contract
+ * so the DOM/agent layer only forwards interactions.
+ */
+export function controlToAction(id: string, value: string): EditorAction | null {
+  switch (id) {
+    case 'tool':
+      return { type: 'setTool', tool: value as ToolMode };
+    case 'material':
+      return { type: 'setMaterial', material: Number(value) };
+    case 'brush-shape':
+      return { type: 'setBrushShape', shape: value as BrushShape };
+    case 'brush-size':
+      return { type: 'setBrushSize', size: Number(value) };
+    case 'snapping':
+      return { type: 'setSnapping', snapping: value === 'on' };
+    case 'preview':
+      return { type: 'setPreviewEnabled', enabled: value === 'on' };
+    default:
+      return null; // commit / cancel are app-level
+  }
 }
 
 // ── Debug overlay (non-authoritative `debug`-layer render diffs) ───────────────

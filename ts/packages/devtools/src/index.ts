@@ -45,6 +45,8 @@ export function summarizeScene(report: SceneReportSummary): string[] {
 /** Observational inspector view of the editor tool context (no hidden state). */
 export interface EditorInspection {
   readonly tool: EditorContext['tool'];
+  readonly brushShape: EditorContext['brushShape'];
+  readonly material: number;
   readonly selectedVoxel: readonly [number, number, number] | null;
   readonly selectedFace: string | null;
   readonly affectedCells: number;
@@ -54,6 +56,8 @@ export interface EditorInspection {
 export function inspectEditor(ctx: EditorContext): EditorInspection {
   return {
     tool: ctx.tool,
+    brushShape: ctx.brushShape,
+    material: ctx.material,
     selectedVoxel: ctx.selection ? [ctx.selection.voxel.x, ctx.selection.voxel.y, ctx.selection.voxel.z] : null,
     selectedFace: ctx.selection?.face ?? null,
     affectedCells: previewTargets(ctx).length,
