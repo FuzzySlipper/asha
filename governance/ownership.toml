@@ -284,6 +284,9 @@ may_depend_on = [
     "core-scene",
     "core-catalog",
     "core-voxel",
+    "core-space",
+    "svc-spatial",
+    "svc-mesh",
     "protocol-render",
 ]
 may_not_depend_on = ["wasm-api"]

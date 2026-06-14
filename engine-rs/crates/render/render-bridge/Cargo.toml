@@ -14,4 +14,10 @@ core-state     = { path = "../../state/core-state" }
 core-scene     = { path = "../../state/core-scene" }
 core-catalog   = { path = "../../state/core-catalog" }
 core-voxel     = { path = "../../state/core-voxel" }
+core-space     = { path = "../../foundation/core-space" }
+svc-spatial    = { path = "../../services/svc-spatial" }
+svc-mesh       = { path = "../../services/svc-mesh" }
 protocol-render = { path = "../../protocol/protocol-render" }
+
+[dev-dependencies]
+svc-volume     = { path = "../../services/svc-volume" }

@@ -36,10 +36,15 @@
 
 pub mod json;
 pub mod presentation;
+pub mod voxel;
 
 pub use presentation::{
     NodePresentation, ProjectionMode, RenderProjectionDiagnostic, RenderRegistry, RenderSource,
     RenderSourceKind, ScenePresentation, ScenePresentationProjector, SpriteRuntime,
+};
+pub use voxel::{
+    to_payload_descriptor, ChunkMeshStrategy, VisibleFaceStrategy, VoxelChunkProjector,
+    VoxelProjectionDiagnostic,
 };
 
 use std::collections::BTreeMap;

@@ -465,9 +465,13 @@ dependencies = [
  "core-ids",
  "core-math",
  "core-scene",
+ "core-space",
  "core-state",
  "core-voxel",
  "protocol-render",
+ "svc-mesh",
+ "svc-spatial",
+ "svc-volume",
 ]
 
 [[package]]
