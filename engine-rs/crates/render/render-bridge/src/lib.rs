@@ -38,8 +38,8 @@ pub mod json;
 pub mod presentation;
 
 pub use presentation::{
-    NodePresentation, RenderProjectionDiagnostic, RenderRegistry, RenderSource, RenderSourceKind,
-    ScenePresentation, ScenePresentationProjector, SpriteRuntime,
+    NodePresentation, ProjectionMode, RenderProjectionDiagnostic, RenderRegistry, RenderSource,
+    RenderSourceKind, ScenePresentation, ScenePresentationProjector, SpriteRuntime,
 };
 
 use std::collections::BTreeMap;

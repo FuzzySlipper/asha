@@ -201,6 +201,19 @@ pub enum RenderProjectionDiagnostic {
     },
     /// A source maps to a handle no node points at (a leaked/stale handle).
     StaleHandle { handle: u64 },
+    /// Runtime-authority projection only: a renderable node has no bootstrapped
+    /// runtime entity (no authority source trace). The node is **skipped** — never
+    /// rendered from stale authored scene truth (#2426).
+    RuntimeEntityMissing { node: SceneNodeId, asset: String },
+    /// Runtime-authority projection only: a renderable node's runtime entity has no
+    /// authority transform. The node is **skipped** rather than rendered from
+    /// authored truth (#2426). Unreachable while the spatial-world invariant holds
+    /// (#2425), but classified defensively rather than silently falling back.
+    RuntimeTransformMissing {
+        node: SceneNodeId,
+        entity: EntityId,
+        asset: String,
+    },
 }
 
 impl RenderProjectionDiagnostic {
@@ -215,8 +228,35 @@ impl RenderProjectionDiagnostic {
             RenderProjectionDiagnostic::InvalidSpriteFrame { .. } => "render-invalid-sprite-frame",
             RenderProjectionDiagnostic::MissingSourceRef { .. } => "render-missing-source-ref",
             RenderProjectionDiagnostic::StaleHandle { .. } => "render-stale-handle",
+            RenderProjectionDiagnostic::RuntimeEntityMissing { .. } => {
+                "render-runtime-entity-missing"
+            }
+            RenderProjectionDiagnostic::RuntimeTransformMissing { .. } => {
+                "render-runtime-transform-missing"
+            }
         }
     }
+}
+
+// ── Projection mode (#2426) ─────────────────────────────────────────────────────
+
+/// Which authority a renderable node's transform must come from.
+///
+/// The two modes split *authored scene preview* from *runtime-authority*
+/// projection so a missing runtime entity/transform can never be silently hidden
+/// by rendering authored truth.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ProjectionMode {
+    /// Authored scene preview (editor / pre-bootstrap): a renderable node with no
+    /// runtime authority falls back to its **authored** scene transform. This is
+    /// the historical behaviour and the default.
+    #[default]
+    ScenePreview,
+    /// Runtime-authority projection: a renderable node MUST have a bootstrapped
+    /// runtime entity (authority source trace) and an authority transform. If
+    /// either is missing the node is **skipped** and a classified diagnostic is
+    /// emitted — authored scene truth is never used as a runtime fallback (#2426).
+    RuntimeAuthority,
 }
 
 // ── Per-node presentation facets the projector reads from authority ─────────────
@@ -341,10 +381,21 @@ pub struct ScenePresentationProjector {
     atlas_sources: BTreeMap<String, SpriteAtlasSource>,
     last: BTreeMap<SceneNodeId, Projected>,
     diagnostics: Vec<RenderProjectionDiagnostic>,
+    /// Whether authored transforms may stand in for missing runtime authority.
+    mode: ProjectionMode,
 }
 
 impl ScenePresentationProjector {
+    /// A projector in the default [`ProjectionMode::ScenePreview`] mode.
     pub fn new() -> Self {
+        Self::with_mode(ProjectionMode::ScenePreview)
+    }
+
+    /// A projector in the given [`ProjectionMode`]. Use
+    /// [`ProjectionMode::RuntimeAuthority`] for the runtime render path, where a
+    /// renderable node without runtime authority is skipped + classified rather
+    /// than rendered from authored scene truth (#2426).
+    pub fn with_mode(mode: ProjectionMode) -> Self {
         Self {
             registry: RenderRegistry::new(),
             defined_assets: BTreeSet::new(),
@@ -354,7 +405,13 @@ impl ScenePresentationProjector {
             atlas_sources: BTreeMap::new(),
             last: BTreeMap::new(),
             diagnostics: Vec::new(),
+            mode,
         }
+    }
+
+    /// The projection mode this projector enforces.
+    pub fn projection_mode(&self) -> ProjectionMode {
+        self.mode
     }
 
     /// Register an authority/catalog sprite atlas source so sprite nodes whose
@@ -431,8 +488,18 @@ impl ScenePresentationProjector {
         record: &SceneNodeRecord,
         input: &ScenePresentation<'_>,
     ) -> Option<Projected> {
+        // Non-renderable kinds carry no geometry (empty groups; voxel volumes
+        // upload via the mesh-payload path) — no transform/authority is required.
+        let asset = match &record.kind {
+            SceneNodeKind::StaticMesh(a) => a.id().as_str().to_string(),
+            SceneNodeKind::Sprite(a) => a.id().as_str().to_string(),
+            SceneNodeKind::EmptyGroup | SceneNodeKind::VoxelVolume(_) => return None,
+        };
         let entity = input.world.entity_for_node(record.id);
-        let transform = self.resolve_transform(record, input, entity);
+        // In runtime-authority mode this returns `None` (and classifies) when the
+        // node lacks runtime authority, so it is skipped rather than rendered from
+        // authored truth (#2426).
+        let transform = self.resolve_transform(record, input, entity, &asset)?;
         let presentation = input.overrides.get(&record.id);
 
         match &record.kind {
@@ -484,18 +551,52 @@ impl ScenePresentationProjector {
         }
     }
 
-    /// Authority owns runtime transforms after bootstrap; fall back to the scene's
-    /// initial transform for a node with no runtime entity yet.
+    /// Resolve a renderable node's transform under the active [`ProjectionMode`].
+    ///
+    /// - [`ProjectionMode::ScenePreview`]: authority owns runtime transforms after
+    ///   bootstrap; fall back to the scene's authored transform for a node with no
+    ///   runtime entity/transform yet.
+    /// - [`ProjectionMode::RuntimeAuthority`]: require a runtime entity **and** an
+    ///   authority transform. If either is missing, classify the gap and return
+    ///   `None` so the node is skipped (never rendered from authored truth, #2426).
     fn resolve_transform(
-        &self,
+        &mut self,
         record: &SceneNodeRecord,
         input: &ScenePresentation<'_>,
         entity: Option<EntityId>,
-    ) -> Transform {
-        let scene_transform = entity
-            .and_then(|e| input.world.transform(e))
-            .unwrap_or(record.transform);
-        to_render_transform(scene_transform)
+        asset: &str,
+    ) -> Option<Transform> {
+        match self.mode {
+            ProjectionMode::ScenePreview => {
+                let scene_transform = entity
+                    .and_then(|e| input.world.transform(e))
+                    .unwrap_or(record.transform);
+                Some(to_render_transform(scene_transform))
+            }
+            ProjectionMode::RuntimeAuthority => {
+                let Some(entity) = entity else {
+                    self.diagnostics
+                        .push(RenderProjectionDiagnostic::RuntimeEntityMissing {
+                            node: record.id,
+                            asset: asset.to_string(),
+                        });
+                    return None;
+                };
+                match input.world.transform(entity) {
+                    Some(t) => Some(to_render_transform(t)),
+                    None => {
+                        self.diagnostics.push(
+                            RenderProjectionDiagnostic::RuntimeTransformMissing {
+                                node: record.id,
+                                entity,
+                                asset: asset.to_string(),
+                            },
+                        );
+                        None
+                    }
+                }
+            }
+        }
     }
 
     fn emit_create(
@@ -1064,6 +1165,136 @@ mod tests {
             catalog,
             overrides: &overrides,
         })
+    }
+
+    /// An empty world: no scene node has been bootstrapped into a runtime entity.
+    fn empty_world() -> WorldState {
+        WorldState::empty(WorldId::new(1))
+    }
+
+    fn count_creates(frame: &RenderFrameDiff) -> usize {
+        frame
+            .ops
+            .iter()
+            .filter(|o| {
+                matches!(
+                    o,
+                    RenderDiff::CreateStaticMeshInstance { .. } | RenderDiff::CreateSprite { .. }
+                )
+            })
+            .count()
+    }
+
+    #[test]
+    fn runtime_authority_skips_and_classifies_a_node_with_no_runtime_entity() {
+        let doc = scene(vec![mesh_node(10, "mesh/crate", "crate", 7.0)]);
+        let world = empty_world(); // never bootstrapped → no runtime entity
+        let catalog = catalog_with_crate();
+        let mut proj = ScenePresentationProjector::with_mode(ProjectionMode::RuntimeAuthority);
+
+        let frame = project_once(&mut proj, &doc, &world, &catalog);
+
+        // The renderable node is skipped: no instance is created from authored truth.
+        assert_eq!(
+            count_creates(&frame),
+            0,
+            "must not render authored fallback"
+        );
+        assert!(proj
+            .diagnostics()
+            .contains(&RenderProjectionDiagnostic::RuntimeEntityMissing {
+                node: SceneNodeId::new(10),
+                asset: "mesh/crate".into(),
+            }));
+        assert_eq!(
+            proj.diagnostics()[0].code(),
+            "render-runtime-entity-missing"
+        );
+    }
+
+    #[test]
+    fn scene_preview_still_renders_the_authored_fallback() {
+        // The same setup in scene-preview mode DOES render from the authored
+        // transform — the fallback remains available where explicitly intended.
+        let doc = scene(vec![mesh_node(10, "mesh/crate", "crate", 7.0)]);
+        let world = empty_world();
+        let catalog = catalog_with_crate();
+        let mut proj = ScenePresentationProjector::with_mode(ProjectionMode::ScenePreview);
+
+        let frame = project_once(&mut proj, &doc, &world, &catalog);
+
+        assert_eq!(
+            count_creates(&frame),
+            1,
+            "preview renders authored fallback"
+        );
+        let instance = frame.ops.iter().find_map(|o| match o {
+            RenderDiff::CreateStaticMeshInstance { instance, .. } => Some(instance),
+            _ => None,
+        });
+        assert_eq!(instance.unwrap().transform.translation, [7.0, 0.0, 0.0]);
+        assert!(proj
+            .diagnostics()
+            .iter()
+            .all(|d| !matches!(d, RenderProjectionDiagnostic::RuntimeEntityMissing { .. })));
+    }
+
+    #[test]
+    fn runtime_authority_renders_a_bootstrapped_node_from_authority_transform() {
+        let doc = scene(vec![mesh_node(10, "mesh/crate", "crate", 1.0)]);
+        let mut world = bootstrap(&doc);
+        let catalog = catalog_with_crate();
+        let mut proj = ScenePresentationProjector::with_mode(ProjectionMode::RuntimeAuthority);
+
+        // Move via authority so the rendered transform is provably the runtime one.
+        let entity = world.entity_for_node(SceneNodeId::new(10)).unwrap();
+        world.set_transform(
+            entity,
+            SceneTransform::new(Vec3::new(4.0, 0.0, 0.0), Quat::IDENTITY, Vec3::ONE),
+        );
+        let frame = project_once(&mut proj, &doc, &world, &catalog);
+
+        assert_eq!(count_creates(&frame), 1);
+        let instance = frame.ops.iter().find_map(|o| match o {
+            RenderDiff::CreateStaticMeshInstance { instance, .. } => Some(instance),
+            _ => None,
+        });
+        assert_eq!(instance.unwrap().transform.translation, [4.0, 0.0, 0.0]);
+        assert!(proj
+            .diagnostics()
+            .iter()
+            .all(|d| !matches!(d, RenderProjectionDiagnostic::RuntimeEntityMissing { .. })));
+    }
+
+    #[test]
+    fn runtime_authority_destroys_a_node_that_loses_its_runtime_entity() {
+        let doc = scene(vec![mesh_node(10, "mesh/crate", "crate", 0.0)]);
+        let bootstrapped = bootstrap(&doc);
+        let catalog = catalog_with_crate();
+        let mut proj = ScenePresentationProjector::with_mode(ProjectionMode::RuntimeAuthority);
+
+        // Frame 1: a bootstrapped world renders the node.
+        let frame1 = project_once(&mut proj, &doc, &bootstrapped, &catalog);
+        assert_eq!(count_creates(&frame1), 1);
+
+        // Frame 2: the runtime authority no longer has the entity → the node is
+        // skipped, so its previously-created handle is deterministically destroyed
+        // (not left rendering stale authored truth).
+        let gone = empty_world();
+        let frame2 = project_once(&mut proj, &doc, &gone, &catalog);
+        assert!(
+            frame2
+                .ops
+                .iter()
+                .any(|o| matches!(o, RenderDiff::Destroy { .. })),
+            "a node that loses runtime authority must be destroyed"
+        );
+        assert!(proj
+            .diagnostics()
+            .contains(&RenderProjectionDiagnostic::RuntimeEntityMissing {
+                node: SceneNodeId::new(10),
+                asset: "mesh/crate".into(),
+            }));
     }
 
     #[test]
