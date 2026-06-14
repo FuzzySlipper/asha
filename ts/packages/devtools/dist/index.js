@@ -5,6 +5,12 @@
 // path. Imports `@asha/contracts` + `@asha/editor-tools` (tool-only); enforced by
 // the dependency graph.
 import { previewTargets } from '@asha/editor-tools';
+// Scene/world outliner + inspector read models (#2377).
+export * from './scene-outliner.js';
+// Asset catalog, lock-drift, and material inspector read models (#2378).
+export * from './asset-inspector.js';
+// World-bundle save/load and diagnostics panel read models (#2379).
+export * from './bundle-panel.js';
 /** Deterministic display lines for a scene report (pure formatter). */
 export function summarizeScene(report) {
     const lines = [

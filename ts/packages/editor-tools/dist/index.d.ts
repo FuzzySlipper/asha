@@ -1,4 +1,5 @@
 import type { VoxelCommand, VoxelCoord, Face } from '@asha/contracts';
+export * from './scene-authoring.js';
 export type ToolMode = 'place' | 'remove' | 'select' | 'inspect';
 export type SelectionMode = 'voxel' | 'face';
 /** A picked anchor (from collision/picking) — a coord + the struck face. */

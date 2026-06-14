@@ -8,6 +8,15 @@
 import type { EditorContext } from '@asha/editor-tools';
 import { previewTargets } from '@asha/editor-tools';
 
+// Scene/world outliner + inspector read models (#2377).
+export * from './scene-outliner.js';
+
+// Asset catalog, lock-drift, and material inspector read models (#2378).
+export * from './asset-inspector.js';
+
+// World-bundle save/load and diagnostics panel read models (#2379).
+export * from './bundle-panel.js';
+
 /** A plain mirror of the Rust `voxel-diagnostics` scene report (carried over the
  *  bridge as projected data — devtools never reads authority directly). */
 export interface SceneReportSummary {

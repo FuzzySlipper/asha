@@ -8,6 +8,8 @@
 // It imports `@asha/contracts` ONLY — no DOM, `three`, policy, bridge, or renderer.
 // It produces proposals; it never submits them and never mutates authority (the
 // `app` command-submission path does that). See docs/voxel-ui-architecture.md.
+// Proposal-only scene authoring controls with Rust validation feedback (#2380).
+export * from './scene-authoring.js';
 /** The initial editor context. */
 export function initialEditorContext(grid = 0) {
     return {

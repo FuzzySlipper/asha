@@ -11,6 +11,9 @@
 
 import type { VoxelCommand, VoxelCoord, Face, VoxelValue } from '@asha/contracts';
 
+// Proposal-only scene authoring controls with Rust validation feedback (#2380).
+export * from './scene-authoring.js';
+
 // ── Editor tool context ────────────────────────────────────────────────────────
 
 export type ToolMode = 'place' | 'remove' | 'select' | 'inspect';
