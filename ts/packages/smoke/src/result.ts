@@ -23,6 +23,20 @@ export type CapabilityStatus = 'ok' | 'mock' | 'unavailable';
 /** Which transport backs the runtime facade for this run. */
 export type RuntimeMode = 'native' | 'mock';
 
+/**
+ * What the run is trying to *prove*, independent of transport:
+ * - `reference`: the deterministic mock/dev smoke (renderer upload path, etc.).
+ * - `authority`: the real load→authority→projection→render→edit→save loop,
+ *   reading render diffs through the facade and submitting contract-shaped commands.
+ */
+export type SmokeMode = 'reference' | 'authority';
+
+/**
+ * The single, headline outcome category. A passing run says *which* proof it
+ * earned; a failed run is never silently downgraded to a mock success.
+ */
+export type SmokeOutcome = 'mock_reference_passed' | 'native_authority_passed' | 'failed';
+
 /** Outcome of a single named stage of the smoke run. */
 export interface SmokeStage {
   readonly name: string;
@@ -44,6 +58,10 @@ export interface SmokeResult {
   readonly ok: boolean;
   readonly command: string;
   readonly runtimeMode: RuntimeMode;
+  /** What the run set out to prove (reference vs. real authority path). */
+  readonly smokeMode: SmokeMode;
+  /** Headline outcome category, distinguishing reference from authority proofs. */
+  readonly outcome: SmokeOutcome;
   /** Whether the native addon was loadable (vs. the mock fallback). */
   readonly nativeAvailable: boolean;
   /** Per-capability probe results. */
@@ -76,8 +94,9 @@ export interface SmokeResult {
 /** Render a result as a stable, multi-line text report (for the CLI + artifacts). */
 export function formatResult(result: SmokeResult): string {
   const lines: string[] = [];
-  lines.push(`asha-smoke: ${result.ok ? 'PASS' : 'FAIL'}`);
+  lines.push(`asha-smoke: ${result.ok ? 'PASS' : 'FAIL'} [${result.outcome}]`);
   lines.push(`command: ${result.command}`);
+  lines.push(`smokeMode: ${result.smokeMode}`);
   lines.push(`runtimeMode: ${result.runtimeMode} (nativeAvailable=${result.nativeAvailable})`);
   lines.push(
     `capabilities: runtimeBridge=${result.capabilities.runtimeBridge} ` +

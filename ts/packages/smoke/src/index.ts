@@ -1,6 +1,13 @@
 // @asha/smoke — public surface for the developer smoke harness.
 
-export { runSmoke, defaultBootBridge, SMOKE_COMMAND } from './harness.js';
+export {
+  runSmoke,
+  defaultBootBridge,
+  authorityBootBridge,
+  bootForMode,
+  SMOKE_COMMAND,
+  AUTHORITY_SMOKE_COMMAND,
+} from './harness.js';
 export type { SmokeOptions, BridgeBoot } from './harness.js';
 export { formatResult } from './result.js';
 export type {
@@ -10,5 +17,13 @@ export type {
   SmokeFailureCategory,
   CapabilityStatus,
   RuntimeMode,
+  SmokeMode,
+  SmokeOutcome,
 } from './result.js';
-export { FIXTURE_WORLD, fixtureWorldHash, fixtureRenderFrame } from './fixtures.js';
+export {
+  FIXTURE_WORLD,
+  fixtureWorldHash,
+  fixtureRenderFrame,
+  fixtureCommandBatch,
+  fixtureCommandEnvelopes,
+} from './fixtures.js';

@@ -7,8 +7,9 @@
 /** Render a result as a stable, multi-line text report (for the CLI + artifacts). */
 export function formatResult(result) {
     const lines = [];
-    lines.push(`asha-smoke: ${result.ok ? 'PASS' : 'FAIL'}`);
+    lines.push(`asha-smoke: ${result.ok ? 'PASS' : 'FAIL'} [${result.outcome}]`);
     lines.push(`command: ${result.command}`);
+    lines.push(`smokeMode: ${result.smokeMode}`);
     lines.push(`runtimeMode: ${result.runtimeMode} (nativeAvailable=${result.nativeAvailable})`);
     lines.push(`capabilities: runtimeBridge=${result.capabilities.runtimeBridge} ` +
         `worldLoad=${result.capabilities.worldLoad} renderer=${result.capabilities.renderer} ` +

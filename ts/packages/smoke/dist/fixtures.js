@@ -1,6 +1,6 @@
 // Deterministic abstract fixtures for the smoke harness. No product nouns; these
 // exercise the real facade load path and the real renderer upload path.
-import { renderHandle } from '@asha/contracts';
+import { entityId, renderHandle } from '@asha/contracts';
 /** The abstract fixture world the smoke harness loads through the facade. */
 export const FIXTURE_WORLD = {
     bundleSchemaVersion: 1,
@@ -22,6 +22,33 @@ export function fixtureWorldHash(request) {
     writeU32(request.protocolVersion);
     writeU32(request.sceneId);
     return hash.toString(16).padStart(16, '0');
+}
+/**
+ * Deterministic, contract-shaped command envelopes (generated `@asha/contracts`
+ * types). The smoke edit stage submits these instead of an ad-hoc `{ kind:
+ * 'smoke-edit' }` literal, so the edit it proposes is a real authority command.
+ */
+export function fixtureCommandEnvelopes() {
+    return [
+        {
+            kind: 'system',
+            command: { domain: 'entity', command: { kind: 'create', id: entityId(1) } },
+        },
+    ];
+}
+/**
+ * The fixture edit batch for the facade. The facade's `submitCommands` still takes
+ * the prototype `{ kind }` proposed-command shape (the generated command contract
+ * is not wired into the bridge yet — tracked with the runtime-bridge DTO debt), so
+ * each command's stable `kind` is *derived from* a generated CommandEnvelope rather
+ * than hand-written, keeping the edit honest and drift-visible.
+ */
+export function fixtureCommandBatch() {
+    return {
+        commands: fixtureCommandEnvelopes().map((envelope) => ({
+            kind: `${envelope.command.domain}.${envelope.command.command.kind}`,
+        })),
+    };
 }
 /** A minimal mesh node to host the fixture geometry. */
 function meshNode() {
