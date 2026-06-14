@@ -113,24 +113,87 @@ export function createMockRuntimeBridge() {
     return new MockRuntimeBridge();
 }
 // ── Native implementation factory ─────────────────────────────────────────────
-// The ONLY place that touches `@asha/native-bridge`. Wraps the addon's tiny smoke
-// exports and re-classifies load failures into the bridge error taxonomy. The
-// remaining facade verbs throw `native_unavailable` until the codegen emitter wires
-// their generated `#[napi]` exports.
-class NativeRuntimeBridge extends MockRuntimeBridge {
+// The ONLY place that touches `@asha/native-bridge`. Wraps the addon's wired
+// exports and re-classifies load failures into the bridge error taxonomy.
+//
+// Fail-closed by construction: `NativeRuntimeBridge` implements `RuntimeBridge`
+// directly — it does NOT extend `MockRuntimeBridge`, so an unwired operation can
+// never silently inherit mock/reference behaviour. Every stable + quarantined
+// operation is either routed to a real `#[napi]` export (and listed in
+// NATIVE_WIRED_OPERATIONS) or throws a classified `operation_unimplemented`.
+// `native-fail-closed.test.ts` enforces that this stays true for every manifest op.
+/**
+ * Manifest names of operations whose native (`#[napi]`) implementation is actually
+ * wired. Everything else on {@link NativeRuntimeBridge} fail-closes with
+ * `operation_unimplemented`. Adding a name here is the explicit signal that a
+ * native implementation landed; the native conformance test keeps this set and the
+ * routed methods in lockstep with the bridge manifest.
+ */
+export const NATIVE_WIRED_OPERATIONS = new Set([
+    'initialize_engine',
+    'step_simulation',
+]);
+function nativeUnimplemented(manifestName) {
+    return new RuntimeBridgeError('operation_unimplemented', `native bridge operation '${manifestName}' is not wired; the native facade is ` +
+        `fail-closed (no mock fallback). Wire its #[napi] export and add it to ` +
+        `NATIVE_WIRED_OPERATIONS.`);
+}
+export class NativeRuntimeBridge {
     #addon;
     #seed = 0;
+    #initialized = false;
     constructor(addon) {
-        super();
         this.#addon = addon;
     }
+    // ── Wired native operations ───────────────────────────────────────────────
     initializeEngine(config) {
+        if (!Number.isInteger(config.seed) || config.seed < 0) {
+            throw new RuntimeBridgeError('invalid_input', `seed must be a non-negative integer`);
+        }
         this.#seed = config.seed;
-        return this.#addon.initializeEngine(config.seed);
+        const handle = this.#addon.initializeEngine(config.seed);
+        this.#initialized = true;
+        return handle;
     }
     stepSimulation(input) {
+        if (!this.#initialized) {
+            throw new RuntimeBridgeError('not_initialized', 'step before initializeEngine');
+        }
         const diffCount = this.#addon.stepSimulation(this.#seed, input.tick);
         return { tick: input.tick, diffCount };
+    }
+    // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
+    // Replace each body with its real native call (and add the manifest name to
+    // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
+    submitCommands() {
+        throw nativeUnimplemented('submit_commands');
+    }
+    readRenderDiffs() {
+        throw nativeUnimplemented('read_render_diffs');
+    }
+    getBuffer() {
+        throw nativeUnimplemented('get_buffer');
+    }
+    releaseBuffer() {
+        throw nativeUnimplemented('release_buffer');
+    }
+    loadWorldBundle() {
+        throw nativeUnimplemented('load_world_bundle');
+    }
+    saveCurrentWorld() {
+        throw nativeUnimplemented('save_current_world');
+    }
+    getCompositionStatus() {
+        throw nativeUnimplemented('get_composition_status');
+    }
+    unloadWorld() {
+        throw nativeUnimplemented('unload_world');
+    }
+    loadReplayFixture() {
+        throw nativeUnimplemented('load_replay_fixture');
+    }
+    runReplayStep() {
+        throw nativeUnimplemented('run_replay_step');
     }
 }
 /**

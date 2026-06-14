@@ -1,4 +1,5 @@
 import type { RenderFrameDiff } from '@asha/contracts';
+import { type NativeAddon } from '@asha/native-bridge';
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
@@ -15,7 +16,7 @@ export type ReplaySessionHandle = number & {
     readonly __brand: 'ReplaySessionHandle';
 };
 export declare const frameCursor: (frame: number) => FrameCursor;
-export type RuntimeBridgeErrorKind = 'not_initialized' | 'invalid_input' | 'unknown_handle' | 'buffer_expired' | 'native_unavailable' | 'internal';
+export type RuntimeBridgeErrorKind = 'not_initialized' | 'invalid_input' | 'unknown_handle' | 'buffer_expired' | 'native_unavailable' | 'operation_unimplemented' | 'internal';
 /** Typed, classified error for every facade operation. No JSON error blobs. */
 export declare class RuntimeBridgeError extends Error {
     readonly kind: RuntimeBridgeErrorKind;
@@ -102,6 +103,30 @@ export declare class MockRuntimeBridge implements RuntimeBridge {
 }
 /** Construct the default mock bridge. */
 export declare function createMockRuntimeBridge(): RuntimeBridge;
+/**
+ * Manifest names of operations whose native (`#[napi]`) implementation is actually
+ * wired. Everything else on {@link NativeRuntimeBridge} fail-closes with
+ * `operation_unimplemented`. Adding a name here is the explicit signal that a
+ * native implementation landed; the native conformance test keeps this set and the
+ * routed methods in lockstep with the bridge manifest.
+ */
+export declare const NATIVE_WIRED_OPERATIONS: ReadonlySet<string>;
+export declare class NativeRuntimeBridge implements RuntimeBridge {
+    #private;
+    constructor(addon: NativeAddon);
+    initializeEngine(config: EngineConfig): EngineHandle;
+    stepSimulation(input: StepInputEnvelope): StepResult;
+    submitCommands(): CommandResult;
+    readRenderDiffs(): RenderFrameDiff;
+    getBuffer(): RuntimeBufferView;
+    releaseBuffer(): void;
+    loadWorldBundle(): CompositionStatus;
+    saveCurrentWorld(): WorldSaveSummary;
+    getCompositionStatus(): CompositionStatus;
+    unloadWorld(): void;
+    loadReplayFixture(): ReplaySessionHandle;
+    runReplayStep(): ReplayStepReport;
+}
 /**
  * Construct the native (napi-rs) bridge. Throws a classified
  * {@link RuntimeBridgeError} of kind `native_unavailable` if the addon is not built

@@ -45,6 +45,10 @@ export type RuntimeBridgeErrorKind =
   | 'unknown_handle'
   | 'buffer_expired'
   | 'native_unavailable'
+  // A stable operation exists on the facade but has no native implementation
+  // wired yet. The native bridge throws this instead of silently falling back to
+  // mock/reference behaviour — the seam is explicit and fail-closed.
+  | 'operation_unimplemented'
   | 'internal';
 
 /** Typed, classified error for every facade operation. No JSON error blobs. */
@@ -58,6 +62,12 @@ export class RuntimeBridgeError extends Error {
 // ── Prototype operation payloads ──────────────────────────────────────────────
 // PROTOTYPE: replaced by generated protocol_runtime / protocol_script contracts
 // once the codegen emitter lands. The facade *shape* is the stable part.
+//
+// The simplified world DTOs below are deliberate subsets of the generated
+// protocol contracts (@asha/contracts: WorldBundleManifest / SaveSummary /
+// DiagnosticReportSet). `world-dto-conformance.test.ts` is a compile-time guard
+// that fails when a shared field's type drifts in the generated contract, keeping
+// this prototype debt visible until the DTOs are replaced outright.
 
 export interface EngineConfig {
   readonly seed: number;
@@ -240,28 +250,106 @@ export function createMockRuntimeBridge(): RuntimeBridge {
 }
 
 // ── Native implementation factory ─────────────────────────────────────────────
-// The ONLY place that touches `@asha/native-bridge`. Wraps the addon's tiny smoke
-// exports and re-classifies load failures into the bridge error taxonomy. The
-// remaining facade verbs throw `native_unavailable` until the codegen emitter wires
-// their generated `#[napi]` exports.
+// The ONLY place that touches `@asha/native-bridge`. Wraps the addon's wired
+// exports and re-classifies load failures into the bridge error taxonomy.
+//
+// Fail-closed by construction: `NativeRuntimeBridge` implements `RuntimeBridge`
+// directly — it does NOT extend `MockRuntimeBridge`, so an unwired operation can
+// never silently inherit mock/reference behaviour. Every stable + quarantined
+// operation is either routed to a real `#[napi]` export (and listed in
+// NATIVE_WIRED_OPERATIONS) or throws a classified `operation_unimplemented`.
+// `native-fail-closed.test.ts` enforces that this stays true for every manifest op.
 
-class NativeRuntimeBridge extends MockRuntimeBridge {
+/**
+ * Manifest names of operations whose native (`#[napi]`) implementation is actually
+ * wired. Everything else on {@link NativeRuntimeBridge} fail-closes with
+ * `operation_unimplemented`. Adding a name here is the explicit signal that a
+ * native implementation landed; the native conformance test keeps this set and the
+ * routed methods in lockstep with the bridge manifest.
+ */
+export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
+  'initialize_engine',
+  'step_simulation',
+]);
+
+function nativeUnimplemented(manifestName: string): RuntimeBridgeError {
+  return new RuntimeBridgeError(
+    'operation_unimplemented',
+    `native bridge operation '${manifestName}' is not wired; the native facade is ` +
+      `fail-closed (no mock fallback). Wire its #[napi] export and add it to ` +
+      `NATIVE_WIRED_OPERATIONS.`,
+  );
+}
+
+export class NativeRuntimeBridge implements RuntimeBridge {
   readonly #addon: NativeAddon;
   #seed = 0;
+  #initialized = false;
 
   constructor(addon: NativeAddon) {
-    super();
     this.#addon = addon;
   }
 
-  override initializeEngine(config: EngineConfig): EngineHandle {
+  // ── Wired native operations ───────────────────────────────────────────────
+  initializeEngine(config: EngineConfig): EngineHandle {
+    if (!Number.isInteger(config.seed) || config.seed < 0) {
+      throw new RuntimeBridgeError('invalid_input', `seed must be a non-negative integer`);
+    }
     this.#seed = config.seed;
-    return this.#addon.initializeEngine(config.seed) as EngineHandle;
+    const handle = this.#addon.initializeEngine(config.seed) as EngineHandle;
+    this.#initialized = true;
+    return handle;
   }
 
-  override stepSimulation(input: StepInputEnvelope): StepResult {
+  stepSimulation(input: StepInputEnvelope): StepResult {
+    if (!this.#initialized) {
+      throw new RuntimeBridgeError('not_initialized', 'step before initializeEngine');
+    }
     const diffCount = this.#addon.stepSimulation(this.#seed, input.tick);
     return { tick: input.tick, diffCount };
+  }
+
+  // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
+  // Replace each body with its real native call (and add the manifest name to
+  // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
+  submitCommands(): CommandResult {
+    throw nativeUnimplemented('submit_commands');
+  }
+
+  readRenderDiffs(): RenderFrameDiff {
+    throw nativeUnimplemented('read_render_diffs');
+  }
+
+  getBuffer(): RuntimeBufferView {
+    throw nativeUnimplemented('get_buffer');
+  }
+
+  releaseBuffer(): void {
+    throw nativeUnimplemented('release_buffer');
+  }
+
+  loadWorldBundle(): CompositionStatus {
+    throw nativeUnimplemented('load_world_bundle');
+  }
+
+  saveCurrentWorld(): WorldSaveSummary {
+    throw nativeUnimplemented('save_current_world');
+  }
+
+  getCompositionStatus(): CompositionStatus {
+    throw nativeUnimplemented('get_composition_status');
+  }
+
+  unloadWorld(): void {
+    throw nativeUnimplemented('unload_world');
+  }
+
+  loadReplayFixture(): ReplaySessionHandle {
+    throw nativeUnimplemented('load_replay_fixture');
+  }
+
+  runReplayStep(): ReplayStepReport {
+    throw nativeUnimplemented('run_replay_step');
   }
 }
 
