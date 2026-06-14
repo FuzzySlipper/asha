@@ -1,4 +1,4 @@
-import type { PickRay, PickResult, VoxelCommand, VoxelCoord } from '@asha/contracts';
+import type { Face, PickRay, PickResult, VoxelCommand, VoxelCoord } from '@asha/contracts';
 import { EditorStore } from '@asha/editor-tools';
 import type { CommandResult, RuntimeBridge } from '@asha/runtime-bridge';
 export { EditorStore } from '@asha/editor-tools';
@@ -59,4 +59,18 @@ export declare function bridgePicker(bridge: RuntimeBridge): VoxelPicker;
  * diagnostics. Never mutates voxel state.
  */
 export declare function pickAndSelect(store: EditorStore, pick: VoxelPicker, ray: PickRay): PickResult;
+/** A renderer pick hint: the voxel + face a renderer-side mesh pick claims was hit. */
+export interface RendererPickClaim {
+    readonly voxel: VoxelCoord;
+    readonly face: Face;
+}
+/**
+ * Revalidate a renderer pick hint against the authoritative pick. Authority is the
+ * sole source of voxel coordinates — the renderer's claim is never trusted for
+ * selection. If authority hit a voxel/face that disagrees with the claim, the hint
+ * was stale (a desynced renderer mesh): returns a classified `hitMismatch` rejection
+ * so the caller fails closed instead of acting on the wrong cell. A confirmed hit or
+ * a plain miss passes the authority result through unchanged.
+ */
+export declare function revalidatePickHint(authority: PickResult, claim: RendererPickClaim): PickResult;
 //# sourceMappingURL=index.d.ts.map

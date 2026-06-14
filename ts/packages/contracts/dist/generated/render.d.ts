@@ -137,6 +137,10 @@ export interface SpritePickHit {
     readonly asset: string;
     readonly attachmentPoint: string | null;
 }
+export interface MeshPickHit {
+    readonly handle: RenderHandle;
+    readonly provenance: MeshProvenance;
+}
 export type TextureFilter = 'nearest' | 'linear';
 export type TextureWrap = 'clamp' | 'repeat';
 export interface TextureDescriptor {

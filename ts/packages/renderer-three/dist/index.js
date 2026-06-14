@@ -517,6 +517,23 @@ export class ThreeRenderer {
         else {
             oldMaterial.dispose();
         }
+        // Remember the authority source that produced this mesh so a pick can trace the
+        // handle back to it (#2437). The renderer holds the provenance, never the coords.
+        entry.meshProvenance = diff.payload.provenance;
+    }
+    /**
+     * Resolve a renderer-side mesh pick to an authority source trace: the render handle
+     * + the provenance of the uploaded mesh. Only a **hint** — authority picking
+     * (`pickVoxel`) revalidates before any selection/edit acts on it. Returns
+     * `undefined` for a handle with no uploaded mesh, or a stale/destroyed/unknown
+     * handle (fail closed — the renderer never invents a source for missing metadata).
+     */
+    pickMesh(handle) {
+        const entry = this.#handles.get(handle);
+        if (!entry || entry.meshProvenance === undefined) {
+            return undefined;
+        }
+        return { handle, provenance: entry.meshProvenance };
     }
     #require(handle, ctx) {
         const entry = this.#handles.get(handle);

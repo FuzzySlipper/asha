@@ -20,6 +20,8 @@ import type {
   MeshCollisionPolicy,
   MeshMaterialSlot,
   MeshPayloadDescriptor,
+  MeshPickHit,
+  MeshProvenance,
   RenderDiff,
   RenderFrameDiff,
   RenderHandle,
@@ -73,6 +75,12 @@ interface NodeEntry {
   readonly ownsGeometry: boolean;
   /** The full sprite descriptor, for `kind === 'sprite'` (frame/tint/pick). */
   sprite?: SpriteInstanceDescriptor;
+  /**
+   * The authority provenance of this node's uploaded mesh payload (set on
+   * `replaceMeshPayload`), so a renderer mesh pick can trace the handle back to its
+   * authority source (#2437). Absent until a payload is uploaded.
+   */
+  meshProvenance?: MeshProvenance;
   /**
    * Catalog material id behind each entry of a static-mesh instance's material
    * array (parallel to `mesh.material`), so a live `defineMaterial` redefine can
@@ -647,6 +655,24 @@ export class ThreeRenderer {
     } else {
       oldMaterial.dispose();
     }
+    // Remember the authority source that produced this mesh so a pick can trace the
+    // handle back to it (#2437). The renderer holds the provenance, never the coords.
+    entry.meshProvenance = diff.payload.provenance;
+  }
+
+  /**
+   * Resolve a renderer-side mesh pick to an authority source trace: the render handle
+   * + the provenance of the uploaded mesh. Only a **hint** — authority picking
+   * (`pickVoxel`) revalidates before any selection/edit acts on it. Returns
+   * `undefined` for a handle with no uploaded mesh, or a stale/destroyed/unknown
+   * handle (fail closed — the renderer never invents a source for missing metadata).
+   */
+  pickMesh(handle: RenderHandle): MeshPickHit | undefined {
+    const entry = this.#handles.get(handle);
+    if (!entry || entry.meshProvenance === undefined) {
+      return undefined;
+    }
+    return { handle, provenance: entry.meshProvenance };
   }
 
   #require(handle: RenderHandle, ctx: string): NodeEntry {

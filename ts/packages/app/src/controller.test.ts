@@ -4,7 +4,14 @@ import assert from 'node:assert/strict';
 import type { CommandResult, PickRay, PickResult, VoxelCommand } from '@asha/contracts';
 import { createMockRuntimeBridge } from '@asha/runtime-bridge';
 import { cameraPointerRay, defaultCamera } from '@asha/ui-dom';
-import { EditorStore, VoxelEditController, bridgeCommandSink, bridgePicker, pickAndSelect } from './index.js';
+import {
+  EditorStore,
+  VoxelEditController,
+  bridgeCommandSink,
+  bridgePicker,
+  pickAndSelect,
+  revalidatePickHint,
+} from './index.js';
 
 function controller() {
   const submitted: VoxelCommand[][] = [];
@@ -107,4 +114,43 @@ test('pointer + camera → ray → pickVoxel reaches the facade launch path', ()
   // The mock hosts no geometry, so the launch path returns a classified miss.
   assert.deepEqual(result, { outcome: 'miss', rejection: { reason: 'noHit' } });
   assert.equal(store.getState().selection, null);
+});
+
+// ── Renderer-hint revalidation (authority is the source of truth) ──────────────
+
+const authorityHit: PickResult = {
+  outcome: 'hit',
+  hit: {
+    grid: 1,
+    voxel: { x: 2, y: 0, z: 0 },
+    chunk: { x: 1, y: 0, z: 0 },
+    face: 'negX',
+    point: [2, 0.5, 0.5],
+    distance: 4,
+  },
+};
+
+test('revalidatePickHint passes a confirmed renderer hint through unchanged', () => {
+  const result = revalidatePickHint(authorityHit, { voxel: { x: 2, y: 0, z: 0 }, face: 'negX' });
+  assert.deepEqual(result, authorityHit);
+});
+
+test('revalidatePickHint classifies a stale renderer hint as hitMismatch', () => {
+  // The renderer claims a different cell/face than authority hit → stale metadata.
+  const result = revalidatePickHint(authorityHit, { voxel: { x: 9, y: 9, z: 9 }, face: 'posX' });
+  assert.deepEqual(result, {
+    outcome: 'miss',
+    rejection: {
+      reason: 'hitMismatch',
+      authoritativeVoxel: { x: 2, y: 0, z: 0 },
+      authoritativeFace: 'negX',
+      claimedVoxel: { x: 9, y: 9, z: 9 },
+      claimedFace: 'posX',
+    },
+  });
+});
+
+test('revalidatePickHint passes an authority miss through (nothing to reconcile)', () => {
+  const miss: PickResult = { outcome: 'miss', rejection: { reason: 'noHit' } };
+  assert.deepEqual(revalidatePickHint(miss, { voxel: { x: 0, y: 0, z: 0 }, face: 'posX' }), miss);
 });

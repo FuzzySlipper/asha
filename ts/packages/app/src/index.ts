@@ -4,7 +4,7 @@
 // proposal into a submission through the approved bridge path. UI/editor packages
 // produce proposals and preview targets but never mutate authoritative state.
 
-import type { PickRay, PickResult, VoxelCommand, VoxelCoord } from '@asha/contracts';
+import type { Face, PickRay, PickResult, VoxelCommand, VoxelCoord } from '@asha/contracts';
 import { EditorStore, proposeCommand, previewTargets } from '@asha/editor-tools';
 import type { CommandBatch, CommandResult, RuntimeBridge } from '@asha/runtime-bridge';
 
@@ -114,4 +114,43 @@ export function pickAndSelect(store: EditorStore, pick: VoxelPicker, ray: PickRa
     store.dispatch({ type: 'clearSelection' });
   }
   return result;
+}
+
+/** A renderer pick hint: the voxel + face a renderer-side mesh pick claims was hit. */
+export interface RendererPickClaim {
+  readonly voxel: VoxelCoord;
+  readonly face: Face;
+}
+
+/**
+ * Revalidate a renderer pick hint against the authoritative pick. Authority is the
+ * sole source of voxel coordinates — the renderer's claim is never trusted for
+ * selection. If authority hit a voxel/face that disagrees with the claim, the hint
+ * was stale (a desynced renderer mesh): returns a classified `hitMismatch` rejection
+ * so the caller fails closed instead of acting on the wrong cell. A confirmed hit or
+ * a plain miss passes the authority result through unchanged.
+ */
+export function revalidatePickHint(authority: PickResult, claim: RendererPickClaim): PickResult {
+  if (authority.outcome !== 'hit') {
+    return authority;
+  }
+  const { voxel, face } = authority.hit;
+  const matches =
+    voxel.x === claim.voxel.x &&
+    voxel.y === claim.voxel.y &&
+    voxel.z === claim.voxel.z &&
+    face === claim.face;
+  if (matches) {
+    return authority;
+  }
+  return {
+    outcome: 'miss',
+    rejection: {
+      reason: 'hitMismatch',
+      authoritativeVoxel: voxel,
+      authoritativeFace: face,
+      claimedVoxel: claim.voxel,
+      claimedFace: claim.face,
+    },
+  };
 }

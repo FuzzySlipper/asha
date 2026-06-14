@@ -203,6 +203,30 @@ test('replaceMeshPayload uploads a BufferGeometry with groups and material slots
   assert.equal((mesh.material as THREE.Material[]).length, 2);
 });
 
+test('pickMesh traces an uploaded mesh handle back to its authority provenance (#2437)', () => {
+  const r = new ThreeRenderer();
+  const h = renderHandle(1);
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  // No uploaded mesh yet → no source trace (missing metadata fails closed).
+  assert.equal(r.pickMesh(h), undefined);
+
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+  // Now it maps back to the authority source (the voxel chunk that produced it).
+  assert.deepEqual(r.pickMesh(h), { handle: h, provenance: 'voxelChunk' });
+});
+
+test('pickMesh fails closed on a stale/missing handle (no invented source)', () => {
+  const r = new ThreeRenderer();
+  const h = renderHandle(1);
+  // Unknown handle → undefined.
+  assert.equal(r.pickMesh(renderHandle(99)), undefined);
+  // Destroyed handle → undefined (stale): the renderer never invents a source.
+  r.applyDiff({ op: 'create', handle: h, parent: null, node: meshNode() });
+  r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
+  r.applyDiff({ op: 'destroy', handle: h });
+  assert.equal(r.pickMesh(h), undefined);
+});
+
 test('registered slot colour maps to the group material; unregistered uses a fallback', () => {
   const r = new ThreeRenderer();
   r.registerSlotColor(1, 1, 0, 0); // slot 1 → red

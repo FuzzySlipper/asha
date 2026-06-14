@@ -544,6 +544,18 @@ pub fn render_module() -> Module {
                 f("attachmentPoint", TsType::nullable(string())),
             ],
         ),
+        // A renderer-side mesh pick hint (launchable-voxel picking, #2437). It maps a
+        // render handle back to the authority SOURCE that produced the mesh (its
+        // provenance), so a hover/pick can be revalidated against authority — the
+        // renderer never owns voxel coordinates, and a stale/destroyed handle yields
+        // no hint at all (undefined) rather than a guess.
+        iface(
+            "A renderer-side mesh pick hint mapping a render handle to the authority \
+             source (provenance) that produced its mesh. Only a hint — authority \
+             picking (pickVoxel) revalidates before any selection/edit acts on it.",
+            "MeshPickHit",
+            vec![f("handle", r("RenderHandle")), f("provenance", r("MeshProvenance"))],
+        ),
         // ── textures + sprite atlases (material-wiring super, epic #2353; #2374) ─
         Item::Alias {
             doc: "Texture sampling filter policy.".to_string(),

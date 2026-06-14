@@ -180,6 +180,12 @@ export interface SpritePickHit {
   readonly attachmentPoint: string | null;
 }
 
+// A renderer-side mesh pick hint mapping a render handle to the authority source (provenance) that produced its mesh. Only a hint — authority picking (pickVoxel) revalidates before any selection/edit acts on it.
+export interface MeshPickHit {
+  readonly handle: RenderHandle;
+  readonly provenance: MeshProvenance;
+}
+
 // Texture sampling filter policy.
 export type TextureFilter = 'nearest' | 'linear';
 

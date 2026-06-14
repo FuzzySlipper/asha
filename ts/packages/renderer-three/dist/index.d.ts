@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type RuntimeBufferHandle, type RuntimeBufferView } from '@asha/runtime-bridge';
-import type { RenderDiff, RenderFrameDiff, RenderHandle, SpritePickHit, RenderMaterialDescriptor, TextureDescriptor, SpriteAtlasDescriptor } from '@asha/contracts';
+import type { MeshPickHit, RenderDiff, RenderFrameDiff, RenderHandle, SpritePickHit, RenderMaterialDescriptor, TextureDescriptor, SpriteAtlasDescriptor } from '@asha/contracts';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export declare class RenderApplyError extends Error {
     constructor(message: string);
@@ -82,5 +82,13 @@ export declare class ThreeRenderer {
      * renderer decides no gameplay action — authority revalidates and acts.
      */
     pickSprite(handle: RenderHandle): SpritePickHit | undefined;
+    /**
+     * Resolve a renderer-side mesh pick to an authority source trace: the render handle
+     * + the provenance of the uploaded mesh. Only a **hint** — authority picking
+     * (`pickVoxel`) revalidates before any selection/edit acts on it. Returns
+     * `undefined` for a handle with no uploaded mesh, or a stale/destroyed/unknown
+     * handle (fail closed — the renderer never invents a source for missing metadata).
+     */
+    pickMesh(handle: RenderHandle): MeshPickHit | undefined;
 }
 //# sourceMappingURL=index.d.ts.map
