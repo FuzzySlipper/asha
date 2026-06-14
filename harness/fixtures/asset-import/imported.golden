@@ -1,0 +1,222 @@
+=== triangle (textured, aabb collision) ===
+--- import-fixture-a.catalog.json ---
+{
+  "entries": [
+    {
+      "id": "material/surface-a",
+      "kind": "material",
+      "version": 1,
+      "hash": "5cb9ee6650e6ce87",
+      "label": "surface-a",
+      "dependencies": ["texture/surface-a"],
+      "material": {
+        "authority": {
+          "solid": false,
+          "collidable": false,
+          "occludes": false,
+          "structuralClass": "decorative"
+        },
+        "style": {
+          "color": [0.8, 0.2, 0.1, 1],
+          "texture": "texture/surface-a",
+          "roughness": 1,
+          "emissive": 0,
+          "uvStrategy": "planar"
+        }
+      }
+    },
+    {
+      "id": "mesh/import-fixture-a",
+      "kind": "mesh",
+      "version": 1,
+      "hash": "a53d44165d8a36b6",
+      "label": "import-fixture-a",
+      "dependencies": ["material/surface-a"]
+    },
+    {
+      "id": "texture/surface-a",
+      "kind": "texture",
+      "version": 1,
+      "hash": "3579da384bc04d8a",
+      "label": "surface-a",
+      "dependencies": []
+    }
+  ]
+}
+--- import-fixture-a.staticmesh.json ---
+{
+  "asset": "mesh/import-fixture-a",
+  "provenance": "staticAsset",
+  "layout": {
+    "vertexCount": 3,
+    "indexCount": 3,
+    "indexWidth": "u32"
+  },
+  "bounds": {
+    "min": [0, 0, 0],
+    "max": [1, 1, 0]
+  },
+  "groups": [
+    {
+      "materialSlot": 0,
+      "start": 0,
+      "count": 3
+    }
+  ],
+  "materialSlots": [
+    {
+      "slot": 0,
+      "material": "material/surface-a"
+    }
+  ],
+  "collision": {
+    "kind": "aabbFallback"
+  },
+  "geometry": {
+    "positions": [0, 0, 0, 1, 0, 0, 0, 1, 0],
+    "normals": [0, 0, 1, 0, 0, 1, 0, 0, 1],
+    "indices": [0, 1, 2]
+  }
+}
+--- import-fixture-a.import.json ---
+{
+  "sourcePath": "fixtures/import-fixture-a.mesh.json",
+  "sourceFingerprint": "2309400f4478703e",
+  "importerVersion": 1,
+  "schemaVersion": 1,
+  "meshAssetId": "mesh/import-fixture-a",
+  "artifacts": [
+    {
+      "path": "import-fixture-a.catalog.json",
+      "hash": "8e223ad75452ef28"
+    },
+    {
+      "path": "import-fixture-a.staticmesh.json",
+      "hash": "af4bb5a726dc578e"
+    }
+  ]
+}
+
+=== quad (two material slots) ===
+--- import-fixture-b.catalog.json ---
+{
+  "entries": [
+    {
+      "id": "material/surface-a",
+      "kind": "material",
+      "version": 1,
+      "hash": "511bbd8ce55af5c5",
+      "label": "surface-a",
+      "dependencies": [],
+      "material": {
+        "authority": {
+          "solid": false,
+          "collidable": false,
+          "occludes": false,
+          "structuralClass": "decorative"
+        },
+        "style": {
+          "color": [0.5, 0.5, 0.5, 1],
+          "texture": null,
+          "roughness": 1,
+          "emissive": 0,
+          "uvStrategy": "flat"
+        }
+      }
+    },
+    {
+      "id": "material/surface-b",
+      "kind": "material",
+      "version": 1,
+      "hash": "60e4803e9eaa4b3a",
+      "label": "surface-b",
+      "dependencies": [],
+      "material": {
+        "authority": {
+          "solid": false,
+          "collidable": false,
+          "occludes": false,
+          "structuralClass": "decorative"
+        },
+        "style": {
+          "color": [0.1, 0.6, 0.2, 1],
+          "texture": null,
+          "roughness": 1,
+          "emissive": 0,
+          "uvStrategy": "flat"
+        }
+      }
+    },
+    {
+      "id": "mesh/import-fixture-b",
+      "kind": "mesh",
+      "version": 1,
+      "hash": "e11e8c44d6bf7d67",
+      "label": "import-fixture-b",
+      "dependencies": ["material/surface-a", "material/surface-b"]
+    }
+  ]
+}
+--- import-fixture-b.staticmesh.json ---
+{
+  "asset": "mesh/import-fixture-b",
+  "provenance": "staticAsset",
+  "layout": {
+    "vertexCount": 4,
+    "indexCount": 6,
+    "indexWidth": "u32"
+  },
+  "bounds": {
+    "min": [0, 0, 0],
+    "max": [1, 1, 0]
+  },
+  "groups": [
+    {
+      "materialSlot": 0,
+      "start": 0,
+      "count": 3
+    },
+    {
+      "materialSlot": 1,
+      "start": 3,
+      "count": 3
+    }
+  ],
+  "materialSlots": [
+    {
+      "slot": 0,
+      "material": "material/surface-a"
+    },
+    {
+      "slot": 1,
+      "material": "material/surface-b"
+    }
+  ],
+  "collision": {
+    "kind": "visualOnly"
+  },
+  "geometry": {
+    "positions": [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+    "normals": [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+    "indices": [0, 1, 2, 0, 2, 3]
+  }
+}
+--- import-fixture-b.import.json ---
+{
+  "sourcePath": "fixtures/import-fixture-b.mesh.json",
+  "sourceFingerprint": "fd14752b4b43cd4b",
+  "importerVersion": 1,
+  "schemaVersion": 1,
+  "meshAssetId": "mesh/import-fixture-b",
+  "artifacts": [
+    {
+      "path": "import-fixture-b.catalog.json",
+      "hash": "215d929f8fb5d405"
+    },
+    {
+      "path": "import-fixture-b.staticmesh.json",
+      "hash": "26999e6bd29dcaa8"
+    }
+  ]
+}
+

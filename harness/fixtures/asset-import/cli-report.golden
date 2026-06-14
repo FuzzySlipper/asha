@@ -1,0 +1,12 @@
+asha-import: import-fixture-a.mesh.json
+mode: dry-run
+diagnostics: 0
+asset: mesh/import-fixture-a
+sourceFingerprint: 2309400f4478703e
+importerVersion: 1
+reimportPlan: firstImport
+artifacts:
+  import-fixture-a.catalog.json (8e223ad75452ef28)
+  import-fixture-a.staticmesh.json (af4bb5a726dc578e)
+  import-fixture-a.import.json (73702ffedf84d768)
+result: OK (dry-run, nothing written)

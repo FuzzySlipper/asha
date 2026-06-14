@@ -320,6 +320,16 @@ lane = "rust-tools"
 may_depend_on = ["core-ids", "core-assets", "core-space", "core-voxel", "core-events", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-world-bundle", "protocol-diagnostics"]
 may_not_depend_on = ["render-bridge", "protocol-render", "wasm-api"]
 
+# Offline asset importer (asset-import super, #2384/#2385/#2386): deterministic
+# offline conversion of a documented source-mesh fixture format into ASHA-native
+# static-mesh + catalog + texture descriptors, with source fingerprints, classified
+# import diagnostics, asset-lock drift, and a dry-run/write CLI. Tools/offline lane;
+# never runtime import. Consumes border + catalog types only; never the renderer.
+[crate."engine-rs/crates/tools/asset-import"]
+lane = "rust-tools"
+may_depend_on = ["core-ids", "core-assets", "core-error", "core-catalog", "protocol-render"]
+may_not_depend_on = ["render-bridge", "wasm-api"]
+
 # ─── TypeScript ──────────────────────────────────────────────────────────────
 
 [package."ts/packages/contracts"]

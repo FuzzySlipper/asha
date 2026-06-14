@@ -1,0 +1,8 @@
+=== unsupported feature ===
+error [unsupportedFeature] fixtures/unsupported.mesh.json#animations: source feature `animations` is not supported by this importer (remedy: remove the feature from the source or extend the importer scope)
+=== non-triangle topology ===
+error [unsupportedTopology] mesh/import-fixture-a: index count 2 is not a triangle list (multiple of 3) (remedy: only triangle-list topology is supported)
+=== missing external texture ===
+warning [missingTexture] material/surface-a#texture/surface-a: material `surface-a` references texture `surface-a`, which is not available (remedy: provide the external texture resource or remove the reference)
+=== source fingerprint drift vs asset lock ===
+warning [sourceFingerprintChanged] mesh/import-fixture-a: source fingerprint changed 2309400f4478703e -> d4a6cc721daee619 since the asset lock was written (remedy: reimport and review the reimport plan before updating the lock)

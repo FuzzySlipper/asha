@@ -1,0 +1,18 @@
+[package]
+name = "asset-import"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+core-assets = { path = "../../foundation/core-assets" }
+core-error = { path = "../../foundation/core-error" }
+core-catalog = { path = "../../state/core-catalog" }
+protocol-render = { path = "../../protocol/protocol-render" }
+
+[[bin]]
+name = "asha-import"
+path = "src/bin/asha_import.rs"
