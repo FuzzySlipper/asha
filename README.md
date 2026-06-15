@@ -170,6 +170,26 @@ cd ts
 pnpm dev:asha-smoke
 ```
 
+### App shell launch
+
+The launchable voxel shell is composed by one transport-agnostic root, `composeAppShell`
+in `@asha/app` (`packages/app/src/shell.ts`). Every host — Electron renderer, browser, and
+the headless CLI — runs that same composition; only the injected host capabilities, renderer
+port, and bridge boot differ. The Electron main process (`@asha/electron-main`) only opens an
+accessibility-enabled window pointed at the shared entry; it imports no runtime packages.
+
+```sh
+cd ts
+pnpm --filter @asha/app dev:asha-shell                        # reference (mock) shell → harness/shell-out/
+ASHA_SHELL_MODE=authority pnpm --filter @asha/app dev:asha-shell   # real native path (unavailable offline)
+```
+
+The headless launch is the CI-safe composition target: it boots the runtime, loads the
+selected fixture, projects authority through the facade, and writes a deterministic
+`ShellReadout` (runtime mode, fixture/world status, renderer status, accessible controls, and
+the devtools editor inspection). Runtime mode is reported honestly as `native` / `reference` /
+`degraded` / `unavailable` — there is no silent native→mock downgrade.
+
 Check the relevant package scripts before adding new commands; this workspace intentionally prefers explicit package/lane surfaces over hidden global magic.
 
 ---

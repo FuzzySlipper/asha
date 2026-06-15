@@ -29,6 +29,9 @@ importers:
       '@asha/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@asha/devtools':
+        specifier: workspace:*
+        version: link:../devtools
       '@asha/editor-tools':
         specifier: workspace:*
         version: link:../editor-tools

@@ -3,6 +3,7 @@ import { EditorStore } from '@asha/editor-tools';
 import type { CommandResult, RuntimeBridge } from '@asha/runtime-bridge';
 export { EditorStore } from '@asha/editor-tools';
 export type { EditorContext, EditorAction, VoxelSelection } from '@asha/editor-tools';
+export * from './shell.js';
 /**
  * Where committed commands go. The real wiring is {@link bridgeCommandSink}, which
  * sends the batch through `@asha/runtime-bridge` (`submitCommands`) to Rust for

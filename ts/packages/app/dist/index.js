@@ -5,6 +5,8 @@
 // produce proposals and preview targets but never mutate authoritative state.
 import { EditorStore, proposeCommand, previewTargets } from '@asha/editor-tools';
 export { EditorStore } from '@asha/editor-tools';
+// The transport-agnostic composition root (task #2439) lives in shell.ts.
+export * from './shell.js';
 /**
  * The real command sink: submit the generated `VoxelCommand`s through the runtime
  * facade's `submitCommands` verb (carrying the `protocol_voxel::CommandBatch`

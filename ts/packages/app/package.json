@@ -14,13 +14,15 @@
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build",
-    "test": "tsc --build && node --test 'dist/**/*.test.js'"
+    "test": "tsc --build && node --test 'dist/**/*.test.js'",
+    "dev:asha-shell": "tsc --build && node dist/cli.js"
   },
   "dependencies": {
     "@asha/contracts": "workspace:*",
     "@asha/runtime-bridge": "workspace:*",
     "@asha/renderer-three": "workspace:*",
     "@asha/ui-dom": "workspace:*",
+    "@asha/devtools": "workspace:*",
     "@asha/script-host": "workspace:*",
     "@asha/editor-tools": "workspace:*"
   }

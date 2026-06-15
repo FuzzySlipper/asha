@@ -11,6 +11,9 @@ import type { CommandBatch, CommandResult, RuntimeBridge } from '@asha/runtime-b
 export { EditorStore } from '@asha/editor-tools';
 export type { EditorContext, EditorAction, VoxelSelection } from '@asha/editor-tools';
 
+// The transport-agnostic composition root (task #2439) lives in shell.ts.
+export * from './shell.js';
+
 /**
  * Where committed commands go. The real wiring is {@link bridgeCommandSink}, which
  * sends the batch through `@asha/runtime-bridge` (`submitCommands`) to Rust for

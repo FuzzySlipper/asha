@@ -12,8 +12,8 @@
     }
   },
   "scripts": {
-    "build":     "tsc --build",
-    "typecheck": "tsc --noEmit",
-    "test":      "echo no tests yet"
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "tsc --build && node --test 'dist/**/*.test.js'"
   }
 }
