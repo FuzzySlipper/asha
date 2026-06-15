@@ -113,7 +113,10 @@ ASHA_PERF_HOST=<stable-label> pnpm --filter @asha/smoke dev:asha-perf  # → har
 It reuses the smoke building blocks and records phase timings + structural counters,
 failing hard **only** on the structural invariants (leaks, preview remesh, bounded
 per-cycle render ops, replay divergence, command acceptance) — timings are trended,
-never thresholded. Full field-stability guide + how to compare runs: `docs/perf-baseline.md`.
+never thresholded. A separate manual GPU/WebGL lane writes
+`launch-voxel-gpu-perf.{jsonl,latest.json}` only when explicitly opted in; external
+WebGL/browser calibration is context-only and non-gating. Full field-stability guide +
+how to compare runs: `docs/perf-baseline.md`.
 
 ## Regeneration command index
 
@@ -148,9 +151,10 @@ intent and a fresh decision — do not assume they are unimplemented by accident
 - **Pixel/screenshot goldens** — the render gate is the structural snapshot; true
   pixel goldens (real WebGL/offscreen) are deferred (`harness/goldens/screenshots/README.md`).
 - **Performance budgets** — there is a logged same-host perf *baseline* (`dev:asha-perf`,
-  `docs/perf-baseline.md`) for trend tracking, but no enforced timing/throughput budget
-  and no product FPS target. Wiring a CI timing gate is deliberately avoided (it would be
-  flaky); only the structural invariants fail hard.
+  `docs/perf-baseline.md`) for trend tracking, plus a lowest-priority manual GPU/WebGL
+  lane (`dev:asha-gpu-perf`) for discrete-host context. There is still no enforced
+  timing/throughput budget and no product FPS target. Wiring a CI timing gate is
+  deliberately avoided (it would be flaky); only the structural invariants fail hard.
 
 ## Related docs
 
@@ -161,7 +165,7 @@ intent and a fresh decision — do not assume they are unimplemented by accident
 | `docs/voxel-coordinates.md` | Grid/chunk/voxel coordinate conventions |
 | `docs/runtime-bridge-boundary.md` | Facade surface + error taxonomy |
 | `docs/replay-model.md` | Replay + voxel durability evidence |
-| `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) |
+| `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
 | `harness/fixtures/voxel-world/README.md` | Canonical fixture details |
 | `harness/fixtures/world-bundle/README.md` | Save/compaction/durability goldens |
 | `harness/fixtures/smoke/README.md` | Smoke golden + regeneration |

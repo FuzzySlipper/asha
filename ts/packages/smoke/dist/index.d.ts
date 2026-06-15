@@ -5,4 +5,6 @@ export type { SmokeResult, SmokeStage, SmokeFailure, SmokeFailureCategory, Smoke
 export { FIXTURE_WORLD, fixtureWorldHash, fixtureRenderFrame, fixtureEditUpdateFrame, fixturePickRay, fixtureCommandBatch, fixtureVoxelCommand, fixtureCommandEnvelopes, } from './fixtures.js';
 export { runPerf, formatPerf, PERF_COMMAND, DEFAULT_EDIT_CYCLES } from './perf.js';
 export type { PerfResult, PerfMetadata, PerfTiming, PerfCounters, PerfInvariant, PerfOptions, PerfClock, } from './perf.js';
+export { runGpuPerf, formatGpuPerf, GPU_PERF_COMMAND } from './gpu-perf.js';
+export type { ExternalCalibration, GpuDescriptor, GpuPerfGating, GpuPerfMetadata, GpuPerfOptions, GpuPerfRenderContext, GpuPerfResult, GpuPerfSkip, GpuPerfSkipReason, GpuPerfStatus, } from './gpu-perf.js';
 //# sourceMappingURL=index.d.ts.map

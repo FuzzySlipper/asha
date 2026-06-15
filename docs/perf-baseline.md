@@ -46,12 +46,67 @@ Environment knobs (all optional):
 > Set `ASHA_PERF_HOST` to the **same** label every run on a given machine — that is the
 > key the trend is grouped by.
 
+## Optional discrete-GPU / WebGL lane
+
+There is a second, **manual** lane for a repeatable machine with a discrete GPU and a
+real GL/Electron/WebGL context. It complements the same-machine baseline above; it does
+not replace it, does not run in normal CI, and does not create product FPS budgets.
+
+```bash
+cd ts
+# classified skip artifact when no GPU context is configured (safe on any host):
+pnpm --filter @asha/smoke dev:asha-gpu-perf
+
+# real GPU-host run (operator supplies the repeatable host/context metadata):
+ASHA_PERF_HOST=<stable-gpu-host-label> \
+ASHA_GPU_PERF_ENABLE=1 \
+ASHA_GPU_PERF_CONTEXT=electron-webgl \
+ASHA_GPU_NAME='<gpu name>' \
+ASHA_GPU_DRIVER='<driver version>' \
+ASHA_GPU_RUNTIME='<electron/runtime version>' \
+ASHA_GPU_BROWSER='<browser/webview version>' \
+pnpm --filter @asha/smoke dev:asha-gpu-perf
+```
+
+`ASHA_GPU_PERF_CONTEXT` must be one of `electron-webgl`, `browser-webgl`, or
+`external-gl`. Without both `ASHA_GPU_PERF_ENABLE=1` and that context, the command writes
+a `status: "skipped"` record with `skip.reason: "gpu_context_not_enabled"` and exits
+successfully. That is intentional: discrete-GPU availability is never a default gate.
+
+The GPU lane output is written beside the same-host baseline, but under separate names:
+
+- `launch-voxel-gpu-perf.jsonl` — one JSON record appended per GPU-lane invocation.
+- `launch-voxel-gpu-perf.latest.json` — the latest GPU-lane record, pretty-printed.
+
+Each GPU record is `{ ok, status, meta, skip, asha, externalCalibrations }`. `meta`
+records the ASHA commit/branch/fixture plus `lane: "discrete-gpu-gl-render"`,
+`gating: "non-gating"`, render context, GPU/driver/vendor/device, browser/runtime, and
+host basics. `asha` contains the same launchable-voxel structural metrics as the baseline
+when the lane actually runs. Skipped records have `asha: null` and a classified reason.
+
+Optional external WebGL/browser calibration scores can be attached as contextual data:
+
+```bash
+ASHA_GPU_EXTERNAL_CALIBRATION='[
+  {"name":"MotionMark","score":123.4,"unit":"score","source":"manual","notes":"operator supplied"}
+]'
+```
+
+These calibration records are always stamped `gating: "non-gating"`. They are useful for
+ballpark host/browser/GPU sanity notes (for example MotionMark/Basemark-style scores or
+small local reference scenes), but they are **not** acceptance criteria and must not block
+merge/review by default. Omit them freely; omission is not a failure.
+
 ## Output
 
 Written under `harness/perf-out/` (gitignored — it is per-host trend data, not a golden):
 
 - `launch-voxel-perf.jsonl` — one JSON record **appended per run** (the trend history).
 - `launch-voxel-perf.latest.json` — the latest run, pretty-printed.
+
+The optional GPU/WebGL lane uses separate files in the same directory:
+`launch-voxel-gpu-perf.{jsonl,latest.json}`. Keep those records out of the canonical
+weak-/same-host trend unless you explicitly choose to compare the GPU host with itself.
 
 Each record is `{ ok, meta, timings, counters, invariants }` (schema in `perf.ts`,
 `schema: 1`). `meta` carries `commit / branch / hostLabel / runtimeMode / smokeMode /
@@ -97,6 +152,11 @@ artifact trend monitoring on a chosen baseline host.
   available only when the authority/native path exposes them.
 - **No GPU / no pixel work.** `ThreeRenderer` runs headless (structural scene graph only),
   so renderer timings reflect retained-mode bookkeeping, not real draw cost.
+- **GPU lane is operator-supplied context.** The optional GPU/WebGL command records the
+  repeatable host/context metadata and carries the ASHA structural metrics beside any
+  manual external calibration scores. It does not make real GPU availability a default
+  CI/review dependency, and it currently fails/skips clearly rather than inventing a
+  browser score or screenshot timing when no context was supplied.
 - **No product targets.** This task measures; it sets no FPS/frame budgets and makes no
   optimization changes.
 

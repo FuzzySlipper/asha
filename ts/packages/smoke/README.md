@@ -14,6 +14,16 @@ pnpm --filter @asha/smoke dev:asha-smoke
 pnpm dev:asha-smoke
 ```
 
+Perf lanes are separate from the smoke command:
+
+```bash
+# same-host logged baseline (structural invariants gate, timings trend only)
+pnpm --filter @asha/smoke dev:asha-perf
+
+# optional discrete-GPU/WebGL context lane; skips clearly unless explicitly enabled
+pnpm --filter @asha/smoke dev:asha-gpu-perf
+```
+
 Exit code is `0` on PASS, `1` on FAIL. Structured artifacts are written to
 `harness/smoke-out/asha-smoke.{txt,json}` (gitignored) for closeout evidence; Den
 or any external tool can link to them.
