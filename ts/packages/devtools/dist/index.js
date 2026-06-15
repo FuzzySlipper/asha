@@ -13,6 +13,8 @@ export * from './asset-inspector.js';
 export * from './bundle-panel.js';
 // Generic entity authoring inspector read model (#2485).
 export * from './entity-inspector.js';
+// Policy-run summary read model (#2487).
+export * from './policy-panel.js';
 /** Deterministic display lines for a scene report (pure formatter). */
 export function summarizeScene(report) {
     const lines = [
