@@ -2,4 +2,5 @@
 export { runSmoke, defaultBootBridge, authorityBootBridge, bootForMode, SMOKE_COMMAND, AUTHORITY_SMOKE_COMMAND, } from './harness.js';
 export { formatResult } from './result.js';
 export { FIXTURE_WORLD, fixtureWorldHash, fixtureRenderFrame, fixtureEditUpdateFrame, fixturePickRay, fixtureCommandBatch, fixtureVoxelCommand, fixtureCommandEnvelopes, } from './fixtures.js';
+export { runPerf, formatPerf, PERF_COMMAND, DEFAULT_EDIT_CYCLES } from './perf.js';
 //# sourceMappingURL=index.js.map

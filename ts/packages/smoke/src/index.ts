@@ -31,3 +31,13 @@ export {
   fixtureVoxelCommand,
   fixtureCommandEnvelopes,
 } from './fixtures.js';
+export { runPerf, formatPerf, PERF_COMMAND, DEFAULT_EDIT_CYCLES } from './perf.js';
+export type {
+  PerfResult,
+  PerfMetadata,
+  PerfTiming,
+  PerfCounters,
+  PerfInvariant,
+  PerfOptions,
+  PerfClock,
+} from './perf.js';

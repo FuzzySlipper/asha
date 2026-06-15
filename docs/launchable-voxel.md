@@ -100,6 +100,21 @@ cargo run -p rule-world-bundle --example dump_durability > ../harness/fixtures/w
 cargo test -p rule-world-bundle -p rule-voxel-edit        # checks the durability + persist goldens
 ```
 
+## Performance baseline
+
+A deterministic, **logged** perf scenario over the same canonical fixture, for
+same-host trend/regression tracking (not a CI gate, not a product target):
+
+```bash
+cd ts
+ASHA_PERF_HOST=<stable-label> pnpm --filter @asha/smoke dev:asha-perf  # → harness/perf-out/ (gitignored)
+```
+
+It reuses the smoke building blocks and records phase timings + structural counters,
+failing hard **only** on the structural invariants (leaks, preview remesh, bounded
+per-cycle render ops, replay divergence, command acceptance) — timings are trended,
+never thresholded. Full field-stability guide + how to compare runs: `docs/perf-baseline.md`.
+
 ## Regeneration command index
 
 | Artifact | Command |
@@ -132,8 +147,10 @@ intent and a fresh decision — do not assume they are unimplemented by accident
   custom brushes are out of scope.
 - **Pixel/screenshot goldens** — the render gate is the structural snapshot; true
   pixel goldens (real WebGL/offscreen) are deferred (`harness/goldens/screenshots/README.md`).
-- **Performance budgets** — the smoke checks structural boundedness/leak counters only;
-  timing/throughput budgets are not yet enforced.
+- **Performance budgets** — there is a logged same-host perf *baseline* (`dev:asha-perf`,
+  `docs/perf-baseline.md`) for trend tracking, but no enforced timing/throughput budget
+  and no product FPS target. Wiring a CI timing gate is deliberately avoided (it would be
+  flaky); only the structural invariants fail hard.
 
 ## Related docs
 
@@ -144,6 +161,7 @@ intent and a fresh decision — do not assume they are unimplemented by accident
 | `docs/voxel-coordinates.md` | Grid/chunk/voxel coordinate conventions |
 | `docs/runtime-bridge-boundary.md` | Facade surface + error taxonomy |
 | `docs/replay-model.md` | Replay + voxel durability evidence |
+| `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) |
 | `harness/fixtures/voxel-world/README.md` | Canonical fixture details |
 | `harness/fixtures/world-bundle/README.md` | Save/compaction/durability goldens |
 | `harness/fixtures/smoke/README.md` | Smoke golden + regeneration |

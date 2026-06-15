@@ -199,6 +199,7 @@ Check the relevant package scripts before adding new commands; this workspace in
 | Document | Purpose |
 |---|---|
 | `docs/launchable-voxel.md` | **Launchable voxel loop hub**: fixture, launch/smoke commands, regeneration, known limitations |
+| `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`): trend tracking, field stability |
 | `docs/design.md` | Full system design and architecture principles |
 | `docs/architecture-overview.md` | Layer model and dependency rules |
 | `docs/runtime-bridge-boundary.md` | Runtime bridge facade and transport boundary |

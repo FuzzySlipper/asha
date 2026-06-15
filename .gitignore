@@ -14,6 +14,7 @@ coverage/
 # ── Generated smoke-harness artifacts ───────────────────────────────────────────
 harness/smoke-out/
 harness/shell-out/
+harness/perf-out/
 
 # ── IDE / editor ────────────────────────────────────────────────────────────────
 .vscode/

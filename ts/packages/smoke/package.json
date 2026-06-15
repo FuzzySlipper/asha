@@ -15,7 +15,8 @@
     "build": "tsc --build",
     "typecheck": "tsc --build",
     "test": "tsc --build && node --test 'dist/**/*.test.js'",
-    "dev:asha-smoke": "tsc --build && node dist/cli.js"
+    "dev:asha-smoke": "tsc --build && node dist/cli.js",
+    "dev:asha-perf": "tsc --build && node dist/perf-cli.js"
   },
   "dependencies": {
     "@asha/contracts": "workspace:*",
