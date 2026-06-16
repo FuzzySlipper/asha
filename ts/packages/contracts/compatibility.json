@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "surface": "@asha/contracts",
+  "compatibilityVersion": "contracts.v0",
+  "packageVersion": "0.1.0",
+  "status": "pre-registry-local-path",
+  "sourceOfTruth": "engine-rs/crates/protocol/* via protocol-codegen",
+  "generatedFiles": [
+    "src/generated/**/*.ts"
+  ],
+  "generatedBy": "cargo run -p protocol-codegen",
+  "handEditPolicy": "forbidden; use protocol-codegen from Rust protocol sources",
+  "changelog": "docs/consumer-compatibility.md#generated-contract-compatibility-log",
+  "migrationNoteTemplate": "docs/consumer-compatibility.md#migration-note-template",
+  "failClosedPolicy": "Consumers must stop on missing/unknown contract compatibilityVersion, schema mismatch, or a breaking contract change without a migration note; do not paper over by copying generated DTOs or importing generated file paths.",
+  "pinningGuidance": "asha-demo should pin @asha/contracts by package path plus ASHA git commit until registry/version publishing exists; future consumers should also record compatibilityVersion in artifacts.",
+  "breakingChangeRequires": [
+    "Rust protocol source change",
+    "regenerated TypeScript contracts",
+    "generated contract changelog entry",
+    "migration note for downstream consumers",
+    "golden/fixture update where relevant",
+    "downstream typecheck or conformance evidence"
+  ]
+}

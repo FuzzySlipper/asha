@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "surface": "@asha/runtime-bridge",
+  "compatibilityVersion": "runtime-bridge.v0",
+  "packageVersion": "0.1.0",
+  "status": "pre-registry-local-path",
+  "sourceOfTruth": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml plus @asha/contracts DTOs",
+  "manifest": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
+  "generatedConformance": "src/generated/conformance.json",
+  "nativeTransportRule": "Only @asha/runtime-bridge may import @asha/native-bridge; consumers must use the facade and fail closed on native_unavailable or operation_unimplemented.",
+  "changelog": "docs/consumer-compatibility.md#runtime-bridge-compatibility-log",
+  "migrationNoteTemplate": "docs/consumer-compatibility.md#migration-note-template",
+  "failClosedPolicy": "Consumers must stop on unknown runtime bridge compatibilityVersion, missing facade operation, or classified RuntimeBridgeError that reports native_unavailable/operation_unimplemented for a required operation; do not call raw native/WASM transports or dynamic JSON tunnels.",
+  "pinningGuidance": "asha-demo should pin @asha/runtime-bridge by package path plus ASHA git commit until registry/version publishing exists; conformance artifacts should record compatibilityVersion and stable operation count.",
+  "breakingChangeRequires": [
+    "bridge manifest or facade signature review",
+    "runtime bridge compatibility log entry",
+    "migration note for downstream consumers",
+    "facade-vs-manifest conformance update",
+    "downstream asha-demo conformance evidence where applicable"
+  ]
+}

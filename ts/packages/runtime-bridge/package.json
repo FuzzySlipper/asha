@@ -10,6 +10,11 @@
       "rootExportOnly": true,
       "nativeTransportAccess": true,
       "nativeTransportRule": "@asha/runtime-bridge is the only public package allowed to import @asha/native-bridge; consumers must not import raw transports directly."
+    },
+    "compatibility": {
+      "version": "runtime-bridge.v0",
+      "metadataFile": "compatibility.json",
+      "changelog": "docs/consumer-compatibility.md#runtime-bridge-compatibility-log"
     }
   },
   "type": "module",

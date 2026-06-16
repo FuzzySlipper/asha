@@ -11,12 +11,12 @@ import json
 import pathlib
 import sys
 import tomllib
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"FAIL: {message}")
     sys.exit(1)
 
@@ -52,6 +52,40 @@ TIER1_TS = {
 }
 
 
+def check_compatibility_metadata(dir_name: str, expected_name: str) -> None:
+    pkg = package(dir_name)
+    asha = pkg.get("asha")
+    if not isinstance(asha, dict):
+        fail(f"{expected_name} must declare an 'asha' metadata block")
+    compatibility = asha.get("compatibility")
+    if not isinstance(compatibility, dict):
+        fail(f"{expected_name} must declare asha.compatibility metadata")
+    metadata_path = compatibility.get("metadataFile")
+    if not isinstance(metadata_path, str):
+        fail(f"{expected_name} asha.compatibility.metadataFile must point at compatibility metadata")
+    metadata_file = REPO_ROOT / "ts" / "packages" / dir_name / metadata_path
+    if not metadata_file.is_file():
+        fail(f"{expected_name} compatibility metadata file is missing: {metadata_path}")
+    metadata = read_json(metadata_file)
+    if metadata.get("schemaVersion") != 1:
+        fail(f"{expected_name} compatibility metadata schemaVersion must be 1")
+    if metadata.get("surface") != expected_name:
+        fail(f"{expected_name} compatibility metadata surface drifted: {metadata.get('surface')}")
+    if metadata.get("packageVersion") != pkg.get("version"):
+        fail(
+            f"{expected_name} compatibility packageVersion must match package.json version "
+            f"{pkg.get('version')!r}; got {metadata.get('packageVersion')!r}"
+        )
+    compatibility_version = metadata.get("compatibilityVersion")
+    if not isinstance(compatibility_version, str) or not compatibility_version:
+        fail(f"{expected_name} must declare a non-empty compatibilityVersion")
+    if compatibility.get("version") != compatibility_version:
+        fail(f"{expected_name} package metadata version must mirror compatibilityVersion")
+    for required_field in ["changelog", "migrationNoteTemplate", "failClosedPolicy", "pinningGuidance"]:
+        if not isinstance(metadata.get(required_field), str) or not metadata[required_field]:
+            fail(f"{expected_name} compatibility metadata missing {required_field}")
+
+
 def check_ts_package(dir_name: str, spec: dict[str, Any]) -> None:
     pkg = package(dir_name)
     if pkg.get("name") != spec["expected_name"]:
@@ -77,6 +111,7 @@ def check_ts_package(dir_name: str, spec: dict[str, Any]) -> None:
         fail(f"{spec['expected_name']} must declare rootExportOnly=true")
     if public_surface.get("nativeTransportAccess") is not spec["may_import_native"]:
         fail(f"{spec['expected_name']} nativeTransportAccess metadata drifted")
+    check_compatibility_metadata(dir_name, spec["expected_name"])
 
 
 def check_native_bridge_internal() -> None:

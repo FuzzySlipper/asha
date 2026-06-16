@@ -18,6 +18,11 @@ semantic/governance border; native and WASM are transport glue underneath it.
 
 ## 2. Layers
 
+Consumer-facing compatibility metadata for the two Tier 1 surfaces lives in
+`docs/consumer-compatibility.md` plus package-local `compatibility.json` files:
+`ts/packages/contracts/compatibility.json` and
+`ts/packages/runtime-bridge/compatibility.json`.
+
 Four distinct layers, lowest coupling to highest:
 
 | Layer | Role | TS package | Rust crate |
