@@ -2,6 +2,16 @@
   "name": "@asha/contracts",
   "version": "0.1.0",
   "private": true,
+  "asha": {
+    "publicSurface": {
+      "tier": 1,
+      "role": "generated-contracts",
+      "allowedConsumers": ["asha-demo"],
+      "rootExportOnly": true,
+      "nativeTransportAccess": false,
+      "source": "engine-rs/crates/protocol/* via protocol-codegen"
+    }
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

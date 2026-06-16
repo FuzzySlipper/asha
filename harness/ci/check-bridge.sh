@@ -12,3 +12,6 @@ python3 "$REPO_ROOT/harness/codegen/bridge-emit.py" --check
 
 echo "==> Scanning bridge guardrails (no opaque escape hatches in stable surfaces)"
 bash "$REPO_ROOT/harness/bridge/check-bridge-guardrails.sh"
+
+echo "==> Checking public engine boundary metadata"
+python3 "$REPO_ROOT/harness/public-surface/check-public-boundary.py"

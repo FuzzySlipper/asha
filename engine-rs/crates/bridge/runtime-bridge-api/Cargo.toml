@@ -3,6 +3,13 @@ name    = "runtime-bridge-api"
 version.workspace = true
 edition.workspace = true
 
+[package.metadata.asha.public-surface]
+tier = 1
+role = "rust-bridge-boundary"
+direct-consumer-import = false
+allowed-consumers = ["transport-implementations", "conformance-tests"]
+notes = "asha-demo v1 consumes @asha/runtime-bridge and @asha/contracts; this crate remains the Rust manifest/types boundary rather than a direct consumer dependency."
+
 [lints]
 workspace = true
 

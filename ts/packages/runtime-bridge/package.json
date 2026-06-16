@@ -2,6 +2,16 @@
   "name": "@asha/runtime-bridge",
   "version": "0.1.0",
   "private": true,
+  "asha": {
+    "publicSurface": {
+      "tier": 1,
+      "role": "runtime-facade",
+      "allowedConsumers": ["asha-demo"],
+      "rootExportOnly": true,
+      "nativeTransportAccess": true,
+      "nativeTransportRule": "@asha/runtime-bridge is the only public package allowed to import @asha/native-bridge; consumers must not import raw transports directly."
+    }
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

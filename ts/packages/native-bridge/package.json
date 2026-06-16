@@ -2,6 +2,11 @@
   "name": "@asha/native-bridge",
   "version": "0.1.0",
   "private": true,
+  "asha": {
+    "publicSurface": false,
+    "importedOnlyBy": ["@asha/runtime-bridge"],
+    "internalRole": "raw napi-rs transport wrapper"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
