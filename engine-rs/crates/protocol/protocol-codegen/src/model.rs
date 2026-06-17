@@ -1951,6 +1951,140 @@ pub fn entity_authoring_module() -> Module {
     }
 }
 
+// ── view.ts — public camera/view projection surface ──────────────────────────
+
+pub fn view_module() -> Module {
+    let tuple3 = || TsType::Tuple(vec![num(), num(), num()]);
+    let matrix4 = || {
+        TsType::Tuple(vec![
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+            num(),
+        ])
+    };
+
+    let items = vec![
+        Item::BrandedId {
+            doc: "Opaque bridge-owned camera handle for runtime view/projection state.".to_string(),
+            name: "CameraHandle".to_string(),
+        },
+        iface(
+            "Camera pose in world units/degrees; deterministic view state, not gameplay authority.",
+            "CameraPose",
+            vec![
+                f("position", tuple3()),
+                f("yawDegrees", num()),
+                f("pitchDegrees", num()),
+            ],
+        ),
+        iface(
+            "Orthogonal basis vectors derived from a camera pose.",
+            "CameraBasis",
+            vec![f("forward", tuple3()), f("right", tuple3()), f("up", tuple3())],
+        ),
+        iface(
+            "Perspective projection parameters for runtime view evidence.",
+            "PerspectiveProjection",
+            vec![
+                f("fovYDegrees", num()),
+                f("near", num()),
+                f("far", num()),
+            ],
+        ),
+        iface(
+            "Pixel viewport dimensions for projection evidence.",
+            "ViewportSize",
+            vec![f("width", num()), f("height", num())],
+        ),
+        iface(
+            "Request to create a bridge-owned runtime view camera.",
+            "CameraCreateRequest",
+            vec![
+                f("initialPose", r("CameraPose")),
+                f("projection", r("PerspectiveProjection")),
+                f("viewport", r("ViewportSize")),
+            ],
+        ),
+        iface(
+            "Bounded first-person input for deterministic camera movement evidence.",
+            "FirstPersonCameraInput",
+            vec![
+                f("moveForward", num()),
+                f("moveRight", num()),
+                f("moveUp", num()),
+                f("yawDeltaDegrees", num()),
+                f("pitchDeltaDegrees", num()),
+                f("dtSeconds", num()),
+                f("moveSpeedUnitsPerSecond", num()),
+            ],
+        ),
+        iface(
+            "One camera input proposal for a specific deterministic tick.",
+            "FirstPersonCameraInputEnvelope",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("input", r("FirstPersonCameraInput")),
+                f("tick", num()),
+            ],
+        ),
+        iface(
+            "Request to read current projection evidence for a camera. Null viewport means use the camera viewport.",
+            "CameraProjectionRequest",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("viewport", TsType::nullable(r("ViewportSize"))),
+            ],
+        ),
+        iface(
+            "Camera pose/basis snapshot after create or input application.",
+            "CameraSnapshot",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("tick", num()),
+                f("pose", r("CameraPose")),
+                f("basis", r("CameraBasis")),
+                f("projection", r("PerspectiveProjection")),
+                f("viewport", r("ViewportSize")),
+            ],
+        ),
+        iface(
+            "Camera pose plus deterministic column-major 4x4 projection matrices.",
+            "CameraProjectionSnapshot",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("tick", num()),
+                f("pose", r("CameraPose")),
+                f("basis", r("CameraBasis")),
+                f("projection", r("PerspectiveProjection")),
+                f("viewport", r("ViewportSize")),
+                f("viewMatrix", matrix4()),
+                f("projectionMatrix", matrix4()),
+                f("viewProjectionMatrix", matrix4()),
+                f("projectionHash", string()),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "view",
+        imports: vec![],
+        items,
+    }
+}
+
 // ── index.ts — barrel ─────────────────────────────────────────────────────────
 
 pub fn index_module() -> Module {
@@ -1989,6 +2123,9 @@ pub fn index_module() -> Module {
                 from: "./policyView.js".to_string(),
             },
             Item::ReExport {
+                from: "./view.js".to_string(),
+            },
+            Item::ReExport {
                 from: "./entityAuthoring.js".to_string(),
             },
         ],
@@ -2008,6 +2145,7 @@ pub fn all_modules() -> Vec<Module> {
         assets_module(),
         diagnostics_module(),
         policy_view_module(),
+        view_module(),
         entity_authoring_module(),
         index_module(),
     ]

@@ -59,6 +59,10 @@ Consumer behavior:
 
 Breaking generated-contract changes require a migration note using the template below.
 
+Additive notes under `contracts.v0`:
+
+- #2563 adds a public `view` generated module for deterministic camera/view evidence: `CameraHandle`, camera pose/basis/projection/viewport DTOs, first-person camera input envelopes, and projection snapshots with column-major matrices. The compatibility marker remains `contracts.v0` because the change is additive and consumers that do not import the new types are unaffected.
+
 ## Runtime bridge compatibility log
 
 ### `runtime-bridge.v0` — initial local-path facade boundary

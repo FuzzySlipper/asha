@@ -22,3 +22,4 @@ protocol-scene = { path = "../protocol-scene" }
 protocol-world-bundle = { path = "../protocol-world-bundle" }
 protocol-assets = { path = "../protocol-assets" }
 protocol-entity-authoring = { path = "../protocol-entity-authoring" }
+protocol-view = { path = "../protocol-view" }

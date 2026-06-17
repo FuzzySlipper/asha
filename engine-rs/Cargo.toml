@@ -32,6 +32,7 @@ members = [
     "crates/protocol/protocol-world-bundle",
     "crates/protocol/protocol-assets",
     "crates/protocol/protocol-policy-view",
+    "crates/protocol/protocol-view",
     "crates/protocol/protocol-entity-authoring",
     "crates/protocol/protocol-codegen",
 

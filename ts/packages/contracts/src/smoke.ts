@@ -44,6 +44,18 @@ import {
   type LockValidationReport,
   type RenderMaterial,
   type FallbackDecision,
+  cameraHandle,
+  type CameraBasis,
+  type CameraCreateRequest,
+  type CameraHandle,
+  type CameraPose,
+  type CameraProjectionRequest,
+  type CameraProjectionSnapshot,
+  type CameraSnapshot,
+  type FirstPersonCameraInput,
+  type FirstPersonCameraInputEnvelope,
+  type PerspectiveProjection,
+  type ViewportSize,
 } from './index.js';
 
 // Branded IDs are nominally typed and built through their constructors.
@@ -401,6 +413,62 @@ const fallback: FallbackDecision = {
   reason: 'collision-critical asset missing; refusing to load incomplete authority',
 };
 
+// A deterministic camera/view surface value set for first-person mover evidence.
+// These contracts are view/projection infrastructure, not gameplay authority or
+// renderer object handles.
+const camera: CameraHandle = cameraHandle(11);
+const cameraPose: CameraPose = {
+  position: [0, 1.6, 0],
+  yawDegrees: 0,
+  pitchDegrees: 0,
+};
+const cameraBasis: CameraBasis = {
+  forward: [0, 0, -1],
+  right: [1, 0, 0],
+  up: [0, 1, 0],
+};
+const projection: PerspectiveProjection = {
+  fovYDegrees: 60,
+  near: 0.1,
+  far: 1000,
+};
+const viewport: ViewportSize = { width: 1280, height: 720 };
+const cameraCreate: CameraCreateRequest = {
+  initialPose: cameraPose,
+  projection,
+  viewport,
+};
+const firstPersonInput: FirstPersonCameraInput = {
+  moveForward: 1,
+  moveRight: 0,
+  moveUp: 0,
+  yawDeltaDegrees: 15,
+  pitchDeltaDegrees: -5,
+  dtSeconds: 1 / 60,
+  moveSpeedUnitsPerSecond: 3,
+};
+const firstPersonEnvelope: FirstPersonCameraInputEnvelope = {
+  camera,
+  input: firstPersonInput,
+  tick: 1,
+};
+const cameraSnapshot: CameraSnapshot = {
+  camera,
+  tick: 1,
+  pose: cameraPose,
+  basis: cameraBasis,
+  projection,
+  viewport,
+};
+const cameraProjectionRequest: CameraProjectionRequest = { camera, viewport: null };
+const cameraProjection: CameraProjectionSnapshot = {
+  ...cameraSnapshot,
+  viewMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1.6, 0, 1],
+  projectionMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1, 0, 0, -0.2, 0],
+  viewProjectionMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 1.6, -1, -1, 0, 0, -0.2, 0],
+  projectionHash: 'sha256:camera-smoke',
+};
+
 // Exported so the values are "used" (lint-clean) and tree-shakeable. Consumers
 // of @asha/contracts never see this — it is not re-exported by index.ts.
 export const __contractSmoke = {
@@ -425,4 +493,15 @@ export const __contractSmoke = {
   lockReport,
   renderMaterial,
   fallback,
+  camera,
+  cameraPose,
+  cameraBasis,
+  projection,
+  viewport,
+  cameraCreate,
+  firstPersonInput,
+  firstPersonEnvelope,
+  cameraSnapshot,
+  cameraProjectionRequest,
+  cameraProjection,
 } as const;

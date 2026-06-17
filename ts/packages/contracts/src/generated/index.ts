@@ -26,4 +26,6 @@ export * from './diagnostics.js';
 
 export * from './policyView.js';
 
+export * from './view.js';
+
 export * from './entityAuthoring.js';

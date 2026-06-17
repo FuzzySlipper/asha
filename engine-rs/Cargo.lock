@@ -381,6 +381,7 @@ dependencies = [
  "protocol-ids",
  "protocol-replay",
  "protocol-scene",
+ "protocol-view",
  "protocol-world-bundle",
 ]
 
@@ -446,6 +447,10 @@ dependencies = [
 
 [[package]]
 name = "protocol-telemetry"
+version = "0.1.0"
+
+[[package]]
+name = "protocol-view"
 version = "0.1.0"
 
 [[package]]

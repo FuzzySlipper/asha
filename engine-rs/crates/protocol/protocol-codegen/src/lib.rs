@@ -155,6 +155,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/assets.ts"),
                 format!("{OUTPUT_DIR}/diagnostics.ts"),
                 format!("{OUTPUT_DIR}/policyView.ts"),
+                format!("{OUTPUT_DIR}/view.ts"),
                 format!("{OUTPUT_DIR}/entityAuthoring.ts"),
                 format!("{OUTPUT_DIR}/index.ts"),
             ],
@@ -350,6 +351,27 @@ mod tests {
         assert!(a.contains("export interface LockValidationReport {"));
         assert!(a.contains("export type FallbackDecision ="));
         assert!(a.contains("import type { AssetReference } from './scene.js';"));
+    }
+
+    /// Focused behavior test for the public camera/view family: the opaque handle,
+    /// deterministic first-person input envelope, and column-major projection
+    /// snapshot DTOs are generated for consumers without renderer/gameplay types.
+    #[test]
+    fn view_family_emits_camera_contracts() {
+        let view = file("view.ts");
+        assert!(view
+            .contains("export type CameraHandle = number & { readonly __brand: 'CameraHandle' };"));
+        assert!(view.contains(
+            "export const cameraHandle = (raw: number): CameraHandle => raw as CameraHandle;"
+        ));
+        assert!(view.contains("export interface CameraCreateRequest {"));
+        assert!(view.contains("export interface FirstPersonCameraInputEnvelope {"));
+        assert!(view.contains("export interface CameraProjectionSnapshot {"));
+        assert!(view.contains("readonly viewMatrix: readonly [number, number, number, number"));
+        assert!(view.contains("readonly projectionHash: string;"));
+        assert!(!view.contains("Three"));
+        assert!(!view.contains("Player"));
+        assert!(!view.contains("StateStore"));
     }
 
     #[test]
