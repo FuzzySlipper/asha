@@ -187,6 +187,47 @@ test('native conformance sequence routes through the addon without mock fallback
   ]);
 });
 
+test('native facade validates numeric inputs before addon casts can wrap', () => {
+  const calls: string[] = [];
+  const bridge: RuntimeBridge = new NativeRuntimeBridge(fakeAddon(calls));
+  bridge.initializeEngine({ seed: 1 });
+
+  assert.throws(
+    () => bridge.loadWorldBundle({ bundleSchemaVersion: 1.5, protocolVersion: 1, sceneId: 1 }),
+    (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input',
+  );
+  assert.throws(
+    () => bridge.loadWorldBundle({ bundleSchemaVersion: 1, protocolVersion: 1, sceneId: -1 }),
+    (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input',
+  );
+  assert.throws(
+    () => bridge.stepSimulation({ tick: -1 }),
+    (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input',
+  );
+  assert.throws(
+    () => bridge.readRenderDiffs(frameCursor(-1)),
+    (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input',
+  );
+  assert.deepEqual(calls, ['initialize:1']);
+});
+
+test('native addon semantic errors are reclassified into RuntimeBridgeError', () => {
+  const addon = fakeAddon();
+  addon.loadWorldBundle = () => {
+    throw new Error('InvalidInput: unsupported bundle schema 99 / protocol 1');
+  };
+  const bridge: RuntimeBridge = new NativeRuntimeBridge(addon);
+  bridge.initializeEngine({ seed: 1 });
+
+  assert.throws(
+    () => bridge.loadWorldBundle({ bundleSchemaVersion: 99, protocolVersion: 1, sceneId: 1 }),
+    (e: unknown) =>
+      e instanceof RuntimeBridgeError &&
+      e.kind === 'invalid_input' &&
+      e.message.includes('unsupported bundle schema 99 / protocol 1'),
+  );
+});
+
 test('wired native ops route through the addon, not the mock', () => {
   const calls: string[] = [];
   const bridge = new NativeRuntimeBridge(fakeAddon(calls));

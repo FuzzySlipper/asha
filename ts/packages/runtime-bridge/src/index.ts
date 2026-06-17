@@ -86,6 +86,21 @@ export class RuntimeBridgeError extends Error {
   }
 }
 
+function nonNegativeSafeInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RuntimeBridgeError('invalid_input', `${field} must be a non-negative safe integer`);
+  }
+  return value;
+}
+
+function u32(value: number, field: string): number {
+  nonNegativeSafeInteger(value, field);
+  if (value > 0xffffffff) {
+    throw new RuntimeBridgeError('invalid_input', `${field} must fit in u32`);
+  }
+  return value;
+}
+
 // ── Prototype operation payloads ──────────────────────────────────────────────
 // PROTOTYPE: replaced by generated protocol_runtime / protocol_script contracts
 // once the codegen emitter lands. The facade *shape* is the stable part.
@@ -351,7 +366,8 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (this.#engine === null) {
       throw new RuntimeBridgeError('not_initialized', 'step before initializeEngine');
     }
-    return { tick: input.tick, diffCount: input.tick % 4 };
+    const tick = nonNegativeSafeInteger(input.tick, 'tick');
+    return { tick, diffCount: tick % 4 };
   }
 
   submitCommands(batch: CommandBatch): CommandResult {
@@ -505,16 +521,19 @@ export class MockRuntimeBridge implements RuntimeBridge {
   }
 
   loadWorldBundle(request: WorldLoadRequest): CompositionStatus {
+    const bundleSchemaVersion = u32(request.bundleSchemaVersion, 'bundleSchemaVersion');
+    const protocolVersion = u32(request.protocolVersion, 'protocolVersion');
+    const sceneId = nonNegativeSafeInteger(request.sceneId, 'sceneId');
     // Fail closed on a newer bundle; the prior loaded world is left untouched
     // (we only set #loadedWorld on success — the staged commit/swap).
-    if (request.bundleSchemaVersion > 1 || request.protocolVersion > 1) {
+    if (bundleSchemaVersion > 1 || protocolVersion > 1) {
       throw new RuntimeBridgeError(
         'invalid_input',
-        `unsupported bundle schema ${request.bundleSchemaVersion} / protocol ${request.protocolVersion}`,
+        `unsupported bundle schema ${bundleSchemaVersion} / protocol ${protocolVersion}`,
       );
     }
-    this.#loadedWorld = request.sceneId;
-    return { loadedWorld: request.sceneId, fatalCount: 0, totalCount: 0, blocksLoad: false };
+    this.#loadedWorld = sceneId;
+    return { loadedWorld: sceneId, fatalCount: 0, totalCount: 0, blocksLoad: false };
   }
 
   saveCurrentWorld(): WorldSaveSummary {
@@ -586,6 +605,33 @@ function nativeUnimplemented(manifestName: string): RuntimeBridgeError {
   );
 }
 
+const RUST_ERROR_KIND: Readonly<Record<string, RuntimeBridgeErrorKind>> = {
+  NotInitialized: 'not_initialized',
+  InvalidInput: 'invalid_input',
+  UnknownHandle: 'unknown_handle',
+  BufferExpired: 'buffer_expired',
+  Internal: 'internal',
+};
+
+function classifyNativeAddonError(cause: unknown): RuntimeBridgeError {
+  if (cause instanceof RuntimeBridgeError) return cause;
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const match = /^(\w+):\s*(.*)$/u.exec(message);
+  if (match?.[1]) {
+    const kind = RUST_ERROR_KIND[match[1]];
+    if (kind) return new RuntimeBridgeError(kind, match[2] || message);
+  }
+  return new RuntimeBridgeError('internal', message);
+}
+
+function callNative<T>(body: () => T): T {
+  try {
+    return body();
+  } catch (cause) {
+    throw classifyNativeAddonError(cause);
+  }
+}
+
 export class NativeRuntimeBridge implements RuntimeBridge {
   readonly #addon: NativeAddon;
   #seed = 0;
@@ -618,38 +664,40 @@ export class NativeRuntimeBridge implements RuntimeBridge {
 
   loadWorldBundle(request: WorldLoadRequest): CompositionStatus {
     const handle = this.#requireHandle('loadWorldBundle');
-    return this.#addon.loadWorldBundle(
-      handle,
-      request.bundleSchemaVersion,
-      request.protocolVersion,
-      request.sceneId,
-    ) as CompositionStatus;
+    const bundleSchemaVersion = u32(request.bundleSchemaVersion, 'bundleSchemaVersion');
+    const protocolVersion = u32(request.protocolVersion, 'protocolVersion');
+    const sceneId = nonNegativeSafeInteger(request.sceneId, 'sceneId');
+    return callNative(() =>
+      this.#addon.loadWorldBundle(handle, bundleSchemaVersion, protocolVersion, sceneId) as CompositionStatus,
+    );
   }
 
   submitCommands(batch: CommandBatch): CommandResult {
     const handle = this.#requireHandle('submitCommands');
-    return this.#addon.submitCommands(handle, JSON.stringify(batch.commands)) as CommandResult;
+    return callNative(() => this.#addon.submitCommands(handle, JSON.stringify(batch.commands)) as CommandResult);
   }
 
   stepSimulation(input: StepInputEnvelope): StepResult {
     const handle = this.#requireHandle('stepSimulation');
-    const diffCount = this.#addon.stepSimulation(handle, input.tick);
-    return { tick: input.tick, diffCount };
+    const tick = nonNegativeSafeInteger(input.tick, 'tick');
+    const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
+    return { tick, diffCount };
   }
 
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff {
     const handle = this.#requireHandle('readRenderDiffs');
-    return this.#addon.readRenderDiffs(handle, cursor) as RenderFrameDiff;
+    const frame = nonNegativeSafeInteger(cursor as number, 'frame cursor') as FrameCursor;
+    return callNative(() => this.#addon.readRenderDiffs(handle, frame) as RenderFrameDiff);
   }
 
   saveCurrentWorld(): WorldSaveSummary {
     const handle = this.#requireHandle('saveCurrentWorld');
-    return this.#addon.saveCurrentWorld(handle) as WorldSaveSummary;
+    return callNative(() => this.#addon.saveCurrentWorld(handle) as WorldSaveSummary);
   }
 
   getCompositionStatus(): CompositionStatus {
     const handle = this.#requireHandle('getCompositionStatus');
-    return this.#addon.getCompositionStatus(handle) as CompositionStatus;
+    return callNative(() => this.#addon.getCompositionStatus(handle) as CompositionStatus);
   }
 
   // ── Unwired operations: fail-closed, never mock-backed ─────────────────────

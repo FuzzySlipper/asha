@@ -78,6 +78,30 @@ fn with_bridge<T>(
     f(bridge)
 }
 
+fn non_negative_i64(value: i64, field: &str) -> napi::Result<i64> {
+    if value < 0 {
+        return Err(to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("{field} must be a non-negative integer"),
+        )));
+    }
+    Ok(value)
+}
+
+fn u32_input(value: i64, field: &str) -> napi::Result<u32> {
+    non_negative_i64(value, field)?;
+    u32::try_from(value).map_err(|_| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("{field} must fit in u32"),
+        ))
+    })
+}
+
+fn u64_input(value: i64, field: &str) -> napi::Result<u64> {
+    non_negative_i64(value, field).map(|v| v as u64)
+}
+
 #[napi(object)]
 pub struct NativeCompositionStatus {
     pub loaded_world: Option<i64>,
@@ -217,12 +241,15 @@ pub fn load_world_bundle(
     protocol_version: i64,
     scene_id: i64,
 ) -> napi::Result<NativeCompositionStatus> {
+    let bundle_schema_version = u32_input(bundle_schema_version, "bundle_schema_version")?;
+    let protocol_version = u32_input(protocol_version, "protocol_version")?;
+    let scene_id = u64_input(scene_id, "scene_id")?;
     with_bridge(handle, |bridge| {
         bridge
             .load_world_bundle(WorldLoadRequest {
-                bundle_schema_version: bundle_schema_version as u32,
-                protocol_version: protocol_version as u32,
-                scene_id: scene_id as u64,
+                bundle_schema_version,
+                protocol_version,
+                scene_id,
             })
             .map(NativeCompositionStatus::from)
             .map_err(to_napi)
@@ -242,9 +269,10 @@ pub fn submit_commands(handle: i64, commands_json: String) -> napi::Result<Nativ
 
 #[napi]
 pub fn step_simulation(handle: i64, tick: i64) -> napi::Result<u32> {
+    let tick = u64_input(tick, "tick")?;
     with_bridge(handle, |bridge| {
         bridge
-            .step_simulation(StepInputEnvelope { tick: tick as u64 })
+            .step_simulation(StepInputEnvelope { tick })
             .map(|result| result.diff_count)
             .map_err(to_napi)
     })
