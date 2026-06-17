@@ -399,13 +399,18 @@ impl ReferenceBridge {
         }
     }
 
-    fn validate_create_request(request: &CameraCreateRequest) -> BridgeResult<()> {
-        if request.viewport.width == 0 || request.viewport.height == 0 {
+    fn validate_viewport(viewport: protocol_view::ViewportSize) -> BridgeResult<()> {
+        if viewport.width == 0 || viewport.height == 0 {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
                 "viewport dimensions must be positive",
             ));
         }
+        Ok(())
+    }
+
+    fn validate_create_request(request: &CameraCreateRequest) -> BridgeResult<()> {
+        Self::validate_viewport(request.viewport)?;
         if !(request.projection.fov_y_degrees.is_finite()
             && request.projection.near.is_finite()
             && request.projection.far.is_finite())
@@ -737,10 +742,9 @@ impl RuntimeBridge for ReferenceBridge {
                 "unknown camera handle",
             )
         })?;
-        Ok(Self::projection_snapshot(
-            snapshot,
-            request.viewport.unwrap_or(snapshot.viewport),
-        ))
+        let viewport = request.viewport.unwrap_or(snapshot.viewport);
+        Self::validate_viewport(viewport)?;
+        Ok(Self::projection_snapshot(snapshot, viewport))
     }
 
     fn get_buffer(&self, handle: RuntimeBufferHandle) -> BridgeResult<RuntimeBufferView<'_>> {
@@ -882,6 +886,20 @@ mod tests {
             .unwrap();
         assert_eq!(projected.view_matrix.len(), 16);
         assert_eq!(projected.projection_hash, "fnv1a64:071327a4920ab097");
+
+        assert_eq!(
+            bridge
+                .read_camera_projection(CameraProjectionRequest {
+                    camera: moved.camera,
+                    viewport: Some(ViewportSize {
+                        width: 1280,
+                        height: 0,
+                    }),
+                })
+                .unwrap_err()
+                .kind,
+            RuntimeBridgeErrorKind::InvalidInput
+        );
 
         assert_eq!(
             bridge
