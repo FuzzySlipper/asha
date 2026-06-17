@@ -202,30 +202,127 @@ function validateProjection(projection: CameraCreateRequest['projection']): void
   }
 }
 
+function f32(value: number): number {
+  return Math.fround(value);
+}
+
 function basisFromPose(pose: CameraSnapshot['pose']): CameraSnapshot['basis'] {
-  const yaw = (pose.yawDegrees * Math.PI) / 180;
-  const pitch = (pose.pitchDegrees * Math.PI) / 180;
-  const cp = Math.cos(pitch);
-  const sp = Math.sin(pitch);
-  const sy = Math.sin(yaw);
-  const cy = Math.cos(yaw);
+  const yaw = f32((pose.yawDegrees * Math.PI) / 180);
+  const pitch = f32((pose.pitchDegrees * Math.PI) / 180);
+  const cp = f32(Math.cos(pitch));
+  const sp = f32(Math.sin(pitch));
+  const sy = f32(Math.sin(yaw));
+  const cy = f32(Math.cos(yaw));
   return {
-    forward: [sy * cp, sp, -cy * cp],
+    forward: [f32(sy * cp), sp, f32(-cy * cp)],
     right: [cy, 0, sy],
-    up: [-sy * sp, cp, cy * sp],
+    up: [f32(-sy * sp), cp, f32(cy * sp)],
   };
 }
 
+function matrixKey(values: readonly number[]): string {
+  return values.map((value) => value.toFixed(3)).join(',');
+}
+
+function fnv1a64(text: string): string {
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= BigInt(text.charCodeAt(i));
+    hash = (hash * prime) & mask;
+  }
+  return hash.toString(16).padStart(16, '0');
+}
+
+type Matrix4 = CameraProjectionSnapshot['viewMatrix'];
+
+function multiplyMatrix4(a: Matrix4, b: Matrix4): Matrix4 {
+  const out = new Array<number>(16).fill(0);
+  for (let col = 0; col < 4; col += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      let sum = 0;
+      for (let k = 0; k < 4; k += 1) {
+        sum = f32(sum + f32((a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0)));
+      }
+      out[col * 4 + row] = sum;
+    }
+  }
+  return out as unknown as Matrix4;
+}
+
+function viewMatrixFromSnapshot(snapshot: CameraSnapshot): Matrix4 {
+  const { right, up, forward } = snapshot.basis;
+  const position = snapshot.pose.position;
+  const dotRight = f32(f32(right[0] * position[0]) + f32(right[1] * position[1]) + f32(right[2] * position[2]));
+  const dotUp = f32(f32(up[0] * position[0]) + f32(up[1] * position[1]) + f32(up[2] * position[2]));
+  const dotForward = f32(
+    f32(forward[0] * position[0]) + f32(forward[1] * position[1]) + f32(forward[2] * position[2]),
+  );
+  return [
+    right[0],
+    up[0],
+    -forward[0],
+    0,
+    right[1],
+    up[1],
+    -forward[1],
+    0,
+    right[2],
+    up[2],
+    -forward[2],
+    0,
+    -dotRight,
+    -dotUp,
+    dotForward,
+    1,
+  ];
+}
+
+function projectionMatrixFromSnapshot(
+  snapshot: CameraSnapshot,
+  viewport: CameraProjectionSnapshot['viewport'],
+): CameraProjectionSnapshot['projectionMatrix'] {
+  const aspect = f32(viewport.width / viewport.height);
+  const f = f32(1 / Math.tan(f32((snapshot.projection.fovYDegrees * Math.PI) / 360)));
+  const near = snapshot.projection.near;
+  const far = snapshot.projection.far;
+  return [
+    f32(f / aspect),
+    0,
+    0,
+    0,
+    0,
+    f,
+    0,
+    0,
+    0,
+    0,
+    f32((far + near) / (near - far)),
+    -1,
+    0,
+    0,
+    f32((2 * far * near) / (near - far)),
+    0,
+  ];
+}
+
 function projectionSnapshot(snapshot: CameraSnapshot, viewport = snapshot.viewport): CameraProjectionSnapshot {
+  const viewMatrix = viewMatrixFromSnapshot(snapshot);
+  const projectionMatrix = projectionMatrixFromSnapshot(snapshot, viewport);
+  const viewProjectionMatrix = multiplyMatrix4(projectionMatrix, viewMatrix);
+  const projectionHash = `fnv1a64:${fnv1a64(matrixKey([
+    ...viewMatrix,
+    ...projectionMatrix,
+    ...viewProjectionMatrix,
+  ]))}`;
   return {
     ...snapshot,
     viewport,
-    // Placeholder deterministic matrices for #2564 facade coverage. #2565 owns
-    // the Rust/reference golden math and will replace this with strict evidence.
-    viewMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -snapshot.pose.position[0], -snapshot.pose.position[1], -snapshot.pose.position[2], 1],
-    projectionMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1, 0, 0, -snapshot.projection.near * 2, 0],
-    viewProjectionMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, -snapshot.pose.position[1], -1, -1, -snapshot.pose.position[0], 0, -snapshot.projection.near * 2, 0],
-    projectionHash: `sha256:mock-camera-${snapshot.camera as number}-${snapshot.tick}`,
+    viewMatrix,
+    projectionMatrix,
+    viewProjectionMatrix,
+    projectionHash,
   };
 }
 
@@ -335,16 +432,40 @@ export class MockRuntimeBridge implements RuntimeBridge {
       throw new RuntimeBridgeError('invalid_input', 'dtSeconds and moveSpeedUnitsPerSecond must be non-negative');
     }
     const basis = prior.basis;
-    const distance = i.dtSeconds * i.moveSpeedUnitsPerSecond;
+    const distance = f32(i.dtSeconds * i.moveSpeedUnitsPerSecond);
     const position = [
-      prior.pose.position[0] + (basis.forward[0] * i.moveForward + basis.right[0] * i.moveRight + basis.up[0] * i.moveUp) * distance,
-      prior.pose.position[1] + (basis.forward[1] * i.moveForward + basis.right[1] * i.moveRight + basis.up[1] * i.moveUp) * distance,
-      prior.pose.position[2] + (basis.forward[2] * i.moveForward + basis.right[2] * i.moveRight + basis.up[2] * i.moveUp) * distance,
+      f32(
+        prior.pose.position[0] +
+          f32(
+            f32(basis.forward[0] * i.moveForward) +
+              f32(basis.right[0] * i.moveRight) +
+              f32(basis.up[0] * i.moveUp),
+          ) *
+            distance,
+      ),
+      f32(
+        prior.pose.position[1] +
+          f32(
+            f32(basis.forward[1] * i.moveForward) +
+              f32(basis.right[1] * i.moveRight) +
+              f32(basis.up[1] * i.moveUp),
+          ) *
+            distance,
+      ),
+      f32(
+        prior.pose.position[2] +
+          f32(
+            f32(basis.forward[2] * i.moveForward) +
+              f32(basis.right[2] * i.moveRight) +
+              f32(basis.up[2] * i.moveUp),
+          ) *
+            distance,
+      ),
     ] as const;
-    const pitchDegrees = Math.max(-89, Math.min(89, prior.pose.pitchDegrees + i.pitchDeltaDegrees));
+    const pitchDegrees = Math.max(-89, Math.min(89, f32(prior.pose.pitchDegrees + i.pitchDeltaDegrees)));
     const pose = {
       position,
-      yawDegrees: prior.pose.yawDegrees + i.yawDeltaDegrees,
+      yawDegrees: f32(prior.pose.yawDegrees + i.yawDeltaDegrees),
       pitchDegrees,
     };
     const snapshot: MutableCameraSnapshot = {

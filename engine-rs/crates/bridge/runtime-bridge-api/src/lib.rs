@@ -399,10 +399,127 @@ impl ReferenceBridge {
         }
     }
 
+    fn validate_create_request(request: &CameraCreateRequest) -> BridgeResult<()> {
+        if request.viewport.width == 0 || request.viewport.height == 0 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "viewport dimensions must be positive",
+            ));
+        }
+        if !(request.projection.fov_y_degrees.is_finite()
+            && request.projection.near.is_finite()
+            && request.projection.far.is_finite())
+            || request.projection.fov_y_degrees <= 0.0
+            || request.projection.fov_y_degrees >= 180.0
+            || request.projection.near <= 0.0
+            || request.projection.far <= request.projection.near
+        {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "invalid perspective projection parameters",
+            ));
+        }
+        if !request.initial_pose.position.iter().all(|v| v.is_finite())
+            || !request.initial_pose.yaw_degrees.is_finite()
+            || !request.initial_pose.pitch_degrees.is_finite()
+        {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "camera pose values must be finite",
+            ));
+        }
+        Ok(())
+    }
+
+    fn matrix_key(values: &[f32]) -> String {
+        values
+            .iter()
+            .map(|v| format!("{v:.3}"))
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
+    fn fnv1a64(text: &str) -> String {
+        let mut hash = 0xcbf29ce484222325u64;
+        for byte in text.as_bytes() {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        format!("{hash:016x}")
+    }
+
+    fn multiply_matrix4(a: [f32; 16], b: [f32; 16]) -> [f32; 16] {
+        let mut out = [0.0; 16];
+        for col in 0..4 {
+            for row in 0..4 {
+                let mut sum = 0.0;
+                for k in 0..4 {
+                    sum += a[k * 4 + row] * b[col * 4 + k];
+                }
+                out[col * 4 + row] = sum;
+            }
+        }
+        out
+    }
+
     fn projection_snapshot(
         snapshot: CameraSnapshot,
         viewport: protocol_view::ViewportSize,
     ) -> CameraProjectionSnapshot {
+        let right = snapshot.basis.right;
+        let up = snapshot.basis.up;
+        let forward = snapshot.basis.forward;
+        let position = snapshot.pose.position;
+        let dot_right = right[0] * position[0] + right[1] * position[1] + right[2] * position[2];
+        let dot_up = up[0] * position[0] + up[1] * position[1] + up[2] * position[2];
+        let dot_forward =
+            forward[0] * position[0] + forward[1] * position[1] + forward[2] * position[2];
+        let view_matrix = [
+            right[0],
+            up[0],
+            -forward[0],
+            0.0,
+            right[1],
+            up[1],
+            -forward[1],
+            0.0,
+            right[2],
+            up[2],
+            -forward[2],
+            0.0,
+            -dot_right,
+            -dot_up,
+            dot_forward,
+            1.0,
+        ];
+        let aspect = viewport.width as f32 / viewport.height as f32;
+        let f = 1.0 / (snapshot.projection.fov_y_degrees.to_radians() / 2.0).tan();
+        let near = snapshot.projection.near;
+        let far = snapshot.projection.far;
+        let projection_matrix = [
+            f / aspect,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            f,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            (far + near) / (near - far),
+            -1.0,
+            0.0,
+            0.0,
+            (2.0 * far * near) / (near - far),
+            0.0,
+        ];
+        let view_projection_matrix = Self::multiply_matrix4(projection_matrix, view_matrix);
+        let mut hash_values = Vec::with_capacity(48);
+        hash_values.extend_from_slice(&view_matrix);
+        hash_values.extend_from_slice(&projection_matrix);
+        hash_values.extend_from_slice(&view_projection_matrix);
+        let projection_hash = format!("fnv1a64:{}", Self::fnv1a64(&Self::matrix_key(&hash_values)));
         CameraProjectionSnapshot {
             camera: snapshot.camera,
             tick: snapshot.tick,
@@ -410,65 +527,10 @@ impl ReferenceBridge {
             basis: snapshot.basis,
             projection: snapshot.projection,
             viewport,
-            view_matrix: [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                -snapshot.pose.position[0],
-                -snapshot.pose.position[1],
-                -snapshot.pose.position[2],
-                1.0,
-            ],
-            projection_matrix: [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                -1.0,
-                -1.0,
-                0.0,
-                0.0,
-                -snapshot.projection.near * 2.0,
-                0.0,
-            ],
-            view_projection_matrix: [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                -snapshot.pose.position[1],
-                -1.0,
-                -1.0,
-                -snapshot.pose.position[0],
-                0.0,
-                -snapshot.projection.near * 2.0,
-                0.0,
-            ],
-            projection_hash: format!(
-                "sha256:reference-camera-{}-{}",
-                snapshot.camera.raw(),
-                snapshot.tick
-            ),
+            view_matrix,
+            projection_matrix,
+            view_projection_matrix,
+            projection_hash,
         }
     }
 }
@@ -590,6 +652,7 @@ impl RuntimeBridge for ReferenceBridge {
 
     fn create_camera(&mut self, request: CameraCreateRequest) -> BridgeResult<CameraSnapshot> {
         self.require_initialized("create_camera")?;
+        Self::validate_create_request(&request)?;
         let camera = protocol_view::CameraHandle::new(self.next_camera);
         self.next_camera += 1;
         let snapshot = CameraSnapshot {
@@ -616,7 +679,14 @@ impl RuntimeBridge for ReferenceBridge {
             )
         })?;
         let input = envelope.input;
-        if input.dt_seconds < 0.0 || input.move_speed_units_per_second < 0.0 {
+        let finite = input.move_forward.is_finite()
+            && input.move_right.is_finite()
+            && input.move_up.is_finite()
+            && input.yaw_delta_degrees.is_finite()
+            && input.pitch_delta_degrees.is_finite()
+            && input.dt_seconds.is_finite()
+            && input.move_speed_units_per_second.is_finite();
+        if !finite || input.dt_seconds < 0.0 || input.move_speed_units_per_second < 0.0 {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
                 "dt_seconds and move_speed_units_per_second must be non-negative",
@@ -811,7 +881,7 @@ mod tests {
             })
             .unwrap();
         assert_eq!(projected.view_matrix.len(), 16);
-        assert_eq!(projected.projection_hash, "sha256:reference-camera-1-1");
+        assert_eq!(projected.projection_hash, "fnv1a64:071327a4920ab097");
 
         assert_eq!(
             bridge

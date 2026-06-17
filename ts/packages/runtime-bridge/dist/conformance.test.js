@@ -5,6 +5,7 @@
 //     errors and deterministic behaviour matching the Rust ReferenceBridge.
 // (3) Native unavailable: the native factory throws a classified bridge error when
 //     the addon is not built (the expected state in offline CI).
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MANIFEST_OPERATIONS, MockRuntimeBridge, RuntimeBridgeError, createMockRuntimeBridge, createNativeRuntimeBridge, frameCursor, } from './index.js';
@@ -63,10 +64,36 @@ test('mock: camera view operations produce deterministic public evidence', () =>
     assert.notDeepEqual(moved.pose, created.pose);
     const projection = { camera: moved.camera, viewport: null };
     const snapshot = bridge.readCameraProjection(projection);
-    assert.equal(snapshot.projectionHash, 'sha256:mock-camera-1-1');
     assert.equal(snapshot.viewMatrix.length, 16);
     assert.equal(snapshot.projectionMatrix.length, 16);
     assert.equal(snapshot.viewProjectionMatrix.length, 16);
+});
+test('mock: camera-first-person-basic matches committed golden fixture', () => {
+    const fixtureUrl = new URL('../../../../harness/camera/goldens/camera-first-person-basic.json', import.meta.url);
+    const golden = JSON.parse(readFileSync(fixtureUrl, 'utf8'));
+    const bridge = createMockRuntimeBridge();
+    bridge.initializeEngine({ seed: 1 });
+    const created = bridge.createCamera({
+        initialPose: { position: [0, 1.6, 0], yawDegrees: 0, pitchDegrees: 0 },
+        projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
+        viewport: { width: 1280, height: 720 },
+    });
+    const moved = bridge.applyFirstPersonCameraInput({
+        camera: created.camera,
+        tick: 1,
+        input: {
+            moveForward: 1,
+            moveRight: 0,
+            moveUp: 0,
+            yawDeltaDegrees: 15,
+            pitchDeltaDegrees: -5,
+            dtSeconds: 1 / 60,
+            moveSpeedUnitsPerSecond: 3,
+        },
+    });
+    const projection = bridge.readCameraProjection({ camera: moved.camera, viewport: null });
+    assert.deepEqual(moved, golden.expected.moved);
+    assert.deepEqual(projection, golden.expected.projection);
 });
 test('mock: step before init throws a classified error', () => {
     const bridge = createMockRuntimeBridge();
