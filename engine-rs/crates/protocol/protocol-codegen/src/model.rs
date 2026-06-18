@@ -1976,6 +1976,8 @@ pub fn view_module() -> Module {
         ])
     };
 
+    let imports = vec![import("./voxel.js", &["Face", "VoxelCoord"])];
+
     let items = vec![
         Item::BrandedId {
             doc: "Opaque bridge-owned camera handle for runtime view/projection state.".to_string(),
@@ -2076,11 +2078,136 @@ pub fn view_module() -> Module {
                 f("projectionHash", string()),
             ],
         ),
+        iface(
+            "Explicit V1 editor/testbench camera collision shape.",
+            "CameraCollisionShape",
+            vec![f("halfExtents", tuple3())],
+        ),
+        Item::Alias {
+            doc: "The intentionally simple collision policy for V1 camera movement.".to_string(),
+            name: "CameraCollisionPolicyMode".to_string(),
+            ty: TsType::StringEnum(vec!["axis_separable_slide".to_string()]),
+        },
+        iface(
+            "Bounded collision policy evidence.",
+            "CameraCollisionPolicy",
+            vec![
+                f("mode", r("CameraCollisionPolicyMode")),
+                f("maxIterations", num()),
+            ],
+        ),
+        iface(
+            "One constrained camera input proposal for a specific tick/grid.",
+            "CollisionConstrainedCameraInputEnvelope",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("grid", num()),
+                f("input", r("FirstPersonCameraInput")),
+                f("tick", num()),
+                f("shape", r("CameraCollisionShape")),
+                f("policy", r("CameraCollisionPolicy")),
+            ],
+        ),
+        iface(
+            "Axis-aligned world AABB queried against voxel collision.",
+            "CollisionAabbEvidence",
+            vec![f("min", tuple3()), f("max", tuple3())],
+        ),
+        Item::Alias {
+            doc: "Axis blocked by the V1 axis-separable collision policy.".to_string(),
+            name: "CollisionAxis".to_string(),
+            ty: TsType::StringEnum(vec!["x".to_string(), "y".to_string(), "z".to_string()]),
+        },
+        iface(
+            "Collision details for an attempted camera move.",
+            "CameraCollisionEvidence",
+            vec![
+                f("grid", num()),
+                f("shape", r("CameraCollisionShape")),
+                f("policy", r("CameraCollisionPolicy")),
+                f("collided", boolean()),
+                f("blockedAxes", TsType::array(r("CollisionAxis"))),
+                f("correction", tuple3()),
+                f("queriedAabb", r("CollisionAabbEvidence")),
+                f("worldHash", string()),
+                f("collisionProjectionHash", string()),
+            ],
+        ),
+        iface(
+            "Before/attempted/after camera evidence for constrained movement.",
+            "CameraCollisionSnapshot",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("tick", num()),
+                f("before", r("CameraSnapshot")),
+                f("attempted", r("CameraSnapshot")),
+                f("after", r("CameraSnapshot")),
+                f("collision", r("CameraCollisionEvidence")),
+                f("movementHash", string()),
+            ],
+        ),
+        Item::Alias {
+            doc: "Screen-point coordinate convention.".to_string(),
+            name: "ScreenPointSpace".to_string(),
+            ty: TsType::StringEnum(vec!["normalized_0_1".to_string(), "pixel".to_string()]),
+        },
+        iface(
+            "Screen/crosshair point used to derive a camera ray.",
+            "ScreenPoint",
+            vec![
+                f("x", num()),
+                f("y", num()),
+                f("space", r("ScreenPointSpace")),
+            ],
+        ),
+        iface(
+            "Request to derive a pick ray from bridge-owned camera/projection evidence.",
+            "ScreenPointToPickRayRequest",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("grid", num()),
+                f("viewport", TsType::nullable(r("ViewportSize"))),
+                f("screenPoint", r("ScreenPoint")),
+                f("maxDistance", num()),
+            ],
+        ),
+        iface(
+            "Camera-derived world-space ray plus source projection hash.",
+            "PickRaySnapshot",
+            vec![
+                f("camera", r("CameraHandle")),
+                f("tick", num()),
+                f("grid", num()),
+                f("screenPoint", r("ScreenPoint")),
+                f("origin", tuple3()),
+                f("direction", tuple3()),
+                f("maxDistance", num()),
+                f("cameraProjectionHash", string()),
+                f("rayHash", string()),
+            ],
+        ),
+        Item::Alias {
+            doc: "Classified selection outcome.".to_string(),
+            name: "VoxelSelectionOutcome".to_string(),
+            ty: TsType::StringEnum(vec!["hit".to_string(), "miss".to_string()]),
+        },
+        iface(
+            "Combined camera-to-ray plus authority raycast selection evidence.",
+            "VoxelSelectionSnapshot",
+            vec![
+                f("pickRay", r("PickRaySnapshot")),
+                f("outcome", r("VoxelSelectionOutcome")),
+                f("selectedVoxel", TsType::nullable(r("VoxelCoord"))),
+                f("selectedFace", TsType::nullable(r("Face"))),
+                f("editAnchor", TsType::nullable(r("VoxelCoord"))),
+                f("selectionHash", string()),
+            ],
+        ),
     ];
 
     Module {
         name: "view",
-        imports: vec![],
+        imports,
         items,
     }
 }

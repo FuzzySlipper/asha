@@ -1,8 +1,8 @@
-import type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, Face, PickRay, PickResult, RenderFrameDiff, VoxelCoord } from '@asha/contracts';
+import type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, RenderFrameDiff } from '@asha/contracts';
 import { type NativeAddon } from '@asha/native-bridge';
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
-export type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, } from '@asha/contracts';
+export type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, PickRaySnapshot, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, } from '@asha/contracts';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export type EngineHandle = number & {
     readonly __brand: 'EngineHandle';
@@ -62,74 +62,6 @@ export interface WorldSaveSummary {
     readonly artifactsWritten: number;
     readonly compactedEdits: number;
     readonly retainedEdits: number;
-}
-export interface CameraCollisionShape {
-    readonly halfExtents: readonly [number, number, number];
-}
-export interface CameraCollisionPolicy {
-    readonly mode: 'axis_separable_slide';
-    readonly maxIterations: number;
-}
-export interface CollisionConstrainedCameraInputEnvelope {
-    readonly camera: CameraSnapshot['camera'];
-    readonly grid: number;
-    readonly input: FirstPersonCameraInputEnvelope['input'];
-    readonly tick: number;
-    readonly shape: CameraCollisionShape;
-    readonly policy: CameraCollisionPolicy;
-}
-export interface CollisionAabbEvidence {
-    readonly min: readonly [number, number, number];
-    readonly max: readonly [number, number, number];
-}
-export interface CameraCollisionEvidence {
-    readonly grid: number;
-    readonly shape: CameraCollisionShape;
-    readonly policy: CameraCollisionPolicy;
-    readonly collided: boolean;
-    readonly blockedAxes: readonly ('x' | 'y' | 'z')[];
-    readonly correction: readonly [number, number, number];
-    readonly queriedAabb: CollisionAabbEvidence;
-    readonly worldHash: string;
-    readonly collisionProjectionHash: string;
-}
-export interface CameraCollisionSnapshot {
-    readonly camera: CameraSnapshot['camera'];
-    readonly tick: number;
-    readonly before: CameraSnapshot;
-    readonly attempted: CameraSnapshot;
-    readonly after: CameraSnapshot;
-    readonly collision: CameraCollisionEvidence;
-    readonly movementHash: string;
-}
-export interface ScreenPoint {
-    readonly x: number;
-    readonly y: number;
-    readonly space: 'normalized_0_1' | 'pixel';
-}
-export interface ScreenPointToPickRayRequest {
-    readonly camera: CameraSnapshot['camera'];
-    readonly grid: number;
-    readonly viewport: CameraProjectionRequest['viewport'];
-    readonly screenPoint: ScreenPoint;
-    readonly maxDistance: number;
-}
-export interface PickRaySnapshot {
-    readonly camera: CameraSnapshot['camera'];
-    readonly tick: number;
-    readonly grid: number;
-    readonly screenPoint: ScreenPoint;
-    readonly ray: PickRay;
-    readonly cameraProjectionHash: string;
-    readonly rayHash: string;
-}
-export interface VoxelSelectionSnapshot {
-    readonly pickRay: PickRaySnapshot;
-    readonly pickResult: PickResult;
-    readonly selectedVoxel: VoxelCoord | null;
-    readonly selectedFace: Face | null;
-    readonly editAnchor: VoxelCoord | null;
-    readonly selectionHash: string;
 }
 export interface VoxelMeshEvidenceRequest {
     readonly grid: number;

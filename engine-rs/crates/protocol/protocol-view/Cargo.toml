@@ -3,5 +3,8 @@ name    = "protocol-view"
 version.workspace = true
 edition.workspace = true
 
+[dependencies]
+core-space = { path = "../../foundation/core-space" }
+
 [lints]
 workspace = true

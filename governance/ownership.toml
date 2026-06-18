@@ -96,7 +96,7 @@ may_not_depend_on = ["core-state", "sim-kernel"]
 
 [crate."engine-rs/crates/protocol/protocol-view"]
 lane = "contract-steward"
-may_depend_on = []
+may_depend_on = ["core-space"]
 may_not_depend_on = ["core-state", "sim-kernel", "render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/protocol/protocol-replay"]

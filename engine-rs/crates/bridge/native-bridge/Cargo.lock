@@ -425,6 +425,9 @@ dependencies = [
 [[package]]
 name = "protocol-view"
 version = "0.1.0"
+dependencies = [
+ "core-space",
+]
 
 [[package]]
 name = "quote"

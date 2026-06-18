@@ -104,6 +104,40 @@ test('mock: camera view operations produce deterministic public evidence', () =>
   assert.equal(snapshot.viewProjectionMatrix.length, 16);
 });
 
+test('mock: selectVoxel derives camera ray and edit anchor from generated view contracts', () => {
+  const bridge = createMockRuntimeBridge();
+  bridge.initializeEngine({ seed: 1 });
+  const camera = bridge.createCamera({
+    initialPose: { position: [1.5, 1.5, 4], yawDegrees: 0, pitchDegrees: 0 },
+    projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
+    viewport: { width: 1280, height: 720 },
+  });
+
+  const selection = bridge.selectVoxel({
+    camera: camera.camera,
+    grid: 1,
+    viewport: null,
+    screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1' },
+    maxDistance: 10,
+  });
+
+  assert.equal(selection.outcome, 'hit');
+  assert.deepEqual(selection.pickRay.direction, [0, 0, -1]);
+  assert.deepEqual(selection.selectedVoxel, { x: 1, y: 1, z: 0 });
+  assert.equal(selection.selectedFace, 'posZ');
+  assert.deepEqual(selection.editAnchor, { x: 1, y: 1, z: 1 });
+
+  const miss = bridge.selectVoxel({
+    camera: camera.camera,
+    grid: 1,
+    viewport: null,
+    screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1' },
+    maxDistance: 1,
+  });
+  assert.equal(miss.outcome, 'miss');
+  assert.equal(miss.selectedVoxel, null);
+});
+
 test('mock: camera-first-person-basic matches committed golden fixture', () => {
   const fixtureUrl = new URL(
     '../../../../harness/camera/goldens/camera-first-person-basic.json',

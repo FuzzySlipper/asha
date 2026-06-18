@@ -14,6 +14,11 @@ import type {
   CameraProjectionRequest,
   CameraProjectionSnapshot,
   CameraSnapshot,
+  CameraCollisionSnapshot,
+  CollisionConstrainedCameraInputEnvelope,
+  ScreenPointToPickRayRequest,
+  PickRaySnapshot,
+  VoxelSelectionSnapshot,
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,
@@ -38,6 +43,11 @@ export type {
   CameraProjectionRequest,
   CameraProjectionSnapshot,
   CameraSnapshot,
+  CameraCollisionSnapshot,
+  CollisionConstrainedCameraInputEnvelope,
+  ScreenPointToPickRayRequest,
+  PickRaySnapshot,
+  VoxelSelectionSnapshot,
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,
@@ -159,76 +169,6 @@ export interface WorldSaveSummary {
   readonly artifactsWritten: number;
   readonly compactedEdits: number;
   readonly retainedEdits: number;
-}
-// Collision-constrained camera and selection evidence (#2647). Prototype DTOs
-// until generated protocol_view contracts grow the same shapes.
-export interface CameraCollisionShape {
-  readonly halfExtents: readonly [number, number, number];
-}
-export interface CameraCollisionPolicy {
-  readonly mode: 'axis_separable_slide';
-  readonly maxIterations: number;
-}
-export interface CollisionConstrainedCameraInputEnvelope {
-  readonly camera: CameraSnapshot['camera'];
-  readonly grid: number;
-  readonly input: FirstPersonCameraInputEnvelope['input'];
-  readonly tick: number;
-  readonly shape: CameraCollisionShape;
-  readonly policy: CameraCollisionPolicy;
-}
-export interface CollisionAabbEvidence {
-  readonly min: readonly [number, number, number];
-  readonly max: readonly [number, number, number];
-}
-export interface CameraCollisionEvidence {
-  readonly grid: number;
-  readonly shape: CameraCollisionShape;
-  readonly policy: CameraCollisionPolicy;
-  readonly collided: boolean;
-  readonly blockedAxes: readonly ('x' | 'y' | 'z')[];
-  readonly correction: readonly [number, number, number];
-  readonly queriedAabb: CollisionAabbEvidence;
-  readonly worldHash: string;
-  readonly collisionProjectionHash: string;
-}
-export interface CameraCollisionSnapshot {
-  readonly camera: CameraSnapshot['camera'];
-  readonly tick: number;
-  readonly before: CameraSnapshot;
-  readonly attempted: CameraSnapshot;
-  readonly after: CameraSnapshot;
-  readonly collision: CameraCollisionEvidence;
-  readonly movementHash: string;
-}
-export interface ScreenPoint {
-  readonly x: number;
-  readonly y: number;
-  readonly space: 'normalized_0_1' | 'pixel';
-}
-export interface ScreenPointToPickRayRequest {
-  readonly camera: CameraSnapshot['camera'];
-  readonly grid: number;
-  readonly viewport: CameraProjectionRequest['viewport'];
-  readonly screenPoint: ScreenPoint;
-  readonly maxDistance: number;
-}
-export interface PickRaySnapshot {
-  readonly camera: CameraSnapshot['camera'];
-  readonly tick: number;
-  readonly grid: number;
-  readonly screenPoint: ScreenPoint;
-  readonly ray: PickRay;
-  readonly cameraProjectionHash: string;
-  readonly rayHash: string;
-}
-export interface VoxelSelectionSnapshot {
-  readonly pickRay: PickRaySnapshot;
-  readonly pickResult: PickResult;
-  readonly selectedVoxel: VoxelCoord | null;
-  readonly selectedFace: Face | null;
-  readonly editAnchor: VoxelCoord | null;
-  readonly selectionHash: string;
 }
 // Compact voxel mesh/remesh evidence (#2646). Prototype DTOs until generated
 // protocol_render contracts grow the same shapes.
@@ -577,36 +517,70 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (camera === undefined) {
       throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
     }
+    if (request.grid !== 1) {
+      throw new RuntimeBridgeError('invalid_input', 'selectVoxel request targets an unknown grid');
+    }
+    finite(request.maxDistance, 'maxDistance');
+    if (request.maxDistance <= 0) {
+      throw new RuntimeBridgeError('invalid_input', 'maxDistance must be positive');
+    }
     const viewport = request.viewport ?? camera.viewport;
     validateViewport(viewport);
     const sx = request.screenPoint.space === 'pixel' ? request.screenPoint.x / viewport.width : request.screenPoint.x;
     const sy = request.screenPoint.space === 'pixel' ? request.screenPoint.y / viewport.height : request.screenPoint.y;
-    if (sx < 0 || sx > 1 || sy < 0 || sy > 1) {
+    if (!Number.isFinite(sx) || !Number.isFinite(sy) || sx < 0 || sx > 1 || sy < 0 || sy > 1) {
       throw new RuntimeBridgeError('invalid_input', 'screen point must be inside the viewport');
     }
-    const ray: PickRay = {
-      grid: request.grid,
-      origin: [camera.pose.position[0], camera.pose.position[1], camera.pose.position[2]],
-      direction: [camera.basis.forward[0], camera.basis.forward[1], camera.basis.forward[2]],
-      maxDistance: request.maxDistance,
-    };
-    const pickResult = this.pickVoxel(ray);
-    const pickRay: PickRaySnapshot = {
+    const ndcX = sx * 2 - 1;
+    const ndcY = 1 - sy * 2;
+    const tanY = Math.tan((camera.projection.fovYDegrees * Math.PI) / 360);
+    const tanX = tanY * (viewport.width / viewport.height);
+    const raw = [
+      camera.basis.forward[0] + camera.basis.right[0] * ndcX * tanX + camera.basis.up[0] * ndcY * tanY,
+      camera.basis.forward[1] + camera.basis.right[1] * ndcX * tanX + camera.basis.up[1] * ndcY * tanY,
+      camera.basis.forward[2] + camera.basis.right[2] * ndcX * tanX + camera.basis.up[2] * ndcY * tanY,
+    ] as const;
+    const len = Math.hypot(raw[0], raw[1], raw[2]);
+    if (!Number.isFinite(len) || len <= 0) {
+      throw new RuntimeBridgeError('invalid_input', 'derived pick ray direction is invalid');
+    }
+    const origin = [camera.pose.position[0], camera.pose.position[1], camera.pose.position[2]] as const;
+    const direction = [raw[0] / len, raw[1] / len, raw[2] / len] as const;
+    const pickRay = {
       camera: request.camera,
       tick: camera.tick,
       grid: request.grid,
       screenPoint: request.screenPoint,
-      ray,
+      origin,
+      direction,
+      maxDistance: request.maxDistance,
       cameraProjectionHash: projectionSnapshot(camera, viewport).projectionHash,
-      rayHash: `fnv1a64:${fnv1a64(`${request.camera}|${request.grid}|${ray.origin.join(',')}|${ray.direction.join(',')}`)}`,
+      rayHash: `fnv1a64:${fnv1a64(`${request.camera}|${request.grid}|${origin.join(',')}|${direction.join(',')}|${request.maxDistance}`)}`,
     };
+
+    // Mock fixture mirrors the canonical launch world enough for downstream
+    // conformance: a flat solid terrain slab covering x/y [-16,16) at z=[0,1).
+    let selectedVoxel: VoxelCoord | null = null;
+    let selectedFace: Face | null = null;
+    let editAnchor: VoxelCoord | null = null;
+    if (direction[2] < 0) {
+      const t = (1 - origin[2]) / direction[2];
+      const x = origin[0] + direction[0] * t;
+      const y = origin[1] + direction[1] * t;
+      if (t >= 0 && t <= request.maxDistance && x >= -16 && x < 16 && y >= 0 && y < 16) {
+        selectedVoxel = { x: Math.floor(x), y: Math.floor(y), z: 0 };
+        selectedFace = 'posZ';
+        editAnchor = { x: selectedVoxel.x, y: selectedVoxel.y, z: 1 };
+      }
+    }
+    const outcome = selectedVoxel === null ? 'miss' : 'hit';
     return {
       pickRay,
-      pickResult,
-      selectedVoxel: null,
-      selectedFace: null,
-      editAnchor: null,
-      selectionHash: `fnv1a64:${fnv1a64(`${pickRay.rayHash}|${JSON.stringify(pickResult)}`)}`,
+      outcome,
+      selectedVoxel,
+      selectedFace,
+      editAnchor,
+      selectionHash: `fnv1a64:${fnv1a64(`${pickRay.rayHash}|${outcome}|${JSON.stringify(selectedVoxel)}|${JSON.stringify(editAnchor)}`)}`,
     };
   }
 

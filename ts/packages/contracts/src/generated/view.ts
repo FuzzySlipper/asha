@@ -6,6 +6,8 @@
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
 
+import type { Face, VoxelCoord } from './voxel.js';
+
 // Opaque bridge-owned camera handle for runtime view/projection state.
 export type CameraHandle = number & { readonly __brand: 'CameraHandle' };
 export const cameraHandle = (raw: number): CameraHandle => raw as CameraHandle;
@@ -90,4 +92,106 @@ export interface CameraProjectionSnapshot {
   readonly projectionMatrix: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   readonly viewProjectionMatrix: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
   readonly projectionHash: string;
+}
+
+// Explicit V1 editor/testbench camera collision shape.
+export interface CameraCollisionShape {
+  readonly halfExtents: readonly [number, number, number];
+}
+
+// The intentionally simple collision policy for V1 camera movement.
+export type CameraCollisionPolicyMode = 'axis_separable_slide';
+
+// Bounded collision policy evidence.
+export interface CameraCollisionPolicy {
+  readonly mode: CameraCollisionPolicyMode;
+  readonly maxIterations: number;
+}
+
+// One constrained camera input proposal for a specific tick/grid.
+export interface CollisionConstrainedCameraInputEnvelope {
+  readonly camera: CameraHandle;
+  readonly grid: number;
+  readonly input: FirstPersonCameraInput;
+  readonly tick: number;
+  readonly shape: CameraCollisionShape;
+  readonly policy: CameraCollisionPolicy;
+}
+
+// Axis-aligned world AABB queried against voxel collision.
+export interface CollisionAabbEvidence {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+
+// Axis blocked by the V1 axis-separable collision policy.
+export type CollisionAxis = 'x' | 'y' | 'z';
+
+// Collision details for an attempted camera move.
+export interface CameraCollisionEvidence {
+  readonly grid: number;
+  readonly shape: CameraCollisionShape;
+  readonly policy: CameraCollisionPolicy;
+  readonly collided: boolean;
+  readonly blockedAxes: readonly CollisionAxis[];
+  readonly correction: readonly [number, number, number];
+  readonly queriedAabb: CollisionAabbEvidence;
+  readonly worldHash: string;
+  readonly collisionProjectionHash: string;
+}
+
+// Before/attempted/after camera evidence for constrained movement.
+export interface CameraCollisionSnapshot {
+  readonly camera: CameraHandle;
+  readonly tick: number;
+  readonly before: CameraSnapshot;
+  readonly attempted: CameraSnapshot;
+  readonly after: CameraSnapshot;
+  readonly collision: CameraCollisionEvidence;
+  readonly movementHash: string;
+}
+
+// Screen-point coordinate convention.
+export type ScreenPointSpace = 'normalized_0_1' | 'pixel';
+
+// Screen/crosshair point used to derive a camera ray.
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly space: ScreenPointSpace;
+}
+
+// Request to derive a pick ray from bridge-owned camera/projection evidence.
+export interface ScreenPointToPickRayRequest {
+  readonly camera: CameraHandle;
+  readonly grid: number;
+  readonly viewport: ViewportSize | null;
+  readonly screenPoint: ScreenPoint;
+  readonly maxDistance: number;
+}
+
+// Camera-derived world-space ray plus source projection hash.
+export interface PickRaySnapshot {
+  readonly camera: CameraHandle;
+  readonly tick: number;
+  readonly grid: number;
+  readonly screenPoint: ScreenPoint;
+  readonly origin: readonly [number, number, number];
+  readonly direction: readonly [number, number, number];
+  readonly maxDistance: number;
+  readonly cameraProjectionHash: string;
+  readonly rayHash: string;
+}
+
+// Classified selection outcome.
+export type VoxelSelectionOutcome = 'hit' | 'miss';
+
+// Combined camera-to-ray plus authority raycast selection evidence.
+export interface VoxelSelectionSnapshot {
+  readonly pickRay: PickRaySnapshot;
+  readonly outcome: VoxelSelectionOutcome;
+  readonly selectedVoxel: VoxelCoord | null;
+  readonly selectedFace: Face | null;
+  readonly editAnchor: VoxelCoord | null;
+  readonly selectionHash: string;
 }

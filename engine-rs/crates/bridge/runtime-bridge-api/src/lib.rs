@@ -26,9 +26,15 @@ use core_space::{
     ChunkCoord, ChunkDims, Direction6, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,
 };
 use core_voxel::{MaterialCatalog, VoxelMaterialId, VoxelValue};
+#[cfg(test)]
+use protocol_view::CameraCollisionPolicy;
 use protocol_view::{
-    CameraCreateRequest, CameraPose, CameraProjectionRequest, CameraProjectionSnapshot,
-    CameraSnapshot, FirstPersonCameraInput, FirstPersonCameraInputEnvelope, ViewportSize,
+    CameraCollisionEvidence, CameraCollisionPolicyMode, CameraCollisionShape,
+    CameraCollisionSnapshot, CameraCreateRequest, CameraPose, CameraProjectionRequest,
+    CameraProjectionSnapshot, CameraSnapshot, CollisionAabbEvidence, CollisionAxis,
+    CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInput,
+    FirstPersonCameraInputEnvelope, PickRaySnapshot, ScreenPoint, ScreenPointSpace,
+    ScreenPointToPickRayRequest, ViewportSize, VoxelSelectionOutcome, VoxelSelectionSnapshot,
 };
 use rule_voxel_edit::VoxelEditRejection;
 use svc_collision::{CollisionProjection, Ray};
@@ -301,128 +307,6 @@ pub enum PickRejection {
 pub enum PickResult {
     Hit(VoxelHit),
     Miss(PickRejection),
-}
-
-// ── Collision-constrained camera + selection evidence (#2647) ────────────────
-
-/// Explicit V1 editor/testbench camera collision shape. Capsule/controller
-/// semantics are intentionally deferred; this is not gameplay authority.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CameraCollisionShape {
-    pub half_extents: [f32; 3],
-}
-
-/// The intentionally simple collision policy for V1 camera movement.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CameraCollisionPolicyMode {
-    AxisSeparableSlide,
-}
-
-/// Bounded collision policy evidence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CameraCollisionPolicy {
-    pub mode: CameraCollisionPolicyMode,
-    pub max_iterations: u8,
-}
-
-/// One constrained camera input proposal for a specific tick/grid.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CollisionConstrainedCameraInputEnvelope {
-    pub camera: protocol_view::CameraHandle,
-    pub grid: u64,
-    pub input: FirstPersonCameraInput,
-    pub tick: u64,
-    pub shape: CameraCollisionShape,
-    pub policy: CameraCollisionPolicy,
-}
-
-/// Axis-aligned world AABB queried against voxel collision.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct CollisionAabbEvidence {
-    pub min: [f32; 3],
-    pub max: [f32; 3],
-}
-
-/// Axis blocked by the V1 axis-separable collision policy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum CollisionAxis {
-    X,
-    Y,
-    Z,
-}
-
-/// Collision details for an attempted camera move.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CameraCollisionEvidence {
-    pub grid: u64,
-    pub shape: CameraCollisionShape,
-    pub policy: CameraCollisionPolicy,
-    pub collided: bool,
-    pub blocked_axes: Vec<CollisionAxis>,
-    pub correction: [f32; 3],
-    pub queried_aabb: CollisionAabbEvidence,
-    pub world_hash: String,
-    pub collision_projection_hash: String,
-}
-
-/// Before/attempted/after camera evidence for constrained movement.
-#[derive(Debug, Clone, PartialEq)]
-pub struct CameraCollisionSnapshot {
-    pub camera: protocol_view::CameraHandle,
-    pub tick: u64,
-    pub before: CameraSnapshot,
-    pub attempted: CameraSnapshot,
-    pub after: CameraSnapshot,
-    pub collision: CameraCollisionEvidence,
-    pub movement_hash: String,
-}
-
-/// Screen-point coordinate convention.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ScreenPointSpace {
-    Normalized01,
-    Pixel,
-}
-
-/// Screen/crosshair point used to derive a camera ray.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ScreenPoint {
-    pub x: f32,
-    pub y: f32,
-    pub space: ScreenPointSpace,
-}
-
-/// Request to derive a pick ray from bridge-owned camera/projection evidence.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ScreenPointToPickRayRequest {
-    pub camera: protocol_view::CameraHandle,
-    pub grid: u64,
-    pub viewport: Option<ViewportSize>,
-    pub screen_point: ScreenPoint,
-    pub max_distance: f64,
-}
-
-/// Camera-derived world-space ray plus source projection hash.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PickRaySnapshot {
-    pub camera: protocol_view::CameraHandle,
-    pub tick: u64,
-    pub grid: u64,
-    pub screen_point: ScreenPoint,
-    pub ray: PickRay,
-    pub camera_projection_hash: String,
-    pub ray_hash: String,
-}
-
-/// Combined camera-to-ray plus authority raycast selection evidence.
-#[derive(Debug, Clone, PartialEq)]
-pub struct VoxelSelectionSnapshot {
-    pub pick_ray: PickRaySnapshot,
-    pub pick_result: PickResult,
-    pub selected_voxel: Option<VoxelCoord>,
-    pub selected_face: Option<Face>,
-    pub edit_anchor: Option<VoxelCoord>,
-    pub selection_hash: String,
 }
 
 // ── Voxel mesh/remesh evidence (basic graphical voxel proof, #2646) ───────────
@@ -1059,7 +943,9 @@ impl ReferenceBridge {
             tick: snapshot.tick,
             grid: request.grid,
             screen_point: request.screen_point,
-            ray,
+            origin: ray.origin,
+            direction: ray.direction,
+            max_distance: ray.max_distance,
             camera_projection_hash: projection_hash,
             ray_hash,
         })
@@ -1291,7 +1177,17 @@ impl RuntimeBridge for ReferenceBridge {
             )
         })?;
         let pick_ray = Self::pick_ray_snapshot(snapshot, request)?;
-        let pick_result = self.pick_voxel(pick_ray.ray)?;
+        let ray = PickRay {
+            grid: pick_ray.grid,
+            origin: pick_ray.origin,
+            direction: pick_ray.direction,
+            max_distance: pick_ray.max_distance,
+        };
+        let pick_result = self.pick_voxel(ray)?;
+        let outcome = match pick_result {
+            PickResult::Hit(_) => VoxelSelectionOutcome::Hit,
+            PickResult::Miss(_) => VoxelSelectionOutcome::Miss,
+        };
         let (selected_voxel, selected_face, edit_anchor) = match pick_result {
             PickResult::Hit(hit) => {
                 let dir = match hit.face {
@@ -1319,7 +1215,7 @@ impl RuntimeBridge for ReferenceBridge {
         );
         Ok(VoxelSelectionSnapshot {
             pick_ray,
-            pick_result,
+            outcome,
             selected_voxel,
             selected_face,
             edit_anchor,
@@ -1892,7 +1788,7 @@ mod tests {
                 max_distance: 10.0,
             })
             .unwrap();
-        assert_eq!(selection.pick_ray.ray.direction, [0.0, 0.0, -1.0]);
+        assert_eq!(selection.pick_ray.direction, [0.0, 0.0, -1.0]);
         assert_eq!(selection.selected_voxel, Some(VoxelCoord::new(1, 1, 0)));
         assert_eq!(selection.selected_face, Some(Face::PosZ));
         assert_eq!(selection.edit_anchor, Some(VoxelCoord::new(1, 1, 1)));
@@ -1939,10 +1835,7 @@ mod tests {
                 max_distance: 1.0,
             })
             .unwrap();
-        assert!(matches!(
-            selection.pick_result,
-            PickResult::Miss(PickRejection::NoHit)
-        ));
+        assert_eq!(selection.outcome, VoxelSelectionOutcome::Miss);
         assert_eq!(selection.selected_voxel, None);
         assert_eq!(selection.edit_anchor, None);
     }

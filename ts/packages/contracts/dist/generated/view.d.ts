@@ -1,3 +1,4 @@
+import type { Face, VoxelCoord } from './voxel.js';
 export type CameraHandle = number & {
     readonly __brand: 'CameraHandle';
 };
@@ -63,5 +64,79 @@ export interface CameraProjectionSnapshot {
     readonly projectionMatrix: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     readonly viewProjectionMatrix: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
     readonly projectionHash: string;
+}
+export interface CameraCollisionShape {
+    readonly halfExtents: readonly [number, number, number];
+}
+export type CameraCollisionPolicyMode = 'axis_separable_slide';
+export interface CameraCollisionPolicy {
+    readonly mode: CameraCollisionPolicyMode;
+    readonly maxIterations: number;
+}
+export interface CollisionConstrainedCameraInputEnvelope {
+    readonly camera: CameraHandle;
+    readonly grid: number;
+    readonly input: FirstPersonCameraInput;
+    readonly tick: number;
+    readonly shape: CameraCollisionShape;
+    readonly policy: CameraCollisionPolicy;
+}
+export interface CollisionAabbEvidence {
+    readonly min: readonly [number, number, number];
+    readonly max: readonly [number, number, number];
+}
+export type CollisionAxis = 'x' | 'y' | 'z';
+export interface CameraCollisionEvidence {
+    readonly grid: number;
+    readonly shape: CameraCollisionShape;
+    readonly policy: CameraCollisionPolicy;
+    readonly collided: boolean;
+    readonly blockedAxes: readonly CollisionAxis[];
+    readonly correction: readonly [number, number, number];
+    readonly queriedAabb: CollisionAabbEvidence;
+    readonly worldHash: string;
+    readonly collisionProjectionHash: string;
+}
+export interface CameraCollisionSnapshot {
+    readonly camera: CameraHandle;
+    readonly tick: number;
+    readonly before: CameraSnapshot;
+    readonly attempted: CameraSnapshot;
+    readonly after: CameraSnapshot;
+    readonly collision: CameraCollisionEvidence;
+    readonly movementHash: string;
+}
+export type ScreenPointSpace = 'normalized_0_1' | 'pixel';
+export interface ScreenPoint {
+    readonly x: number;
+    readonly y: number;
+    readonly space: ScreenPointSpace;
+}
+export interface ScreenPointToPickRayRequest {
+    readonly camera: CameraHandle;
+    readonly grid: number;
+    readonly viewport: ViewportSize | null;
+    readonly screenPoint: ScreenPoint;
+    readonly maxDistance: number;
+}
+export interface PickRaySnapshot {
+    readonly camera: CameraHandle;
+    readonly tick: number;
+    readonly grid: number;
+    readonly screenPoint: ScreenPoint;
+    readonly origin: readonly [number, number, number];
+    readonly direction: readonly [number, number, number];
+    readonly maxDistance: number;
+    readonly cameraProjectionHash: string;
+    readonly rayHash: string;
+}
+export type VoxelSelectionOutcome = 'hit' | 'miss';
+export interface VoxelSelectionSnapshot {
+    readonly pickRay: PickRaySnapshot;
+    readonly outcome: VoxelSelectionOutcome;
+    readonly selectedVoxel: VoxelCoord | null;
+    readonly selectedFace: Face | null;
+    readonly editAnchor: VoxelCoord | null;
+    readonly selectionHash: string;
 }
 //# sourceMappingURL=view.d.ts.map
