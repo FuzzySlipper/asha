@@ -52,6 +52,7 @@ test('manifest exposes public camera view operations', () => {
   assert.deepEqual(
     cameraOps.map((op) => [op.manifestName, op.facadeMethod, op.surface]),
     [
+      ['apply_collision_constrained_camera_input', 'applyCollisionConstrainedCameraInput', 'stable'],
       ['create_camera', 'createCamera', 'stable'],
       ['apply_first_person_camera_input', 'applyFirstPersonCameraInput', 'stable'],
       ['read_camera_projection', 'readCameraProjection', 'stable'],

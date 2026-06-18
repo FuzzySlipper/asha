@@ -56,6 +56,22 @@ errors = "RuntimeBridgeError"
 summary = "Raycast a world-space PickRay against authority voxel state and return the nearest classified VoxelHit (or a classified miss). Rust owns the voxel-grid raycast; the renderer only builds the ray."
 
 [[operation]]
+name = "apply_collision_constrained_camera_input"
+surface = "stable"
+input = "protocol_view::CollisionConstrainedCameraInputEnvelope"
+output = "protocol_view::CameraCollisionSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Apply first-person view input while constraining translation against the authority-derived voxel collision projection; returns before/attempted/after pose plus collision evidence."
+
+[[operation]]
+name = "select_voxel"
+surface = "stable"
+input = "protocol_view::ScreenPointToPickRayRequest"
+output = "protocol_view::VoxelSelectionSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Derive a screen/crosshair pick ray from bridge-owned camera/projection evidence, raycast it against authority voxel state, and return selection/edit-anchor evidence."
+
+[[operation]]
 name = "read_voxel_mesh_evidence"
 surface = "stable"
 input = "protocol_render::VoxelMeshEvidenceRequest"

@@ -11,6 +11,8 @@ operations are replay/devtools-only.
 | `step_simulation` | stable | `protocol_runtime::StepInputEnvelope` | `protocol_runtime::StepResult` | `RuntimeBridgeError` |
 | `submit_commands` | stable | `protocol_voxel::CommandBatch` | `protocol_voxel::CommandResult` | `RuntimeBridgeError` |
 | `pick_voxel` | stable | `protocol_voxel::PickRay` | `protocol_voxel::PickResult` | `RuntimeBridgeError` |
+| `apply_collision_constrained_camera_input` | stable | `protocol_view::CollisionConstrainedCameraInputEnvelope` | `protocol_view::CameraCollisionSnapshot` | `RuntimeBridgeError` |
+| `select_voxel` | stable | `protocol_view::ScreenPointToPickRayRequest` | `protocol_view::VoxelSelectionSnapshot` | `RuntimeBridgeError` |
 | `read_voxel_mesh_evidence` | stable | `protocol_render::VoxelMeshEvidenceRequest` | `protocol_render::VoxelMeshEvidenceSnapshot` | `RuntimeBridgeError` |
 | `read_render_diffs` | stable | `FrameCursor` | `protocol_render::RenderFrameDiffDescriptor` | `RuntimeBridgeError` |
 | `create_camera` | stable | `protocol_view::CameraCreateRequest` | `protocol_view::CameraSnapshot` | `RuntimeBridgeError` |

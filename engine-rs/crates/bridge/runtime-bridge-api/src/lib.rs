@@ -23,12 +23,12 @@ use std::collections::BTreeMap;
 use core_commands::VoxelCommand;
 use core_error::ErrorCategory;
 use core_space::{
-    ChunkCoord, ChunkDims, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,
+    ChunkCoord, ChunkDims, Direction6, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,
 };
 use core_voxel::{MaterialCatalog, VoxelMaterialId, VoxelValue};
 use protocol_view::{
-    CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot,
-    FirstPersonCameraInputEnvelope,
+    CameraCreateRequest, CameraPose, CameraProjectionRequest, CameraProjectionSnapshot,
+    CameraSnapshot, FirstPersonCameraInput, FirstPersonCameraInputEnvelope, ViewportSize,
 };
 use rule_voxel_edit::VoxelEditRejection;
 use svc_collision::{CollisionProjection, Ray};
@@ -303,6 +303,128 @@ pub enum PickResult {
     Miss(PickRejection),
 }
 
+// ── Collision-constrained camera + selection evidence (#2647) ────────────────
+
+/// Explicit V1 editor/testbench camera collision shape. Capsule/controller
+/// semantics are intentionally deferred; this is not gameplay authority.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CameraCollisionShape {
+    pub half_extents: [f32; 3],
+}
+
+/// The intentionally simple collision policy for V1 camera movement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CameraCollisionPolicyMode {
+    AxisSeparableSlide,
+}
+
+/// Bounded collision policy evidence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CameraCollisionPolicy {
+    pub mode: CameraCollisionPolicyMode,
+    pub max_iterations: u8,
+}
+
+/// One constrained camera input proposal for a specific tick/grid.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CollisionConstrainedCameraInputEnvelope {
+    pub camera: protocol_view::CameraHandle,
+    pub grid: u64,
+    pub input: FirstPersonCameraInput,
+    pub tick: u64,
+    pub shape: CameraCollisionShape,
+    pub policy: CameraCollisionPolicy,
+}
+
+/// Axis-aligned world AABB queried against voxel collision.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CollisionAabbEvidence {
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
+/// Axis blocked by the V1 axis-separable collision policy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CollisionAxis {
+    X,
+    Y,
+    Z,
+}
+
+/// Collision details for an attempted camera move.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraCollisionEvidence {
+    pub grid: u64,
+    pub shape: CameraCollisionShape,
+    pub policy: CameraCollisionPolicy,
+    pub collided: bool,
+    pub blocked_axes: Vec<CollisionAxis>,
+    pub correction: [f32; 3],
+    pub queried_aabb: CollisionAabbEvidence,
+    pub world_hash: String,
+    pub collision_projection_hash: String,
+}
+
+/// Before/attempted/after camera evidence for constrained movement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CameraCollisionSnapshot {
+    pub camera: protocol_view::CameraHandle,
+    pub tick: u64,
+    pub before: CameraSnapshot,
+    pub attempted: CameraSnapshot,
+    pub after: CameraSnapshot,
+    pub collision: CameraCollisionEvidence,
+    pub movement_hash: String,
+}
+
+/// Screen-point coordinate convention.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScreenPointSpace {
+    Normalized01,
+    Pixel,
+}
+
+/// Screen/crosshair point used to derive a camera ray.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScreenPoint {
+    pub x: f32,
+    pub y: f32,
+    pub space: ScreenPointSpace,
+}
+
+/// Request to derive a pick ray from bridge-owned camera/projection evidence.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScreenPointToPickRayRequest {
+    pub camera: protocol_view::CameraHandle,
+    pub grid: u64,
+    pub viewport: Option<ViewportSize>,
+    pub screen_point: ScreenPoint,
+    pub max_distance: f64,
+}
+
+/// Camera-derived world-space ray plus source projection hash.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PickRaySnapshot {
+    pub camera: protocol_view::CameraHandle,
+    pub tick: u64,
+    pub grid: u64,
+    pub screen_point: ScreenPoint,
+    pub ray: PickRay,
+    pub camera_projection_hash: String,
+    pub ray_hash: String,
+}
+
+/// Combined camera-to-ray plus authority raycast selection evidence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct VoxelSelectionSnapshot {
+    pub pick_ray: PickRaySnapshot,
+    pub pick_result: PickResult,
+    pub selected_voxel: Option<VoxelCoord>,
+    pub selected_face: Option<Face>,
+    pub edit_anchor: Option<VoxelCoord>,
+    pub selection_hash: String,
+}
+
 // ── Voxel mesh/remesh evidence (basic graphical voxel proof, #2646) ───────────
 
 /// Compact request for deterministic voxel mesh evidence. If `chunks` is empty,
@@ -371,6 +493,17 @@ pub trait RuntimeBridge {
     /// the voxel-grid raycast; the renderer only builds the ray. Reads authority —
     /// never mutates it.
     fn pick_voxel(&self, ray: PickRay) -> BridgeResult<PickResult>;
+    /// Apply first-person view input while constraining translation against the
+    /// authority-derived voxel collision projection.
+    fn apply_collision_constrained_camera_input(
+        &mut self,
+        input: CollisionConstrainedCameraInputEnvelope,
+    ) -> BridgeResult<CameraCollisionSnapshot>;
+    /// Derive a camera/projection-sourced ray and authority selection evidence.
+    fn select_voxel(
+        &self,
+        request: ScreenPointToPickRayRequest,
+    ) -> BridgeResult<VoxelSelectionSnapshot>;
     /// Read compact deterministic voxel mesh evidence for resident/requested chunks.
     /// This summarizes authority-derived `svc-mesh` output with hashes/stats, not
     /// renderer-owned objects or inline Three.js geometry.
@@ -737,6 +870,200 @@ impl ReferenceBridge {
             projection_hash,
         }
     }
+
+    fn validate_camera_input(input: FirstPersonCameraInput) -> BridgeResult<()> {
+        let finite = input.move_forward.is_finite()
+            && input.move_right.is_finite()
+            && input.move_up.is_finite()
+            && input.yaw_delta_degrees.is_finite()
+            && input.pitch_delta_degrees.is_finite()
+            && input.dt_seconds.is_finite()
+            && input.move_speed_units_per_second.is_finite();
+        if !finite || input.dt_seconds < 0.0 || input.move_speed_units_per_second < 0.0 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "camera input values must be finite; dt_seconds and move_speed_units_per_second must be non-negative",
+            ));
+        }
+        Ok(())
+    }
+
+    fn integrate_camera_snapshot(
+        prior: CameraSnapshot,
+        input: FirstPersonCameraInput,
+        tick: u64,
+    ) -> CameraSnapshot {
+        let distance = input.dt_seconds * input.move_speed_units_per_second;
+        let basis = prior.basis;
+        let pose = CameraPose {
+            position: [
+                prior.pose.position[0]
+                    + (basis.forward[0] * input.move_forward
+                        + basis.right[0] * input.move_right
+                        + basis.up[0] * input.move_up)
+                        * distance,
+                prior.pose.position[1]
+                    + (basis.forward[1] * input.move_forward
+                        + basis.right[1] * input.move_right
+                        + basis.up[1] * input.move_up)
+                        * distance,
+                prior.pose.position[2]
+                    + (basis.forward[2] * input.move_forward
+                        + basis.right[2] * input.move_right
+                        + basis.up[2] * input.move_up)
+                        * distance,
+            ],
+            yaw_degrees: prior.pose.yaw_degrees + input.yaw_delta_degrees,
+            pitch_degrees: (prior.pose.pitch_degrees + input.pitch_delta_degrees)
+                .clamp(-89.0, 89.0),
+        };
+        CameraSnapshot {
+            tick,
+            pose,
+            basis: Self::basis_from_pose(pose),
+            ..prior
+        }
+    }
+
+    fn aabb_for_pose(pose: CameraPose, shape: CameraCollisionShape) -> (WorldPos, WorldPos) {
+        let p = pose.position;
+        let h = shape.half_extents;
+        (
+            WorldPos::new(
+                (p[0] - h[0]) as f64,
+                (p[1] - h[1]) as f64,
+                (p[2] - h[2]) as f64,
+            ),
+            WorldPos::new(
+                (p[0] + h[0]) as f64,
+                (p[1] + h[1]) as f64,
+                (p[2] + h[2]) as f64,
+            ),
+        )
+    }
+
+    fn validate_collision_shape(shape: CameraCollisionShape) -> BridgeResult<()> {
+        if !shape.half_extents.iter().all(|v| v.is_finite() && *v > 0.0) {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "collision shape half_extents must be finite positive values",
+            ));
+        }
+        Ok(())
+    }
+
+    fn collision_projection_hash(world: &VoxelWorld, projection: &CollisionProjection) -> String {
+        let chunks = projection
+            .collider_chunks()
+            .map(|coord| format!("{},{},{}", coord.x, coord.y, coord.z))
+            .collect::<Vec<_>>()
+            .join(";");
+        let key = format!(
+            "{}|v{}|n{}|{}",
+            Self::world_hash(world),
+            projection.version(),
+            projection.collider_count(),
+            chunks
+        );
+        format!("fnv1a64:{}", Self::fnv1a64(&key))
+    }
+
+    fn screen_point_to_normalized(
+        point: ScreenPoint,
+        viewport: ViewportSize,
+    ) -> BridgeResult<(f32, f32)> {
+        if !point.x.is_finite() || !point.y.is_finite() {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "screen point coordinates must be finite",
+            ));
+        }
+        match point.space {
+            ScreenPointSpace::Normalized01 => Ok((point.x, point.y)),
+            ScreenPointSpace::Pixel => Ok((
+                point.x / viewport.width as f32,
+                point.y / viewport.height as f32,
+            )),
+        }
+    }
+
+    fn pick_ray_snapshot(
+        snapshot: CameraSnapshot,
+        request: ScreenPointToPickRayRequest,
+    ) -> BridgeResult<PickRaySnapshot> {
+        let viewport = request.viewport.unwrap_or(snapshot.viewport);
+        Self::validate_viewport(viewport)?;
+        if !request.max_distance.is_finite() || request.max_distance <= 0.0 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "max_distance must be finite and positive",
+            ));
+        }
+        let (sx, sy) = Self::screen_point_to_normalized(request.screen_point, viewport)?;
+        if !(0.0..=1.0).contains(&sx) || !(0.0..=1.0).contains(&sy) {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "screen point must be inside the viewport",
+            ));
+        }
+        let ndc_x = sx * 2.0 - 1.0;
+        let ndc_y = 1.0 - sy * 2.0;
+        let aspect = viewport.width as f32 / viewport.height as f32;
+        let tan_y = (snapshot.projection.fov_y_degrees.to_radians() / 2.0).tan();
+        let tan_x = tan_y * aspect;
+        let f = snapshot.basis.forward;
+        let r = snapshot.basis.right;
+        let u = snapshot.basis.up;
+        let raw = [
+            f[0] + r[0] * ndc_x * tan_x + u[0] * ndc_y * tan_y,
+            f[1] + r[1] * ndc_x * tan_x + u[1] * ndc_y * tan_y,
+            f[2] + r[2] * ndc_x * tan_x + u[2] * ndc_y * tan_y,
+        ];
+        let len = (raw[0] * raw[0] + raw[1] * raw[1] + raw[2] * raw[2]).sqrt();
+        if !len.is_finite() || len <= 0.0 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "derived pick ray direction is invalid",
+            ));
+        }
+        let dir = [raw[0] / len, raw[1] / len, raw[2] / len];
+        let ray = PickRay {
+            grid: request.grid,
+            origin: [
+                snapshot.pose.position[0] as f64,
+                snapshot.pose.position[1] as f64,
+                snapshot.pose.position[2] as f64,
+            ],
+            direction: [dir[0] as f64, dir[1] as f64, dir[2] as f64],
+            max_distance: request.max_distance,
+        };
+        let projection_hash = Self::projection_snapshot(snapshot, viewport).projection_hash;
+        let ray_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{:.6},{:.6},{:.6}|{:.6},{:.6},{:.6}|{:.6}|{}",
+                snapshot.camera.raw(),
+                request.grid,
+                ray.origin[0],
+                ray.origin[1],
+                ray.origin[2],
+                ray.direction[0],
+                ray.direction[1],
+                ray.direction[2],
+                ray.max_distance,
+                projection_hash
+            ))
+        );
+        Ok(PickRaySnapshot {
+            camera: snapshot.camera,
+            tick: snapshot.tick,
+            grid: request.grid,
+            screen_point: request.screen_point,
+            ray,
+            camera_projection_hash: projection_hash,
+            ray_hash,
+        })
+    }
 }
 
 impl RuntimeBridge for ReferenceBridge {
@@ -838,6 +1165,168 @@ impl RuntimeBridge for ReferenceBridge {
         }
     }
 
+    fn apply_collision_constrained_camera_input(
+        &mut self,
+        envelope: CollisionConstrainedCameraInputEnvelope,
+    ) -> BridgeResult<CameraCollisionSnapshot> {
+        let world = self.voxel.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "apply_collision_constrained_camera_input called before initialize_engine",
+            )
+        })?;
+        if envelope.grid != world.grid().id().raw() as u64 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "collision camera input targets an unknown grid",
+            ));
+        }
+        Self::validate_camera_input(envelope.input)?;
+        Self::validate_collision_shape(envelope.shape)?;
+        if envelope.policy.mode != CameraCollisionPolicyMode::AxisSeparableSlide
+            || envelope.policy.max_iterations == 0
+            || envelope.policy.max_iterations > 3
+        {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "only axis_separable_slide with max_iterations in 1..=3 is supported",
+            ));
+        }
+        let before = *self.cameras.get(&envelope.camera.raw()).ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::UnknownHandle,
+                "unknown camera handle",
+            )
+        })?;
+        let attempted = Self::integrate_camera_snapshot(before, envelope.input, envelope.tick);
+        let projection = CollisionProjection::build(world);
+        let mut after_pose = CameraPose {
+            position: before.pose.position,
+            yaw_degrees: attempted.pose.yaw_degrees,
+            pitch_degrees: attempted.pose.pitch_degrees,
+        };
+        let delta = [
+            attempted.pose.position[0] - before.pose.position[0],
+            attempted.pose.position[1] - before.pose.position[1],
+            attempted.pose.position[2] - before.pose.position[2],
+        ];
+        let mut blocked_axes = Vec::new();
+        for (idx, axis) in [
+            (0usize, CollisionAxis::X),
+            (1, CollisionAxis::Y),
+            (2, CollisionAxis::Z),
+        ] {
+            if delta[idx] == 0.0 {
+                continue;
+            }
+            let mut candidate = after_pose;
+            candidate.position[idx] += delta[idx];
+            let (min, max) = Self::aabb_for_pose(candidate, envelope.shape);
+            if projection.aabb_overlaps_solid(min, max) {
+                blocked_axes.push(axis);
+            } else {
+                after_pose.position[idx] = candidate.position[idx];
+            }
+        }
+        let after = CameraSnapshot {
+            tick: envelope.tick,
+            pose: after_pose,
+            basis: Self::basis_from_pose(after_pose),
+            ..before
+        };
+        self.cameras.insert(envelope.camera.raw(), after);
+        let (min, max) = Self::aabb_for_pose(after.pose, envelope.shape);
+        let collision_projection_hash = Self::collision_projection_hash(world, &projection);
+        let world_hash = Self::world_hash(world);
+        let correction = [
+            after.pose.position[0] - attempted.pose.position[0],
+            after.pose.position[1] - attempted.pose.position[1],
+            after.pose.position[2] - attempted.pose.position[2],
+        ];
+        let movement_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{:?}|{:?}|{:?}|{}|{}",
+                envelope.camera.raw(),
+                envelope.tick,
+                before.pose,
+                attempted.pose,
+                after.pose,
+                world_hash,
+                collision_projection_hash
+            ))
+        );
+        Ok(CameraCollisionSnapshot {
+            camera: envelope.camera,
+            tick: envelope.tick,
+            before,
+            attempted,
+            after,
+            collision: CameraCollisionEvidence {
+                grid: envelope.grid,
+                shape: envelope.shape,
+                policy: envelope.policy,
+                collided: !blocked_axes.is_empty(),
+                blocked_axes,
+                correction,
+                queried_aabb: CollisionAabbEvidence {
+                    min: [min.x as f32, min.y as f32, min.z as f32],
+                    max: [max.x as f32, max.y as f32, max.z as f32],
+                },
+                world_hash,
+                collision_projection_hash,
+            },
+            movement_hash,
+        })
+    }
+
+    fn select_voxel(
+        &self,
+        request: ScreenPointToPickRayRequest,
+    ) -> BridgeResult<VoxelSelectionSnapshot> {
+        let snapshot = *self.cameras.get(&request.camera.raw()).ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::UnknownHandle,
+                "unknown camera handle",
+            )
+        })?;
+        let pick_ray = Self::pick_ray_snapshot(snapshot, request)?;
+        let pick_result = self.pick_voxel(pick_ray.ray)?;
+        let (selected_voxel, selected_face, edit_anchor) = match pick_result {
+            PickResult::Hit(hit) => {
+                let dir = match hit.face {
+                    Face::PosX => Direction6::PosX,
+                    Face::NegX => Direction6::NegX,
+                    Face::PosY => Direction6::PosY,
+                    Face::NegY => Direction6::NegY,
+                    Face::PosZ => Direction6::PosZ,
+                    Face::NegZ => Direction6::NegZ,
+                };
+                (
+                    Some(hit.voxel),
+                    Some(hit.face),
+                    Some(hit.voxel.neighbor(dir)),
+                )
+            }
+            PickResult::Miss(_) => (None, None, None),
+        };
+        let selection_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{:?}|{:?}|{:?}",
+                pick_ray.ray_hash, pick_result, selected_voxel, edit_anchor
+            ))
+        );
+        Ok(VoxelSelectionSnapshot {
+            pick_ray,
+            pick_result,
+            selected_voxel,
+            selected_face,
+            edit_anchor,
+            selection_hash,
+        })
+    }
+
     fn read_voxel_mesh_evidence(
         &self,
         request: VoxelMeshEvidenceRequest,
@@ -926,49 +1415,8 @@ impl RuntimeBridge for ReferenceBridge {
             )
         })?;
         let input = envelope.input;
-        let finite = input.move_forward.is_finite()
-            && input.move_right.is_finite()
-            && input.move_up.is_finite()
-            && input.yaw_delta_degrees.is_finite()
-            && input.pitch_delta_degrees.is_finite()
-            && input.dt_seconds.is_finite()
-            && input.move_speed_units_per_second.is_finite();
-        if !finite || input.dt_seconds < 0.0 || input.move_speed_units_per_second < 0.0 {
-            return Err(RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::InvalidInput,
-                "dt_seconds and move_speed_units_per_second must be non-negative",
-            ));
-        }
-        let distance = input.dt_seconds * input.move_speed_units_per_second;
-        let basis = prior.basis;
-        let pose = protocol_view::CameraPose {
-            position: [
-                prior.pose.position[0]
-                    + (basis.forward[0] * input.move_forward
-                        + basis.right[0] * input.move_right
-                        + basis.up[0] * input.move_up)
-                        * distance,
-                prior.pose.position[1]
-                    + (basis.forward[1] * input.move_forward
-                        + basis.right[1] * input.move_right
-                        + basis.up[1] * input.move_up)
-                        * distance,
-                prior.pose.position[2]
-                    + (basis.forward[2] * input.move_forward
-                        + basis.right[2] * input.move_right
-                        + basis.up[2] * input.move_up)
-                        * distance,
-            ],
-            yaw_degrees: prior.pose.yaw_degrees + input.yaw_delta_degrees,
-            pitch_degrees: (prior.pose.pitch_degrees + input.pitch_delta_degrees)
-                .clamp(-89.0, 89.0),
-        };
-        let snapshot = CameraSnapshot {
-            tick: envelope.tick,
-            pose,
-            basis: Self::basis_from_pose(pose),
-            ..prior
-        };
+        Self::validate_camera_input(input)?;
+        let snapshot = Self::integrate_camera_snapshot(prior, input, envelope.tick);
         self.cameras.insert(envelope.camera.raw(), snapshot);
         Ok(snapshot)
     }
@@ -1330,6 +1778,173 @@ mod tests {
             result.rejections[0],
             VoxelEditRejection::ChunkNotResident { .. }
         ));
+    }
+
+    #[test]
+    fn collision_constrained_camera_blocks_terrain_and_allows_empty_space() {
+        use protocol_view::{CameraPose, PerspectiveProjection, ViewportSize};
+
+        let mut bridge = init_bridge();
+        let camera = bridge
+            .create_camera(CameraCreateRequest {
+                initial_pose: CameraPose {
+                    position: [1.5, 1.5, 1.3],
+                    yaw_degrees: 0.0,
+                    pitch_degrees: 0.0,
+                },
+                projection: PerspectiveProjection {
+                    fov_y_degrees: 60.0,
+                    near: 0.1,
+                    far: 1000.0,
+                },
+                viewport: ViewportSize {
+                    width: 1280,
+                    height: 720,
+                },
+            })
+            .unwrap();
+        let shape = CameraCollisionShape {
+            half_extents: [0.2, 0.2, 0.2],
+        };
+        let policy = CameraCollisionPolicy {
+            mode: CameraCollisionPolicyMode::AxisSeparableSlide,
+            max_iterations: 3,
+        };
+        let blocked = bridge
+            .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+                camera: camera.camera,
+                grid: 1,
+                input: FirstPersonCameraInput {
+                    move_forward: 1.0,
+                    move_right: 0.0,
+                    move_up: 0.0,
+                    yaw_delta_degrees: 0.0,
+                    pitch_delta_degrees: 0.0,
+                    dt_seconds: 1.0,
+                    move_speed_units_per_second: 1.0,
+                },
+                tick: 1,
+                shape,
+                policy,
+            })
+            .unwrap();
+        assert!(blocked.collision.collided);
+        assert_eq!(blocked.collision.blocked_axes, vec![CollisionAxis::Z]);
+        assert_eq!(blocked.after.pose.position, camera.pose.position);
+        assert!(blocked.movement_hash.starts_with("fnv1a64:"));
+
+        let clear = bridge
+            .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+                camera: camera.camera,
+                grid: 1,
+                input: FirstPersonCameraInput {
+                    move_forward: -1.0,
+                    move_right: 0.0,
+                    move_up: 0.0,
+                    yaw_delta_degrees: 0.0,
+                    pitch_delta_degrees: 0.0,
+                    dt_seconds: 1.0,
+                    move_speed_units_per_second: 1.0,
+                },
+                tick: 2,
+                shape,
+                policy,
+            })
+            .unwrap();
+        assert!(!clear.collision.collided);
+        assert_eq!(clear.collision.blocked_axes, Vec::<CollisionAxis>::new());
+        assert_eq!(clear.after.pose.position, [1.5, 1.5, 2.3]);
+    }
+
+    #[test]
+    fn select_voxel_derives_center_ray_and_edit_anchor_from_camera() {
+        use protocol_view::{CameraPose, PerspectiveProjection, ViewportSize};
+
+        let mut bridge = init_bridge();
+        let camera = bridge
+            .create_camera(CameraCreateRequest {
+                initial_pose: CameraPose {
+                    position: [1.5, 1.5, 4.0],
+                    yaw_degrees: 0.0,
+                    pitch_degrees: 0.0,
+                },
+                projection: PerspectiveProjection {
+                    fov_y_degrees: 60.0,
+                    near: 0.1,
+                    far: 1000.0,
+                },
+                viewport: ViewportSize {
+                    width: 1280,
+                    height: 720,
+                },
+            })
+            .unwrap();
+        let selection = bridge
+            .select_voxel(ScreenPointToPickRayRequest {
+                camera: camera.camera,
+                grid: 1,
+                viewport: None,
+                screen_point: ScreenPoint {
+                    x: 0.5,
+                    y: 0.5,
+                    space: ScreenPointSpace::Normalized01,
+                },
+                max_distance: 10.0,
+            })
+            .unwrap();
+        assert_eq!(selection.pick_ray.ray.direction, [0.0, 0.0, -1.0]);
+        assert_eq!(selection.selected_voxel, Some(VoxelCoord::new(1, 1, 0)));
+        assert_eq!(selection.selected_face, Some(Face::PosZ));
+        assert_eq!(selection.edit_anchor, Some(VoxelCoord::new(1, 1, 1)));
+        assert!(selection
+            .pick_ray
+            .camera_projection_hash
+            .starts_with("fnv1a64:"));
+        assert!(selection.selection_hash.starts_with("fnv1a64:"));
+    }
+
+    #[test]
+    fn select_voxel_reports_miss_for_out_of_range_crosshair() {
+        use protocol_view::{CameraPose, PerspectiveProjection, ViewportSize};
+
+        let mut bridge = init_bridge();
+        let camera = bridge
+            .create_camera(CameraCreateRequest {
+                initial_pose: CameraPose {
+                    position: [1.5, 1.5, 4.0],
+                    yaw_degrees: 0.0,
+                    pitch_degrees: 0.0,
+                },
+                projection: PerspectiveProjection {
+                    fov_y_degrees: 60.0,
+                    near: 0.1,
+                    far: 1000.0,
+                },
+                viewport: ViewportSize {
+                    width: 1280,
+                    height: 720,
+                },
+            })
+            .unwrap();
+        let selection = bridge
+            .select_voxel(ScreenPointToPickRayRequest {
+                camera: camera.camera,
+                grid: 1,
+                viewport: None,
+                screen_point: ScreenPoint {
+                    x: 0.5,
+                    y: 0.5,
+                    space: ScreenPointSpace::Normalized01,
+                },
+                max_distance: 1.0,
+            })
+            .unwrap();
+        assert!(matches!(
+            selection.pick_result,
+            PickResult::Miss(PickRejection::NoHit)
+        ));
+        assert_eq!(selection.selected_voxel, None);
+        assert_eq!(selection.edit_anchor, None);
     }
 
     #[test]

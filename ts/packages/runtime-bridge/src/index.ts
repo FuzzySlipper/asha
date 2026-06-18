@@ -17,9 +17,11 @@ import type {
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,
+  Face,
   PickRay,
   PickResult,
   RenderFrameDiff,
+  VoxelCoord,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
 import { MANIFEST_OPERATIONS } from './generated/operations.js';
@@ -158,6 +160,76 @@ export interface WorldSaveSummary {
   readonly compactedEdits: number;
   readonly retainedEdits: number;
 }
+// Collision-constrained camera and selection evidence (#2647). Prototype DTOs
+// until generated protocol_view contracts grow the same shapes.
+export interface CameraCollisionShape {
+  readonly halfExtents: readonly [number, number, number];
+}
+export interface CameraCollisionPolicy {
+  readonly mode: 'axis_separable_slide';
+  readonly maxIterations: number;
+}
+export interface CollisionConstrainedCameraInputEnvelope {
+  readonly camera: CameraSnapshot['camera'];
+  readonly grid: number;
+  readonly input: FirstPersonCameraInputEnvelope['input'];
+  readonly tick: number;
+  readonly shape: CameraCollisionShape;
+  readonly policy: CameraCollisionPolicy;
+}
+export interface CollisionAabbEvidence {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+export interface CameraCollisionEvidence {
+  readonly grid: number;
+  readonly shape: CameraCollisionShape;
+  readonly policy: CameraCollisionPolicy;
+  readonly collided: boolean;
+  readonly blockedAxes: readonly ('x' | 'y' | 'z')[];
+  readonly correction: readonly [number, number, number];
+  readonly queriedAabb: CollisionAabbEvidence;
+  readonly worldHash: string;
+  readonly collisionProjectionHash: string;
+}
+export interface CameraCollisionSnapshot {
+  readonly camera: CameraSnapshot['camera'];
+  readonly tick: number;
+  readonly before: CameraSnapshot;
+  readonly attempted: CameraSnapshot;
+  readonly after: CameraSnapshot;
+  readonly collision: CameraCollisionEvidence;
+  readonly movementHash: string;
+}
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+  readonly space: 'normalized_0_1' | 'pixel';
+}
+export interface ScreenPointToPickRayRequest {
+  readonly camera: CameraSnapshot['camera'];
+  readonly grid: number;
+  readonly viewport: CameraProjectionRequest['viewport'];
+  readonly screenPoint: ScreenPoint;
+  readonly maxDistance: number;
+}
+export interface PickRaySnapshot {
+  readonly camera: CameraSnapshot['camera'];
+  readonly tick: number;
+  readonly grid: number;
+  readonly screenPoint: ScreenPoint;
+  readonly ray: PickRay;
+  readonly cameraProjectionHash: string;
+  readonly rayHash: string;
+}
+export interface VoxelSelectionSnapshot {
+  readonly pickRay: PickRaySnapshot;
+  readonly pickResult: PickResult;
+  readonly selectedVoxel: VoxelCoord | null;
+  readonly selectedFace: Face | null;
+  readonly editAnchor: VoxelCoord | null;
+  readonly selectionHash: string;
+}
 // Compact voxel mesh/remesh evidence (#2646). Prototype DTOs until generated
 // protocol_render contracts grow the same shapes.
 export interface VoxelMeshEvidenceRequest {
@@ -202,6 +274,8 @@ export interface RuntimeBridge {
   stepSimulation(input: StepInputEnvelope): StepResult;
   submitCommands(batch: CommandBatch): CommandResult;
   pickVoxel(ray: PickRay): PickResult;
+  applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
+  selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
   readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
   createCamera(request: CameraCreateRequest): CameraSnapshot;
@@ -428,6 +502,112 @@ export class MockRuntimeBridge implements RuntimeBridge {
       throw new RuntimeBridgeError('invalid_input', 'pick ray direction must be non-zero');
     }
     return { outcome: 'miss', rejection: { reason: 'noHit' } };
+  }
+
+  applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'applyCollisionConstrainedCameraInput before initializeEngine');
+    }
+    if (input.grid !== 1) {
+      throw new RuntimeBridgeError('invalid_input', 'collision camera input targets an unknown grid');
+    }
+    const before = this.#cameras.get(input.camera);
+    if (before === undefined) {
+      throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
+    }
+    for (const [idx, halfExtent] of input.shape.halfExtents.entries()) {
+      finite(halfExtent, `shape.halfExtents[${idx}]`);
+      if (halfExtent <= 0) {
+        throw new RuntimeBridgeError('invalid_input', 'collision shape halfExtents must be positive');
+      }
+    }
+    if (input.policy.mode !== 'axis_separable_slide' || input.policy.maxIterations < 1 || input.policy.maxIterations > 3) {
+      throw new RuntimeBridgeError('invalid_input', 'only axis_separable_slide with maxIterations in 1..=3 is supported');
+    }
+    const distance = input.input.dtSeconds * input.input.moveSpeedUnitsPerSecond;
+    const attemptedPose = {
+      position: [
+        f32(before.pose.position[0] + before.basis.forward[0] * input.input.moveForward * distance + before.basis.right[0] * input.input.moveRight * distance + before.basis.up[0] * input.input.moveUp * distance),
+        f32(before.pose.position[1] + before.basis.forward[1] * input.input.moveForward * distance + before.basis.right[1] * input.input.moveRight * distance + before.basis.up[1] * input.input.moveUp * distance),
+        f32(before.pose.position[2] + before.basis.forward[2] * input.input.moveForward * distance + before.basis.right[2] * input.input.moveRight * distance + before.basis.up[2] * input.input.moveUp * distance),
+      ] as readonly [number, number, number],
+      yawDegrees: before.pose.yawDegrees + input.input.yawDeltaDegrees,
+      pitchDegrees: Math.max(-89, Math.min(89, before.pose.pitchDegrees + input.input.pitchDeltaDegrees)),
+    };
+    const attempted: CameraSnapshot = { ...before, tick: input.tick, pose: attemptedPose, basis: basisFromPose(attemptedPose) };
+    const after: CameraSnapshot = attempted;
+    this.#cameras.set(input.camera, after);
+    return {
+      camera: input.camera,
+      tick: input.tick,
+      before,
+      attempted,
+      after,
+      collision: {
+        grid: input.grid,
+        shape: input.shape,
+        policy: input.policy,
+        collided: false,
+        blockedAxes: [],
+        correction: [0, 0, 0],
+        queriedAabb: {
+          min: [
+            after.pose.position[0] - input.shape.halfExtents[0],
+            after.pose.position[1] - input.shape.halfExtents[1],
+            after.pose.position[2] - input.shape.halfExtents[2],
+          ],
+          max: [
+            after.pose.position[0] + input.shape.halfExtents[0],
+            after.pose.position[1] + input.shape.halfExtents[1],
+            after.pose.position[2] + input.shape.halfExtents[2],
+          ],
+        },
+        worldHash: 'mock-voxel-world',
+        collisionProjectionHash: 'fnv1a64:mock-collision-projection',
+      },
+      movementHash: `fnv1a64:${fnv1a64(`${input.camera}|${input.tick}|${JSON.stringify(before.pose)}|${JSON.stringify(after.pose)}`)}`,
+    };
+  }
+
+  selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'selectVoxel before initializeEngine');
+    }
+    const camera = this.#cameras.get(request.camera);
+    if (camera === undefined) {
+      throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
+    }
+    const viewport = request.viewport ?? camera.viewport;
+    validateViewport(viewport);
+    const sx = request.screenPoint.space === 'pixel' ? request.screenPoint.x / viewport.width : request.screenPoint.x;
+    const sy = request.screenPoint.space === 'pixel' ? request.screenPoint.y / viewport.height : request.screenPoint.y;
+    if (sx < 0 || sx > 1 || sy < 0 || sy > 1) {
+      throw new RuntimeBridgeError('invalid_input', 'screen point must be inside the viewport');
+    }
+    const ray: PickRay = {
+      grid: request.grid,
+      origin: [camera.pose.position[0], camera.pose.position[1], camera.pose.position[2]],
+      direction: [camera.basis.forward[0], camera.basis.forward[1], camera.basis.forward[2]],
+      maxDistance: request.maxDistance,
+    };
+    const pickResult = this.pickVoxel(ray);
+    const pickRay: PickRaySnapshot = {
+      camera: request.camera,
+      tick: camera.tick,
+      grid: request.grid,
+      screenPoint: request.screenPoint,
+      ray,
+      cameraProjectionHash: projectionSnapshot(camera, viewport).projectionHash,
+      rayHash: `fnv1a64:${fnv1a64(`${request.camera}|${request.grid}|${ray.origin.join(',')}|${ray.direction.join(',')}`)}`,
+    };
+    return {
+      pickRay,
+      pickResult,
+      selectedVoxel: null,
+      selectedFace: null,
+      editAnchor: null,
+      selectionHash: `fnv1a64:${fnv1a64(`${pickRay.rayHash}|${JSON.stringify(pickResult)}`)}`,
+    };
   }
 
   readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot {
@@ -771,6 +951,14 @@ export class NativeRuntimeBridge implements RuntimeBridge {
   // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
   pickVoxel(): PickResult {
     throw nativeUnimplemented('pick_voxel');
+  }
+
+  applyCollisionConstrainedCameraInput(): CameraCollisionSnapshot {
+    throw nativeUnimplemented('apply_collision_constrained_camera_input');
+  }
+
+  selectVoxel(): VoxelSelectionSnapshot {
+    throw nativeUnimplemented('select_voxel');
   }
 
   readVoxelMeshEvidence(): VoxelMeshEvidenceSnapshot {

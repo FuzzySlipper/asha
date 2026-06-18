@@ -219,6 +219,110 @@ export class MockRuntimeBridge {
         }
         return { outcome: 'miss', rejection: { reason: 'noHit' } };
     }
+    applyCollisionConstrainedCameraInput(input) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'applyCollisionConstrainedCameraInput before initializeEngine');
+        }
+        if (input.grid !== 1) {
+            throw new RuntimeBridgeError('invalid_input', 'collision camera input targets an unknown grid');
+        }
+        const before = this.#cameras.get(input.camera);
+        if (before === undefined) {
+            throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
+        }
+        for (const [idx, halfExtent] of input.shape.halfExtents.entries()) {
+            finite(halfExtent, `shape.halfExtents[${idx}]`);
+            if (halfExtent <= 0) {
+                throw new RuntimeBridgeError('invalid_input', 'collision shape halfExtents must be positive');
+            }
+        }
+        if (input.policy.mode !== 'axis_separable_slide' || input.policy.maxIterations < 1 || input.policy.maxIterations > 3) {
+            throw new RuntimeBridgeError('invalid_input', 'only axis_separable_slide with maxIterations in 1..=3 is supported');
+        }
+        const distance = input.input.dtSeconds * input.input.moveSpeedUnitsPerSecond;
+        const attemptedPose = {
+            position: [
+                f32(before.pose.position[0] + before.basis.forward[0] * input.input.moveForward * distance + before.basis.right[0] * input.input.moveRight * distance + before.basis.up[0] * input.input.moveUp * distance),
+                f32(before.pose.position[1] + before.basis.forward[1] * input.input.moveForward * distance + before.basis.right[1] * input.input.moveRight * distance + before.basis.up[1] * input.input.moveUp * distance),
+                f32(before.pose.position[2] + before.basis.forward[2] * input.input.moveForward * distance + before.basis.right[2] * input.input.moveRight * distance + before.basis.up[2] * input.input.moveUp * distance),
+            ],
+            yawDegrees: before.pose.yawDegrees + input.input.yawDeltaDegrees,
+            pitchDegrees: Math.max(-89, Math.min(89, before.pose.pitchDegrees + input.input.pitchDeltaDegrees)),
+        };
+        const attempted = { ...before, tick: input.tick, pose: attemptedPose, basis: basisFromPose(attemptedPose) };
+        const after = attempted;
+        this.#cameras.set(input.camera, after);
+        return {
+            camera: input.camera,
+            tick: input.tick,
+            before,
+            attempted,
+            after,
+            collision: {
+                grid: input.grid,
+                shape: input.shape,
+                policy: input.policy,
+                collided: false,
+                blockedAxes: [],
+                correction: [0, 0, 0],
+                queriedAabb: {
+                    min: [
+                        after.pose.position[0] - input.shape.halfExtents[0],
+                        after.pose.position[1] - input.shape.halfExtents[1],
+                        after.pose.position[2] - input.shape.halfExtents[2],
+                    ],
+                    max: [
+                        after.pose.position[0] + input.shape.halfExtents[0],
+                        after.pose.position[1] + input.shape.halfExtents[1],
+                        after.pose.position[2] + input.shape.halfExtents[2],
+                    ],
+                },
+                worldHash: 'mock-voxel-world',
+                collisionProjectionHash: 'fnv1a64:mock-collision-projection',
+            },
+            movementHash: `fnv1a64:${fnv1a64(`${input.camera}|${input.tick}|${JSON.stringify(before.pose)}|${JSON.stringify(after.pose)}`)}`,
+        };
+    }
+    selectVoxel(request) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'selectVoxel before initializeEngine');
+        }
+        const camera = this.#cameras.get(request.camera);
+        if (camera === undefined) {
+            throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
+        }
+        const viewport = request.viewport ?? camera.viewport;
+        validateViewport(viewport);
+        const sx = request.screenPoint.space === 'pixel' ? request.screenPoint.x / viewport.width : request.screenPoint.x;
+        const sy = request.screenPoint.space === 'pixel' ? request.screenPoint.y / viewport.height : request.screenPoint.y;
+        if (sx < 0 || sx > 1 || sy < 0 || sy > 1) {
+            throw new RuntimeBridgeError('invalid_input', 'screen point must be inside the viewport');
+        }
+        const ray = {
+            grid: request.grid,
+            origin: [camera.pose.position[0], camera.pose.position[1], camera.pose.position[2]],
+            direction: [camera.basis.forward[0], camera.basis.forward[1], camera.basis.forward[2]],
+            maxDistance: request.maxDistance,
+        };
+        const pickResult = this.pickVoxel(ray);
+        const pickRay = {
+            camera: request.camera,
+            tick: camera.tick,
+            grid: request.grid,
+            screenPoint: request.screenPoint,
+            ray,
+            cameraProjectionHash: projectionSnapshot(camera, viewport).projectionHash,
+            rayHash: `fnv1a64:${fnv1a64(`${request.camera}|${request.grid}|${ray.origin.join(',')}|${ray.direction.join(',')}`)}`,
+        };
+        return {
+            pickRay,
+            pickResult,
+            selectedVoxel: null,
+            selectedFace: null,
+            editAnchor: null,
+            selectionHash: `fnv1a64:${fnv1a64(`${pickRay.rayHash}|${JSON.stringify(pickResult)}`)}`,
+        };
+    }
     readVoxelMeshEvidence(request) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'readVoxelMeshEvidence before initializeEngine');
@@ -512,6 +616,12 @@ export class NativeRuntimeBridge {
     // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
     pickVoxel() {
         throw nativeUnimplemented('pick_voxel');
+    }
+    applyCollisionConstrainedCameraInput() {
+        throw nativeUnimplemented('apply_collision_constrained_camera_input');
+    }
+    selectVoxel() {
+        throw nativeUnimplemented('select_voxel');
     }
     readVoxelMeshEvidence() {
         throw nativeUnimplemented('read_voxel_mesh_evidence');

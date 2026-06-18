@@ -24,6 +24,7 @@ test('facade exposes exactly the manifest operations (conformance)', () => {
 test('manifest exposes public camera view operations', () => {
     const cameraOps = MANIFEST_OPERATIONS.filter((op) => op.facadeMethod.includes('Camera'));
     assert.deepEqual(cameraOps.map((op) => [op.manifestName, op.facadeMethod, op.surface]), [
+        ['apply_collision_constrained_camera_input', 'applyCollisionConstrainedCameraInput', 'stable'],
         ['create_camera', 'createCamera', 'stable'],
         ['apply_first_person_camera_input', 'applyFirstPersonCameraInput', 'stable'],
         ['read_camera_projection', 'readCameraProjection', 'stable'],

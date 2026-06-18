@@ -35,6 +35,22 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "apply_collision_constrained_camera_input",
+      "facadeMethod": "applyCollisionConstrainedCameraInput",
+      "surface": "stable",
+      "input": "protocol_view::CollisionConstrainedCameraInputEnvelope",
+      "output": "protocol_view::CameraCollisionSnapshot",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "select_voxel",
+      "facadeMethod": "selectVoxel",
+      "surface": "stable",
+      "input": "protocol_view::ScreenPointToPickRayRequest",
+      "output": "protocol_view::VoxelSelectionSnapshot",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "read_voxel_mesh_evidence",
       "facadeMethod": "readVoxelMeshEvidence",
       "surface": "stable",

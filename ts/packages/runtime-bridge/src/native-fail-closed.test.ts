@@ -98,6 +98,27 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
     'pickVoxel',
     (b) => b.pickVoxel({ grid: 1, origin: [0, 0, 0], direction: [1, 0, 0], maxDistance: 10 }),
   ],
+  [
+    'applyCollisionConstrainedCameraInput',
+    (b) =>
+      b.applyCollisionConstrainedCameraInput({
+        ...CAMERA_INPUT,
+        grid: 1,
+        shape: { halfExtents: [0.2, 0.2, 0.2] },
+        policy: { mode: 'axis_separable_slide', maxIterations: 3 },
+      }),
+  ],
+  [
+    'selectVoxel',
+    (b) =>
+      b.selectVoxel({
+        camera: CAMERA_INPUT.camera,
+        grid: 1,
+        viewport: null,
+        screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1' },
+        maxDistance: 10,
+      }),
+  ],
   ['readVoxelMeshEvidence', (b) => b.readVoxelMeshEvidence({ grid: 1, chunks: [] })],
   ['readRenderDiffs', (b) => b.readRenderDiffs(frameCursor(0))],
   ['createCamera', (b) => b.createCamera(CAMERA_CREATE_REQUEST)],
