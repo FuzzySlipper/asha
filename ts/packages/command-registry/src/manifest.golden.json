@@ -27,8 +27,42 @@
       "name": "ScenarioListOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "scenario_manifest"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "scenarios",
+            "required": true,
+            "shape": {
+              "kind": "array",
+              "items": {
+                "kind": "object",
+                "allowExtraFields": false,
+                "fields": [
+                  {
+                    "name": "id",
+                    "required": true,
+                    "shape": {
+                      "kind": "scalar",
+                      "scalar": "string"
+                    },
+                    "summary": "Scenario id."
+                  },
+                  {
+                    "name": "label",
+                    "required": true,
+                    "shape": {
+                      "kind": "scalar",
+                      "scalar": "string"
+                    },
+                    "summary": "Human-readable scenario label."
+                  }
+                ]
+              }
+            },
+            "summary": "Bounded public scenario list."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -120,11 +154,11 @@
           {
             "name": "scenarioId",
             "required": true,
-            "summary": "Named public studio scenario identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Named public studio scenario identifier."
           }
         ]
       }
@@ -139,13 +173,13 @@
           {
             "name": "kind",
             "required": true,
-            "summary": "Acknowledgement literal.",
             "shape": {
               "kind": "literal",
               "values": [
                 "ok"
               ]
-            }
+            },
+            "summary": "Acknowledgement literal."
           }
         ]
       }
@@ -154,7 +188,8 @@
     "outputContractRefs": [],
     "operationClass": "workspace_io",
     "agentExposure": {
-      "kind": "read_only"
+      "kind": "workspace_io",
+      "batchable": false
     },
     "guiMirror": {
       "required": true,
@@ -187,7 +222,7 @@
       "authority": "read",
       "editor": "mutate",
       "render": "none",
-      "workspace": "read"
+      "workspace": "write"
     },
     "owningLane": "ts-command-registry",
     "owningPackage": "@asha/command-registry",
@@ -240,11 +275,11 @@
           {
             "name": "scenarioId",
             "required": true,
-            "summary": "Named public studio scenario identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Named public studio scenario identifier."
           }
         ]
       }
@@ -259,13 +294,13 @@
           {
             "name": "kind",
             "required": true,
-            "summary": "Acknowledgement literal.",
             "shape": {
               "kind": "literal",
               "values": [
                 "ok"
               ]
-            }
+            },
+            "summary": "Acknowledgement literal."
           }
         ]
       }
@@ -274,7 +309,8 @@
     "outputContractRefs": [],
     "operationClass": "workspace_io",
     "agentExposure": {
-      "kind": "read_only"
+      "kind": "workspace_io",
+      "batchable": false
     },
     "guiMirror": {
       "required": true,
@@ -307,7 +343,7 @@
       "authority": "read",
       "editor": "mutate",
       "render": "none",
-      "workspace": "read"
+      "workspace": "write"
     },
     "owningLane": "ts-command-registry",
     "owningPackage": "@asha/command-registry",
@@ -356,11 +392,11 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           }
         ]
       }
@@ -369,8 +405,33 @@
       "name": "SessionStatusOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "session_status"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "status",
+            "required": true,
+            "shape": {
+              "kind": "literal",
+              "values": [
+                "not_started",
+                "ready",
+                "degraded",
+                "unavailable"
+              ]
+            },
+            "summary": "Session/runtime status."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -462,11 +523,11 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           }
         ]
       }
@@ -475,8 +536,40 @@
       "name": "WorldSummaryOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "world_summary"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "authorityHash",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "Authority hash when the public runtime can provide it."
+          },
+          {
+            "name": "voxelVolumeCount",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "integer"
+            },
+            "summary": "Number of public voxel volumes."
+          },
+          {
+            "name": "sceneNodeCount",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "integer"
+            },
+            "summary": "Number of public scene nodes."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -569,11 +662,11 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           }
         ]
       }
@@ -582,8 +675,34 @@
       "name": "EditorStateOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "editor_state"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "editorVersion",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Editor state/schema version."
+          },
+          {
+            "name": "selectedVoxel",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "contract",
+                "ref": {
+                  "package": "@asha/contracts",
+                  "exportName": "VoxelCoord"
+                }
+              }
+            },
+            "summary": "Currently selected voxel, if any."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -650,7 +769,7 @@
     "id": "selection.voxel_from_screen_point",
     "version": 1,
     "label": "Select Voxel From Screen Point",
-    "summary": "Project a screen pick into a typed ASHA voxel hit and editor selection.",
+    "summary": "Project a screen point through public camera evidence into typed ASHA voxel selection evidence.",
     "category": "selection",
     "menuPath": [
       "Select",
@@ -659,6 +778,7 @@
     "commandPalette": {
       "visible": true,
       "keywords": [
+        "screen point",
         "pick",
         "select",
         "voxel"
@@ -674,23 +794,23 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
-            "name": "ray",
+            "name": "request",
             "required": true,
-            "summary": "Public contract pick ray.",
             "shape": {
               "kind": "contract",
               "ref": {
                 "package": "@asha/contracts",
-                "exportName": "PickRay"
+                "exportName": "ScreenPointToPickRayRequest"
               }
-            }
+            },
+            "summary": "Generated public screen-point/camera selection request."
           }
         ]
       }
@@ -699,20 +819,34 @@
       "name": "VoxelSelectionOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "selection_snapshot"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "selection",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "VoxelSelectionSnapshot"
+              }
+            },
+            "summary": "Generated public selection evidence snapshot."
+          }
+        ]
       }
     },
     "inputContractRefs": [
       {
         "package": "@asha/contracts",
-        "exportName": "PickRay"
+        "exportName": "ScreenPointToPickRayRequest"
       }
     ],
     "outputContractRefs": [
       {
         "package": "@asha/contracts",
-        "exportName": "VoxelHit"
+        "exportName": "VoxelSelectionSnapshot"
       }
     ],
     "operationClass": "editor_local",
@@ -738,7 +872,7 @@
     "retry": "safe_to_retry",
     "idempotency": {
       "kind": "conditional",
-      "condition": "Same pick ray and unchanged view state selects the same voxel."
+      "condition": "Same screen point, camera, viewport, and unchanged projection evidence selects the same voxel."
     },
     "artifacts": [
       {
@@ -759,10 +893,6 @@
     "runtimeRequirements": [
       {
         "kind": "runtime_bridge_operation",
-        "operation": "pick_voxel"
-      },
-      {
-        "kind": "runtime_bridge_operation",
         "operation": "select_voxel"
       },
       {
@@ -776,23 +906,49 @@
     },
     "typedInputExample": {
       "sessionId": "session-1",
-      "ray": {
+      "request": {
+        "camera": 1,
         "grid": 0,
-        "origin": [
-          0,
-          0,
-          0
-        ],
-        "direction": [
-          1,
-          0,
-          0
-        ],
+        "viewport": null,
+        "screenPoint": {
+          "x": 0.5,
+          "y": 0.5,
+          "space": "normalized_0_1"
+        },
         "maxDistance": 128
       }
     },
     "typedOutputExample": {
-      "hit": null
+      "selection": {
+        "pickRay": {
+          "camera": 1,
+          "tick": 0,
+          "grid": 0,
+          "screenPoint": {
+            "x": 0.5,
+            "y": 0.5,
+            "space": "normalized_0_1"
+          },
+          "origin": [
+            0,
+            0,
+            0
+          ],
+          "direction": [
+            1,
+            0,
+            0
+          ],
+          "maxDistance": 128,
+          "cameraProjectionHash": "projection-hash",
+          "rayHash": "ray-hash"
+        },
+        "outcome": "miss",
+        "selectedVoxel": null,
+        "selectedFace": null,
+        "editAnchor": null,
+        "selectionHash": "selection-hash"
+      }
     }
   },
   {
@@ -822,23 +978,23 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
             "name": "voxel",
             "required": true,
-            "summary": "Voxel coordinate to inspect.",
             "shape": {
               "kind": "contract",
               "ref": {
                 "package": "@asha/contracts",
                 "exportName": "VoxelCoord"
               }
-            }
+            },
+            "summary": "Voxel coordinate to inspect."
           }
         ]
       }
@@ -847,8 +1003,43 @@
       "name": "VoxelInspectionOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "voxel_inspection"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "voxel",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "VoxelCoord"
+              }
+            },
+            "summary": "Inspected voxel coordinate."
+          },
+          {
+            "name": "materialId",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "integer"
+              }
+            },
+            "summary": "Material id when occupied."
+          },
+          {
+            "name": "occupied",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "boolean"
+            },
+            "summary": "Whether the voxel is occupied."
+          }
+        ]
       }
     },
     "inputContractRefs": [
@@ -961,39 +1152,39 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
             "name": "anchor",
             "required": true,
-            "summary": "Preview anchor coordinate.",
             "shape": {
               "kind": "contract",
               "ref": {
                 "package": "@asha/contracts",
                 "exportName": "VoxelCoord"
               }
-            }
+            },
+            "summary": "Preview anchor coordinate."
           },
           {
             "name": "commands",
             "required": true,
-            "summary": "Typed voxel command preview set.",
             "shape": {
               "kind": "array",
-              "minItems": 1,
               "items": {
                 "kind": "contract",
                 "ref": {
                   "package": "@asha/contracts",
                   "exportName": "VoxelCommand"
                 }
-              }
-            }
+              },
+              "minItems": 1
+            },
+            "summary": "Typed voxel command preview set."
           }
         ]
       }
@@ -1002,8 +1193,34 @@
       "name": "VoxelBrushPreviewOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "voxel_preview"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "targetVoxels",
+            "required": true,
+            "shape": {
+              "kind": "array",
+              "items": {
+                "kind": "contract",
+                "ref": {
+                  "package": "@asha/contracts",
+                  "exportName": "VoxelCoord"
+                }
+              }
+            },
+            "summary": "Voxels affected by the preview."
+          },
+          {
+            "name": "previewVersion",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Editor preview version."
+          }
+        ]
       }
     },
     "inputContractRefs": [
@@ -1138,36 +1355,39 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
             "name": "commands",
             "required": true,
-            "summary": "Typed authority voxel commands.",
             "shape": {
               "kind": "array",
-              "minItems": 1,
               "items": {
                 "kind": "contract",
                 "ref": {
                   "package": "@asha/contracts",
                   "exportName": "VoxelCommand"
                 }
-              }
-            }
+              },
+              "minItems": 1
+            },
+            "summary": "Typed authority voxel commands."
           },
           {
             "name": "expectedStateHash",
             "required": true,
-            "summary": "Expected authority state hash or null in typed execution adapter.",
             "shape": {
-              "kind": "scalar",
-              "scalar": "state_hash"
-            }
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "Expected authority state hash or null when unavailable."
           }
         ]
       }
@@ -1176,8 +1396,43 @@
       "name": "ApplyVoxelBrushOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "command_result"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "accepted",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "boolean"
+            },
+            "summary": "Whether authority accepted the command batch."
+          },
+          {
+            "name": "authorityBeforeHash",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "Before hash when available."
+          },
+          {
+            "name": "authorityAfterHash",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "After hash when available."
+          }
+        ]
       }
     },
     "inputContractRefs": [
@@ -1299,11 +1554,11 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           }
         ]
       }
@@ -1312,8 +1567,40 @@
       "name": "LastCommandResultOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "command_result"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sequenceId",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "string"
+              }
+            },
+            "summary": "Last command sequence id, if any."
+          },
+          {
+            "name": "status",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "literal",
+                "values": [
+                  "ok",
+                  "rejected",
+                  "partial",
+                  "failed",
+                  "unavailable"
+                ]
+              }
+            },
+            "summary": "Last command status, if any."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -1404,29 +1691,29 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
             "name": "beforeArtifactId",
             "required": true,
-            "summary": "Before visual evidence artifact id.",
             "shape": {
               "kind": "scalar",
               "scalar": "artifact_ref"
-            }
+            },
+            "summary": "Before visual evidence artifact id."
           },
           {
             "name": "afterArtifactId",
             "required": true,
-            "summary": "After visual evidence artifact id.",
             "shape": {
               "kind": "scalar",
               "scalar": "artifact_ref"
-            }
+            },
+            "summary": "After visual evidence artifact id."
           }
         ]
       }
@@ -1435,8 +1722,43 @@
       "name": "CaptureBeforeAfterOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "render_before_after"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "artifact_ref"
+            },
+            "summary": "Combined before/after artifact id."
+          },
+          {
+            "name": "renderBeforeHash",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "Before render evidence hash when available."
+          },
+          {
+            "name": "renderAfterHash",
+            "required": true,
+            "shape": {
+              "kind": "nullable",
+              "inner": {
+                "kind": "scalar",
+                "scalar": "state_hash"
+              }
+            },
+            "summary": "After render evidence hash when available."
+          }
+        ]
       }
     },
     "inputContractRefs": [],
@@ -1539,20 +1861,20 @@
           {
             "name": "sessionId",
             "required": true,
-            "summary": "Stable studio session identifier.",
             "shape": {
               "kind": "scalar",
               "scalar": "string"
-            }
+            },
+            "summary": "Stable studio session identifier."
           },
           {
             "name": "includeVisualEvidence",
             "required": true,
-            "summary": "Whether exported readout references visual artifacts.",
             "shape": {
               "kind": "scalar",
               "scalar": "boolean"
-            }
+            },
+            "summary": "Whether exported readout references visual artifacts."
           }
         ]
       }
@@ -1561,8 +1883,28 @@
       "name": "ExportAgentReadoutOutput",
       "version": 1,
       "shape": {
-        "kind": "artifactRef",
-        "artifactType": "agent_readout"
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "artifact_ref"
+            },
+            "summary": "Exported readout artifact id."
+          },
+          {
+            "name": "commandCount",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "integer"
+            },
+            "summary": "Number of commands included in the readout."
+          }
+        ]
       }
     },
     "inputContractRefs": [],

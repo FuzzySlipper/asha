@@ -9,6 +9,7 @@ import {
   requireKnownCommand,
   validateCommandDefinition,
   validateCommandManifest,
+  validateExampleAgainstSchema,
   type DraftStudioCommandDefinition,
 } from './index.js';
 
@@ -63,6 +64,61 @@ test('command schemas are fail-closed and contain no freeform object payloads', 
     const issues = validateCommandDefinition(command).filter((issue) => issue.message.includes('allowExtraFields'));
     assert.deepEqual(issues, [], command.id);
   }
+});
+
+test('typed examples match declared input and output schemas', () => {
+  for (const command of COMMAND_MANIFEST) {
+    assert.deepEqual(
+      validateExampleAgainstSchema(command.id, 'typedInputExample', command.typedInputExample, command.inputSchema.shape),
+      [],
+      `${command.id} input example`,
+    );
+    assert.deepEqual(
+      validateExampleAgainstSchema(command.id, 'typedOutputExample', command.typedOutputExample, command.outputSchema.shape),
+      [],
+      `${command.id} output example`,
+    );
+  }
+});
+
+test('mutating, writing, and capture commands are not advertised as read-only to agents', () => {
+  const nonReadOnlyByImpact = COMMAND_MANIFEST.filter(
+    (command) => command.operationClass !== 'read_only' || command.stateImpact.authority === 'mutate' || command.stateImpact.editor === 'mutate' || command.stateImpact.render === 'capture' || command.stateImpact.workspace === 'write',
+  );
+  assert.ok(nonReadOnlyByImpact.length > 0);
+  for (const command of nonReadOnlyByImpact) {
+    assert.notEqual(command.agentExposure.kind, 'read_only', command.id);
+  }
+  assert.equal(requireKnownCommand('session.start', COMMAND_MANIFEST).agentExposure.kind, 'workspace_io');
+  assert.equal(requireKnownCommand('session.load_scenario', COMMAND_MANIFEST).agentExposure.kind, 'workspace_io');
+});
+
+test('selection command uses screen-point camera request, not a caller-supplied pick ray', () => {
+  const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);
+  assert.deepEqual(select.inputContractRefs, [{ package: '@asha/contracts', exportName: 'ScreenPointToPickRayRequest' }]);
+  assert.deepEqual(select.outputContractRefs, [{ package: '@asha/contracts', exportName: 'VoxelSelectionSnapshot' }]);
+  const inputSchema = JSON.stringify(select.inputSchema);
+  assert.ok(inputSchema.includes('ScreenPointToPickRayRequest'));
+  assert.equal(inputSchema.includes('"exportName":"PickRay"'), false);
+  assert.deepEqual(select.runtimeRequirements, [{ kind: 'runtime_bridge_operation', operation: 'select_voxel' }, { kind: 'editor_store' }]);
+});
+
+test('validation rejects read-only exposure for non-read-only or mutating impacts', () => {
+  const start = requireKnownCommand('session.start', COMMAND_MANIFEST);
+  const broken: DraftStudioCommandDefinition = { ...start, agentExposure: { kind: 'read_only' } };
+  const issues = validateCommandDefinition(broken);
+  assert.ok(issues.some((issue) => issue.field === 'agentExposure' && issue.message.includes('read_only exposure')));
+});
+
+test('validation rejects output schemas that do not describe typed outputs', () => {
+  const world = requireKnownCommand('inspection.world_summary', COMMAND_MANIFEST);
+  const broken = validateExampleAgainstSchema(
+    world.id,
+    'typedOutputExample',
+    world.typedOutputExample,
+    { kind: 'object', allowExtraFields: false, fields: [{ name: 'artifactId', required: true, shape: { kind: 'scalar', scalar: 'artifact_ref' }, summary: 'Wrong artifact-only output.' }] },
+  );
+  assert.deepEqual(broken, [{ commandId: 'inspection.world_summary', field: 'typedOutputExample', message: 'typedOutputExample does not match its declared schema' }]);
 });
 
 test('validation rejects missing metadata and open object schemas', () => {

@@ -4,7 +4,12 @@
 // undo, artifacts, and ownership. It does not execute commands and must not import
 // runtime, renderer, UI, native bridge, browser, or Den surfaces.
 
-import type { PickRay, VoxelCommand, VoxelCoord, VoxelHit } from '@asha/contracts';
+import type {
+  ScreenPointToPickRayRequest,
+  VoxelCommand,
+  VoxelCoord,
+  VoxelSelectionSnapshot,
+} from '@asha/contracts';
 
 export type StudioCommandId =
   | 'session.list_scenarios'
@@ -51,9 +56,9 @@ export type AshaLane =
   | 'rust-service';
 
 export type ContractRef =
-  | { readonly package: '@asha/contracts'; readonly exportName: 'PickRay' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'ScreenPointToPickRayRequest' }
   | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelCoord' }
-  | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelHit' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelSelectionSnapshot' }
   | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelCommand' };
 
 export type RuntimeBridgeOperationRef =
@@ -67,16 +72,16 @@ export type RuntimeBridgeOperationRef =
   | 'save_current_world'
   | 'get_composition_status';
 
-export type SchemaScalarKind = 'string' | 'number' | 'boolean' | 'integer' | 'state_hash' | 'artifact_ref';
+export type SchemaScalarKind = 'string' | 'number' | 'boolean' | 'integer' | 'state_hash' | 'artifact_ref' | 'null';
 
 export type SchemaShape =
   | { readonly kind: 'empty' }
   | { readonly kind: 'contract'; readonly ref: ContractRef }
   | { readonly kind: 'object'; readonly fields: readonly SchemaField[]; readonly allowExtraFields: false }
-  | { readonly kind: 'array'; readonly items: Exclude<SchemaShape, { readonly kind: 'array' }>; readonly minItems?: number }
+  | { readonly kind: 'array'; readonly items: SchemaShape; readonly minItems?: number }
   | { readonly kind: 'literal'; readonly values: readonly string[] }
-  | { readonly kind: 'scalar'; readonly scalar: SchemaScalarKind }
-  | { readonly kind: 'artifactRef'; readonly artifactType: StudioArtifactType };
+  | { readonly kind: 'nullable'; readonly inner: SchemaShape }
+  | { readonly kind: 'scalar'; readonly scalar: SchemaScalarKind };
 
 export interface SchemaField {
   readonly name: string;
@@ -94,6 +99,7 @@ export interface SchemaRef {
 export type AgentExposure =
   | { readonly kind: 'hidden'; readonly reason: string }
   | { readonly kind: 'read_only' }
+  | { readonly kind: 'workspace_io'; readonly batchable: boolean }
   | { readonly kind: 'editor_local' }
   | { readonly kind: 'authority_mutating'; readonly requiresPreview?: boolean; readonly batchable: boolean }
   | { readonly kind: 'diagnostic_export' }
@@ -206,8 +212,8 @@ export interface SessionStatusOutput { readonly sessionId: string; readonly stat
 export interface ScenarioListOutput { readonly scenarios: readonly { readonly id: string; readonly label: string }[]; }
 export interface WorldSummaryOutput { readonly authorityHash: string | null; readonly voxelVolumeCount: number; readonly sceneNodeCount: number; }
 export interface EditorStateOutput { readonly editorVersion: string; readonly selectedVoxel: VoxelCoord | null; }
-export interface ScreenPointInput { readonly sessionId: string; readonly ray: PickRay; }
-export interface VoxelSelectionOutput { readonly hit: VoxelHit | null; }
+export interface ScreenPointInput { readonly sessionId: string; readonly request: ScreenPointToPickRayRequest; }
+export interface VoxelSelectionOutput { readonly selection: VoxelSelectionSnapshot; }
 export interface VoxelInspectionInput { readonly sessionId: string; readonly voxel: VoxelCoord; }
 export interface VoxelInspectionOutput { readonly voxel: VoxelCoord; readonly materialId: number | null; readonly occupied: boolean; }
 export interface VoxelBrushPreviewInput { readonly sessionId: string; readonly anchor: VoxelCoord; readonly commands: readonly VoxelCommand[]; }
