@@ -66,6 +66,27 @@ test('typed examples match declared input and output schemas', () => {
         assert.deepEqual(validateExampleAgainstSchema(command.id, 'typedOutputExample', command.typedOutputExample, command.outputSchema.shape), [], `${command.id} output example`);
     }
 });
+test('example validation rejects opaque contract payloads and malformed empty inputs', () => {
+    const scenarios = requireKnownCommand('session.list_scenarios', COMMAND_MANIFEST);
+    assert.deepEqual(validateExampleAgainstSchema(scenarios.id, 'typedInputExample', { kind: 'anything' }, scenarios.inputSchema.shape), [{ commandId: 'session.list_scenarios', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+    const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);
+    assert.deepEqual(validateExampleAgainstSchema(select.id, 'typedInputExample', { sessionId: 'session-1', request: { ray: { origin: [0, 0, 0] } } }, select.inputSchema.shape), [{ commandId: 'selection.voxel_from_screen_point', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+    const apply = requireKnownCommand('authority.voxel.apply_brush', COMMAND_MANIFEST);
+    assert.deepEqual(validateExampleAgainstSchema(apply.id, 'typedInputExample', { sessionId: 'session-1', commands: [{ op: 'setVoxel', grid: 0, coord: { x: 0, y: 0, z: 0 }, value: { kind: 'solid' } }], expectedStateHash: null }, apply.inputSchema.shape), [{ commandId: 'authority.voxel.apply_brush', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+});
+test('contract-backed selection schemas reject extra freeform fields', () => {
+    const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);
+    assert.deepEqual(validateExampleAgainstSchema(select.id, 'typedInputExample', {
+        sessionId: 'session-1',
+        request: {
+            camera: 1,
+            grid: 0,
+            viewport: null,
+            screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1', arbitrary: true },
+            maxDistance: 128,
+        },
+    }, select.inputSchema.shape), [{ commandId: 'selection.voxel_from_screen_point', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+});
 test('mutating, writing, and capture commands are not advertised as read-only to agents', () => {
     const nonReadOnlyByImpact = COMMAND_MANIFEST.filter((command) => command.operationClass !== 'read_only' || command.stateImpact.authority === 'mutate' || command.stateImpact.editor === 'mutate' || command.stateImpact.render === 'capture' || command.stateImpact.workspace === 'write');
     assert.ok(nonReadOnlyByImpact.length > 0);

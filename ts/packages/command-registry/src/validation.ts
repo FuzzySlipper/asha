@@ -83,12 +83,103 @@ function hasField(value: object, fieldName: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, fieldName);
 }
 
+function isPlainObject(value: unknown): value is { readonly [key: string]: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasExactKeys(value: { readonly [key: string]: unknown }, keys: readonly string[]): boolean {
+  const actual = Object.keys(value);
+  return actual.length === keys.length && keys.every((key) => hasField(value, key));
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value);
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isNumberTuple3(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 3 && value.every(isFiniteNumber);
+}
+
+function isLiteral(value: unknown, allowed: readonly string[]): boolean {
+  return typeof value === 'string' && allowed.includes(value);
+}
+
+function isVoxelCoord(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['x', 'y', 'z']) && isInteger(value.x) && isInteger(value.y) && isInteger(value.z);
+}
+
+function isVoxelValue(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasField(value, 'kind')) {
+    return false;
+  }
+  if (value.kind === 'empty') {
+    return hasExactKeys(value, ['kind']);
+  }
+  return value.kind === 'solid' && hasExactKeys(value, ['kind', 'material']) && isInteger(value.material);
+}
+
+function isVoxelCommand(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasField(value, 'op')) {
+    return false;
+  }
+  if (value.op === 'setVoxel') {
+    return hasExactKeys(value, ['op', 'grid', 'coord', 'value']) && isInteger(value.grid) && isVoxelCoord(value.coord) && isVoxelValue(value.value);
+  }
+  if (value.op === 'fillRegion') {
+    return hasExactKeys(value, ['op', 'grid', 'min', 'max', 'value']) && isInteger(value.grid) && isVoxelCoord(value.min) && isVoxelCoord(value.max) && isVoxelValue(value.value);
+  }
+  return value.op === 'generateChunk' && hasExactKeys(value, ['op', 'grid', 'chunk', 'seed', 'generatorVersion']) && isInteger(value.grid) && isVoxelCoord(value.chunk) && isInteger(value.seed) && isInteger(value.generatorVersion);
+}
+
+function isViewport(value: unknown): boolean {
+  return value === null || (isPlainObject(value) && hasExactKeys(value, ['width', 'height']) && isFiniteNumber(value.width) && isFiniteNumber(value.height));
+}
+
+function isScreenPoint(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['x', 'y', 'space']) && isFiniteNumber(value.x) && isFiniteNumber(value.y) && isLiteral(value.space, ['normalized_0_1', 'pixel']);
+}
+
+function isScreenPointToPickRayRequest(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['camera', 'grid', 'viewport', 'screenPoint', 'maxDistance']) && isInteger(value.camera) && isInteger(value.grid) && isViewport(value.viewport) && isScreenPoint(value.screenPoint) && isFiniteNumber(value.maxDistance);
+}
+
+function isPickRaySnapshot(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['camera', 'tick', 'grid', 'screenPoint', 'origin', 'direction', 'maxDistance', 'cameraProjectionHash', 'rayHash']) && isInteger(value.camera) && isInteger(value.tick) && isInteger(value.grid) && isScreenPoint(value.screenPoint) && isNumberTuple3(value.origin) && isNumberTuple3(value.direction) && isFiniteNumber(value.maxDistance) && isString(value.cameraProjectionHash) && isString(value.rayHash);
+}
+
+function isVoxelSelectionSnapshot(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['pickRay', 'outcome', 'selectedVoxel', 'selectedFace', 'editAnchor', 'selectionHash']) && isPickRaySnapshot(value.pickRay) && isLiteral(value.outcome, ['hit', 'miss']) && (value.selectedVoxel === null || isVoxelCoord(value.selectedVoxel)) && (value.selectedFace === null || isLiteral(value.selectedFace, ['posX', 'negX', 'posY', 'negY', 'posZ', 'negZ'])) && (value.editAnchor === null || isVoxelCoord(value.editAnchor)) && isString(value.selectionHash);
+}
+
+function validateContractValue(value: unknown, exportName: string): boolean {
+  switch (exportName) {
+    case 'ScreenPointToPickRayRequest':
+      return isScreenPointToPickRayRequest(value);
+    case 'VoxelCoord':
+      return isVoxelCoord(value);
+    case 'VoxelSelectionSnapshot':
+      return isVoxelSelectionSnapshot(value);
+    case 'VoxelCommand':
+      return isVoxelCommand(value);
+    default:
+      return false;
+  }
+}
+
 function validateValueAgainstShape(value: unknown, shape: SchemaShape): boolean {
   switch (shape.kind) {
     case 'empty':
-      return typeof value === 'object' && value !== null && Object.keys(value).length === 1 && hasField(value, 'kind');
+      return isPlainObject(value) && Object.keys(value).length === 1 && value.kind === 'empty';
     case 'contract':
-      return typeof value === 'object' && value !== null;
+      return validateContractValue(value, shape.ref.exportName);
     case 'literal':
       return typeof value === 'string' && shape.values.includes(value);
     case 'nullable':
