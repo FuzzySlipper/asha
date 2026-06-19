@@ -44,6 +44,17 @@ function mutatesOrWrites(impact: StateImpact): boolean {
   return impact.authority === 'mutate' || impact.editor === 'mutate' || impact.render === 'capture' || impact.workspace === 'write';
 }
 
+function isNonEmptyString(value: unknown): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function arraysEqual(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
+  if (left === undefined || right === undefined || left.length !== right.length) {
+    return false;
+  }
+  return left.every((value, index) => value === right[index]);
+}
+
 function visitSchemaShape(commandId: string, fieldPath: string, shape: SchemaShape, issues: ManifestValidationIssue[]): void {
   switch (shape.kind) {
     case 'empty':
@@ -155,14 +166,41 @@ export function validateCommandDefinition(definition: DraftStudioCommandDefiniti
   }
 
   if (definition.agentExposure !== undefined && definition.agentExposure.kind !== 'hidden') {
+    if (!isNonEmptyString(definition.label)) {
+      issues.push({ commandId, field: 'label', message: 'agent-exposed commands require a human-visible label' });
+    }
+    if (!isNonEmptyString(definition.summary)) {
+      issues.push({ commandId, field: 'summary', message: 'agent-exposed commands require a human-visible summary' });
+    }
+    if (definition.operationClass === undefined) {
+      issues.push({ commandId, field: 'operationClass', message: 'agent-exposed commands require an operation class' });
+    }
+    if (definition.owningLane === undefined) {
+      issues.push({ commandId, field: 'owningLane', message: 'agent-exposed commands require owning lane metadata' });
+    }
+    if (definition.owningPackage === undefined) {
+      issues.push({ commandId, field: 'owningPackage', message: 'agent-exposed commands require owning package metadata' });
+    }
     if (definition.guiMirror?.required !== true) {
       issues.push({ commandId, field: 'guiMirror.required', message: 'agent-exposed commands require a GUI mirror' });
     }
     if (definition.guiMirror?.menuPath === undefined || definition.guiMirror.menuPath.length === 0) {
       issues.push({ commandId, field: 'guiMirror.menuPath', message: 'agent-exposed commands require GUI/menu path metadata' });
     }
+    if (!arraysEqual(definition.guiMirror?.menuPath, definition.menuPath)) {
+      issues.push({ commandId, field: 'guiMirror.menuPath', message: 'GUI mirror menu path must match command menu path' });
+    }
     if (definition.guiMirror?.commandPaletteVisible !== true && definition.guiMirror?.panel === undefined) {
       issues.push({ commandId, field: 'guiMirror', message: 'agent-exposed commands require command-palette visibility or a panel route' });
+    }
+    if (!isNonEmptyString(definition.guiMirror?.argumentSummary)) {
+      issues.push({ commandId, field: 'guiMirror.argumentSummary', message: 'agent-exposed commands require GUI argument summary metadata' });
+    }
+    if (!isNonEmptyString(definition.guiMirror?.resultSummary)) {
+      issues.push({ commandId, field: 'guiMirror.resultSummary', message: 'agent-exposed commands require GUI result/output summary metadata' });
+    }
+    if (!isNonEmptyString(definition.guiMirror?.artifactSummary)) {
+      issues.push({ commandId, field: 'guiMirror.artifactSummary', message: 'agent-exposed commands require GUI artifact summary metadata' });
     }
   }
 

@@ -4,8 +4,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  COMMAND_CATALOG,
   COMMAND_IDS,
   COMMAND_MANIFEST,
+  requireCatalogCommand,
   requireKnownCommand,
   validateCommandDefinition,
   validateCommandManifest,
@@ -53,8 +55,17 @@ test('non-hidden agent exposure requires GUI mirror metadata', () => {
   for (const command of COMMAND_MANIFEST) {
     if (command.agentExposure.kind !== 'hidden') {
       assert.equal(command.guiMirror.required, true, command.id);
+      assert.deepEqual(command.guiMirror.menuPath, command.menuPath, command.id);
       assert.ok(command.guiMirror.menuPath.length > 0, command.id);
       assert.ok(command.guiMirror.commandPaletteVisible || command.guiMirror.panel !== undefined, command.id);
+      assert.ok(command.guiMirror.argumentSummary.length > 0, command.id);
+      assert.ok(command.guiMirror.resultSummary.length > 0, command.id);
+      assert.ok(command.guiMirror.artifactSummary.length > 0, command.id);
+      assert.ok(command.label.length > 0, command.id);
+      assert.ok(command.summary.length > 0, command.id);
+      assert.ok(command.operationClass.length > 0, command.id);
+      assert.ok(command.owningLane.length > 0, command.id);
+      assert.ok(command.owningPackage.length > 0, command.id);
     }
   }
 });
@@ -110,6 +121,27 @@ test('validation rejects read-only exposure for non-read-only or mutating impact
   assert.ok(issues.some((issue) => issue.field === 'agentExposure' && issue.message.includes('read_only exposure')));
 });
 
+test('validation rejects incomplete GUI mirror parity metadata', () => {
+  const inspect = requireKnownCommand('inspection.world_summary', COMMAND_MANIFEST);
+  const broken: DraftStudioCommandDefinition = {
+    ...inspect,
+    label: ' ',
+    guiMirror: {
+      ...inspect.guiMirror,
+      menuPath: ['Wrong'],
+      argumentSummary: '',
+      resultSummary: '',
+      artifactSummary: '',
+    },
+  };
+  const fields = validateCommandDefinition(broken).map((issue) => issue.field);
+  assert.ok(fields.includes('label'));
+  assert.ok(fields.includes('guiMirror.menuPath'));
+  assert.ok(fields.includes('guiMirror.argumentSummary'));
+  assert.ok(fields.includes('guiMirror.resultSummary'));
+  assert.ok(fields.includes('guiMirror.artifactSummary'));
+});
+
 test('validation rejects output schemas that do not describe typed outputs', () => {
   const world = requireKnownCommand('inspection.world_summary', COMMAND_MANIFEST);
   const broken = validateExampleAgainstSchema(
@@ -152,6 +184,31 @@ test('authority command uses typed voxel contracts and guarded retry/idempotency
   assert.equal(apply.agentExposure.kind, 'authority_mutating');
   assert.equal(apply.retry, 'safe_to_retry_if_state_hash_unchanged');
   assert.equal(apply.idempotency.kind, 'conditional');
+});
+
+test('command catalog projects every visible command back to a registry identity', () => {
+  assert.equal(COMMAND_CATALOG.schemaVersion, 1);
+  assert.equal(COMMAND_CATALOG.generatedFrom, 'COMMAND_MANIFEST');
+  assert.deepEqual(COMMAND_CATALOG.commands.map((command) => command.id), COMMAND_IDS);
+  for (const command of COMMAND_CATALOG.commands) {
+    const definition = requireKnownCommand(command.id, COMMAND_MANIFEST);
+    assert.equal(command.label, definition.label);
+    assert.equal(command.operationClass, definition.operationClass);
+    assert.deepEqual(command.menuPath, definition.menuPath);
+    assert.deepEqual(command.guiMirror.menuPath, definition.guiMirror.menuPath);
+    assert.ok(command.guiMirror.argumentSummary.length > 0, command.id);
+    assert.ok(command.guiMirror.resultSummary.length > 0, command.id);
+    assert.ok(command.guiMirror.artifactSummary.length > 0, command.id);
+  }
+  assert.equal(requireCatalogCommand('render.capture_before_after', COMMAND_CATALOG).agentExposureKind, 'render_evidence');
+  assert.throws(() => requireCatalogCommand('inspection.missing', COMMAND_CATALOG), /Unknown ASHA studio command id/);
+});
+
+test('command catalog golden stays stable and readable', () => {
+  const goldenPath = join(process.cwd(), 'src', 'command-catalog.golden.json');
+  const expected = readFileSync(goldenPath, 'utf8');
+  const actual = `${JSON.stringify(COMMAND_CATALOG, null, 2)}\n`;
+  assert.equal(actual, expected);
 });
 
 test('manifest golden stays stable and reviewable', () => {

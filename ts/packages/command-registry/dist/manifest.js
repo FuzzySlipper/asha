@@ -38,6 +38,33 @@ function artifact(type, summary, required = true) {
 function runtime(operation) {
     return { kind: 'runtime_bridge_operation', operation };
 }
+function summarizeShape(shape) {
+    switch (shape.kind) {
+        case 'empty':
+            return 'No arguments.';
+        case 'contract':
+            return `Uses ${shape.ref.exportName} from ${shape.ref.package}.`;
+        case 'scalar':
+            return `${shape.scalar} value.`;
+        case 'literal':
+            return `One of: ${shape.values.join(', ')}.`;
+        case 'nullable':
+            return `Nullable ${summarizeShape(shape.inner).replace(/\.$/, '')}.`;
+        case 'array':
+            return `Array of ${summarizeShape(shape.items).replace(/\.$/, '')}.`;
+        case 'object':
+            if (shape.fields.length === 0) {
+                return 'Object with no fields.';
+            }
+            return shape.fields.map((fieldDef) => `${fieldDef.name}: ${fieldDef.summary}`).join(' ');
+    }
+}
+function summarizeSchema(schema) {
+    return `${schema.name}: ${summarizeShape(schema.shape)}`;
+}
+function summarizeArtifacts(artifacts) {
+    return artifacts.map((decl) => `${decl.type}: ${decl.summary}`).join(' ');
+}
 function def(definition) {
     return definition;
 }
@@ -61,6 +88,9 @@ function base(args) {
             required: agentExposure.kind !== 'hidden',
             menuPath: args.menuPath,
             commandPaletteVisible: true,
+            argumentSummary: summarizeSchema(args.inputSchema),
+            resultSummary: summarizeSchema(args.outputSchema),
+            artifactSummary: summarizeArtifacts(args.artifacts),
             ...(args.panel === undefined ? {} : { panel: args.panel }),
             ...(args.dialog === undefined ? {} : { dialog: args.dialog }),
         },

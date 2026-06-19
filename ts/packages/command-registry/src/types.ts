@@ -109,6 +109,9 @@ export interface GuiMirror {
   readonly required: boolean;
   readonly menuPath: readonly string[];
   readonly commandPaletteVisible: boolean;
+  readonly argumentSummary: string;
+  readonly resultSummary: string;
+  readonly artifactSummary: string;
   readonly panel?: 'timeline' | 'inspector' | 'viewport' | 'evidence' | 'export' | 'diagnostics';
   readonly dialog?: 'none' | 'simple_form' | 'advanced_form' | 'readout_only';
 }
@@ -225,5 +228,35 @@ export interface CaptureBeforeAfterInput { readonly sessionId: string; readonly 
 export interface CaptureBeforeAfterOutput { readonly artifactId: string; readonly renderBeforeHash: string | null; readonly renderAfterHash: string | null; }
 export interface ExportAgentReadoutInput { readonly sessionId: string; readonly includeVisualEvidence: boolean; }
 export interface ExportAgentReadoutOutput { readonly artifactId: string; readonly commandCount: number; }
+
+export interface StudioCommandCatalogEntry {
+  readonly id: StudioCommandId;
+  readonly version: number;
+  readonly label: string;
+  readonly summary: string;
+  readonly category: CommandCategory;
+  readonly operationClass: OperationClass;
+  readonly agentExposureKind: AgentExposure['kind'];
+  readonly menuPath: readonly string[];
+  readonly commandPaletteVisible: boolean;
+  readonly commandPaletteKeywords: readonly string[];
+  readonly guiMirror: GuiMirror;
+  readonly inputSchemaName: string;
+  readonly outputSchemaName: string;
+  readonly inputContractRefs: readonly ContractRef[];
+  readonly outputContractRefs: readonly ContractRef[];
+  readonly artifacts: readonly ArtifactDeclaration[];
+  readonly stateImpact: StateImpact;
+  readonly owningLane: AshaLane;
+  readonly owningPackage: StudioCommandDefinition<object, object>['owningPackage'];
+  readonly runtimeRequirements: readonly RuntimeRequirement[];
+}
+
+export interface StudioCommandCatalog {
+  readonly schemaVersion: 1;
+  readonly generatedFrom: 'COMMAND_MANIFEST';
+  readonly commandRegistryVersion: CompatibilityRequirement['commandRegistry'];
+  readonly commands: readonly StudioCommandCatalogEntry[];
+}
 
 export type StudioCommandManifest = readonly StudioCommandDefinition<object, object>[];

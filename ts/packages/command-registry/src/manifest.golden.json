@@ -78,6 +78,9 @@
         "List Scenarios"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "EmptyInput: No arguments.",
+      "resultSummary": "ScenarioListOutput: scenarios: Bounded public scenario list.",
+      "artifactSummary": "scenario_manifest: Bounded scenario list for session loading.",
       "panel": "inspector",
       "dialog": "readout_only"
     },
@@ -198,6 +201,9 @@
         "Start"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "ScenarioIdInput: scenarioId: Named public studio scenario identifier.",
+      "resultSummary": "EmptyOutput: kind: Acknowledgement literal.",
+      "artifactSummary": "session_status: Initial session status and compatibility readback.",
       "panel": "timeline",
       "dialog": "simple_form"
     },
@@ -319,6 +325,9 @@
         "Load Scenario"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "ScenarioIdInput: scenarioId: Named public studio scenario identifier.",
+      "resultSummary": "EmptyOutput: kind: Acknowledgement literal.",
+      "artifactSummary": "session_status: Scenario load status and diagnostics.",
       "panel": "timeline",
       "dialog": "simple_form"
     },
@@ -447,6 +456,9 @@
         "Session Status"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "SessionIdInput: sessionId: Stable studio session identifier.",
+      "resultSummary": "SessionStatusOutput: sessionId: Stable studio session identifier. status: Session/runtime status.",
+      "artifactSummary": "session_status: Status readback for the active session.",
       "panel": "diagnostics",
       "dialog": "readout_only"
     },
@@ -585,6 +597,9 @@
         "World Summary"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "SessionIdInput: sessionId: Stable studio session identifier.",
+      "resultSummary": "WorldSummaryOutput: authorityHash: Authority hash when the public runtime can provide it. voxelVolumeCount: Number of public voxel volumes. sceneNodeCount: Number of public scene nodes.",
+      "artifactSummary": "world_summary: Compact authority/render-neutral world summary.",
       "panel": "inspector",
       "dialog": "readout_only"
     },
@@ -718,6 +733,9 @@
         "Editor State"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "SessionIdInput: sessionId: Stable studio session identifier.",
+      "resultSummary": "EditorStateOutput: editorVersion: Editor state/schema version. selectedVoxel: Currently selected voxel, if any.",
+      "artifactSummary": "editor_state: Editor-local state snapshot.",
       "panel": "inspector",
       "dialog": "readout_only"
     },
@@ -860,6 +878,9 @@
         "Voxel From Screen Point"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "ScreenPointInput: sessionId: Stable studio session identifier. request: Generated public screen-point/camera selection request.",
+      "resultSummary": "VoxelSelectionOutput: selection: Generated public selection evidence snapshot.",
+      "artifactSummary": "selection_snapshot: Selected voxel hit or no-hit result.",
       "panel": "viewport",
       "dialog": "none"
     },
@@ -1065,6 +1086,9 @@
         "Voxel"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "VoxelInspectionInput: sessionId: Stable studio session identifier. voxel: Voxel coordinate to inspect.",
+      "resultSummary": "VoxelInspectionOutput: voxel: Inspected voxel coordinate. materialId: Material id when occupied. occupied: Whether the voxel is occupied.",
+      "artifactSummary": "voxel_inspection: Voxel occupancy/material readout.",
       "panel": "inspector",
       "dialog": "readout_only"
     },
@@ -1250,6 +1274,9 @@
         "Preview Voxel Brush"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "VoxelBrushPreviewInput: sessionId: Stable studio session identifier. anchor: Preview anchor coordinate. commands: Typed voxel command preview set.",
+      "resultSummary": "VoxelBrushPreviewOutput: targetVoxels: Voxels affected by the preview. previewVersion: Editor preview version.",
+      "artifactSummary": "voxel_preview: Editor-local target voxel preview.",
       "panel": "viewport",
       "dialog": "simple_form"
     },
@@ -1455,6 +1482,9 @@
         "Apply Voxel Brush"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "ApplyVoxelBrushInput: sessionId: Stable studio session identifier. commands: Typed authority voxel commands. expectedStateHash: Expected authority state hash or null when unavailable.",
+      "resultSummary": "ApplyVoxelBrushOutput: accepted: Whether authority accepted the command batch. authorityBeforeHash: Before hash when available. authorityAfterHash: After hash when available.",
+      "artifactSummary": "command_result: Accepted/rejected authority command result with state hash evidence.",
       "panel": "timeline",
       "dialog": "advanced_form"
     },
@@ -1616,6 +1646,9 @@
         "Last Command Result"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "SessionIdInput: sessionId: Stable studio session identifier.",
+      "resultSummary": "LastCommandResultOutput: sequenceId: Last command sequence id, if any. status: Last command status, if any.",
+      "artifactSummary": "command_result: Last known command result reference.",
       "panel": "timeline",
       "dialog": "readout_only"
     },
@@ -1774,6 +1807,9 @@
         "Capture Before/After"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "CaptureBeforeAfterInput: sessionId: Stable studio session identifier. beforeArtifactId: Before visual evidence artifact id. afterArtifactId: After visual evidence artifact id.",
+      "resultSummary": "CaptureBeforeAfterOutput: artifactId: Combined before/after artifact id. renderBeforeHash: Before render evidence hash when available. renderAfterHash: After render evidence hash when available.",
+      "artifactSummary": "render_before_after: Before/after visual evidence artifact.",
       "panel": "evidence",
       "dialog": "simple_form"
     },
@@ -1920,6 +1956,9 @@
         "Agent Readout"
       ],
       "commandPaletteVisible": true,
+      "argumentSummary": "ExportAgentReadoutInput: sessionId: Stable studio session identifier. includeVisualEvidence: Whether exported readout references visual artifacts.",
+      "resultSummary": "ExportAgentReadoutOutput: artifactId: Exported readout artifact id. commandCount: Number of commands included in the readout.",
+      "artifactSummary": "agent_readout: Human/agent review artifact index.",
       "panel": "export",
       "dialog": "simple_form"
     },
