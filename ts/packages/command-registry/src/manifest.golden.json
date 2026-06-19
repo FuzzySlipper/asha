@@ -1,0 +1,1630 @@
+[
+  {
+    "id": "session.list_scenarios",
+    "version": 1,
+    "label": "List Studio Scenarios",
+    "summary": "List named public scenarios available to a studio session.",
+    "category": "session",
+    "menuPath": [
+      "Session",
+      "List Scenarios"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "scenario",
+        "list"
+      ]
+    },
+    "inputSchema": {
+      "name": "EmptyInput",
+      "version": 1,
+      "shape": {
+        "kind": "empty"
+      }
+    },
+    "outputSchema": {
+      "name": "ScenarioListOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "scenario_manifest"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Session",
+        "List Scenarios"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": []
+    },
+    "artifacts": [
+      {
+        "type": "scenario_manifest",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Bounded scenario list for session loading."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "none"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "kind": "empty"
+    },
+    "typedOutputExample": {
+      "scenarios": [
+        {
+          "id": "voxel-basic",
+          "label": "Basic Voxel Scenario"
+        }
+      ]
+    }
+  },
+  {
+    "id": "session.start",
+    "version": 1,
+    "label": "Start Studio Session",
+    "summary": "Create/reset a studio session around a named scenario.",
+    "category": "session",
+    "menuPath": [
+      "Session",
+      "Start"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "session",
+        "start"
+      ]
+    },
+    "inputSchema": {
+      "name": "ScenarioIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "scenarioId",
+            "required": true,
+            "summary": "Named public studio scenario identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "EmptyOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "kind",
+            "required": true,
+            "summary": "Acknowledgement literal.",
+            "shape": {
+              "kind": "literal",
+              "values": [
+                "ok"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "workspace_io",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Session",
+        "Start"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "timeline",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "retry_after_status_readback",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Idempotent when scenarioId and session reset token match."
+    },
+    "artifacts": [
+      {
+        "type": "session_status",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Initial session status and compatibility readback."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "read"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "initialize_engine"
+      },
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "load_world_bundle"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "scenarioId": "voxel-basic"
+    },
+    "typedOutputExample": {
+      "kind": "ok"
+    }
+  },
+  {
+    "id": "session.load_scenario",
+    "version": 1,
+    "label": "Load Scenario",
+    "summary": "Load a named scenario into the active studio session.",
+    "category": "session",
+    "menuPath": [
+      "Session",
+      "Load Scenario"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "load",
+        "scenario"
+      ]
+    },
+    "inputSchema": {
+      "name": "ScenarioIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "scenarioId",
+            "required": true,
+            "summary": "Named public studio scenario identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "EmptyOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "kind",
+            "required": true,
+            "summary": "Acknowledgement literal.",
+            "shape": {
+              "kind": "literal",
+              "values": [
+                "ok"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "workspace_io",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Session",
+        "Load Scenario"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "timeline",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "retry_after_status_readback",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Safe when current session already targets the same scenario id."
+    },
+    "artifacts": [
+      {
+        "type": "session_status",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Scenario load status and diagnostics."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "read"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "load_world_bundle"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "scenarioId": "voxel-basic"
+    },
+    "typedOutputExample": {
+      "kind": "ok"
+    }
+  },
+  {
+    "id": "inspection.session_status",
+    "version": 1,
+    "label": "Inspect Session Status",
+    "summary": "Read studio/runtime readiness, compatibility, and degradation status.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Session Status"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "status",
+        "compatibility"
+      ]
+    },
+    "inputSchema": {
+      "name": "SessionIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "SessionStatusOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "session_status"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Session Status"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "diagnostics",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "session_status",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Status readback for the active session."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "get_composition_status"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1"
+    },
+    "typedOutputExample": {
+      "sessionId": "session-1",
+      "status": "ready"
+    }
+  },
+  {
+    "id": "inspection.world_summary",
+    "version": 1,
+    "label": "Inspect World Summary",
+    "summary": "Read compact public world and authority evidence.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "World Summary"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "world",
+        "hash"
+      ]
+    },
+    "inputSchema": {
+      "name": "SessionIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "WorldSummaryOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "world_summary"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "World Summary"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "world_summary",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Compact authority/render-neutral world summary."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_voxel_mesh_evidence"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1"
+    },
+    "typedOutputExample": {
+      "authorityHash": null,
+      "voxelVolumeCount": 1,
+      "sceneNodeCount": 1
+    }
+  },
+  {
+    "id": "inspection.editor_state",
+    "version": 1,
+    "label": "Inspect Editor State",
+    "summary": "Read command-registry/editor-local selection and preview state.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Editor State"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "editor",
+        "selection"
+      ]
+    },
+    "inputSchema": {
+      "name": "SessionIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "EditorStateOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "editor_state"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Editor State"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "editor_state",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Editor-local state snapshot."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "read",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1"
+    },
+    "typedOutputExample": {
+      "editorVersion": "editor.v0",
+      "selectedVoxel": null
+    }
+  },
+  {
+    "id": "selection.voxel_from_screen_point",
+    "version": 1,
+    "label": "Select Voxel From Screen Point",
+    "summary": "Project a screen pick into a typed ASHA voxel hit and editor selection.",
+    "category": "selection",
+    "menuPath": [
+      "Select",
+      "Voxel From Screen Point"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "pick",
+        "select",
+        "voxel"
+      ]
+    },
+    "inputSchema": {
+      "name": "ScreenPointInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "ray",
+            "required": true,
+            "summary": "Public contract pick ray.",
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "PickRay"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "VoxelSelectionOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "selection_snapshot"
+      }
+    },
+    "inputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "PickRay"
+      }
+    ],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelHit"
+      }
+    ],
+    "operationClass": "editor_local",
+    "agentExposure": {
+      "kind": "editor_local"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Select",
+        "Voxel From Screen Point"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "viewport",
+      "dialog": "none"
+    },
+    "undo": {
+      "kind": "editor_local",
+      "inverseData": [
+        "previous selection snapshot"
+      ]
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Same pick ray and unchanged view state selects the same voxel."
+    },
+    "artifacts": [
+      {
+        "type": "selection_snapshot",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Selected voxel hit or no-hit result."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "pick_voxel"
+      },
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "select_voxel"
+      },
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "ray": {
+        "grid": 0,
+        "origin": [
+          0,
+          0,
+          0
+        ],
+        "direction": [
+          1,
+          0,
+          0
+        ],
+        "maxDistance": 128
+      }
+    },
+    "typedOutputExample": {
+      "hit": null
+    }
+  },
+  {
+    "id": "inspection.voxel",
+    "version": 1,
+    "label": "Inspect Voxel",
+    "summary": "Read typed voxel/material state for one public coordinate.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Voxel"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "voxel",
+        "inspect"
+      ]
+    },
+    "inputSchema": {
+      "name": "VoxelInspectionInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "voxel",
+            "required": true,
+            "summary": "Voxel coordinate to inspect.",
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "VoxelCoord"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "VoxelInspectionOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "voxel_inspection"
+      }
+    },
+    "inputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCoord"
+      }
+    ],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCoord"
+      }
+    ],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Voxel"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "voxel_inspection",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Voxel occupancy/material readout."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_voxel_mesh_evidence"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "voxel": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      }
+    },
+    "typedOutputExample": {
+      "voxel": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "materialId": null,
+      "occupied": false
+    }
+  },
+  {
+    "id": "preview.voxel_brush",
+    "version": 1,
+    "label": "Preview Voxel Brush",
+    "summary": "Preview a typed voxel edit without mutating authority.",
+    "category": "preview",
+    "menuPath": [
+      "Edit",
+      "Preview Voxel Brush"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "preview",
+        "brush",
+        "voxel"
+      ]
+    },
+    "inputSchema": {
+      "name": "VoxelBrushPreviewInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "anchor",
+            "required": true,
+            "summary": "Preview anchor coordinate.",
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "VoxelCoord"
+              }
+            }
+          },
+          {
+            "name": "commands",
+            "required": true,
+            "summary": "Typed voxel command preview set.",
+            "shape": {
+              "kind": "array",
+              "minItems": 1,
+              "items": {
+                "kind": "contract",
+                "ref": {
+                  "package": "@asha/contracts",
+                  "exportName": "VoxelCommand"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "VoxelBrushPreviewOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "voxel_preview"
+      }
+    },
+    "inputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCoord"
+      },
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCommand"
+      }
+    ],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCoord"
+      }
+    ],
+    "operationClass": "editor_local",
+    "agentExposure": {
+      "kind": "editor_local"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Edit",
+        "Preview Voxel Brush"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "viewport",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "editor_local",
+      "inverseData": [
+        "previous preview snapshot"
+      ]
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId",
+        "anchor",
+        "commands"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "voxel_preview",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Editor-local target voxel preview."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "anchor": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "commands": [
+        {
+          "op": "setVoxel",
+          "grid": 0,
+          "coord": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "value": {
+            "kind": "solid",
+            "material": 1
+          }
+        }
+      ]
+    },
+    "typedOutputExample": {
+      "targetVoxels": [
+        {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      ],
+      "previewVersion": "preview.v0"
+    }
+  },
+  {
+    "id": "authority.voxel.apply_brush",
+    "version": 1,
+    "label": "Apply Voxel Brush",
+    "summary": "Apply typed voxel commands through ASHA authority validation.",
+    "category": "authority_edit",
+    "menuPath": [
+      "Edit",
+      "Apply Voxel Brush"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "apply",
+        "voxel",
+        "authority"
+      ]
+    },
+    "inputSchema": {
+      "name": "ApplyVoxelBrushInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "commands",
+            "required": true,
+            "summary": "Typed authority voxel commands.",
+            "shape": {
+              "kind": "array",
+              "minItems": 1,
+              "items": {
+                "kind": "contract",
+                "ref": {
+                  "package": "@asha/contracts",
+                  "exportName": "VoxelCommand"
+                }
+              }
+            }
+          },
+          {
+            "name": "expectedStateHash",
+            "required": true,
+            "summary": "Expected authority state hash or null in typed execution adapter.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "state_hash"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "ApplyVoxelBrushOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "command_result"
+      }
+    },
+    "inputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "VoxelCommand"
+      }
+    ],
+    "outputContractRefs": [],
+    "operationClass": "authority_mutating",
+    "agentExposure": {
+      "kind": "authority_mutating",
+      "requiresPreview": true,
+      "batchable": true
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Edit",
+        "Apply Voxel Brush"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "timeline",
+      "dialog": "advanced_form"
+    },
+    "undo": {
+      "kind": "authority_reversing",
+      "inverseCommandRefs": [],
+      "requiresSameStateHash": true
+    },
+    "retry": "safe_to_retry_if_state_hash_unchanged",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Safe when expectedStateHash still matches and command sequence id has not committed."
+    },
+    "artifacts": [
+      {
+        "type": "command_result",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Accepted/rejected authority command result with state hash evidence."
+      }
+    ],
+    "stateImpact": {
+      "authority": "mutate",
+      "editor": "read",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "submit_commands"
+      },
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_voxel_mesh_evidence"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "V1 records reversal posture but does not declare a generic authority undo stack."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "commands": [
+        {
+          "op": "setVoxel",
+          "grid": 0,
+          "coord": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "value": {
+            "kind": "solid",
+            "material": 1
+          }
+        }
+      ],
+      "expectedStateHash": null
+    },
+    "typedOutputExample": {
+      "accepted": true,
+      "authorityBeforeHash": null,
+      "authorityAfterHash": null
+    }
+  },
+  {
+    "id": "inspection.last_command_result",
+    "version": 1,
+    "label": "Inspect Last Command Result",
+    "summary": "Read the last timeline command result for human/agent correlation.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Last Command Result"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "timeline",
+        "result"
+      ]
+    },
+    "inputSchema": {
+      "name": "SessionIdInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "LastCommandResultOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "command_result"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Last Command Result"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "timeline",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "command_result",
+        "required": false,
+        "producedWhen": "when_available",
+        "summary": "Last known command result reference."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "read",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1"
+    },
+    "typedOutputExample": {
+      "sequenceId": null,
+      "status": null
+    }
+  },
+  {
+    "id": "render.capture_before_after",
+    "version": 1,
+    "label": "Capture Before/After Evidence",
+    "summary": "Capture/render before-after evidence as non-authoritative artifacts.",
+    "category": "render_evidence",
+    "menuPath": [
+      "Evidence",
+      "Capture Before/After"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "capture",
+        "evidence",
+        "render"
+      ]
+    },
+    "inputSchema": {
+      "name": "CaptureBeforeAfterInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "beforeArtifactId",
+            "required": true,
+            "summary": "Before visual evidence artifact id.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "artifact_ref"
+            }
+          },
+          {
+            "name": "afterArtifactId",
+            "required": true,
+            "summary": "After visual evidence artifact id.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "artifact_ref"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "CaptureBeforeAfterOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "render_before_after"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "render_evidence",
+    "agentExposure": {
+      "kind": "render_evidence"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Evidence",
+        "Capture Before/After"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "evidence",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "retry_after_status_readback",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Safe after reading current render/artifact status."
+    },
+    "artifacts": [
+      {
+        "type": "render_before_after",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Before/after visual evidence artifact."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "read",
+      "render": "capture",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_render_diffs"
+      },
+      {
+        "kind": "render_surface"
+      },
+      {
+        "kind": "artifact_writer"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "Render screenshots are evidence only and never authority."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "beforeArtifactId": "artifact-before",
+      "afterArtifactId": "artifact-after"
+    },
+    "typedOutputExample": {
+      "artifactId": "artifact-before-after",
+      "renderBeforeHash": null,
+      "renderAfterHash": null
+    }
+  },
+  {
+    "id": "export.agent_readout",
+    "version": 1,
+    "label": "Export Agent Readout",
+    "summary": "Export command timeline, compatibility, diagnostics, and artifact refs for review.",
+    "category": "export",
+    "menuPath": [
+      "Export",
+      "Agent Readout"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "export",
+        "agent",
+        "review"
+      ]
+    },
+    "inputSchema": {
+      "name": "ExportAgentReadoutInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "summary": "Stable studio session identifier.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            }
+          },
+          {
+            "name": "includeVisualEvidence",
+            "required": true,
+            "summary": "Whether exported readout references visual artifacts.",
+            "shape": {
+              "kind": "scalar",
+              "scalar": "boolean"
+            }
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "ExportAgentReadoutOutput",
+      "version": 1,
+      "shape": {
+        "kind": "artifactRef",
+        "artifactType": "agent_readout"
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "diagnostic_export",
+    "agentExposure": {
+      "kind": "diagnostic_export"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Export",
+        "Agent Readout"
+      ],
+      "commandPaletteVisible": true,
+      "panel": "export",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId",
+        "includeVisualEvidence"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "agent_readout",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Human/agent review artifact index."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "read",
+      "render": "read",
+      "workspace": "write"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "artifact_writer"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "includeVisualEvidence": true
+    },
+    "typedOutputExample": {
+      "artifactId": "agent-readout",
+      "commandCount": 0
+    }
+  }
+]

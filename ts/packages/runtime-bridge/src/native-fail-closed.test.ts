@@ -75,11 +75,13 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       calls.push(`render:${cursor}`);
       return { ops: [{ op: 'sentinel' }] } as never;
     },
-    saveCurrentWorld: (_handle: number) => {
+    saveCurrentWorld: (handle: number) => {
+      void handle;
       calls.push('save');
       return { artifactsWritten: 5, compactedEdits: 2, retainedEdits: 3 };
     },
-    getCompositionStatus: (_handle: number) => {
+    getCompositionStatus: (handle: number) => {
+      void handle;
       calls.push('status');
       return { loadedWorld: 2001, fatalCount: 0, totalCount: 0, blocksLoad: false };
     },

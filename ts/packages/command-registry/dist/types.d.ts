@@ -1,0 +1,257 @@
+import type { PickRay, VoxelCommand, VoxelCoord, VoxelHit } from '@asha/contracts';
+export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'selection.voxel_from_screen_point' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
+export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
+export type OperationClass = 'read_only' | 'editor_local' | 'authority_mutating' | 'render_evidence' | 'diagnostic_export' | 'workspace_io';
+export type AshaLane = 'contract-steward' | 'ts-command-registry' | 'ts-shell' | 'ts-tools' | 'rust-bridge' | 'rust-render' | 'rust-rule' | 'rust-service';
+export type ContractRef = {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'PickRay';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelCoord';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelHit';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelCommand';
+};
+export type RuntimeBridgeOperationRef = 'initialize_engine' | 'pick_voxel' | 'select_voxel' | 'submit_commands' | 'read_voxel_mesh_evidence' | 'read_render_diffs' | 'load_world_bundle' | 'save_current_world' | 'get_composition_status';
+export type SchemaScalarKind = 'string' | 'number' | 'boolean' | 'integer' | 'state_hash' | 'artifact_ref';
+export type SchemaShape = {
+    readonly kind: 'empty';
+} | {
+    readonly kind: 'contract';
+    readonly ref: ContractRef;
+} | {
+    readonly kind: 'object';
+    readonly fields: readonly SchemaField[];
+    readonly allowExtraFields: false;
+} | {
+    readonly kind: 'array';
+    readonly items: Exclude<SchemaShape, {
+        readonly kind: 'array';
+    }>;
+    readonly minItems?: number;
+} | {
+    readonly kind: 'literal';
+    readonly values: readonly string[];
+} | {
+    readonly kind: 'scalar';
+    readonly scalar: SchemaScalarKind;
+} | {
+    readonly kind: 'artifactRef';
+    readonly artifactType: StudioArtifactType;
+};
+export interface SchemaField {
+    readonly name: string;
+    readonly required: boolean;
+    readonly shape: SchemaShape;
+    readonly summary: string;
+}
+export interface SchemaRef {
+    readonly name: string;
+    readonly version: number;
+    readonly shape: SchemaShape;
+}
+export type AgentExposure = {
+    readonly kind: 'hidden';
+    readonly reason: string;
+} | {
+    readonly kind: 'read_only';
+} | {
+    readonly kind: 'editor_local';
+} | {
+    readonly kind: 'authority_mutating';
+    readonly requiresPreview?: boolean;
+    readonly batchable: boolean;
+} | {
+    readonly kind: 'diagnostic_export';
+} | {
+    readonly kind: 'render_evidence';
+};
+export interface GuiMirror {
+    readonly required: boolean;
+    readonly menuPath: readonly string[];
+    readonly commandPaletteVisible: boolean;
+    readonly panel?: 'timeline' | 'inspector' | 'viewport' | 'evidence' | 'export' | 'diagnostics';
+    readonly dialog?: 'none' | 'simple_form' | 'advanced_form' | 'readout_only';
+}
+export type UndoPosture = {
+    readonly kind: 'not_undoable';
+    readonly reason: string;
+} | {
+    readonly kind: 'editor_local';
+    readonly inverseData: readonly string[];
+} | {
+    readonly kind: 'authority_reversing';
+    readonly inverseCommandRefs: readonly StudioCommandId[];
+    readonly requiresSameStateHash: boolean;
+} | {
+    readonly kind: 'snapshot_restore';
+    readonly artifactType: StudioArtifactType;
+    readonly requiresHumanConfirmation: boolean;
+};
+export type RetryPosture = 'safe_to_retry' | 'safe_to_retry_if_state_hash_unchanged' | 'retry_after_status_readback' | 'not_idempotent' | 'requires_human_or_planner_decision';
+export type IdempotencyPosture = {
+    readonly kind: 'idempotent';
+    readonly keyFields: readonly string[];
+} | {
+    readonly kind: 'conditional';
+    readonly condition: string;
+} | {
+    readonly kind: 'non_idempotent';
+    readonly reason: string;
+};
+export type StudioArtifactType = 'command_manifest' | 'scenario_manifest' | 'session_status' | 'world_summary' | 'editor_state' | 'selection_snapshot' | 'voxel_inspection' | 'voxel_preview' | 'command_result' | 'render_before_after' | 'agent_readout';
+export interface ArtifactDeclaration {
+    readonly type: StudioArtifactType;
+    readonly required: boolean;
+    readonly producedWhen: 'always' | 'on_success' | 'on_rejection' | 'when_available';
+    readonly summary: string;
+}
+export interface StateImpact {
+    readonly authority: 'none' | 'read' | 'mutate';
+    readonly editor: 'none' | 'read' | 'mutate';
+    readonly render: 'none' | 'read' | 'capture';
+    readonly workspace: 'none' | 'read' | 'write';
+}
+export type RuntimeRequirement = {
+    readonly kind: 'none';
+} | {
+    readonly kind: 'runtime_bridge_operation';
+    readonly operation: RuntimeBridgeOperationRef;
+} | {
+    readonly kind: 'editor_store';
+} | {
+    readonly kind: 'render_surface';
+} | {
+    readonly kind: 'artifact_writer';
+};
+export interface CompatibilityRequirement {
+    readonly contracts: 'contracts.v0';
+    readonly runtimeBridge?: 'runtime-bridge.v0';
+    readonly commandRegistry: 'command-registry.v0';
+}
+export interface StudioCommandDefinition<Input, Output> {
+    readonly id: StudioCommandId;
+    readonly version: number;
+    readonly label: string;
+    readonly summary: string;
+    readonly description?: string;
+    readonly category: CommandCategory;
+    readonly menuPath: readonly string[];
+    readonly commandPalette: {
+        readonly visible: boolean;
+        readonly keywords: readonly string[];
+    };
+    readonly inputSchema: SchemaRef;
+    readonly outputSchema: SchemaRef;
+    readonly inputContractRefs: readonly ContractRef[];
+    readonly outputContractRefs: readonly ContractRef[];
+    readonly operationClass: OperationClass;
+    readonly agentExposure: AgentExposure;
+    readonly guiMirror: GuiMirror;
+    readonly undo: UndoPosture;
+    readonly retry: RetryPosture;
+    readonly idempotency: IdempotencyPosture;
+    readonly artifacts: readonly ArtifactDeclaration[];
+    readonly stateImpact: StateImpact;
+    readonly owningLane: AshaLane;
+    readonly owningPackage: '@asha/command-registry' | '@asha/editor-tools' | '@asha/runtime-bridge' | '@asha/devtools';
+    readonly runtimeRequirements: readonly RuntimeRequirement[];
+    readonly compatibility: CompatibilityRequirement;
+    readonly knownLimitations?: readonly string[];
+    readonly typedInputExample: Input;
+    readonly typedOutputExample: Output;
+}
+export interface EmptyInput {
+    readonly kind: 'empty';
+}
+export interface EmptyOutput {
+    readonly kind: 'ok';
+}
+export interface ScenarioIdInput {
+    readonly scenarioId: string;
+}
+export interface SessionIdInput {
+    readonly sessionId: string;
+}
+export interface SessionStatusOutput {
+    readonly sessionId: string;
+    readonly status: 'not_started' | 'ready' | 'degraded' | 'unavailable';
+}
+export interface ScenarioListOutput {
+    readonly scenarios: readonly {
+        readonly id: string;
+        readonly label: string;
+    }[];
+}
+export interface WorldSummaryOutput {
+    readonly authorityHash: string | null;
+    readonly voxelVolumeCount: number;
+    readonly sceneNodeCount: number;
+}
+export interface EditorStateOutput {
+    readonly editorVersion: string;
+    readonly selectedVoxel: VoxelCoord | null;
+}
+export interface ScreenPointInput {
+    readonly sessionId: string;
+    readonly ray: PickRay;
+}
+export interface VoxelSelectionOutput {
+    readonly hit: VoxelHit | null;
+}
+export interface VoxelInspectionInput {
+    readonly sessionId: string;
+    readonly voxel: VoxelCoord;
+}
+export interface VoxelInspectionOutput {
+    readonly voxel: VoxelCoord;
+    readonly materialId: number | null;
+    readonly occupied: boolean;
+}
+export interface VoxelBrushPreviewInput {
+    readonly sessionId: string;
+    readonly anchor: VoxelCoord;
+    readonly commands: readonly VoxelCommand[];
+}
+export interface VoxelBrushPreviewOutput {
+    readonly targetVoxels: readonly VoxelCoord[];
+    readonly previewVersion: string;
+}
+export interface ApplyVoxelBrushInput {
+    readonly sessionId: string;
+    readonly commands: readonly VoxelCommand[];
+    readonly expectedStateHash: string | null;
+}
+export interface ApplyVoxelBrushOutput {
+    readonly accepted: boolean;
+    readonly authorityBeforeHash: string | null;
+    readonly authorityAfterHash: string | null;
+}
+export interface LastCommandResultOutput {
+    readonly sequenceId: string | null;
+    readonly status: 'ok' | 'rejected' | 'partial' | 'failed' | 'unavailable' | null;
+}
+export interface CaptureBeforeAfterInput {
+    readonly sessionId: string;
+    readonly beforeArtifactId: string;
+    readonly afterArtifactId: string;
+}
+export interface CaptureBeforeAfterOutput {
+    readonly artifactId: string;
+    readonly renderBeforeHash: string | null;
+    readonly renderAfterHash: string | null;
+}
+export interface ExportAgentReadoutInput {
+    readonly sessionId: string;
+    readonly includeVisualEvidence: boolean;
+}
+export interface ExportAgentReadoutOutput {
+    readonly artifactId: string;
+    readonly commandCount: number;
+}
+export type StudioCommandManifest = readonly StudioCommandDefinition<object, object>[];
+//# sourceMappingURL=types.d.ts.map

@@ -1,0 +1,37 @@
+{
+  "name": "@asha/command-registry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "asha": {
+    "publicSurface": {
+      "tier": 1,
+      "role": "studio-command-registry",
+      "allowedConsumers": ["asha-studio", "asha-demo"],
+      "rootExportOnly": true,
+      "nativeTransportAccess": false,
+      "source": "asha/asha-studio-command-evidence-architecture"
+    },
+    "compatibility": {
+      "version": "command-registry.v0",
+      "metadataFile": "manifest.golden.json",
+      "changelog": "asha/asha-studio-command-evidence-architecture#command-identity-and-metadata"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "tsc --build && node --test 'dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "@asha/contracts": "workspace:*"
+  }
+}

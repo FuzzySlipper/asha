@@ -17,7 +17,6 @@ import type {
   CameraCollisionSnapshot,
   CollisionConstrainedCameraInputEnvelope,
   ScreenPointToPickRayRequest,
-  PickRaySnapshot,
   VoxelSelectionSnapshot,
   CommandBatch,
   CommandResult,

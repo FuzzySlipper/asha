@@ -435,6 +435,15 @@ lane = "ts-shell"
 may_import = ["@asha/contracts"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/electron-main"]
 
+# Studio command/evidence substrate (#2727): declarative registry only. Describes
+# command identity, typed schema refs, GUI/agent exposure, retry/undo/artifacts,
+# and ownership metadata. No execution, runtime bridge, renderer, UI, native,
+# browser, or Den imports.
+[package."ts/packages/command-registry"]
+lane = "ts-command-registry"
+may_import = ["@asha/contracts"]
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/electron-main", "@asha/app", "@asha/devtools"]
+
 [package."ts/packages/ui-dom"]
 lane = "ts-shell"
 may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/editor-tools"]
