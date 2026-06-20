@@ -9,22 +9,18 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 const MODEL_MATERIAL_PREVIEW_REQUEST = {
-    catalog: {
-        entries: [
-            {
-                id: 'material.copper',
-                kind: 'material',
-                version: 1,
-                hash: 'sha256-material-copper',
-                sourcePath: null,
-                label: 'Copper',
-                dependencies: [],
-                material: {
-                    render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
-                    collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
-                },
-            },
-        ],
+    catalogEntry: {
+        id: 'material.copper',
+        kind: 'material',
+        version: 1,
+        hash: 'sha256-material-copper',
+        sourcePath: null,
+        label: 'Copper',
+        dependencies: [],
+        material: {
+            render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
+            collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
+        },
     },
     meshAsset: {
         asset: 'mesh.preview-cube',
@@ -38,7 +34,6 @@ const MODEL_MATERIAL_PREVIEW_REQUEST = {
         materialSlots: [{ slot: 0, material: 'material.copper' }],
         collision: { kind: 'aabbFallback' },
     },
-    materialId: 'material.copper',
     instanceHandle: 7001,
 };
 import { MANIFEST_OPERATIONS, MockRuntimeBridge, RuntimeBridgeError, createMockRuntimeBridge, createNativeRuntimeBridge, frameCursor, } from './index.js';

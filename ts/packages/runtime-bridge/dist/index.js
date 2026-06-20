@@ -398,15 +398,12 @@ export class MockRuntimeBridge {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'readModelMaterialPreview before initializeEngine');
         }
-        const entry = request.catalog.entries.find((candidate) => candidate.id === request.materialId);
-        if (entry === undefined) {
-            throw new RuntimeBridgeError('invalid_input', `unknown material '${request.materialId}'`);
-        }
+        const entry = request.catalogEntry;
         if (entry.kind !== 'material' || entry.material === null) {
-            throw new RuntimeBridgeError('invalid_input', `catalog entry '${request.materialId}' is not a material`);
+            throw new RuntimeBridgeError('invalid_input', `catalog entry '${entry.id}' is not a material`);
         }
-        if (!request.meshAsset.materialSlots.some((slot) => slot.material === request.materialId)) {
-            throw new RuntimeBridgeError('invalid_input', `mesh asset '${request.meshAsset.asset}' does not reference material '${request.materialId}'`);
+        if (!request.meshAsset.materialSlots.some((slot) => slot.material === entry.id)) {
+            throw new RuntimeBridgeError('invalid_input', `mesh asset '${request.meshAsset.asset}' does not reference material '${entry.id}'`);
         }
         return {
             catalogEntry: entry,
@@ -414,7 +411,7 @@ export class MockRuntimeBridge {
             meshAsset: request.meshAsset,
             previewDiff: {
                 ops: [
-                    { op: 'defineMaterial', material: materialDescriptor(request.materialId, entry.material) },
+                    { op: 'defineMaterial', material: materialDescriptor(entry.id, entry.material) },
                     { op: 'defineStaticMesh', asset: request.meshAsset },
                     {
                         op: 'createStaticMeshInstance',

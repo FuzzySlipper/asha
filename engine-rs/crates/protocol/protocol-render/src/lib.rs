@@ -36,6 +36,7 @@
 #![forbid(unsafe_code)]
 
 use core_ids::{EntityId, TagId};
+use protocol_assets::{CatalogEntry, MaterialProjection};
 
 // ── Handles ───────────────────────────────────────────────────────────────────
 
@@ -1057,6 +1058,31 @@ pub struct SpritePickHit {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RenderFrameDiff {
     pub ops: Vec<RenderDiff>,
+}
+
+// ── Model/material preview bridge DTOs (#2895) ────────────────────────────────
+
+/// Request to derive/read a model/material preview using public catalog/material
+/// and static-mesh DTOs. This is a protocol-owned envelope for the stable
+/// `read_model_material_preview` bridge operation; transports must not replace it
+/// with local facade-only wrapper types.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModelMaterialPreviewRequest {
+    pub catalog_entry: CatalogEntry,
+    pub mesh_asset: StaticMeshAsset,
+    pub instance_handle: RenderHandle,
+}
+
+/// Snapshot returned by `read_model_material_preview`: public material/model DTOs
+/// plus retained-mode render-diff evidence and classified diagnostics.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ModelMaterialPreviewSnapshot {
+    pub catalog_entry: CatalogEntry,
+    pub material: MaterialProjection,
+    pub mesh_asset: StaticMeshAsset,
+    pub preview_diff: RenderFrameDiff,
+    pub renderer_classification: String,
+    pub diagnostics: Vec<String>,
 }
 
 impl RenderFrameDiff {

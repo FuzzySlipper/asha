@@ -7,6 +7,7 @@
 // (harness/ci/check-contracts.sh).
 
 import type { EntityId, TagId } from './ids.js';
+import type { CatalogEntry, MaterialProjection } from './assets.js';
 
 // Stable identifier for a node in the retained render scene.
 export type RenderHandle = number & { readonly __brand: 'RenderHandle' };
@@ -243,6 +244,23 @@ export type RenderDiff =
   | { readonly op: 'createStaticMeshInstance'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly instance: StaticMeshInstanceDescriptor }
   | { readonly op: 'createSprite'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly sprite: SpriteInstanceDescriptor }
   | { readonly op: 'updateSprite'; readonly handle: RenderHandle; readonly frame: number | null; readonly tint: readonly [number, number, number, number] | null; readonly renderOrder: number | null; readonly visible: boolean | null };
+
+// Request to derive/read a model/material preview using public catalog/material and static-mesh DTOs.
+export interface ModelMaterialPreviewRequest {
+  readonly catalogEntry: CatalogEntry;
+  readonly meshAsset: StaticMeshAsset;
+  readonly instanceHandle: RenderHandle;
+}
+
+// Snapshot returned by read_model_material_preview: public material/model DTOs plus retained-mode render-diff evidence.
+export interface ModelMaterialPreviewSnapshot {
+  readonly catalogEntry: CatalogEntry;
+  readonly material: MaterialProjection;
+  readonly meshAsset: StaticMeshAsset;
+  readonly previewDiff: RenderFrameDiff;
+  readonly rendererClassification: 'reference_preview' | 'runtime_readback';
+  readonly diagnostics: readonly string[];
+}
 
 // All retained-mode changes emitted for a single tick, in apply order.
 export interface RenderFrameDiff {

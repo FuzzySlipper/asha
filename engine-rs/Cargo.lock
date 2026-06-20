@@ -420,6 +420,7 @@ name = "protocol-render"
 version = "0.1.0"
 dependencies = [
  "core-ids",
+ "protocol-assets",
 ]
 
 [[package]]

@@ -7,6 +7,7 @@
 // (enforced by governance/ownership.toml); app/UI/renderer never import it.
 
 import { createRequire } from 'node:module';
+import type { CommandResult, RenderFrameDiff } from '@asha/contracts';
 
 /**
  * The typed surface the compiled addon exports. Mirrors the `#[napi]` functions in
@@ -27,13 +28,9 @@ export interface NativeAddon {
     totalCount: number;
     blocksLoad: boolean;
   };
-  submitCommands(handle: number, commandsJson: string): {
-    accepted: number;
-    rejected: number;
-    rejections: unknown[];
-  };
+  submitCommands(handle: number, commandsJson: string): CommandResult;
   stepSimulation(handle: number, tick: number): number;
-  readRenderDiffs(handle: number, cursor: number): { ops: unknown[] };
+  readRenderDiffs(handle: number, cursor: number): RenderFrameDiff;
   saveCurrentWorld(handle: number): {
     artifactsWritten: number;
     compactedEdits: number;

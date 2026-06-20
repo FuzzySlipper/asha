@@ -84,6 +84,69 @@ pub const FALLBACK_VISUALS: &[&str] = &["magentaSquare", "greyMaterial"];
 /// Stable fallback-outcome discriminants. Mirrors `core_catalog::FallbackOutcome`.
 pub const FALLBACK_OUTCOMES: &[&str] = &["useFallback", "failClosed", "skip"];
 
+// ── Public asset/catalog DTO shapes ───────────────────────────────────────────
+
+/// A public asset reference used by catalog/dependency surfaces.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssetReference {
+    pub id: String,
+    pub kind: String,
+}
+
+/// A linear RGBA colour (0..=1 per channel).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Rgba {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+}
+
+/// The renderer-facing projection of a material. No collision class.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RenderMaterial {
+    pub color: Rgba,
+    pub texture: Option<AssetReference>,
+    pub roughness: f32,
+    pub emissive: f32,
+    pub uv_strategy: String,
+}
+
+/// The collision/authority-facing projection of a material. No texture or colour.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CollisionMaterial {
+    pub solid: bool,
+    pub collidable: bool,
+    pub occludes: bool,
+    pub structural_class: String,
+}
+
+/// A read-only bundle of both disjoint material projections.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MaterialProjection {
+    pub render: RenderMaterial,
+    pub collision: CollisionMaterial,
+}
+
+/// One catalog entry. `material` is present only for material-kind assets.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CatalogEntry {
+    pub id: String,
+    pub kind: String,
+    pub version: u64,
+    pub hash: Option<String>,
+    pub source_path: Option<String>,
+    pub label: Option<String>,
+    pub dependencies: Vec<AssetReference>,
+    pub material: Option<MaterialProjection>,
+}
+
+/// The asset registry above the asset-reference vocabulary.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Catalog {
+    pub entries: Vec<CatalogEntry>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

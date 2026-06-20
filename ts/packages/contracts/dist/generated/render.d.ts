@@ -1,4 +1,5 @@
 import type { EntityId, TagId } from './ids.js';
+import type { CatalogEntry, MaterialProjection } from './assets.js';
 export type RenderHandle = number & {
     readonly __brand: 'RenderHandle';
 };
@@ -220,6 +221,19 @@ export type RenderDiff = {
     readonly renderOrder: number | null;
     readonly visible: boolean | null;
 };
+export interface ModelMaterialPreviewRequest {
+    readonly catalogEntry: CatalogEntry;
+    readonly meshAsset: StaticMeshAsset;
+    readonly instanceHandle: RenderHandle;
+}
+export interface ModelMaterialPreviewSnapshot {
+    readonly catalogEntry: CatalogEntry;
+    readonly material: MaterialProjection;
+    readonly meshAsset: StaticMeshAsset;
+    readonly previewDiff: RenderFrameDiff;
+    readonly rendererClassification: 'reference_preview' | 'runtime_readback';
+    readonly diagnostics: readonly string[];
+}
 export interface RenderFrameDiff {
     readonly ops: readonly RenderDiff[];
 }

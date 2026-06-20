@@ -271,7 +271,10 @@ pub fn script_module() -> Module {
 // ── render.ts — retained-mode diff shapes ─────────────────────────────────────
 
 pub fn render_module() -> Module {
-    let imports = vec![import("./ids.js", &["EntityId", "TagId"])];
+    let imports = vec![
+        import("./ids.js", &["EntityId", "TagId"]),
+        import("./assets.js", &["CatalogEntry", "MaterialProjection"]),
+    ];
 
     let tuple2 = || TsType::Tuple(vec![num(), num()]);
     let tuple3 = || TsType::Tuple(vec![num(), num(), num()]);
@@ -691,6 +694,28 @@ pub fn render_module() -> Module {
                         f("visible", TsType::nullable(boolean())),
                     ],
                 ),
+            ],
+        ),
+
+        iface(
+            "Request to derive/read a model/material preview using public catalog/material and static-mesh DTOs.",
+            "ModelMaterialPreviewRequest",
+            vec![
+                f("catalogEntry", r("CatalogEntry")),
+                f("meshAsset", r("StaticMeshAsset")),
+                f("instanceHandle", r("RenderHandle")),
+            ],
+        ),
+        iface(
+            "Snapshot returned by read_model_material_preview: public material/model DTOs plus retained-mode render-diff evidence.",
+            "ModelMaterialPreviewSnapshot",
+            vec![
+                f("catalogEntry", r("CatalogEntry")),
+                f("material", r("MaterialProjection")),
+                f("meshAsset", r("StaticMeshAsset")),
+                f("previewDiff", r("RenderFrameDiff")),
+                f("rendererClassification", TsType::StringEnum(vec!["reference_preview".to_string(), "runtime_readback".to_string()])),
+                f("diagnostics", TsType::array(string())),
             ],
         ),
         iface(

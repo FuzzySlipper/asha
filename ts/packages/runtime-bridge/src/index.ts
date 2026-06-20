@@ -24,12 +24,12 @@ import type {
   Face,
   PickRay,
   PickResult,
-  Catalog,
   CatalogEntry,
   MaterialProjection,
   RenderFrameDiff,
-  RenderHandle,
   StaticMeshAsset,
+  ModelMaterialPreviewRequest,
+  ModelMaterialPreviewSnapshot,
   VoxelCoord,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
@@ -57,10 +57,11 @@ export type {
   FirstPersonCameraInputEnvelope,
   PickRay,
   PickResult,
-  Catalog,
   CatalogEntry,
   MaterialProjection,
   StaticMeshAsset,
+  ModelMaterialPreviewRequest,
+  ModelMaterialPreviewSnapshot,
 } from '@asha/contracts';
 
 // Render-diff decode (moved from the former @asha/wasm-bridge). Transport-neutral
@@ -211,21 +212,6 @@ export interface VoxelMeshEvidenceSnapshot {
   readonly worldHash: string;
   readonly meshingStrategy: string;
   readonly chunks: readonly VoxelMeshChunkEvidence[];
-  readonly diagnostics: readonly string[];
-}
-
-export interface ModelMaterialPreviewRequest {
-  readonly catalog: Catalog;
-  readonly meshAsset: StaticMeshAsset;
-  readonly materialId: string;
-  readonly instanceHandle: RenderHandle;
-}
-export interface ModelMaterialPreviewSnapshot {
-  readonly catalogEntry: CatalogEntry;
-  readonly material: MaterialProjection;
-  readonly meshAsset: StaticMeshAsset;
-  readonly previewDiff: RenderFrameDiff;
-  readonly rendererClassification: 'reference_preview' | 'runtime_readback';
   readonly diagnostics: readonly string[];
 }
 
@@ -654,15 +640,12 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (this.#engine === null) {
       throw new RuntimeBridgeError('not_initialized', 'readModelMaterialPreview before initializeEngine');
     }
-    const entry = request.catalog.entries.find((candidate) => candidate.id === request.materialId);
-    if (entry === undefined) {
-      throw new RuntimeBridgeError('invalid_input', `unknown material '${request.materialId}'`);
-    }
+    const entry = request.catalogEntry;
     if (entry.kind !== 'material' || entry.material === null) {
-      throw new RuntimeBridgeError('invalid_input', `catalog entry '${request.materialId}' is not a material`);
+      throw new RuntimeBridgeError('invalid_input', `catalog entry '${entry.id}' is not a material`);
     }
-    if (!request.meshAsset.materialSlots.some((slot) => slot.material === request.materialId)) {
-      throw new RuntimeBridgeError('invalid_input', `mesh asset '${request.meshAsset.asset}' does not reference material '${request.materialId}'`);
+    if (!request.meshAsset.materialSlots.some((slot) => slot.material === entry.id)) {
+      throw new RuntimeBridgeError('invalid_input', `mesh asset '${request.meshAsset.asset}' does not reference material '${entry.id}'`);
     }
     return {
       catalogEntry: entry,
@@ -670,7 +653,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
       meshAsset: request.meshAsset,
       previewDiff: {
         ops: [
-          { op: 'defineMaterial', material: materialDescriptor(request.materialId, entry.material) },
+          { op: 'defineMaterial', material: materialDescriptor(entry.id, entry.material) },
           { op: 'defineStaticMesh', asset: request.meshAsset },
           {
             op: 'createStaticMeshInstance',
@@ -909,7 +892,7 @@ const RUST_ERROR_KIND: Readonly<Record<string, RuntimeBridgeErrorKind>> = {
   Internal: 'internal',
 };
 
-function classifyNativeAddonError(cause: unknown): RuntimeBridgeError {
+function classifyNativeAddonError(cause: RuntimeBridgeError | Error | string | object): RuntimeBridgeError {
   if (cause instanceof RuntimeBridgeError) return cause;
   const message = cause instanceof Error ? cause.message : String(cause);
   const match = /^(\w+):\s*(.*)$/u.exec(message);
@@ -924,7 +907,7 @@ function callNative<T>(body: () => T): T {
   try {
     return body();
   } catch (cause) {
-    throw classifyNativeAddonError(cause);
+    throw classifyNativeAddonError(cause as RuntimeBridgeError | Error | string | object);
   }
 }
 

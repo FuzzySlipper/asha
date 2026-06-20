@@ -24,6 +24,29 @@ ALLOWED_BARE = {"Unit", "RuntimeBufferView"}
 TYPE_REF_RE = re.compile(r"^protocol_[a-z_]+::[A-Za-z0-9_]+$")
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
+# Known prototype manifest refs that predate generated contract ownership. Keep
+# this list explicit so newly-added protocol_* refs cannot silently point at
+# nonexistent generated DTOs.
+KNOWN_TRANSITIONAL_PROTOCOL_REFS = {
+    "protocol_runtime::EngineConfig",
+    "protocol_runtime::StepInputEnvelope",
+    "protocol_runtime::StepResult",
+    "protocol_render::RenderFrameDiffDescriptor",
+    "protocol_render::VoxelMeshEvidenceRequest",
+    "protocol_render::VoxelMeshEvidenceSnapshot",
+    "protocol_replay::ReplayFixture",
+    "protocol_replay::ReplayStepReport",
+}
+PROTOCOL_MODULE_TO_GENERATED_FILE = {
+    "protocol_diagnostics": "diagnostics.ts",
+    "protocol_render": "render.ts",
+    "protocol_replay": "replay.ts",
+    "protocol_view": "view.ts",
+    "protocol_voxel": "voxel.ts",
+    "protocol_world_bundle": "worldBundle.ts",
+}
+EXPORT_RE = re.compile(r"export (?:interface|type|const|enum) ([A-Za-z0-9_]+)")
+
 
 def fail(errors, msg):
     errors.append(msg)
@@ -35,6 +58,29 @@ def valid_type_ref(t, handle_types):
     return bool(TYPE_REF_RE.match(t))
 
 
+def generated_contract_exports():
+    exports = {}
+    generated_dir = REPO / "ts/packages/contracts/src/generated"
+    for protocol_module, filename in PROTOCOL_MODULE_TO_GENERATED_FILE.items():
+        path = generated_dir / filename
+        if path.exists():
+            exports[protocol_module] = set(EXPORT_RE.findall(path.read_text()))
+        else:
+            exports[protocol_module] = set()
+    return exports
+
+
+def validate_protocol_ref(errors, op_name, field, ref, exports):
+    if not ref.startswith("protocol_") or ref in KNOWN_TRANSITIONAL_PROTOCOL_REFS:
+        return
+    module, type_name = ref.split("::", 1)
+    if module not in PROTOCOL_MODULE_TO_GENERATED_FILE:
+        fail(errors, f"[{op_name}] {field} uses unknown protocol module '{module}'")
+        return
+    if type_name not in exports.get(module, set()):
+        fail(errors, f"[{op_name}] {field} protocol ref '{ref}' has no generated @asha/contracts export")
+
+
 def main():
     errors = []
     if not MANIFEST.exists():
@@ -43,6 +89,8 @@ def main():
 
     with open(MANIFEST, "rb") as f:
         data = tomllib.load(f)
+
+    contract_exports = generated_contract_exports()
 
     m = data.get("manifest", {})
     error_type = m.get("error_type")
@@ -80,6 +128,7 @@ def main():
             if not valid_type_ref(t, handle_types):
                 fail(errors, f"[{name}] {field} '{t}' is not a protocol_*::Type, "
                              f"declared handle, RuntimeBufferView, or Unit")
+            validate_protocol_ref(errors, name, field, t, contract_exports)
             for bad in FORBIDDEN_TYPE_TOKENS:
                 if bad in t:
                     fail(errors, f"[{name}] {field} contains forbidden token '{bad}'")
