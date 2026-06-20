@@ -348,6 +348,223 @@
       ]
     },
     {
+      "id": "inspection.material",
+      "version": 1,
+      "label": "Inspect Material",
+      "summary": "Read a public catalog material projection for Studio preview and diagnostics.",
+      "category": "inspection",
+      "operationClass": "read_only",
+      "agentExposureKind": "read_only",
+      "menuPath": [
+        "Inspect",
+        "Material"
+      ],
+      "commandPaletteVisible": true,
+      "commandPaletteKeywords": [
+        "material",
+        "catalog",
+        "inspect"
+      ],
+      "guiMirror": {
+        "required": true,
+        "menuPath": [
+          "Inspect",
+          "Material"
+        ],
+        "commandPaletteVisible": true,
+        "argumentSummary": "MaterialInspectionInput: sessionId: Stable studio session identifier. materialId: Public catalog material asset id.",
+        "resultSummary": "MaterialInspectionOutput: materialId: Public catalog material asset id. catalogEntry: Generated public catalog entry for the material. material: Generated public material projection split into render/collision views.",
+        "artifactSummary": "material_metadata: Material catalog entry and render/collision projection.",
+        "panel": "inspector",
+        "dialog": "readout_only"
+      },
+      "inputSchemaName": "MaterialInspectionInput",
+      "outputSchemaName": "MaterialInspectionOutput",
+      "inputContractRefs": [],
+      "outputContractRefs": [
+        {
+          "package": "@asha/contracts",
+          "exportName": "CatalogEntry"
+        },
+        {
+          "package": "@asha/contracts",
+          "exportName": "MaterialProjection"
+        }
+      ],
+      "artifacts": [
+        {
+          "type": "material_metadata",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Material catalog entry and render/collision projection."
+        }
+      ],
+      "stateImpact": {
+        "authority": "read",
+        "editor": "none",
+        "render": "none",
+        "workspace": "none"
+      },
+      "owningLane": "ts-command-registry",
+      "owningPackage": "@asha/command-registry",
+      "runtimeRequirements": [
+        {
+          "kind": "runtime_bridge_operation",
+          "operation": "read_model_material_preview"
+        }
+      ]
+    },
+    {
+      "id": "inspection.model",
+      "version": 1,
+      "label": "Inspect Model",
+      "summary": "Read a public static mesh asset descriptor and its material slots.",
+      "category": "inspection",
+      "operationClass": "read_only",
+      "agentExposureKind": "read_only",
+      "menuPath": [
+        "Inspect",
+        "Model"
+      ],
+      "commandPaletteVisible": true,
+      "commandPaletteKeywords": [
+        "model",
+        "mesh",
+        "inspect"
+      ],
+      "guiMirror": {
+        "required": true,
+        "menuPath": [
+          "Inspect",
+          "Model"
+        ],
+        "commandPaletteVisible": true,
+        "argumentSummary": "ModelInspectionInput: sessionId: Stable studio session identifier. assetId: Public static mesh asset id.",
+        "resultSummary": "ModelInspectionOutput: assetId: Public static mesh asset id. meshAsset: Generated public static mesh asset descriptor. materialSlots: Material asset ids referenced by the model slots.",
+        "artifactSummary": "model_metadata: Static mesh descriptor and material slot metadata.",
+        "panel": "inspector",
+        "dialog": "readout_only"
+      },
+      "inputSchemaName": "ModelInspectionInput",
+      "outputSchemaName": "ModelInspectionOutput",
+      "inputContractRefs": [],
+      "outputContractRefs": [
+        {
+          "package": "@asha/contracts",
+          "exportName": "StaticMeshAsset"
+        }
+      ],
+      "artifacts": [
+        {
+          "type": "model_metadata",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Static mesh descriptor and material slot metadata."
+        }
+      ],
+      "stateImpact": {
+        "authority": "read",
+        "editor": "none",
+        "render": "none",
+        "workspace": "none"
+      },
+      "owningLane": "ts-command-registry",
+      "owningPackage": "@asha/command-registry",
+      "runtimeRequirements": [
+        {
+          "kind": "runtime_bridge_operation",
+          "operation": "read_model_material_preview"
+        }
+      ]
+    },
+    {
+      "id": "preview.model_material",
+      "version": 1,
+      "label": "Preview Model / Material",
+      "summary": "Preview a static mesh with catalog material projection as retained-mode render-diff evidence without authority mutation.",
+      "category": "preview",
+      "operationClass": "editor_local",
+      "agentExposureKind": "editor_local",
+      "menuPath": [
+        "Preview",
+        "Model / Material"
+      ],
+      "commandPaletteVisible": true,
+      "commandPaletteKeywords": [
+        "preview",
+        "model",
+        "material",
+        "render diff"
+      ],
+      "guiMirror": {
+        "required": true,
+        "menuPath": [
+          "Preview",
+          "Model / Material"
+        ],
+        "commandPaletteVisible": true,
+        "argumentSummary": "ModelMaterialPreviewInput: sessionId: Stable studio session identifier. modelAsset: Generated public static mesh asset descriptor to preview. materialId: Catalog material id to highlight in the preview.",
+        "resultSummary": "ModelMaterialPreviewOutput: previewDiff: Generated public retained-mode render diff preview evidence. rendererClassification: Whether evidence is reference preview or runtime readback. diagnostics: Typed diagnostic strings for unavailable/degraded support.",
+        "artifactSummary": "model_metadata: Static mesh preview metadata. material_metadata: Material projection metadata. render_diff_preview: Retained-mode render diff preview evidence.",
+        "panel": "viewport",
+        "dialog": "simple_form"
+      },
+      "inputSchemaName": "ModelMaterialPreviewInput",
+      "outputSchemaName": "ModelMaterialPreviewOutput",
+      "inputContractRefs": [
+        {
+          "package": "@asha/contracts",
+          "exportName": "StaticMeshAsset"
+        }
+      ],
+      "outputContractRefs": [
+        {
+          "package": "@asha/contracts",
+          "exportName": "RenderFrameDiff"
+        }
+      ],
+      "artifacts": [
+        {
+          "type": "model_metadata",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Static mesh preview metadata."
+        },
+        {
+          "type": "material_metadata",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Material projection metadata."
+        },
+        {
+          "type": "render_diff_preview",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Retained-mode render diff preview evidence."
+        }
+      ],
+      "stateImpact": {
+        "authority": "read",
+        "editor": "mutate",
+        "render": "capture",
+        "workspace": "none"
+      },
+      "owningLane": "ts-command-registry",
+      "owningPackage": "@asha/command-registry",
+      "runtimeRequirements": [
+        {
+          "kind": "runtime_bridge_operation",
+          "operation": "read_model_material_preview"
+        },
+        {
+          "kind": "editor_store"
+        },
+        {
+          "kind": "render_surface"
+        }
+      ]
+    },
+    {
       "id": "selection.voxel_from_screen_point",
       "version": 1,
       "label": "Select Voxel From Screen Point",

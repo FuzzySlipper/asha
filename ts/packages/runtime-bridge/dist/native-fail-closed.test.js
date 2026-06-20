@@ -8,6 +8,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MANIFEST_OPERATIONS, NATIVE_WIRED_OPERATIONS, NativeRuntimeBridge, RuntimeBridgeError, frameCursor, } from './index.js';
+const MODEL_MATERIAL_PREVIEW_REQUEST = {
+    catalog: {
+        entries: [
+            {
+                id: 'material.copper',
+                kind: 'material',
+                version: 1,
+                hash: 'sha256-material-copper',
+                sourcePath: null,
+                label: 'Copper',
+                dependencies: [],
+                material: {
+                    render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
+                    collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
+                },
+            },
+        ],
+    },
+    meshAsset: {
+        asset: 'mesh.preview-cube',
+        payload: {
+            layout: { vertexCount: 8, indexCount: 36, indexWidth: 'u32', attributes: [{ name: 'position', components: 3, kind: 'f32' }] },
+            groups: [{ materialSlot: 0, start: 0, count: 36 }],
+            bounds: { min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] },
+            source: { kind: 'inline', positions: [], normals: [], indices: [] },
+            provenance: 'staticAsset',
+        },
+        materialSlots: [{ slot: 0, material: 'material.copper' }],
+        collision: { kind: 'aabbFallback' },
+    },
+    materialId: 'material.copper',
+    instanceHandle: 7001,
+};
 const CAMERA_CREATE_REQUEST = {
     initialPose: { position: [0, 1.6, 0], yawDegrees: 0, pitchDegrees: 0 },
     projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
@@ -103,6 +136,7 @@ const INVOKE = new Map([
         }),
     ],
     ['readVoxelMeshEvidence', (b) => b.readVoxelMeshEvidence({ grid: 1, chunks: [] })],
+    ['readModelMaterialPreview', (b) => b.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST)],
     ['readRenderDiffs', (b) => b.readRenderDiffs(frameCursor(0))],
     ['createCamera', (b) => b.createCamera(CAMERA_CREATE_REQUEST)],
     ['applyFirstPersonCameraInput', (b) => b.applyFirstPersonCameraInput(CAMERA_INPUT)],

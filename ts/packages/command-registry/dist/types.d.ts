@@ -1,5 +1,5 @@
-import type { ScreenPointToPickRayRequest, VoxelCommand, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
-export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'selection.voxel_from_screen_point' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
+import type { CatalogEntry, MaterialProjection, RenderFrameDiff, ScreenPointToPickRayRequest, StaticMeshAsset, VoxelCommand, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
+export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'selection.voxel_from_screen_point' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
 export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
 export type OperationClass = 'read_only' | 'editor_local' | 'authority_mutating' | 'render_evidence' | 'diagnostic_export' | 'workspace_io';
 export type AshaLane = 'contract-steward' | 'ts-command-registry' | 'ts-shell' | 'ts-tools' | 'rust-bridge' | 'rust-render' | 'rust-rule' | 'rust-service';
@@ -15,8 +15,20 @@ export type ContractRef = {
 } | {
     readonly package: '@asha/contracts';
     readonly exportName: 'VoxelCommand';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'CatalogEntry';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'MaterialProjection';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'StaticMeshAsset';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'RenderFrameDiff';
 };
-export type RuntimeBridgeOperationRef = 'initialize_engine' | 'pick_voxel' | 'select_voxel' | 'submit_commands' | 'read_voxel_mesh_evidence' | 'read_render_diffs' | 'load_world_bundle' | 'save_current_world' | 'get_composition_status';
+export type RuntimeBridgeOperationRef = 'initialize_engine' | 'pick_voxel' | 'select_voxel' | 'submit_commands' | 'read_voxel_mesh_evidence' | 'read_render_diffs' | 'read_model_material_preview' | 'load_world_bundle' | 'save_current_world' | 'get_composition_status';
 export type SchemaScalarKind = 'string' | 'number' | 'boolean' | 'integer' | 'state_hash' | 'artifact_ref' | 'null';
 export type SchemaShape = {
     readonly kind: 'empty';
@@ -107,7 +119,7 @@ export type IdempotencyPosture = {
     readonly kind: 'non_idempotent';
     readonly reason: string;
 };
-export type StudioArtifactType = 'command_manifest' | 'scenario_manifest' | 'session_status' | 'world_summary' | 'editor_state' | 'selection_snapshot' | 'voxel_inspection' | 'voxel_preview' | 'command_result' | 'render_before_after' | 'agent_readout';
+export type StudioArtifactType = 'command_manifest' | 'scenario_manifest' | 'session_status' | 'world_summary' | 'editor_state' | 'selection_snapshot' | 'voxel_inspection' | 'voxel_preview' | 'model_metadata' | 'material_metadata' | 'render_diff_preview' | 'command_result' | 'render_before_after' | 'agent_readout';
 export interface ArtifactDeclaration {
     readonly type: StudioArtifactType;
     readonly required: boolean;
@@ -199,6 +211,34 @@ export interface WorldSummaryOutput {
 export interface EditorStateOutput {
     readonly editorVersion: string;
     readonly selectedVoxel: VoxelCoord | null;
+}
+export interface MaterialInspectionInput {
+    readonly sessionId: string;
+    readonly materialId: string;
+}
+export interface MaterialInspectionOutput {
+    readonly materialId: string;
+    readonly catalogEntry: CatalogEntry;
+    readonly material: MaterialProjection;
+}
+export interface ModelInspectionInput {
+    readonly sessionId: string;
+    readonly assetId: string;
+}
+export interface ModelInspectionOutput {
+    readonly assetId: string;
+    readonly meshAsset: StaticMeshAsset;
+    readonly materialSlots: readonly string[];
+}
+export interface ModelMaterialPreviewInput {
+    readonly sessionId: string;
+    readonly modelAsset: StaticMeshAsset;
+    readonly materialId: string;
+}
+export interface ModelMaterialPreviewOutput {
+    readonly previewDiff: RenderFrameDiff;
+    readonly rendererClassification: 'reference_preview' | 'runtime_readback';
+    readonly diagnostics: readonly string[];
 }
 export interface ScreenPointInput {
     readonly sessionId: string;

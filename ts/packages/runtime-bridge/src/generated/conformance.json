@@ -67,6 +67,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "read_model_material_preview",
+      "facadeMethod": "readModelMaterialPreview",
+      "surface": "stable",
+      "input": "protocol_render::ModelMaterialPreviewRequest",
+      "output": "protocol_render::ModelMaterialPreviewSnapshot",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "create_camera",
       "facadeMethod": "createCamera",
       "surface": "stable",

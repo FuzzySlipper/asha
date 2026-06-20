@@ -24,7 +24,12 @@ import type {
   Face,
   PickRay,
   PickResult,
+  Catalog,
+  CatalogEntry,
+  MaterialProjection,
   RenderFrameDiff,
+  RenderHandle,
+  StaticMeshAsset,
   VoxelCoord,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
@@ -52,6 +57,10 @@ export type {
   FirstPersonCameraInputEnvelope,
   PickRay,
   PickResult,
+  Catalog,
+  CatalogEntry,
+  MaterialProjection,
+  StaticMeshAsset,
 } from '@asha/contracts';
 
 // Render-diff decode (moved from the former @asha/wasm-bridge). Transport-neutral
@@ -205,6 +214,21 @@ export interface VoxelMeshEvidenceSnapshot {
   readonly diagnostics: readonly string[];
 }
 
+export interface ModelMaterialPreviewRequest {
+  readonly catalog: Catalog;
+  readonly meshAsset: StaticMeshAsset;
+  readonly materialId: string;
+  readonly instanceHandle: RenderHandle;
+}
+export interface ModelMaterialPreviewSnapshot {
+  readonly catalogEntry: CatalogEntry;
+  readonly material: MaterialProjection;
+  readonly meshAsset: StaticMeshAsset;
+  readonly previewDiff: RenderFrameDiff;
+  readonly rendererClassification: 'reference_preview' | 'runtime_readback';
+  readonly diagnostics: readonly string[];
+}
+
 // ── The facade surface ────────────────────────────────────────────────────────
 // Bounded verbs only — mirrors bridge-manifest.toml. No generic call(method, json).
 
@@ -216,6 +240,7 @@ export interface RuntimeBridge {
   applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
   selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
   readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
+  readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
   createCamera(request: CameraCreateRequest): CameraSnapshot;
   applyFirstPersonCameraInput(input: FirstPersonCameraInputEnvelope): CameraSnapshot;
@@ -369,6 +394,17 @@ function projectionMatrixFromSnapshot(
     f32((2 * far * near) / (near - far)),
     0,
   ];
+}
+
+function materialDescriptor(id: string, material: MaterialProjection): Extract<RenderFrameDiff['ops'][number], { readonly op: 'defineMaterial' }>['material'] {
+  return {
+    id,
+    color: [material.render.color.r, material.render.color.g, material.render.color.b, material.render.color.a],
+    texture: material.render.texture?.id ?? null,
+    roughness: material.render.roughness,
+    emissive: material.render.emissive,
+    uvStrategy: material.render.uvStrategy,
+  };
 }
 
 function projectionSnapshot(snapshot: CameraSnapshot, viewport = snapshot.viewport): CameraProjectionSnapshot {
@@ -610,6 +646,47 @@ export class MockRuntimeBridge implements RuntimeBridge {
         materialSlots: coord.x === 0 && coord.y === 0 && coord.z === 0 ? [1] : [],
       })),
       diagnostics: [],
+    };
+  }
+
+
+  readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'readModelMaterialPreview before initializeEngine');
+    }
+    const entry = request.catalog.entries.find((candidate) => candidate.id === request.materialId);
+    if (entry === undefined) {
+      throw new RuntimeBridgeError('invalid_input', `unknown material '${request.materialId}'`);
+    }
+    if (entry.kind !== 'material' || entry.material === null) {
+      throw new RuntimeBridgeError('invalid_input', `catalog entry '${request.materialId}' is not a material`);
+    }
+    if (!request.meshAsset.materialSlots.some((slot) => slot.material === request.materialId)) {
+      throw new RuntimeBridgeError('invalid_input', `mesh asset '${request.meshAsset.asset}' does not reference material '${request.materialId}'`);
+    }
+    return {
+      catalogEntry: entry,
+      material: entry.material,
+      meshAsset: request.meshAsset,
+      previewDiff: {
+        ops: [
+          { op: 'defineMaterial', material: materialDescriptor(request.materialId, entry.material) },
+          { op: 'defineStaticMesh', asset: request.meshAsset },
+          {
+            op: 'createStaticMeshInstance',
+            handle: request.instanceHandle,
+            parent: null,
+            instance: {
+              asset: request.meshAsset.asset,
+              transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+              materialOverrides: [],
+              metadata: { source: null, tags: [], label: `Preview ${request.meshAsset.asset}` },
+            },
+          },
+        ],
+      },
+      rendererClassification: 'reference_preview',
+      diagnostics: ['native runtime readback for model/material preview may fail closed until wired'],
     };
   }
 
@@ -901,6 +978,11 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const tick = nonNegativeSafeInteger(input.tick, 'tick');
     const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
     return { tick, diffCount };
+  }
+
+
+  readModelMaterialPreview(_request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {
+    throw nativeUnimplemented('read_model_material_preview');
   }
 
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff {

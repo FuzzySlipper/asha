@@ -1,8 +1,8 @@
-import type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, RenderFrameDiff } from '@asha/contracts';
+import type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, Catalog, CatalogEntry, MaterialProjection, RenderFrameDiff, RenderHandle, StaticMeshAsset } from '@asha/contracts';
 import { type NativeAddon } from '@asha/native-bridge';
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
-export type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, PickRaySnapshot, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, } from '@asha/contracts';
+export type { CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CameraCollisionSnapshot, CollisionConstrainedCameraInputEnvelope, ScreenPointToPickRayRequest, PickRaySnapshot, VoxelSelectionSnapshot, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, PickRay, PickResult, Catalog, CatalogEntry, MaterialProjection, StaticMeshAsset, } from '@asha/contracts';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export type EngineHandle = number & {
     readonly __brand: 'EngineHandle';
@@ -104,6 +104,20 @@ export interface VoxelMeshEvidenceSnapshot {
     readonly chunks: readonly VoxelMeshChunkEvidence[];
     readonly diagnostics: readonly string[];
 }
+export interface ModelMaterialPreviewRequest {
+    readonly catalog: Catalog;
+    readonly meshAsset: StaticMeshAsset;
+    readonly materialId: string;
+    readonly instanceHandle: RenderHandle;
+}
+export interface ModelMaterialPreviewSnapshot {
+    readonly catalogEntry: CatalogEntry;
+    readonly material: MaterialProjection;
+    readonly meshAsset: StaticMeshAsset;
+    readonly previewDiff: RenderFrameDiff;
+    readonly rendererClassification: 'reference_preview' | 'runtime_readback';
+    readonly diagnostics: readonly string[];
+}
 export interface RuntimeBridge {
     initializeEngine(config: EngineConfig): EngineHandle;
     stepSimulation(input: StepInputEnvelope): StepResult;
@@ -112,6 +126,7 @@ export interface RuntimeBridge {
     applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
     selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
     readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
+    readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
     createCamera(request: CameraCreateRequest): CameraSnapshot;
     applyFirstPersonCameraInput(input: FirstPersonCameraInputEnvelope): CameraSnapshot;
@@ -134,6 +149,7 @@ export declare class MockRuntimeBridge implements RuntimeBridge {
     applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
     selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
     readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
+    readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
     createCamera(request: CameraCreateRequest): CameraSnapshot;
     applyFirstPersonCameraInput(envelope: FirstPersonCameraInputEnvelope): CameraSnapshot;
@@ -164,6 +180,7 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     loadWorldBundle(request: WorldLoadRequest): CompositionStatus;
     submitCommands(batch: CommandBatch): CommandResult;
     stepSimulation(input: StepInputEnvelope): StepResult;
+    readModelMaterialPreview(_request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
     saveCurrentWorld(): WorldSaveSummary;
     getCompositionStatus(): CompositionStatus;

@@ -5,7 +5,11 @@
 // runtime, renderer, UI, native bridge, browser, or Den surfaces.
 
 import type {
+  CatalogEntry,
+  MaterialProjection,
+  RenderFrameDiff,
   ScreenPointToPickRayRequest,
+  StaticMeshAsset,
   VoxelCommand,
   VoxelCoord,
   VoxelSelectionSnapshot,
@@ -18,6 +22,9 @@ export type StudioCommandId =
   | 'inspection.session_status'
   | 'inspection.world_summary'
   | 'inspection.editor_state'
+  | 'inspection.material'
+  | 'inspection.model'
+  | 'preview.model_material'
   | 'selection.voxel_from_screen_point'
   | 'inspection.voxel'
   | 'preview.voxel_brush'
@@ -59,7 +66,11 @@ export type ContractRef =
   | { readonly package: '@asha/contracts'; readonly exportName: 'ScreenPointToPickRayRequest' }
   | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelCoord' }
   | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelSelectionSnapshot' }
-  | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelCommand' };
+  | { readonly package: '@asha/contracts'; readonly exportName: 'VoxelCommand' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'CatalogEntry' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'MaterialProjection' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'StaticMeshAsset' }
+  | { readonly package: '@asha/contracts'; readonly exportName: 'RenderFrameDiff' };
 
 export type RuntimeBridgeOperationRef =
   | 'initialize_engine'
@@ -68,6 +79,7 @@ export type RuntimeBridgeOperationRef =
   | 'submit_commands'
   | 'read_voxel_mesh_evidence'
   | 'read_render_diffs'
+  | 'read_model_material_preview'
   | 'load_world_bundle'
   | 'save_current_world'
   | 'get_composition_status';
@@ -143,6 +155,9 @@ export type StudioArtifactType =
   | 'selection_snapshot'
   | 'voxel_inspection'
   | 'voxel_preview'
+  | 'model_metadata'
+  | 'material_metadata'
+  | 'render_diff_preview'
   | 'command_result'
   | 'render_before_after'
   | 'agent_readout';
@@ -215,6 +230,12 @@ export interface SessionStatusOutput { readonly sessionId: string; readonly stat
 export interface ScenarioListOutput { readonly scenarios: readonly { readonly id: string; readonly label: string }[]; }
 export interface WorldSummaryOutput { readonly authorityHash: string | null; readonly voxelVolumeCount: number; readonly sceneNodeCount: number; }
 export interface EditorStateOutput { readonly editorVersion: string; readonly selectedVoxel: VoxelCoord | null; }
+export interface MaterialInspectionInput { readonly sessionId: string; readonly materialId: string; }
+export interface MaterialInspectionOutput { readonly materialId: string; readonly catalogEntry: CatalogEntry; readonly material: MaterialProjection; }
+export interface ModelInspectionInput { readonly sessionId: string; readonly assetId: string; }
+export interface ModelInspectionOutput { readonly assetId: string; readonly meshAsset: StaticMeshAsset; readonly materialSlots: readonly string[]; }
+export interface ModelMaterialPreviewInput { readonly sessionId: string; readonly modelAsset: StaticMeshAsset; readonly materialId: string; }
+export interface ModelMaterialPreviewOutput { readonly previewDiff: RenderFrameDiff; readonly rendererClassification: 'reference_preview' | 'runtime_readback'; readonly diagnostics: readonly string[]; }
 export interface ScreenPointInput { readonly sessionId: string; readonly request: ScreenPointToPickRayRequest; }
 export interface VoxelSelectionOutput { readonly selection: VoxelSelectionSnapshot; }
 export interface VoxelInspectionInput { readonly sessionId: string; readonly voxel: VoxelCoord; }

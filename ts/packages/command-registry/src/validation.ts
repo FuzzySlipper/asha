@@ -108,6 +108,10 @@ function isNumberTuple3(value: unknown): boolean {
   return Array.isArray(value) && value.length === 3 && value.every(isFiniteNumber);
 }
 
+function isNumberTuple4(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 4 && value.every(isFiniteNumber);
+}
+
 function isLiteral(value: unknown, allowed: readonly string[]): boolean {
   return typeof value === 'string' && allowed.includes(value);
 }
@@ -159,6 +163,118 @@ function isVoxelSelectionSnapshot(value: unknown): boolean {
   return isPlainObject(value) && hasExactKeys(value, ['pickRay', 'outcome', 'selectedVoxel', 'selectedFace', 'editAnchor', 'selectionHash']) && isPickRaySnapshot(value.pickRay) && isLiteral(value.outcome, ['hit', 'miss']) && (value.selectedVoxel === null || isVoxelCoord(value.selectedVoxel)) && (value.selectedFace === null || isLiteral(value.selectedFace, ['posX', 'negX', 'posY', 'negY', 'posZ', 'negZ'])) && (value.editAnchor === null || isVoxelCoord(value.editAnchor)) && isString(value.selectionHash);
 }
 
+
+function isAssetReference(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['id', 'kind']) && isString(value.id) && isLiteral(value.kind, ['material', 'mesh', 'sprite', 'sprite-sheet', 'texture', 'voxel-volume', 'voxel-object', 'script', 'scene']);
+}
+
+function isRgbaObject(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['r', 'g', 'b', 'a']) && isFiniteNumber(value.r) && isFiniteNumber(value.g) && isFiniteNumber(value.b) && isFiniteNumber(value.a);
+}
+
+function isMaterialProjection(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasExactKeys(value, ['render', 'collision'])) return false;
+  const render = value.render;
+  const collision = value.collision;
+  return isPlainObject(render)
+    && hasExactKeys(render, ['color', 'texture', 'roughness', 'emissive', 'uvStrategy'])
+    && isRgbaObject(render.color)
+    && (render.texture === null || isAssetReference(render.texture))
+    && isFiniteNumber(render.roughness)
+    && isFiniteNumber(render.emissive)
+    && isLiteral(render.uvStrategy, ['flat', 'planar', 'atlas'])
+    && isPlainObject(collision)
+    && hasExactKeys(collision, ['solid', 'collidable', 'occludes', 'structuralClass'])
+    && typeof collision.solid === 'boolean'
+    && typeof collision.collidable === 'boolean'
+    && typeof collision.occludes === 'boolean'
+    && isLiteral(collision.structuralClass, ['decorative', 'solid', 'structural']);
+}
+
+function isCatalogEntry(value: unknown): boolean {
+  return isPlainObject(value)
+    && hasExactKeys(value, ['id', 'kind', 'version', 'hash', 'sourcePath', 'label', 'dependencies', 'material'])
+    && isString(value.id)
+    && isLiteral(value.kind, ['material', 'mesh', 'sprite', 'sprite-sheet', 'texture', 'voxel-volume', 'voxel-object', 'script', 'scene'])
+    && isInteger(value.version)
+    && (value.hash === null || isString(value.hash))
+    && (value.sourcePath === null || isString(value.sourcePath))
+    && (value.label === null || isString(value.label))
+    && Array.isArray(value.dependencies)
+    && value.dependencies.every(isAssetReference)
+    && (value.material === null || isMaterialProjection(value.material));
+}
+
+function isMeshAttribute(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['name', 'components', 'kind']) && isLiteral(value.name, ['position', 'normal', 'uv', 'color']) && isInteger(value.components) && isLiteral(value.kind, ['f32']);
+}
+
+function isStaticMeshAsset(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasExactKeys(value, ['asset', 'payload', 'materialSlots', 'collision']) || !isString(value.asset)) return false;
+  const payload = value.payload;
+  const collision = value.collision;
+  const source = isPlainObject(payload) ? payload.source : null;
+  return isPlainObject(payload)
+    && hasExactKeys(payload, ['layout', 'groups', 'bounds', 'source', 'provenance'])
+    && isPlainObject(payload.layout)
+    && hasExactKeys(payload.layout, ['vertexCount', 'indexCount', 'indexWidth', 'attributes'])
+    && isInteger(payload.layout.vertexCount)
+    && isInteger(payload.layout.indexCount)
+    && isLiteral(payload.layout.indexWidth, ['u32'])
+    && Array.isArray(payload.layout.attributes)
+    && payload.layout.attributes.every(isMeshAttribute)
+    && Array.isArray(payload.groups)
+    && payload.groups.every((group) => isPlainObject(group) && hasExactKeys(group, ['materialSlot', 'start', 'count']) && isInteger(group.materialSlot) && isInteger(group.start) && isInteger(group.count))
+    && isPlainObject(payload.bounds)
+    && hasExactKeys(payload.bounds, ['min', 'max'])
+    && isNumberTuple3(payload.bounds.min)
+    && isNumberTuple3(payload.bounds.max)
+    && isPlainObject(source)
+    && ((source.kind === 'inline' && hasExactKeys(source, ['kind', 'positions', 'normals', 'indices']) && Array.isArray(source.positions) && source.positions.every(isFiniteNumber) && Array.isArray(source.normals) && source.normals.every(isFiniteNumber) && Array.isArray(source.indices) && source.indices.every(isInteger))
+      || (source.kind === 'handle' && hasExactKeys(source, ['kind', 'buffer', 'positionsByteOffset', 'normalsByteOffset', 'indicesByteOffset']) && isInteger(source.buffer) && isInteger(source.positionsByteOffset) && isInteger(source.normalsByteOffset) && isInteger(source.indicesByteOffset)))
+    && isLiteral(payload.provenance, ['voxelChunk', 'staticAsset', 'generated', 'debug'])
+    && Array.isArray(value.materialSlots)
+    && value.materialSlots.every((slot) => isPlainObject(slot) && hasExactKeys(slot, ['slot', 'material']) && isInteger(slot.slot) && isString(slot.material))
+    && isPlainObject(collision)
+    && ((collision.kind === 'visualOnly' && hasExactKeys(collision, ['kind']))
+      || (collision.kind === 'aabbFallback' && hasExactKeys(collision, ['kind']))
+      || (collision.kind === 'proxy' && hasExactKeys(collision, ['kind', 'proxyAsset']) && isString(collision.proxyAsset)));
+}
+
+function isTransform(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['translation', 'rotation', 'scale']) && isNumberTuple3(value.translation) && isNumberTuple4(value.rotation) && isNumberTuple3(value.scale);
+}
+
+function isRenderMetadata(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['source', 'tags', 'label']) && (value.source === null || isInteger(value.source)) && Array.isArray(value.tags) && value.tags.every(isInteger) && (value.label === null || isString(value.label));
+}
+
+function isRenderMaterialDescriptor(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['id', 'color', 'texture', 'roughness', 'emissive', 'uvStrategy']) && isString(value.id) && isNumberTuple4(value.color) && (value.texture === null || isString(value.texture)) && isFiniteNumber(value.roughness) && isFiniteNumber(value.emissive) && isLiteral(value.uvStrategy, ['flat', 'planar', 'atlas']);
+}
+
+function isRenderFrameDiff(value: unknown): boolean {
+  return isPlainObject(value) && hasExactKeys(value, ['ops']) && Array.isArray(value.ops) && value.ops.every((op) => {
+    if (!isPlainObject(op) || !hasField(op, 'op')) return false;
+    if (op.op === 'defineMaterial') return hasExactKeys(op, ['op', 'material']) && isRenderMaterialDescriptor(op.material);
+    if (op.op === 'defineStaticMesh') return hasExactKeys(op, ['op', 'asset']) && isStaticMeshAsset(op.asset);
+    if (op.op === 'createStaticMeshInstance') {
+      const instance = op.instance;
+      return hasExactKeys(op, ['op', 'handle', 'parent', 'instance'])
+        && isInteger(op.handle)
+        && (op.parent === null || isInteger(op.parent))
+        && isPlainObject(instance)
+        && hasExactKeys(instance, ['asset', 'transform', 'materialOverrides', 'metadata'])
+        && isString(instance.asset)
+        && isTransform(instance.transform)
+        && Array.isArray(instance.materialOverrides)
+        && instance.materialOverrides.every((slot) => isPlainObject(slot) && hasExactKeys(slot, ['slot', 'material']) && isInteger(slot.slot) && isString(slot.material))
+        && isRenderMetadata(instance.metadata);
+    }
+    return false;
+  });
+}
+
 function validateContractValue(value: unknown, exportName: string): boolean {
   switch (exportName) {
     case 'ScreenPointToPickRayRequest':
@@ -169,6 +285,14 @@ function validateContractValue(value: unknown, exportName: string): boolean {
       return isVoxelSelectionSnapshot(value);
     case 'VoxelCommand':
       return isVoxelCommand(value);
+    case 'CatalogEntry':
+      return isCatalogEntry(value);
+    case 'MaterialProjection':
+      return isMaterialProjection(value);
+    case 'StaticMeshAsset':
+      return isStaticMeshAsset(value);
+    case 'RenderFrameDiff':
+      return isRenderFrameDiff(value);
     default:
       return false;
   }

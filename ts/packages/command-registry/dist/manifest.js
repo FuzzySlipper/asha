@@ -17,6 +17,10 @@ const SESSION_ID_FIELD = field('sessionId', stringShape, 'Stable studio session 
 const SCENARIO_ID_FIELD = field('scenarioId', stringShape, 'Named public studio scenario identifier.');
 const VOXEL_COORD_SCHEMA = contract('VoxelCoord');
 const VOXEL_COMMAND_SCHEMA = contract('VoxelCommand');
+const CATALOG_ENTRY_SCHEMA = contract('CatalogEntry');
+const MATERIAL_PROJECTION_SCHEMA = contract('MaterialProjection');
+const STATIC_MESH_ASSET_SCHEMA = contract('StaticMeshAsset');
+const RENDER_FRAME_DIFF_SCHEMA = contract('RenderFrameDiff');
 const COMPAT = {
     contracts: 'contracts.v0',
     runtimeBridge: 'runtime-bridge.v0',
@@ -123,6 +127,28 @@ const editorStateOutput = objectSchema('EditorStateOutput', [
     field('editorVersion', stringShape, 'Editor state/schema version.'),
     field('selectedVoxel', nullable(VOXEL_COORD_SCHEMA), 'Currently selected voxel, if any.'),
 ]);
+const materialInspectionInput = objectSchema('MaterialInspectionInput', [SESSION_ID_FIELD, field('materialId', stringShape, 'Public catalog material asset id.')]);
+const materialInspectionOutput = objectSchema('MaterialInspectionOutput', [
+    field('materialId', stringShape, 'Public catalog material asset id.'),
+    field('catalogEntry', CATALOG_ENTRY_SCHEMA, 'Generated public catalog entry for the material.'),
+    field('material', MATERIAL_PROJECTION_SCHEMA, 'Generated public material projection split into render/collision views.'),
+]);
+const modelInspectionInput = objectSchema('ModelInspectionInput', [SESSION_ID_FIELD, field('assetId', stringShape, 'Public static mesh asset id.')]);
+const modelInspectionOutput = objectSchema('ModelInspectionOutput', [
+    field('assetId', stringShape, 'Public static mesh asset id.'),
+    field('meshAsset', STATIC_MESH_ASSET_SCHEMA, 'Generated public static mesh asset descriptor.'),
+    field('materialSlots', arrayOf(stringShape), 'Material asset ids referenced by the model slots.'),
+]);
+const modelMaterialPreviewInput = objectSchema('ModelMaterialPreviewInput', [
+    SESSION_ID_FIELD,
+    field('modelAsset', STATIC_MESH_ASSET_SCHEMA, 'Generated public static mesh asset descriptor to preview.'),
+    field('materialId', stringShape, 'Catalog material id to highlight in the preview.'),
+]);
+const modelMaterialPreviewOutput = objectSchema('ModelMaterialPreviewOutput', [
+    field('previewDiff', RENDER_FRAME_DIFF_SCHEMA, 'Generated public retained-mode render diff preview evidence.'),
+    field('rendererClassification', literal(['reference_preview', 'runtime_readback']), 'Whether evidence is reference preview or runtime readback.'),
+    field('diagnostics', arrayOf(stringShape), 'Typed diagnostic strings for unavailable/degraded support.'),
+]);
 const screenPointInput = objectSchema('ScreenPointInput', [
     SESSION_ID_FIELD,
     field('request', contract('ScreenPointToPickRayRequest'), 'Generated public screen-point/camera selection request.'),
@@ -169,6 +195,47 @@ const captureOutput = objectSchema('CaptureBeforeAfterOutput', [
 ]);
 const exportInput = objectSchema('ExportAgentReadoutInput', [SESSION_ID_FIELD, field('includeVisualEvidence', booleanShape, 'Whether exported readout references visual artifacts.')]);
 const exportOutput = objectSchema('ExportAgentReadoutOutput', [field('artifactId', scalar('artifact_ref'), 'Exported readout artifact id.'), field('commandCount', integerShape, 'Number of commands included in the readout.')]);
+const materialProjectionExample = {
+    render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
+    collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
+};
+const materialEntryExample = {
+    id: 'material.copper',
+    kind: 'material',
+    version: 1,
+    hash: 'sha256-material-copper',
+    sourcePath: null,
+    label: 'Copper',
+    dependencies: [],
+    material: materialProjectionExample,
+};
+const meshAssetExample = {
+    asset: 'mesh.preview-cube',
+    payload: {
+        layout: {
+            vertexCount: 8,
+            indexCount: 36,
+            indexWidth: 'u32',
+            attributes: [
+                { name: 'position', components: 3, kind: 'f32' },
+                { name: 'normal', components: 3, kind: 'f32' },
+            ],
+        },
+        groups: [{ materialSlot: 0, start: 0, count: 36 }],
+        bounds: { min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] },
+        source: { kind: 'inline', positions: [], normals: [], indices: [] },
+        provenance: 'staticAsset',
+    },
+    materialSlots: [{ slot: 0, material: 'material.copper' }],
+    collision: { kind: 'aabbFallback' },
+};
+const modelMaterialPreviewDiffExample = {
+    ops: [
+        { op: 'defineMaterial', material: { id: 'material.copper', color: [0.8, 0.4, 0.2, 1], texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' } },
+        { op: 'defineStaticMesh', asset: meshAssetExample },
+        { op: 'createStaticMeshInstance', handle: 7001, parent: null, instance: { asset: 'mesh.preview-cube', transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] }, materialOverrides: [], metadata: { source: null, tags: [], label: 'Model/material preview' } } },
+    ],
+};
 const selectionExample = {
     pickRay: {
         camera: CAMERA_HANDLE,
@@ -211,6 +278,18 @@ export const COMMAND_MANIFEST = [
     base({
         id: 'inspection.editor_state', label: 'Inspect Editor State', summary: 'Read command-registry/editor-local selection and preview state.', category: 'inspection', menuPath: ['Inspect', 'Editor State'], keywords: ['editor', 'selection'],
         inputSchema: sessionIdInput, outputSchema: editorStateOutput, operationClass: 'read_only', stateImpact: readEditor, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('editor_state', 'Editor-local state snapshot.')], typedInputExample: { sessionId: 'session-1' }, typedOutputExample: { editorVersion: 'editor.v0', selectedVoxel: null }, panel: 'inspector', dialog: 'readout_only', compatibility: REGISTRY_COMPAT,
+    }),
+    base({
+        id: 'inspection.material', label: 'Inspect Material', summary: 'Read a public catalog material projection for Studio preview and diagnostics.', category: 'inspection', menuPath: ['Inspect', 'Material'], keywords: ['material', 'catalog', 'inspect'],
+        inputSchema: materialInspectionInput, outputSchema: materialInspectionOutput, operationClass: 'read_only', stateImpact: readAuthority, runtimeRequirements: [runtime('read_model_material_preview')], artifacts: [artifact('material_metadata', 'Material catalog entry and render/collision projection.')], typedInputExample: { sessionId: 'session-1', materialId: 'material.copper' }, typedOutputExample: { materialId: 'material.copper', catalogEntry: materialEntryExample, material: materialProjectionExample }, panel: 'inspector', dialog: 'readout_only', inputContractRefs: [], outputContractRefs: [{ package: '@asha/contracts', exportName: 'CatalogEntry' }, { package: '@asha/contracts', exportName: 'MaterialProjection' }], knownLimitations: ['Native model/material runtime readback may fail closed until the native bridge wires read_model_material_preview.'],
+    }),
+    base({
+        id: 'inspection.model', label: 'Inspect Model', summary: 'Read a public static mesh asset descriptor and its material slots.', category: 'inspection', menuPath: ['Inspect', 'Model'], keywords: ['model', 'mesh', 'inspect'],
+        inputSchema: modelInspectionInput, outputSchema: modelInspectionOutput, operationClass: 'read_only', stateImpact: readAuthority, runtimeRequirements: [runtime('read_model_material_preview')], artifacts: [artifact('model_metadata', 'Static mesh descriptor and material slot metadata.')], typedInputExample: { sessionId: 'session-1', assetId: 'mesh.preview-cube' }, typedOutputExample: { assetId: 'mesh.preview-cube', meshAsset: meshAssetExample, materialSlots: ['material.copper'] }, panel: 'inspector', dialog: 'readout_only', outputContractRefs: [{ package: '@asha/contracts', exportName: 'StaticMeshAsset' }], knownLimitations: ['Native model runtime readback may fail closed until the native bridge wires read_model_material_preview.'],
+    }),
+    base({
+        id: 'preview.model_material', label: 'Preview Model / Material', summary: 'Preview a static mesh with catalog material projection as retained-mode render-diff evidence without authority mutation.', category: 'preview', menuPath: ['Preview', 'Model / Material'], keywords: ['preview', 'model', 'material', 'render diff'],
+        inputSchema: modelMaterialPreviewInput, outputSchema: modelMaterialPreviewOutput, operationClass: 'editor_local', stateImpact: { authority: 'read', editor: 'mutate', render: 'capture', workspace: 'none' }, runtimeRequirements: [runtime('read_model_material_preview'), { kind: 'editor_store' }, { kind: 'render_surface' }], artifacts: [artifact('model_metadata', 'Static mesh preview metadata.'), artifact('material_metadata', 'Material projection metadata.'), artifact('render_diff_preview', 'Retained-mode render diff preview evidence.')], typedInputExample: { sessionId: 'session-1', modelAsset: meshAssetExample, materialId: 'material.copper' }, typedOutputExample: { previewDiff: modelMaterialPreviewDiffExample, rendererClassification: 'reference_preview', diagnostics: [] }, panel: 'viewport', dialog: 'simple_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'StaticMeshAsset' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'RenderFrameDiff' }], agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous model/material preview snapshot'] }, idempotency: { kind: 'conditional', condition: 'Same model asset, material id, and catalog versions produce the same preview diff.' }, knownLimitations: ['Preview evidence is render-diff/readback metadata only; screenshots, hardware GPU, and performance evidence are out of scope.'],
     }),
     base({
         id: 'selection.voxel_from_screen_point', label: 'Select Voxel From Screen Point', summary: 'Project a screen point through public camera evidence into typed ASHA voxel selection evidence.', category: 'selection', menuPath: ['Select', 'Voxel From Screen Point'], keywords: ['screen point', 'pick', 'select', 'voxel'],

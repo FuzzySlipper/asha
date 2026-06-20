@@ -17,6 +17,41 @@ import type {
   CommandBatch,
   VoxelCommand,
 } from '@asha/contracts';
+
+const MODEL_MATERIAL_PREVIEW_REQUEST: ModelMaterialPreviewRequest = {
+  catalog: {
+    entries: [
+      {
+        id: 'material.copper',
+        kind: 'material',
+        version: 1,
+        hash: 'sha256-material-copper',
+        sourcePath: null,
+        label: 'Copper',
+        dependencies: [],
+        material: {
+          render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
+          collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
+        },
+      },
+    ],
+  },
+  meshAsset: {
+    asset: 'mesh.preview-cube',
+    payload: {
+      layout: { vertexCount: 8, indexCount: 36, indexWidth: 'u32', attributes: [{ name: 'position', components: 3, kind: 'f32' }] },
+      groups: [{ materialSlot: 0, start: 0, count: 36 }],
+      bounds: { min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] },
+      source: { kind: 'inline', positions: [], normals: [], indices: [] },
+      provenance: 'staticAsset',
+    },
+    materialSlots: [{ slot: 0, material: 'material.copper' }],
+    collision: { kind: 'aabbFallback' },
+  },
+  materialId: 'material.copper',
+  instanceHandle: 7001 as import('@asha/contracts').RenderHandle,
+};
+
 import {
   MANIFEST_OPERATIONS,
   MockRuntimeBridge,
@@ -24,6 +59,7 @@ import {
   createMockRuntimeBridge,
   createNativeRuntimeBridge,
   frameCursor,
+  type ModelMaterialPreviewRequest,
   type RuntimeBufferHandle,
 } from './index.js';
 
@@ -192,6 +228,18 @@ test('mock: buffer round-trip and unknown handle classification', () => {
     () => bridge.getBuffer(99 as RuntimeBufferHandle),
     (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'unknown_handle',
   );
+});
+
+
+test('mock: readModelMaterialPreview returns public render-diff evidence without renderer internals', () => {
+  const bridge = createMockRuntimeBridge();
+  bridge.initializeEngine({ seed: 1 });
+  const snapshot = bridge.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST);
+  assert.equal(snapshot.catalogEntry.id, 'material.copper');
+  assert.equal(snapshot.meshAsset.asset, 'mesh.preview-cube');
+  assert.equal(snapshot.rendererClassification, 'reference_preview');
+  assert.deepEqual(snapshot.previewDiff.ops.map((op) => op.op), ['defineMaterial', 'defineStaticMesh', 'createStaticMeshInstance']);
+  assert.ok(snapshot.diagnostics.some((diagnostic) => diagnostic.includes('fail closed')));
 });
 
 test('mock: readRenderDiffs returns a contract-shaped frame', () => {

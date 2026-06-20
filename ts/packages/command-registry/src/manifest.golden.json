@@ -784,6 +784,814 @@
     }
   },
   {
+    "id": "inspection.material",
+    "version": 1,
+    "label": "Inspect Material",
+    "summary": "Read a public catalog material projection for Studio preview and diagnostics.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Material"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "material",
+        "catalog",
+        "inspect"
+      ]
+    },
+    "inputSchema": {
+      "name": "MaterialInspectionInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "materialId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Public catalog material asset id."
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "MaterialInspectionOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "materialId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Public catalog material asset id."
+          },
+          {
+            "name": "catalogEntry",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "CatalogEntry"
+              }
+            },
+            "summary": "Generated public catalog entry for the material."
+          },
+          {
+            "name": "material",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "MaterialProjection"
+              }
+            },
+            "summary": "Generated public material projection split into render/collision views."
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "CatalogEntry"
+      },
+      {
+        "package": "@asha/contracts",
+        "exportName": "MaterialProjection"
+      }
+    ],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Material"
+      ],
+      "commandPaletteVisible": true,
+      "argumentSummary": "MaterialInspectionInput: sessionId: Stable studio session identifier. materialId: Public catalog material asset id.",
+      "resultSummary": "MaterialInspectionOutput: materialId: Public catalog material asset id. catalogEntry: Generated public catalog entry for the material. material: Generated public material projection split into render/collision views.",
+      "artifactSummary": "material_metadata: Material catalog entry and render/collision projection.",
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "material_metadata",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Material catalog entry and render/collision projection."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_model_material_preview"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "Native model/material runtime readback may fail closed until the native bridge wires read_model_material_preview."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "materialId": "material.copper"
+    },
+    "typedOutputExample": {
+      "materialId": "material.copper",
+      "catalogEntry": {
+        "id": "material.copper",
+        "kind": "material",
+        "version": 1,
+        "hash": "sha256-material-copper",
+        "sourcePath": null,
+        "label": "Copper",
+        "dependencies": [],
+        "material": {
+          "render": {
+            "color": {
+              "r": 0.8,
+              "g": 0.4,
+              "b": 0.2,
+              "a": 1
+            },
+            "texture": null,
+            "roughness": 0.6,
+            "emissive": 0,
+            "uvStrategy": "flat"
+          },
+          "collision": {
+            "solid": true,
+            "collidable": true,
+            "occludes": true,
+            "structuralClass": "solid"
+          }
+        }
+      },
+      "material": {
+        "render": {
+          "color": {
+            "r": 0.8,
+            "g": 0.4,
+            "b": 0.2,
+            "a": 1
+          },
+          "texture": null,
+          "roughness": 0.6,
+          "emissive": 0,
+          "uvStrategy": "flat"
+        },
+        "collision": {
+          "solid": true,
+          "collidable": true,
+          "occludes": true,
+          "structuralClass": "solid"
+        }
+      }
+    }
+  },
+  {
+    "id": "inspection.model",
+    "version": 1,
+    "label": "Inspect Model",
+    "summary": "Read a public static mesh asset descriptor and its material slots.",
+    "category": "inspection",
+    "menuPath": [
+      "Inspect",
+      "Model"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "model",
+        "mesh",
+        "inspect"
+      ]
+    },
+    "inputSchema": {
+      "name": "ModelInspectionInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "assetId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Public static mesh asset id."
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "ModelInspectionOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "assetId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Public static mesh asset id."
+          },
+          {
+            "name": "meshAsset",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "StaticMeshAsset"
+              }
+            },
+            "summary": "Generated public static mesh asset descriptor."
+          },
+          {
+            "name": "materialSlots",
+            "required": true,
+            "shape": {
+              "kind": "array",
+              "items": {
+                "kind": "scalar",
+                "scalar": "string"
+              }
+            },
+            "summary": "Material asset ids referenced by the model slots."
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "StaticMeshAsset"
+      }
+    ],
+    "operationClass": "read_only",
+    "agentExposure": {
+      "kind": "read_only"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Model"
+      ],
+      "commandPaletteVisible": true,
+      "argumentSummary": "ModelInspectionInput: sessionId: Stable studio session identifier. assetId: Public static mesh asset id.",
+      "resultSummary": "ModelInspectionOutput: assetId: Public static mesh asset id. meshAsset: Generated public static mesh asset descriptor. materialSlots: Material asset ids referenced by the model slots.",
+      "artifactSummary": "model_metadata: Static mesh descriptor and material slot metadata.",
+      "panel": "inspector",
+      "dialog": "readout_only"
+    },
+    "undo": {
+      "kind": "not_undoable",
+      "reason": "Read-only or diagnostic command has no mutation to reverse."
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "idempotent",
+      "keyFields": [
+        "sessionId"
+      ]
+    },
+    "artifacts": [
+      {
+        "type": "model_metadata",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Static mesh descriptor and material slot metadata."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "none",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_model_material_preview"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "Native model runtime readback may fail closed until the native bridge wires read_model_material_preview."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "assetId": "mesh.preview-cube"
+    },
+    "typedOutputExample": {
+      "assetId": "mesh.preview-cube",
+      "meshAsset": {
+        "asset": "mesh.preview-cube",
+        "payload": {
+          "layout": {
+            "vertexCount": 8,
+            "indexCount": 36,
+            "indexWidth": "u32",
+            "attributes": [
+              {
+                "name": "position",
+                "components": 3,
+                "kind": "f32"
+              },
+              {
+                "name": "normal",
+                "components": 3,
+                "kind": "f32"
+              }
+            ]
+          },
+          "groups": [
+            {
+              "materialSlot": 0,
+              "start": 0,
+              "count": 36
+            }
+          ],
+          "bounds": {
+            "min": [
+              -0.5,
+              -0.5,
+              -0.5
+            ],
+            "max": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "source": {
+            "kind": "inline",
+            "positions": [],
+            "normals": [],
+            "indices": []
+          },
+          "provenance": "staticAsset"
+        },
+        "materialSlots": [
+          {
+            "slot": 0,
+            "material": "material.copper"
+          }
+        ],
+        "collision": {
+          "kind": "aabbFallback"
+        }
+      },
+      "materialSlots": [
+        "material.copper"
+      ]
+    }
+  },
+  {
+    "id": "preview.model_material",
+    "version": 1,
+    "label": "Preview Model / Material",
+    "summary": "Preview a static mesh with catalog material projection as retained-mode render-diff evidence without authority mutation.",
+    "category": "preview",
+    "menuPath": [
+      "Preview",
+      "Model / Material"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "preview",
+        "model",
+        "material",
+        "render diff"
+      ]
+    },
+    "inputSchema": {
+      "name": "ModelMaterialPreviewInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "modelAsset",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "StaticMeshAsset"
+              }
+            },
+            "summary": "Generated public static mesh asset descriptor to preview."
+          },
+          {
+            "name": "materialId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Catalog material id to highlight in the preview."
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "ModelMaterialPreviewOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "previewDiff",
+            "required": true,
+            "shape": {
+              "kind": "contract",
+              "ref": {
+                "package": "@asha/contracts",
+                "exportName": "RenderFrameDiff"
+              }
+            },
+            "summary": "Generated public retained-mode render diff preview evidence."
+          },
+          {
+            "name": "rendererClassification",
+            "required": true,
+            "shape": {
+              "kind": "literal",
+              "values": [
+                "reference_preview",
+                "runtime_readback"
+              ]
+            },
+            "summary": "Whether evidence is reference preview or runtime readback."
+          },
+          {
+            "name": "diagnostics",
+            "required": true,
+            "shape": {
+              "kind": "array",
+              "items": {
+                "kind": "scalar",
+                "scalar": "string"
+              }
+            },
+            "summary": "Typed diagnostic strings for unavailable/degraded support."
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "StaticMeshAsset"
+      }
+    ],
+    "outputContractRefs": [
+      {
+        "package": "@asha/contracts",
+        "exportName": "RenderFrameDiff"
+      }
+    ],
+    "operationClass": "editor_local",
+    "agentExposure": {
+      "kind": "editor_local"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Preview",
+        "Model / Material"
+      ],
+      "commandPaletteVisible": true,
+      "argumentSummary": "ModelMaterialPreviewInput: sessionId: Stable studio session identifier. modelAsset: Generated public static mesh asset descriptor to preview. materialId: Catalog material id to highlight in the preview.",
+      "resultSummary": "ModelMaterialPreviewOutput: previewDiff: Generated public retained-mode render diff preview evidence. rendererClassification: Whether evidence is reference preview or runtime readback. diagnostics: Typed diagnostic strings for unavailable/degraded support.",
+      "artifactSummary": "model_metadata: Static mesh preview metadata. material_metadata: Material projection metadata. render_diff_preview: Retained-mode render diff preview evidence.",
+      "panel": "viewport",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "editor_local",
+      "inverseData": [
+        "previous model/material preview snapshot"
+      ]
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Same model asset, material id, and catalog versions produce the same preview diff."
+    },
+    "artifacts": [
+      {
+        "type": "model_metadata",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Static mesh preview metadata."
+      },
+      {
+        "type": "material_metadata",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Material projection metadata."
+      },
+      {
+        "type": "render_diff_preview",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Retained-mode render diff preview evidence."
+      }
+    ],
+    "stateImpact": {
+      "authority": "read",
+      "editor": "mutate",
+      "render": "capture",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "runtime_bridge_operation",
+        "operation": "read_model_material_preview"
+      },
+      {
+        "kind": "editor_store"
+      },
+      {
+        "kind": "render_surface"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "runtimeBridge": "runtime-bridge.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "Preview evidence is render-diff/readback metadata only; screenshots, hardware GPU, and performance evidence are out of scope."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "modelAsset": {
+        "asset": "mesh.preview-cube",
+        "payload": {
+          "layout": {
+            "vertexCount": 8,
+            "indexCount": 36,
+            "indexWidth": "u32",
+            "attributes": [
+              {
+                "name": "position",
+                "components": 3,
+                "kind": "f32"
+              },
+              {
+                "name": "normal",
+                "components": 3,
+                "kind": "f32"
+              }
+            ]
+          },
+          "groups": [
+            {
+              "materialSlot": 0,
+              "start": 0,
+              "count": 36
+            }
+          ],
+          "bounds": {
+            "min": [
+              -0.5,
+              -0.5,
+              -0.5
+            ],
+            "max": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "source": {
+            "kind": "inline",
+            "positions": [],
+            "normals": [],
+            "indices": []
+          },
+          "provenance": "staticAsset"
+        },
+        "materialSlots": [
+          {
+            "slot": 0,
+            "material": "material.copper"
+          }
+        ],
+        "collision": {
+          "kind": "aabbFallback"
+        }
+      },
+      "materialId": "material.copper"
+    },
+    "typedOutputExample": {
+      "previewDiff": {
+        "ops": [
+          {
+            "op": "defineMaterial",
+            "material": {
+              "id": "material.copper",
+              "color": [
+                0.8,
+                0.4,
+                0.2,
+                1
+              ],
+              "texture": null,
+              "roughness": 0.6,
+              "emissive": 0,
+              "uvStrategy": "flat"
+            }
+          },
+          {
+            "op": "defineStaticMesh",
+            "asset": {
+              "asset": "mesh.preview-cube",
+              "payload": {
+                "layout": {
+                  "vertexCount": 8,
+                  "indexCount": 36,
+                  "indexWidth": "u32",
+                  "attributes": [
+                    {
+                      "name": "position",
+                      "components": 3,
+                      "kind": "f32"
+                    },
+                    {
+                      "name": "normal",
+                      "components": 3,
+                      "kind": "f32"
+                    }
+                  ]
+                },
+                "groups": [
+                  {
+                    "materialSlot": 0,
+                    "start": 0,
+                    "count": 36
+                  }
+                ],
+                "bounds": {
+                  "min": [
+                    -0.5,
+                    -0.5,
+                    -0.5
+                  ],
+                  "max": [
+                    0.5,
+                    0.5,
+                    0.5
+                  ]
+                },
+                "source": {
+                  "kind": "inline",
+                  "positions": [],
+                  "normals": [],
+                  "indices": []
+                },
+                "provenance": "staticAsset"
+              },
+              "materialSlots": [
+                {
+                  "slot": 0,
+                  "material": "material.copper"
+                }
+              ],
+              "collision": {
+                "kind": "aabbFallback"
+              }
+            }
+          },
+          {
+            "op": "createStaticMeshInstance",
+            "handle": 7001,
+            "parent": null,
+            "instance": {
+              "asset": "mesh.preview-cube",
+              "transform": {
+                "translation": [
+                  0,
+                  0,
+                  0
+                ],
+                "rotation": [
+                  0,
+                  0,
+                  0,
+                  1
+                ],
+                "scale": [
+                  1,
+                  1,
+                  1
+                ]
+              },
+              "materialOverrides": [],
+              "metadata": {
+                "source": null,
+                "tags": [],
+                "label": "Model/material preview"
+              }
+            }
+          }
+        ]
+      },
+      "rendererClassification": "reference_preview",
+      "diagnostics": []
+    }
+  },
+  {
     "id": "selection.voxel_from_screen_point",
     "version": 1,
     "label": "Select Voxel From Screen Point",

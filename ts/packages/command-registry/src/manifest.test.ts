@@ -22,6 +22,9 @@ const REQUIRED_IDS = [
   'inspection.session_status',
   'inspection.world_summary',
   'inspection.editor_state',
+  'inspection.material',
+  'inspection.model',
+  'preview.model_material',
   'selection.voxel_from_screen_point',
   'inspection.voxel',
   'preview.voxel_brush',
@@ -144,6 +147,24 @@ test('mutating, writing, and capture commands are not advertised as read-only to
   }
   assert.equal(requireKnownCommand('session.start', COMMAND_MANIFEST).agentExposure.kind, 'workspace_io');
   assert.equal(requireKnownCommand('session.load_scenario', COMMAND_MANIFEST).agentExposure.kind, 'workspace_io');
+});
+
+test('model/material commands use public contract DTOs and runtime readback classification', () => {
+  const material = requireKnownCommand('inspection.material', COMMAND_MANIFEST);
+  assert.deepEqual(material.outputContractRefs.map((ref) => ref.exportName), ['CatalogEntry', 'MaterialProjection']);
+  assert.deepEqual(material.runtimeRequirements, [{ kind: 'runtime_bridge_operation', operation: 'read_model_material_preview' }]);
+
+  const model = requireKnownCommand('inspection.model', COMMAND_MANIFEST);
+  assert.deepEqual(model.outputContractRefs.map((ref) => ref.exportName), ['StaticMeshAsset']);
+  assert.deepEqual(model.runtimeRequirements, [{ kind: 'runtime_bridge_operation', operation: 'read_model_material_preview' }]);
+
+  const preview = requireKnownCommand('preview.model_material', COMMAND_MANIFEST);
+  assert.equal(preview.operationClass, 'editor_local');
+  assert.equal(preview.agentExposure.kind, 'editor_local');
+  assert.deepEqual(preview.inputContractRefs.map((ref) => ref.exportName), ['StaticMeshAsset']);
+  assert.deepEqual(preview.outputContractRefs.map((ref) => ref.exportName), ['RenderFrameDiff']);
+  assert.ok(preview.artifacts.some((artifact) => artifact.type === 'render_diff_preview'));
+  assert.ok(preview.runtimeRequirements.some((requirement) => requirement.kind === 'runtime_bridge_operation' && requirement.operation === 'read_model_material_preview'));
 });
 
 test('selection command uses screen-point camera request, not a caller-supplied pick ray', () => {

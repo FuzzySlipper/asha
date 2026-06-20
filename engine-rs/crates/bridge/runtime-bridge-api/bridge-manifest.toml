@@ -88,6 +88,14 @@ errors = "RuntimeBridgeError"
 buffers = "read-only descriptor; large geometry referenced by RuntimeBufferHandle"
 summary = "Pull retained-mode render diffs since the cursor. Small metadata inline; large payloads by handle."
 
+[[operation]]
+name = "read_model_material_preview"
+surface = "stable"
+input = "protocol_render::ModelMaterialPreviewRequest"
+output = "protocol_render::ModelMaterialPreviewSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Read/derive a typed model-material preview using public catalog/material/static-mesh DTOs and retained-mode render-diff evidence. Native transports may fail closed until wired; no renderer internals or hardware claims."
+
 # ── Runtime view/camera surface (#2561/#2564) ─────────────────────────────────
 # Deterministic bridge-owned view/projection state for editor/testbench evidence.
 # This is not gameplay authority, not a renderer object, and not a StateStore handle.
