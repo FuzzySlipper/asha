@@ -171,6 +171,13 @@ const screenPointInput = objectSchema('ScreenPointInput', [
     field('request', contract('ScreenPointToPickRayRequest'), 'Generated public screen-point/camera selection request.'),
 ]);
 const voxelSelectionOutput = objectSchema('VoxelSelectionOutput', [field('selection', contract('VoxelSelectionSnapshot'), 'Generated public selection evidence snapshot.')]);
+const setActiveEntityInput = objectSchema('SetActiveEntityInput', [SESSION_ID_FIELD, field('entityId', stringShape, 'Entity/renderable id selected from the hierarchy/entity browser.')]);
+const setActiveEntityOutput = objectSchema('SetActiveEntityOutput', [
+    field('entityId', stringShape, 'Selected entity id echoed back.'),
+    field('renderableId', stringShape, 'Viewport renderable id the selection is synced to.'),
+    field('selectionHash', hashShape, 'Editor selection evidence hash.'),
+    field('selected', booleanShape, 'Whether the entity is now the active editor selection.'),
+]);
 const voxelInspectionInput = objectSchema('VoxelInspectionInput', [SESSION_ID_FIELD, field('voxel', VOXEL_COORD_SCHEMA, 'Voxel coordinate to inspect.')]);
 const voxelInspectionOutput = objectSchema('VoxelInspectionOutput', [
     field('voxel', VOXEL_COORD_SCHEMA, 'Inspected voxel coordinate.'),
@@ -322,6 +329,10 @@ export const COMMAND_MANIFEST = [
     base({
         id: 'selection.voxel_from_screen_point', label: 'Select Voxel From Screen Point', summary: 'Project a screen point through public camera evidence into typed ASHA voxel selection evidence.', category: 'selection', menuPath: ['Select', 'Voxel From Screen Point'], keywords: ['screen point', 'pick', 'select', 'voxel'],
         inputSchema: screenPointInput, outputSchema: voxelSelectionOutput, operationClass: 'editor_local', stateImpact: mutateEditor, runtimeRequirements: [runtime('select_voxel'), { kind: 'editor_store' }], artifacts: [artifact('selection_snapshot', 'Selected voxel hit or no-hit result.')], typedInputExample: { sessionId: 'session-1', request: { camera: CAMERA_HANDLE, grid: 0, viewport: null, screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1' }, maxDistance: 128 } }, typedOutputExample: { selection: selectionExample }, panel: 'viewport', dialog: 'none', inputContractRefs: [{ package: '@asha/contracts', exportName: 'ScreenPointToPickRayRequest' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelSelectionSnapshot' }], agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous selection snapshot'] }, idempotency: { kind: 'conditional', condition: 'Same screen point, camera, viewport, and unchanged projection evidence selects the same voxel.' },
+    }),
+    base({
+        id: 'selection.set_active_entity', label: 'Set Active Entity', summary: 'Select an entity/renderable by id from the hierarchy/entity browser and sync the editor selection to the viewport.', category: 'selection', menuPath: ['Select', 'Active Entity'], keywords: ['select', 'entity', 'hierarchy', 'browser'],
+        inputSchema: setActiveEntityInput, outputSchema: setActiveEntityOutput, operationClass: 'editor_local', stateImpact: mutateEditor, compatibility: REGISTRY_COMPAT, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('selection_snapshot', 'Selected entity/renderable selection evidence.')], typedInputExample: { sessionId: 'session-1', entityId: 'selected-voxel:0,0,0' }, typedOutputExample: { entityId: 'selected-voxel:0,0,0', renderableId: 'selected-voxel:0,0,0', selectionHash: 'selection-hash', selected: true }, panel: 'inspector', dialog: 'none', agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous active entity selection'] }, idempotency: { kind: 'conditional', condition: 'Selecting the same entity id with the same scene readback yields the same selection.' },
     }),
     base({
         id: 'inspection.voxel', label: 'Inspect Voxel', summary: 'Read typed voxel/material state for one public coordinate.', category: 'inspection', menuPath: ['Inspect', 'Voxel'], keywords: ['voxel', 'inspect'],

@@ -15,6 +15,7 @@ const REQUIRED_IDS = [
     'preview.model_material',
     'scene.load_asset',
     'selection.voxel_from_screen_point',
+    'selection.set_active_entity',
     'inspection.voxel',
     'preview.voxel_brush',
     'authority.voxel.apply_brush',
@@ -126,6 +127,17 @@ test('scene load command places a catalog asset through editor-local render-diff
     assert.ok(load.artifacts.some((artifact) => artifact.type === 'render_diff_preview'));
     assert.equal(load.stateImpact.authority, 'read');
     assert.equal(load.idempotency.kind, 'conditional');
+});
+test('set-active-entity selection command is editor-local and hierarchy-driven', () => {
+    const select = requireKnownCommand('selection.set_active_entity', COMMAND_MANIFEST);
+    assert.equal(select.category, 'selection');
+    assert.equal(select.operationClass, 'editor_local');
+    assert.equal(select.agentExposure.kind, 'editor_local');
+    assert.deepEqual(select.menuPath, ['Select', 'Active Entity']);
+    assert.deepEqual(select.runtimeRequirements, [{ kind: 'editor_store' }]);
+    assert.ok(select.artifacts.some((artifact) => artifact.type === 'selection_snapshot'));
+    assert.equal(select.stateImpact.editor, 'mutate');
+    assert.equal(select.idempotency.kind, 'conditional');
 });
 test('selection command uses screen-point camera request, not a caller-supplied pick ray', () => {
     const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);

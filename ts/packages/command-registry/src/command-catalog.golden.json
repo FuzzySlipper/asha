@@ -720,6 +720,64 @@
       ]
     },
     {
+      "id": "selection.set_active_entity",
+      "version": 1,
+      "label": "Set Active Entity",
+      "summary": "Select an entity/renderable by id from the hierarchy/entity browser and sync the editor selection to the viewport.",
+      "category": "selection",
+      "operationClass": "editor_local",
+      "agentExposureKind": "editor_local",
+      "menuPath": [
+        "Select",
+        "Active Entity"
+      ],
+      "commandPaletteVisible": true,
+      "commandPaletteKeywords": [
+        "select",
+        "entity",
+        "hierarchy",
+        "browser"
+      ],
+      "guiMirror": {
+        "required": true,
+        "menuPath": [
+          "Select",
+          "Active Entity"
+        ],
+        "commandPaletteVisible": true,
+        "argumentSummary": "SetActiveEntityInput: sessionId: Stable studio session identifier. entityId: Entity/renderable id selected from the hierarchy/entity browser.",
+        "resultSummary": "SetActiveEntityOutput: entityId: Selected entity id echoed back. renderableId: Viewport renderable id the selection is synced to. selectionHash: Editor selection evidence hash. selected: Whether the entity is now the active editor selection.",
+        "artifactSummary": "selection_snapshot: Selected entity/renderable selection evidence.",
+        "panel": "inspector",
+        "dialog": "none"
+      },
+      "inputSchemaName": "SetActiveEntityInput",
+      "outputSchemaName": "SetActiveEntityOutput",
+      "inputContractRefs": [],
+      "outputContractRefs": [],
+      "artifacts": [
+        {
+          "type": "selection_snapshot",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Selected entity/renderable selection evidence."
+        }
+      ],
+      "stateImpact": {
+        "authority": "none",
+        "editor": "mutate",
+        "render": "none",
+        "workspace": "none"
+      },
+      "owningLane": "ts-command-registry",
+      "owningPackage": "@asha/command-registry",
+      "runtimeRequirements": [
+        {
+          "kind": "editor_store"
+        }
+      ]
+    },
+    {
       "id": "inspection.voxel",
       "version": 1,
       "label": "Inspect Voxel",

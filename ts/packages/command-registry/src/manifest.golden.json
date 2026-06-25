@@ -2183,6 +2183,165 @@
     }
   },
   {
+    "id": "selection.set_active_entity",
+    "version": 1,
+    "label": "Set Active Entity",
+    "summary": "Select an entity/renderable by id from the hierarchy/entity browser and sync the editor selection to the viewport.",
+    "category": "selection",
+    "menuPath": [
+      "Select",
+      "Active Entity"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "select",
+        "entity",
+        "hierarchy",
+        "browser"
+      ]
+    },
+    "inputSchema": {
+      "name": "SetActiveEntityInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Entity/renderable id selected from the hierarchy/entity browser."
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "SetActiveEntityOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "entityId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Selected entity id echoed back."
+          },
+          {
+            "name": "renderableId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Viewport renderable id the selection is synced to."
+          },
+          {
+            "name": "selectionHash",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "state_hash"
+            },
+            "summary": "Editor selection evidence hash."
+          },
+          {
+            "name": "selected",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "boolean"
+            },
+            "summary": "Whether the entity is now the active editor selection."
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "editor_local",
+    "agentExposure": {
+      "kind": "editor_local"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Select",
+        "Active Entity"
+      ],
+      "commandPaletteVisible": true,
+      "argumentSummary": "SetActiveEntityInput: sessionId: Stable studio session identifier. entityId: Entity/renderable id selected from the hierarchy/entity browser.",
+      "resultSummary": "SetActiveEntityOutput: entityId: Selected entity id echoed back. renderableId: Viewport renderable id the selection is synced to. selectionHash: Editor selection evidence hash. selected: Whether the entity is now the active editor selection.",
+      "artifactSummary": "selection_snapshot: Selected entity/renderable selection evidence.",
+      "panel": "inspector",
+      "dialog": "none"
+    },
+    "undo": {
+      "kind": "editor_local",
+      "inverseData": [
+        "previous active entity selection"
+      ]
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Selecting the same entity id with the same scene readback yields the same selection."
+    },
+    "artifacts": [
+      {
+        "type": "selection_snapshot",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Selected entity/renderable selection evidence."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "entityId": "selected-voxel:0,0,0"
+    },
+    "typedOutputExample": {
+      "entityId": "selected-voxel:0,0,0",
+      "renderableId": "selected-voxel:0,0,0",
+      "selectionHash": "selection-hash",
+      "selected": true
+    }
+  },
+  {
     "id": "inspection.voxel",
     "version": 1,
     "label": "Inspect Voxel",

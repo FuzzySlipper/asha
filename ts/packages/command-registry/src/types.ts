@@ -27,6 +27,7 @@ export type StudioCommandId =
   | 'preview.model_material'
   | 'scene.load_asset'
   | 'selection.voxel_from_screen_point'
+  | 'selection.set_active_entity'
   | 'inspection.voxel'
   | 'preview.voxel_brush'
   | 'authority.voxel.apply_brush'
@@ -243,6 +244,8 @@ export interface LoadSceneAssetInput { readonly sessionId: string; readonly asse
 export interface LoadSceneAssetOutput { readonly assetId: string; readonly renderableIds: readonly string[]; readonly loadDiff: RenderFrameDiff; readonly rendererClassification: 'reference_placement' | 'runtime_readback'; readonly diagnostics: readonly string[]; }
 export interface ScreenPointInput { readonly sessionId: string; readonly request: ScreenPointToPickRayRequest; }
 export interface VoxelSelectionOutput { readonly selection: VoxelSelectionSnapshot; }
+export interface SetActiveEntityInput { readonly sessionId: string; readonly entityId: string; }
+export interface SetActiveEntityOutput { readonly entityId: string; readonly renderableId: string; readonly selectionHash: string; readonly selected: boolean; }
 export interface VoxelInspectionInput { readonly sessionId: string; readonly voxel: VoxelCoord; }
 export interface VoxelInspectionOutput { readonly voxel: VoxelCoord; readonly materialId: number | null; readonly occupied: boolean; }
 export interface VoxelBrushPreviewInput { readonly sessionId: string; readonly anchor: VoxelCoord; readonly commands: readonly VoxelCommand[]; }
