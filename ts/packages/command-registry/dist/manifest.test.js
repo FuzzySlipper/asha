@@ -16,6 +16,7 @@ const REQUIRED_IDS = [
     'scene.load_asset',
     'selection.voxel_from_screen_point',
     'selection.set_active_entity',
+    'entity.set_name',
     'inspection.voxel',
     'preview.voxel_brush',
     'authority.voxel.apply_brush',
@@ -138,6 +139,25 @@ test('set-active-entity selection command is editor-local and hierarchy-driven',
     assert.ok(select.artifacts.some((artifact) => artifact.type === 'selection_snapshot'));
     assert.equal(select.stateImpact.editor, 'mutate');
     assert.equal(select.idempotency.kind, 'conditional');
+});
+test('set-entity-name inspector edit is an editor-local typed command, not a freeform JSON field write', () => {
+    const rename = requireKnownCommand('entity.set_name', COMMAND_MANIFEST);
+    assert.equal(rename.category, 'entity');
+    assert.equal(rename.operationClass, 'editor_local');
+    assert.equal(rename.agentExposure.kind, 'editor_local');
+    assert.deepEqual(rename.menuPath, ['Inspect', 'Rename Entity']);
+    assert.deepEqual(rename.runtimeRequirements, [{ kind: 'editor_store' }]);
+    assert.ok(rename.artifacts.some((artifact) => artifact.type === 'editor_state'));
+    assert.equal(rename.stateImpact.editor, 'mutate');
+    assert.equal(rename.stateImpact.authority, 'none');
+    assert.equal(rename.idempotency.kind, 'conditional');
+    assert.equal(rename.guiMirror.panel, 'inspector');
+    // Input/output are typed object schemas (no contract/opaque or freeform-object payload).
+    assert.equal(rename.inputSchema.shape.kind, 'object');
+    assert.equal(rename.outputSchema.shape.kind, 'object');
+    assert.deepEqual(validateExampleAgainstSchema(rename.id, 'typedOutputExample', { entityId: 'e', renderableId: 'e', name: 'n', nameHash: 'h', applied: true }, rename.outputSchema.shape), []);
+    // A name edit that omits the required new name fails closed against the schema.
+    assert.deepEqual(validateExampleAgainstSchema(rename.id, 'typedInputExample', { sessionId: 's', entityId: 'e' }, rename.inputSchema.shape), [{ commandId: 'entity.set_name', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
 });
 test('selection command uses screen-point camera request, not a caller-supplied pick ray', () => {
     const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);

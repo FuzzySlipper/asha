@@ -32,6 +32,8 @@ import type {
   SessionIdInput,
   SetActiveEntityInput,
   SetActiveEntityOutput,
+  SetEntityNameInput,
+  SetEntityNameOutput,
   SessionStatusOutput,
   StateImpact,
   StudioCommandDefinition,
@@ -263,6 +265,18 @@ const setActiveEntityOutput = objectSchema('SetActiveEntityOutput', [
   field('selectionHash', hashShape, 'Editor selection evidence hash.'),
   field('selected', booleanShape, 'Whether the entity is now the active editor selection.'),
 ]);
+const setEntityNameInput = objectSchema('SetEntityNameInput', [
+  SESSION_ID_FIELD,
+  field('entityId', stringShape, 'Entity/renderable id of the currently selected entity to rename.'),
+  field('name', stringShape, 'New non-empty display name for the selected entity.'),
+]);
+const setEntityNameOutput = objectSchema('SetEntityNameOutput', [
+  field('entityId', stringShape, 'Selected entity id echoed back.'),
+  field('renderableId', stringShape, 'Viewport renderable id the renamed entity is synced to.'),
+  field('name', stringShape, 'Applied display name.'),
+  field('nameHash', hashShape, 'Editor display-name evidence hash.'),
+  field('applied', booleanShape, 'Whether the editor-local name edit was applied to the selected entity.'),
+]);
 const voxelInspectionInput = objectSchema('VoxelInspectionInput', [SESSION_ID_FIELD, field('voxel', VOXEL_COORD_SCHEMA, 'Voxel coordinate to inspect.')]);
 const voxelInspectionOutput = objectSchema('VoxelInspectionOutput', [
   field('voxel', VOXEL_COORD_SCHEMA, 'Inspected voxel coordinate.'),
@@ -423,6 +437,10 @@ export const COMMAND_MANIFEST = [
   base<SetActiveEntityInput, SetActiveEntityOutput>({
     id: 'selection.set_active_entity', label: 'Set Active Entity', summary: 'Select an entity/renderable by id from the hierarchy/entity browser and sync the editor selection to the viewport.', category: 'selection', menuPath: ['Select', 'Active Entity'], keywords: ['select', 'entity', 'hierarchy', 'browser'],
     inputSchema: setActiveEntityInput, outputSchema: setActiveEntityOutput, operationClass: 'editor_local', stateImpact: mutateEditor, compatibility: REGISTRY_COMPAT, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('selection_snapshot', 'Selected entity/renderable selection evidence.')], typedInputExample: { sessionId: 'session-1', entityId: 'selected-voxel:0,0,0' }, typedOutputExample: { entityId: 'selected-voxel:0,0,0', renderableId: 'selected-voxel:0,0,0', selectionHash: 'selection-hash', selected: true }, panel: 'inspector', dialog: 'none', agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous active entity selection'] }, idempotency: { kind: 'conditional', condition: 'Selecting the same entity id with the same scene readback yields the same selection.' },
+  }),
+  base<SetEntityNameInput, SetEntityNameOutput>({
+    id: 'entity.set_name', label: 'Set Entity Name', summary: 'Rename the selected entity from the inspector through an editor-local typed command and sync the new display name to the viewport readback.', category: 'entity', menuPath: ['Inspect', 'Rename Entity'], keywords: ['rename', 'entity', 'name', 'inspector', 'edit'],
+    inputSchema: setEntityNameInput, outputSchema: setEntityNameOutput, operationClass: 'editor_local', stateImpact: mutateEditor, compatibility: REGISTRY_COMPAT, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('editor_state', 'Editor-local selected-entity name edit evidence.')], typedInputExample: { sessionId: 'session-1', entityId: 'selected-voxel:0,0,0', name: 'Primary voxel' }, typedOutputExample: { entityId: 'selected-voxel:0,0,0', renderableId: 'selected-voxel:0,0,0', name: 'Primary voxel', nameHash: 'name-hash', applied: true }, panel: 'inspector', dialog: 'simple_form', agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous selected-entity display name'] }, idempotency: { kind: 'conditional', condition: 'Renaming the same entity id to the same name with the same scene readback yields the same edit.' }, knownLimitations: ['Name is an editor-local display field over public scene-view readback; it is not an authoritative ECS/runtime mutation until the runtime bridge is approved.'],
   }),
   base<VoxelInspectionInput, VoxelInspectionOutput>({
     id: 'inspection.voxel', label: 'Inspect Voxel', summary: 'Read typed voxel/material state for one public coordinate.', category: 'inspection', menuPath: ['Inspect', 'Voxel'], keywords: ['voxel', 'inspect'],

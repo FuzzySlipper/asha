@@ -1,6 +1,6 @@
 import type { CatalogEntry, MaterialProjection, RenderFrameDiff, ScreenPointToPickRayRequest, StaticMeshAsset, VoxelCommand, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
-export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'scene.load_asset' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
-export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'scene' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
+export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'scene.load_asset' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'entity.set_name' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
+export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'scene' | 'entity' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
 export type OperationClass = 'read_only' | 'editor_local' | 'authority_mutating' | 'render_evidence' | 'diagnostic_export' | 'workspace_io';
 export type AshaLane = 'contract-steward' | 'ts-command-registry' | 'ts-shell' | 'ts-tools' | 'rust-bridge' | 'rust-render' | 'rust-rule' | 'rust-service';
 export type ContractRef = {
@@ -274,6 +274,18 @@ export interface SetActiveEntityOutput {
     readonly renderableId: string;
     readonly selectionHash: string;
     readonly selected: boolean;
+}
+export interface SetEntityNameInput {
+    readonly sessionId: string;
+    readonly entityId: string;
+    readonly name: string;
+}
+export interface SetEntityNameOutput {
+    readonly entityId: string;
+    readonly renderableId: string;
+    readonly name: string;
+    readonly nameHash: string;
+    readonly applied: boolean;
 }
 export interface VoxelInspectionInput {
     readonly sessionId: string;

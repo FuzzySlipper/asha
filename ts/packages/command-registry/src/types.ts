@@ -28,6 +28,7 @@ export type StudioCommandId =
   | 'scene.load_asset'
   | 'selection.voxel_from_screen_point'
   | 'selection.set_active_entity'
+  | 'entity.set_name'
   | 'inspection.voxel'
   | 'preview.voxel_brush'
   | 'authority.voxel.apply_brush'
@@ -41,6 +42,7 @@ export type CommandCategory =
   | 'selection'
   | 'preview'
   | 'scene'
+  | 'entity'
   | 'authority_edit'
   | 'render_evidence'
   | 'diagnostics'
@@ -246,6 +248,8 @@ export interface ScreenPointInput { readonly sessionId: string; readonly request
 export interface VoxelSelectionOutput { readonly selection: VoxelSelectionSnapshot; }
 export interface SetActiveEntityInput { readonly sessionId: string; readonly entityId: string; }
 export interface SetActiveEntityOutput { readonly entityId: string; readonly renderableId: string; readonly selectionHash: string; readonly selected: boolean; }
+export interface SetEntityNameInput { readonly sessionId: string; readonly entityId: string; readonly name: string; }
+export interface SetEntityNameOutput { readonly entityId: string; readonly renderableId: string; readonly name: string; readonly nameHash: string; readonly applied: boolean; }
 export interface VoxelInspectionInput { readonly sessionId: string; readonly voxel: VoxelCoord; }
 export interface VoxelInspectionOutput { readonly voxel: VoxelCoord; readonly materialId: number | null; readonly occupied: boolean; }
 export interface VoxelBrushPreviewInput { readonly sessionId: string; readonly anchor: VoxelCoord; readonly commands: readonly VoxelCommand[]; }

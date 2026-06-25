@@ -2342,6 +2342,189 @@
     }
   },
   {
+    "id": "entity.set_name",
+    "version": 1,
+    "label": "Set Entity Name",
+    "summary": "Rename the selected entity from the inspector through an editor-local typed command and sync the new display name to the viewport readback.",
+    "category": "entity",
+    "menuPath": [
+      "Inspect",
+      "Rename Entity"
+    ],
+    "commandPalette": {
+      "visible": true,
+      "keywords": [
+        "rename",
+        "entity",
+        "name",
+        "inspector",
+        "edit"
+      ]
+    },
+    "inputSchema": {
+      "name": "SetEntityNameInput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Stable studio session identifier."
+          },
+          {
+            "name": "entityId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Entity/renderable id of the currently selected entity to rename."
+          },
+          {
+            "name": "name",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "New non-empty display name for the selected entity."
+          }
+        ]
+      }
+    },
+    "outputSchema": {
+      "name": "SetEntityNameOutput",
+      "version": 1,
+      "shape": {
+        "kind": "object",
+        "allowExtraFields": false,
+        "fields": [
+          {
+            "name": "entityId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Selected entity id echoed back."
+          },
+          {
+            "name": "renderableId",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Viewport renderable id the renamed entity is synced to."
+          },
+          {
+            "name": "name",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "string"
+            },
+            "summary": "Applied display name."
+          },
+          {
+            "name": "nameHash",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "state_hash"
+            },
+            "summary": "Editor display-name evidence hash."
+          },
+          {
+            "name": "applied",
+            "required": true,
+            "shape": {
+              "kind": "scalar",
+              "scalar": "boolean"
+            },
+            "summary": "Whether the editor-local name edit was applied to the selected entity."
+          }
+        ]
+      }
+    },
+    "inputContractRefs": [],
+    "outputContractRefs": [],
+    "operationClass": "editor_local",
+    "agentExposure": {
+      "kind": "editor_local"
+    },
+    "guiMirror": {
+      "required": true,
+      "menuPath": [
+        "Inspect",
+        "Rename Entity"
+      ],
+      "commandPaletteVisible": true,
+      "argumentSummary": "SetEntityNameInput: sessionId: Stable studio session identifier. entityId: Entity/renderable id of the currently selected entity to rename. name: New non-empty display name for the selected entity.",
+      "resultSummary": "SetEntityNameOutput: entityId: Selected entity id echoed back. renderableId: Viewport renderable id the renamed entity is synced to. name: Applied display name. nameHash: Editor display-name evidence hash. applied: Whether the editor-local name edit was applied to the selected entity.",
+      "artifactSummary": "editor_state: Editor-local selected-entity name edit evidence.",
+      "panel": "inspector",
+      "dialog": "simple_form"
+    },
+    "undo": {
+      "kind": "editor_local",
+      "inverseData": [
+        "previous selected-entity display name"
+      ]
+    },
+    "retry": "safe_to_retry",
+    "idempotency": {
+      "kind": "conditional",
+      "condition": "Renaming the same entity id to the same name with the same scene readback yields the same edit."
+    },
+    "artifacts": [
+      {
+        "type": "editor_state",
+        "required": true,
+        "producedWhen": "always",
+        "summary": "Editor-local selected-entity name edit evidence."
+      }
+    ],
+    "stateImpact": {
+      "authority": "none",
+      "editor": "mutate",
+      "render": "none",
+      "workspace": "none"
+    },
+    "owningLane": "ts-command-registry",
+    "owningPackage": "@asha/command-registry",
+    "runtimeRequirements": [
+      {
+        "kind": "editor_store"
+      }
+    ],
+    "compatibility": {
+      "contracts": "contracts.v0",
+      "commandRegistry": "command-registry.v0"
+    },
+    "knownLimitations": [
+      "Name is an editor-local display field over public scene-view readback; it is not an authoritative ECS/runtime mutation until the runtime bridge is approved."
+    ],
+    "typedInputExample": {
+      "sessionId": "session-1",
+      "entityId": "selected-voxel:0,0,0",
+      "name": "Primary voxel"
+    },
+    "typedOutputExample": {
+      "entityId": "selected-voxel:0,0,0",
+      "renderableId": "selected-voxel:0,0,0",
+      "name": "Primary voxel",
+      "nameHash": "name-hash",
+      "applied": true
+    }
+  },
+  {
     "id": "inspection.voxel",
     "version": 1,
     "label": "Inspect Voxel",
