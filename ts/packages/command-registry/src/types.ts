@@ -29,6 +29,7 @@ export type StudioCommandId =
   | 'selection.voxel_from_screen_point'
   | 'selection.set_active_entity'
   | 'entity.set_name'
+  | 'transform.translate_entity'
   | 'inspection.voxel'
   | 'preview.voxel_brush'
   | 'authority.voxel.apply_brush'
@@ -250,6 +251,10 @@ export interface SetActiveEntityInput { readonly sessionId: string; readonly ent
 export interface SetActiveEntityOutput { readonly entityId: string; readonly renderableId: string; readonly selectionHash: string; readonly selected: boolean; }
 export interface SetEntityNameInput { readonly sessionId: string; readonly entityId: string; readonly name: string; }
 export interface SetEntityNameOutput { readonly entityId: string; readonly renderableId: string; readonly name: string; readonly nameHash: string; readonly applied: boolean; }
+export type TransformAxis = 'x' | 'y' | 'z';
+export type TransformEditMode = 'preview' | 'apply';
+export interface TranslateEntityInput { readonly sessionId: string; readonly entityId: string; readonly axis: TransformAxis; readonly delta: number; readonly mode: TransformEditMode; }
+export interface TranslateEntityOutput { readonly entityId: string; readonly renderableId: string; readonly axis: TransformAxis; readonly delta: number; readonly mode: TransformEditMode; readonly translationBefore: readonly [number, number, number]; readonly translationAfter: readonly [number, number, number]; readonly transformHash: string; readonly applied: boolean; }
 export interface VoxelInspectionInput { readonly sessionId: string; readonly voxel: VoxelCoord; }
 export interface VoxelInspectionOutput { readonly voxel: VoxelCoord; readonly materialId: number | null; readonly occupied: boolean; }
 export interface VoxelBrushPreviewInput { readonly sessionId: string; readonly anchor: VoxelCoord; readonly commands: readonly VoxelCommand[]; }

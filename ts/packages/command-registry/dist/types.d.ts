@@ -1,5 +1,5 @@
 import type { CatalogEntry, MaterialProjection, RenderFrameDiff, ScreenPointToPickRayRequest, StaticMeshAsset, VoxelCommand, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
-export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'scene.load_asset' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'entity.set_name' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
+export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'scene.load_asset' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'entity.set_name' | 'transform.translate_entity' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
 export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'scene' | 'entity' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
 export type OperationClass = 'read_only' | 'editor_local' | 'authority_mutating' | 'render_evidence' | 'diagnostic_export' | 'workspace_io';
 export type AshaLane = 'contract-steward' | 'ts-command-registry' | 'ts-shell' | 'ts-tools' | 'rust-bridge' | 'rust-render' | 'rust-rule' | 'rust-service';
@@ -285,6 +285,26 @@ export interface SetEntityNameOutput {
     readonly renderableId: string;
     readonly name: string;
     readonly nameHash: string;
+    readonly applied: boolean;
+}
+export type TransformAxis = 'x' | 'y' | 'z';
+export type TransformEditMode = 'preview' | 'apply';
+export interface TranslateEntityInput {
+    readonly sessionId: string;
+    readonly entityId: string;
+    readonly axis: TransformAxis;
+    readonly delta: number;
+    readonly mode: TransformEditMode;
+}
+export interface TranslateEntityOutput {
+    readonly entityId: string;
+    readonly renderableId: string;
+    readonly axis: TransformAxis;
+    readonly delta: number;
+    readonly mode: TransformEditMode;
+    readonly translationBefore: readonly [number, number, number];
+    readonly translationAfter: readonly [number, number, number];
+    readonly transformHash: string;
     readonly applied: boolean;
 }
 export interface VoxelInspectionInput {

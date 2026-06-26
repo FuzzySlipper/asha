@@ -34,6 +34,8 @@ import type {
   SetActiveEntityOutput,
   SetEntityNameInput,
   SetEntityNameOutput,
+  TranslateEntityInput,
+  TranslateEntityOutput,
   SessionStatusOutput,
   StateImpact,
   StudioCommandDefinition,
@@ -277,6 +279,24 @@ const setEntityNameOutput = objectSchema('SetEntityNameOutput', [
   field('nameHash', hashShape, 'Editor display-name evidence hash.'),
   field('applied', booleanShape, 'Whether the editor-local name edit was applied to the selected entity.'),
 ]);
+const translateEntityInput = objectSchema('TranslateEntityInput', [
+  SESSION_ID_FIELD,
+  field('entityId', stringShape, 'Entity/renderable id of the currently selected entity to translate.'),
+  field('axis', literal(['x', 'y', 'z']), 'Single world axis the gizmo translates along.'),
+  field('delta', scalar('number'), 'Signed translation delta applied along the chosen axis.'),
+  field('mode', literal(['preview', 'apply']), 'Whether this is an editor-local preview drag or the committed apply.'),
+]);
+const translateEntityOutput = objectSchema('TranslateEntityOutput', [
+  field('entityId', stringShape, 'Selected entity id echoed back.'),
+  field('renderableId', stringShape, 'Viewport renderable id the translated entity is synced to.'),
+  field('axis', literal(['x', 'y', 'z']), 'Axis the translate was applied along.'),
+  field('delta', scalar('number'), 'Signed translation delta applied along the axis.'),
+  field('mode', literal(['preview', 'apply']), 'Preview drag or committed apply.'),
+  field('translationBefore', arrayOf(scalar('number'), 3), 'Entity world translation x, y, z before the edit.'),
+  field('translationAfter', arrayOf(scalar('number'), 3), 'Entity world translation x, y, z after the edit.'),
+  field('transformHash', hashShape, 'Editor transform evidence hash.'),
+  field('applied', booleanShape, 'Whether the editor-local translate was committed (apply) versus preview.'),
+]);
 const voxelInspectionInput = objectSchema('VoxelInspectionInput', [SESSION_ID_FIELD, field('voxel', VOXEL_COORD_SCHEMA, 'Voxel coordinate to inspect.')]);
 const voxelInspectionOutput = objectSchema('VoxelInspectionOutput', [
   field('voxel', VOXEL_COORD_SCHEMA, 'Inspected voxel coordinate.'),
@@ -441,6 +461,10 @@ export const COMMAND_MANIFEST = [
   base<SetEntityNameInput, SetEntityNameOutput>({
     id: 'entity.set_name', label: 'Set Entity Name', summary: 'Rename the selected entity from the inspector through an editor-local typed command and sync the new display name to the viewport readback.', category: 'entity', menuPath: ['Inspect', 'Rename Entity'], keywords: ['rename', 'entity', 'name', 'inspector', 'edit'],
     inputSchema: setEntityNameInput, outputSchema: setEntityNameOutput, operationClass: 'editor_local', stateImpact: mutateEditor, compatibility: REGISTRY_COMPAT, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('editor_state', 'Editor-local selected-entity name edit evidence.')], typedInputExample: { sessionId: 'session-1', entityId: 'selected-voxel:0,0,0', name: 'Primary voxel' }, typedOutputExample: { entityId: 'selected-voxel:0,0,0', renderableId: 'selected-voxel:0,0,0', name: 'Primary voxel', nameHash: 'name-hash', applied: true }, panel: 'inspector', dialog: 'simple_form', agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous selected-entity display name'] }, idempotency: { kind: 'conditional', condition: 'Renaming the same entity id to the same name with the same scene readback yields the same edit.' }, knownLimitations: ['Name is an editor-local display field over public scene-view readback; it is not an authoritative ECS/runtime mutation until the runtime bridge is approved.'],
+  }),
+  base<TranslateEntityInput, TranslateEntityOutput>({
+    id: 'transform.translate_entity', label: 'Translate Entity', summary: 'Translate the selected entity along a single world axis from the viewport transform gizmo through an editor-local typed command, recording preview and apply modes on the shared timeline.', category: 'entity', menuPath: ['Transform', 'Translate Along Axis'], keywords: ['transform', 'translate', 'gizmo', 'move', 'axis', 'entity'],
+    inputSchema: translateEntityInput, outputSchema: translateEntityOutput, operationClass: 'editor_local', stateImpact: mutateEditor, compatibility: REGISTRY_COMPAT, runtimeRequirements: [{ kind: 'editor_store' }], artifacts: [artifact('editor_state', 'Editor-local selected-entity transform translate evidence.')], typedInputExample: { sessionId: 'session-1', entityId: 'selected-voxel:0,0,0', axis: 'x', delta: 2, mode: 'apply' }, typedOutputExample: { entityId: 'selected-voxel:0,0,0', renderableId: 'selected-voxel:0,0,0', axis: 'x', delta: 2, mode: 'apply', translationBefore: [0.5, 0.5, 0.5], translationAfter: [2.5, 0.5, 0.5], transformHash: 'transform-hash', applied: true }, panel: 'viewport', dialog: 'simple_form', agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous selected-entity transform'] }, idempotency: { kind: 'conditional', condition: 'Translating the same entity id along the same axis by the same delta and mode with the same scene readback yields the same transform.' }, knownLimitations: ['Translate is an editor-local transform over public scene-view readback; it does not claim physics, native runtime, or performance evidence, and authoritative/runtime transform mutation remains deferred until the runtime bridge is approved.'],
   }),
   base<VoxelInspectionInput, VoxelInspectionOutput>({
     id: 'inspection.voxel', label: 'Inspect Voxel', summary: 'Read typed voxel/material state for one public coordinate.', category: 'inspection', menuPath: ['Inspect', 'Voxel'], keywords: ['voxel', 'inspect'],

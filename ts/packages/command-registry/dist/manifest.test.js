@@ -17,6 +17,7 @@ const REQUIRED_IDS = [
     'selection.voxel_from_screen_point',
     'selection.set_active_entity',
     'entity.set_name',
+    'transform.translate_entity',
     'inspection.voxel',
     'preview.voxel_brush',
     'authority.voxel.apply_brush',
@@ -158,6 +159,28 @@ test('set-entity-name inspector edit is an editor-local typed command, not a fre
     assert.deepEqual(validateExampleAgainstSchema(rename.id, 'typedOutputExample', { entityId: 'e', renderableId: 'e', name: 'n', nameHash: 'h', applied: true }, rename.outputSchema.shape), []);
     // A name edit that omits the required new name fails closed against the schema.
     assert.deepEqual(validateExampleAgainstSchema(rename.id, 'typedInputExample', { sessionId: 's', entityId: 'e' }, rename.inputSchema.shape), [{ commandId: 'entity.set_name', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+});
+test('translate-entity gizmo edit is an editor-local typed transform command with preview/apply modes', () => {
+    const translate = requireKnownCommand('transform.translate_entity', COMMAND_MANIFEST);
+    assert.equal(translate.category, 'entity');
+    assert.equal(translate.operationClass, 'editor_local');
+    assert.equal(translate.agentExposure.kind, 'editor_local');
+    assert.deepEqual(translate.menuPath, ['Transform', 'Translate Along Axis']);
+    assert.deepEqual(translate.runtimeRequirements, [{ kind: 'editor_store' }]);
+    assert.ok(translate.artifacts.some((artifact) => artifact.type === 'editor_state'));
+    assert.equal(translate.stateImpact.editor, 'mutate');
+    assert.equal(translate.stateImpact.authority, 'none');
+    assert.equal(translate.idempotency.kind, 'conditional');
+    assert.equal(translate.guiMirror.panel, 'viewport');
+    // Input/output are typed object schemas (no contract/opaque or freeform-object payload).
+    assert.equal(translate.inputSchema.shape.kind, 'object');
+    assert.equal(translate.outputSchema.shape.kind, 'object');
+    // A committed apply with a typed before/after translation validates against the output schema.
+    assert.deepEqual(validateExampleAgainstSchema(translate.id, 'typedOutputExample', { entityId: 'e', renderableId: 'e', axis: 'x', delta: 2, mode: 'apply', translationBefore: [0, 0, 0], translationAfter: [2, 0, 0], transformHash: 'h', applied: true }, translate.outputSchema.shape), []);
+    // An unknown axis is rejected — the gizmo cannot translate along a freeform axis string.
+    assert.deepEqual(validateExampleAgainstSchema(translate.id, 'typedInputExample', { sessionId: 's', entityId: 'e', axis: 'w', delta: 2, mode: 'apply' }, translate.inputSchema.shape), [{ commandId: 'transform.translate_entity', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+    // A transform edit that omits the preview/apply mode fails closed against the schema.
+    assert.deepEqual(validateExampleAgainstSchema(translate.id, 'typedInputExample', { sessionId: 's', entityId: 'e', axis: 'x', delta: 2 }, translate.inputSchema.shape), [{ commandId: 'transform.translate_entity', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
 });
 test('selection command uses screen-point camera request, not a caller-supplied pick ray', () => {
     const select = requireKnownCommand('selection.voxel_from_screen_point', COMMAND_MANIFEST);

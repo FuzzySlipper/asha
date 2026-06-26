@@ -837,6 +837,66 @@
       ]
     },
     {
+      "id": "transform.translate_entity",
+      "version": 1,
+      "label": "Translate Entity",
+      "summary": "Translate the selected entity along a single world axis from the viewport transform gizmo through an editor-local typed command, recording preview and apply modes on the shared timeline.",
+      "category": "entity",
+      "operationClass": "editor_local",
+      "agentExposureKind": "editor_local",
+      "menuPath": [
+        "Transform",
+        "Translate Along Axis"
+      ],
+      "commandPaletteVisible": true,
+      "commandPaletteKeywords": [
+        "transform",
+        "translate",
+        "gizmo",
+        "move",
+        "axis",
+        "entity"
+      ],
+      "guiMirror": {
+        "required": true,
+        "menuPath": [
+          "Transform",
+          "Translate Along Axis"
+        ],
+        "commandPaletteVisible": true,
+        "argumentSummary": "TranslateEntityInput: sessionId: Stable studio session identifier. entityId: Entity/renderable id of the currently selected entity to translate. axis: Single world axis the gizmo translates along. delta: Signed translation delta applied along the chosen axis. mode: Whether this is an editor-local preview drag or the committed apply.",
+        "resultSummary": "TranslateEntityOutput: entityId: Selected entity id echoed back. renderableId: Viewport renderable id the translated entity is synced to. axis: Axis the translate was applied along. delta: Signed translation delta applied along the axis. mode: Preview drag or committed apply. translationBefore: Entity world translation x, y, z before the edit. translationAfter: Entity world translation x, y, z after the edit. transformHash: Editor transform evidence hash. applied: Whether the editor-local translate was committed (apply) versus preview.",
+        "artifactSummary": "editor_state: Editor-local selected-entity transform translate evidence.",
+        "panel": "viewport",
+        "dialog": "simple_form"
+      },
+      "inputSchemaName": "TranslateEntityInput",
+      "outputSchemaName": "TranslateEntityOutput",
+      "inputContractRefs": [],
+      "outputContractRefs": [],
+      "artifacts": [
+        {
+          "type": "editor_state",
+          "required": true,
+          "producedWhen": "always",
+          "summary": "Editor-local selected-entity transform translate evidence."
+        }
+      ],
+      "stateImpact": {
+        "authority": "none",
+        "editor": "mutate",
+        "render": "none",
+        "workspace": "none"
+      },
+      "owningLane": "ts-command-registry",
+      "owningPackage": "@asha/command-registry",
+      "runtimeRequirements": [
+        {
+          "kind": "editor_store"
+        }
+      ]
+    },
+    {
       "id": "inspection.voxel",
       "version": 1,
       "label": "Inspect Voxel",
