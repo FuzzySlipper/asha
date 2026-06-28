@@ -1,7 +1,6 @@
 import type { EditorContext } from '@asha/editor-tools';
 export * from './scene-outliner.js';
 export * from './asset-inspector.js';
-export * from './bundle-panel.js';
 export * from './entity-inspector.js';
 export * from './policy-panel.js';
 export * from './operator-console.js';
