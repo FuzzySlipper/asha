@@ -28,6 +28,12 @@ test('validates the golden asha.game.toml manifest', () => {
   assert.equal(result.manifest.asha.engineVersion, '0.1.0');
   assert.equal(result.manifest.runtime.devtoolsEndpoint, 'ws://127.0.0.1:7391');
   assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'assets', 'packages/game-catalogs']);
+  assert.deepEqual(result.manifest.devResourceProfile.localRoots, ['assets', 'packages/game-catalogs']);
+  assert.equal(result.manifest.devResourceProfile.cacheDir, 'dist/dev-cache');
+  assert.equal(result.manifest.devResourceProfile.resolutionPolicy, 'prefer-source');
+  assert.equal(result.manifest.publishResourceProfile.outputDir, 'dist/resources');
+  assert.equal(result.manifest.publishResourceProfile.archiveDir, 'dist/archive');
+  assert.equal(result.manifest.publishResourceProfile.resolutionPolicy, 'locked');
 });
 
 test('fails closed when required workspace roots are missing', () => {
@@ -61,6 +67,34 @@ test('classifies bad versions and unsupported devtools endpoints', () => {
   }
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === 'bad_version'), true);
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_endpoint'), true);
+});
+
+test('fails closed when the publish resource profile is missing', () => {
+  const result = parseAshaGameManifestToml(fixture('invalid-missing-publish-profile.toml'));
+  assert.equal(result.ok, false);
+  if (result.ok) {
+    throw new Error('missing publish resource profile should fail validation');
+  }
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === 'missing_required_field' && diagnostic.path === 'publish_resource_profile'),
+    true,
+  );
+});
+
+test('fails closed when publish resource paths point into dev-local roots', () => {
+  const result = parseAshaGameManifestToml(fixture('invalid-dev-root-leakage.toml'));
+  assert.equal(result.ok, false);
+  if (result.ok) {
+    throw new Error('publish resource paths inside dev roots should fail validation');
+  }
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_resource_profile' && diagnostic.path === 'publish_resource_profile.output_dir'),
+    true,
+  );
+  assert.equal(
+    result.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_resource_profile' && diagnostic.path === 'publish_resource_profile.archive_dir'),
+    true,
+  );
 });
 
 test('validates compatible ASHA consumer metadata against the manifest', () => {
@@ -129,7 +163,26 @@ function validCatalog(): AshaGameAssetCatalog {
         kind: 'static_mesh',
         source: 'assets/meshes/demo-cube.mesh.json',
         importProfile: 'inline-static-mesh.v0',
+        dependencies: ['material.demo-copper'],
         publish: { include: true, outputKey: 'meshes/demo-cube.mesh.json' },
+        diagnostics: { owner: 'asha-demo', notes: [] },
+      },
+      {
+        id: 'material.demo-copper',
+        kind: 'material',
+        source: 'assets/materials/demo-copper.material.json',
+        importProfile: 'inline-material.v0',
+        dependencies: ['texture.demo-checker'],
+        publish: { include: true, outputKey: 'materials/demo-copper.material.json' },
+        diagnostics: { owner: 'asha-demo', notes: [] },
+      },
+      {
+        id: 'texture.demo-checker',
+        kind: 'texture',
+        source: 'assets/textures/demo-checker.texture.json',
+        importProfile: 'inline-texture.v0',
+        dependencies: [],
+        publish: { include: true, outputKey: 'textures/demo-checker.texture.json' },
         diagnostics: { owner: 'asha-demo', notes: [] },
       },
     ],
@@ -138,7 +191,8 @@ function validCatalog(): AshaGameAssetCatalog {
 
 test('asset catalog validates and resolves a dev resource by catalog id', () => {
   const catalog = validCatalog();
-  const validation = validateAshaGameAssetCatalog(catalog, validManifest(), (path) => path === 'assets/meshes/demo-cube.mesh.json');
+  const existingFiles = new Set(catalog.entries.map((entry) => entry.source));
+  const validation = validateAshaGameAssetCatalog(catalog, validManifest(), (path) => existingFiles.has(path));
   assert.equal(validation.ok, true);
   const resolution = resolveAshaGameAssetForDev(catalog, 'mesh.demo-cube');
   assert.deepEqual(resolution, {
@@ -147,15 +201,26 @@ test('asset catalog validates and resolves a dev resource by catalog id', () => 
     devCacheKey: 'dev-cache/static_mesh/mesh.demo-cube',
     publishOutputKey: 'meshes/demo-cube.mesh.json',
   });
-  assert.deepEqual(buildAshaGamePublishAssetManifest(catalog).entries.map((entry) => entry.assetId), ['mesh.demo-cube']);
+  const publishManifest = buildAshaGamePublishAssetManifest(catalog);
+  assert.deepEqual(publishManifest.dependencyOrder, [
+    'texture.demo-checker',
+    'material.demo-copper',
+    'mesh.demo-cube',
+  ]);
+  assert.deepEqual(publishManifest.entries.map((entry) => entry.assetId), [
+    'mesh.demo-cube',
+    'material.demo-copper',
+    'texture.demo-checker',
+  ]);
 });
 
-test('asset catalog fails closed for missing file, duplicate id, forbidden path, and unsupported kind', () => {
+test('asset catalog fails closed for missing file, duplicate id, forbidden path, unsupported kind, and wrong kind profile', () => {
   const catalog: AshaGameAssetCatalog = {
     schemaVersion: 1,
     entries: [
       { ...validCatalog().entries[0]! },
       { ...validCatalog().entries[0]!, source: '../asha/private.bin', kind: 'shader' as never },
+      { ...validCatalog().entries[1]!, importProfile: 'inline-static-mesh.v0', publish: { include: true, outputKey: 'meshes/not-a-material.mesh.json' } },
     ],
   };
   const validation = validateAshaGameAssetCatalog(catalog, validManifest(), () => false);
@@ -165,4 +230,32 @@ test('asset catalog fails closed for missing file, duplicate id, forbidden path,
   assert.equal(validation.diagnostics.some((diagnostic) => diagnostic.code === 'duplicate_asset_id'), true);
   assert.equal(validation.diagnostics.some((diagnostic) => diagnostic.code === 'forbidden_asset_path'), true);
   assert.equal(validation.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_asset_kind'), true);
+  assert.equal(validation.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_asset_entry' && diagnostic.path.endsWith('.importProfile')), true);
+  assert.equal(validation.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_asset_entry' && diagnostic.path.endsWith('.publish.outputKey')), true);
+});
+
+test('asset catalog dependency graph fails closed for missing dependency and cycles', () => {
+  const missing: AshaGameAssetCatalog = {
+    ...validCatalog(),
+    entries: [
+      { ...validCatalog().entries[0]!, dependencies: ['material.missing', 'material.missing'] },
+      ...validCatalog().entries.slice(1),
+    ],
+  };
+  const missingValidation = validateAshaGameAssetCatalog(missing, validManifest(), (path) => path.startsWith('assets/'));
+  assert.equal(missingValidation.ok, false);
+  if (missingValidation.ok) throw new Error('missing dependency should fail validation');
+  assert.equal(missingValidation.diagnostics.some((diagnostic) => diagnostic.code === 'missing_asset_dependency'), true);
+  assert.equal(missingValidation.diagnostics.some((diagnostic) => diagnostic.code === 'duplicate_asset_dependency'), true);
+
+  const cyclic: AshaGameAssetCatalog = {
+    ...validCatalog(),
+    entries: validCatalog().entries.map((entry) =>
+      entry.id === 'texture.demo-checker' ? { ...entry, dependencies: ['mesh.demo-cube'] } : entry,
+    ),
+  };
+  const cyclicValidation = validateAshaGameAssetCatalog(cyclic, validManifest(), (path) => path.startsWith('assets/'));
+  assert.equal(cyclicValidation.ok, false);
+  if (cyclicValidation.ok) throw new Error('dependency cycle should fail validation');
+  assert.equal(cyclicValidation.diagnostics.some((diagnostic) => diagnostic.code === 'asset_dependency_cycle'), true);
 });

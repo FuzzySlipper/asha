@@ -7,7 +7,7 @@ publish_artifact_format_version = "publish-artifact.v0"
 engine_source = "../asha"
 
 [workspace]
-scene_roots = []
+scene_roots = ["scenes"]
 asset_roots = ["assets"]
 replay_roots = ["replays"]
 catalog_packages = ["packages/game-catalogs"]
@@ -21,7 +21,7 @@ wasm_or_native_entry = "dist/runtime/index.js"
 [studio]
 workspace_mode = true
 attach_enabled = true
-allowed_source_writes = ["scenes"]
+allowed_source_writes = ["scenes", "assets", "packages/game-catalogs"]
 
 [publish]
 command = "npm run build:publish"
@@ -34,6 +34,6 @@ cache_dir = "dist/dev-cache"
 resolution_policy = "prefer-source"
 
 [publish_resource_profile]
-output_dir = "dist/resources"
-archive_dir = "dist/archive"
+output_dir = "assets/packed"
+archive_dir = "packages/game-catalogs/archive"
 resolution_policy = "locked"

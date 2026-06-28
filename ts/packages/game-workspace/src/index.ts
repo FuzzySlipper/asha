@@ -29,6 +29,16 @@ export interface AshaGameManifest {
     readonly artifactDir: string;
     readonly verifyCommand: string;
   };
+  readonly devResourceProfile: {
+    readonly localRoots: readonly string[];
+    readonly cacheDir: string;
+    readonly resolutionPolicy: string;
+  };
+  readonly publishResourceProfile: {
+    readonly outputDir: string;
+    readonly archiveDir: string;
+    readonly resolutionPolicy: string;
+  };
 }
 
 export type AshaGameManifestDiagnosticCode =
@@ -38,6 +48,7 @@ export type AshaGameManifestDiagnosticCode =
   | 'bad_version'
   | 'unsupported_endpoint'
   | 'invalid_write_scope'
+  | 'invalid_resource_profile'
   | 'invalid_path';
 
 export interface AshaGameManifestDiagnostic {
@@ -108,6 +119,7 @@ export interface AshaGameAssetCatalogEntry {
   readonly kind: AshaGameAssetKind;
   readonly source: string;
   readonly importProfile: string | null;
+  readonly dependencies?: readonly string[];
   readonly publish: {
     readonly include: boolean;
     readonly outputKey: string;
@@ -128,6 +140,9 @@ export type AshaGameAssetCatalogDiagnosticCode =
   | 'missing_asset_file'
   | 'forbidden_asset_path'
   | 'unsupported_asset_kind'
+  | 'missing_asset_dependency'
+  | 'duplicate_asset_dependency'
+  | 'asset_dependency_cycle'
   | 'invalid_asset_entry';
 
 export interface AshaGameAssetCatalogDiagnostic {
@@ -156,6 +171,7 @@ export interface AshaGameAssetDevResolution {
 
 export interface AshaGamePublishAssetManifest {
   readonly schemaVersion: 1;
+  readonly dependencyOrder: readonly string[];
   readonly entries: readonly {
     readonly assetId: string;
     readonly kind: AshaGameAssetKind;
@@ -168,7 +184,7 @@ type TomlScalar = string | boolean | readonly string[];
 type TomlSection = Record<string, TomlScalar>;
 type TomlDocument = Record<string, TomlSection>;
 
-const REQUIRED_SECTIONS = ['asha', 'workspace', 'runtime', 'studio', 'publish'] as const;
+const REQUIRED_SECTIONS = ['asha', 'workspace', 'runtime', 'studio', 'publish', 'dev_resource_profile', 'publish_resource_profile'] as const;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const LOCAL_WEBSOCKET_ENDPOINT_PATTERN = /^wss?:\/\/(?:127\.0\.0\.1|localhost):\d+(?:\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=-]*)?$/;
 
@@ -233,6 +249,8 @@ export function validateAshaGameAssetCatalog(
     seen.add(entry.id);
     if (!isSupportedAssetKind(entry.kind)) {
       diagnostics.push(assetDiag('unsupported_asset_kind', `${path}.kind`, `unsupported asset kind "${entry.kind}"`));
+    } else {
+      validateKindSpecificAssetEntry(entry, path, diagnostics);
     }
     if (!manifest.workspace.assetRoots.some((root) => isSameOrChildPath(entry.source, root))) {
       diagnostics.push(assetDiag('forbidden_asset_path', `${path}.source`, `asset source "${entry.source}" is outside manifest asset roots`));
@@ -240,6 +258,7 @@ export function validateAshaGameAssetCatalog(
       diagnostics.push(assetDiag('missing_asset_file', `${path}.source`, `asset source does not exist: ${entry.source}`));
     }
   }
+  validateAssetDependencyGraph(catalog, diagnostics);
 
   return diagnostics.length === 0 ? { ok: true, catalog, diagnostics: [] } : { ok: false, diagnostics };
 }
@@ -261,8 +280,13 @@ export function resolveAshaGameAssetForDev(
 }
 
 export function buildAshaGamePublishAssetManifest(catalog: AshaGameAssetCatalog): AshaGamePublishAssetManifest {
+  const dependencyOrder = orderAssetDependencies(catalog).filter((assetId) => {
+    const entry = catalog.entries.find((candidate) => candidate.id === assetId);
+    return entry?.publish.include === true;
+  });
   return {
     schemaVersion: 1,
+    dependencyOrder,
     entries: catalog.entries
       .filter((entry) => entry.publish.include)
       .map((entry) => ({
@@ -272,6 +296,61 @@ export function buildAshaGamePublishAssetManifest(catalog: AshaGameAssetCatalog)
         outputKey: entry.publish.outputKey,
       })),
   };
+}
+
+function validateAssetDependencyGraph(
+  catalog: AshaGameAssetCatalog,
+  diagnostics: AshaGameAssetCatalogDiagnostic[],
+): void {
+  const ids = new Set(catalog.entries.map((entry) => entry.id));
+  for (const [index, entry] of catalog.entries.entries()) {
+    const seen = new Set<string>();
+    for (const dependency of entry.dependencies ?? []) {
+      if (seen.has(dependency)) {
+        diagnostics.push(assetDiag('duplicate_asset_dependency', `entries[${index}].dependencies`, `asset "${entry.id}" repeats dependency "${dependency}"`));
+      }
+      seen.add(dependency);
+      if (!ids.has(dependency)) {
+        diagnostics.push(assetDiag('missing_asset_dependency', `entries[${index}].dependencies`, `asset "${entry.id}" depends on missing asset "${dependency}"`));
+      }
+    }
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+  const byId = new Map(catalog.entries.map((entry) => [entry.id, entry]));
+  function visit(assetId: string, trail: readonly string[]): void {
+    if (visited.has(assetId)) return;
+    if (visiting.has(assetId)) {
+      diagnostics.push(assetDiag('asset_dependency_cycle', 'entries.dependencies', `asset dependency cycle: ${[...trail, assetId].join(' -> ')}`));
+      return;
+    }
+    visiting.add(assetId);
+    const entry = byId.get(assetId);
+    for (const dependency of entry?.dependencies ?? []) {
+      if (byId.has(dependency)) visit(dependency, [...trail, assetId]);
+    }
+    visiting.delete(assetId);
+    visited.add(assetId);
+  }
+  for (const entry of catalog.entries) visit(entry.id, []);
+}
+
+function orderAssetDependencies(catalog: AshaGameAssetCatalog): readonly string[] {
+  const byId = new Map(catalog.entries.map((entry) => [entry.id, entry]));
+  const visited = new Set<string>();
+  const ordered: string[] = [];
+  function visit(assetId: string): void {
+    if (visited.has(assetId)) return;
+    visited.add(assetId);
+    const entry = byId.get(assetId);
+    for (const dependency of entry?.dependencies ?? []) {
+      if (byId.has(dependency)) visit(dependency);
+    }
+    ordered.push(assetId);
+  }
+  for (const entry of catalog.entries) visit(entry.id);
+  return ordered;
 }
 
 function parseTomlSubset(toml: string): { readonly ok: true; readonly document: TomlDocument } | { readonly ok: false; readonly diagnostics: readonly AshaGameManifestDiagnostic[] } {
@@ -394,6 +473,16 @@ function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestVali
       artifactDir: getString(document, 'publish', 'artifact_dir', diagnostics),
       verifyCommand: getString(document, 'publish', 'verify_command', diagnostics),
     },
+    devResourceProfile: {
+      localRoots: getStringArray(document, 'dev_resource_profile', 'local_roots', diagnostics),
+      cacheDir: getString(document, 'dev_resource_profile', 'cache_dir', diagnostics),
+      resolutionPolicy: getString(document, 'dev_resource_profile', 'resolution_policy', diagnostics),
+    },
+    publishResourceProfile: {
+      outputDir: getString(document, 'publish_resource_profile', 'output_dir', diagnostics),
+      archiveDir: getString(document, 'publish_resource_profile', 'archive_dir', diagnostics),
+      resolutionPolicy: getString(document, 'publish_resource_profile', 'resolution_policy', diagnostics),
+    },
   };
 
   validateManifest(manifest, diagnostics);
@@ -411,6 +500,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
   validateEngineSource(manifest.asha.engineSource, 'asha.engine_source', diagnostics);
   validatePath(manifest.runtime.wasmOrNativeEntry, 'runtime.wasm_or_native_entry', diagnostics);
   validatePath(manifest.publish.artifactDir, 'publish.artifact_dir', diagnostics);
+  validateResourceProfiles(manifest, diagnostics);
 
   if (!LOCAL_WEBSOCKET_ENDPOINT_PATTERN.test(manifest.runtime.devtoolsEndpoint)) {
     diagnostics.push(diag('unsupported_endpoint', 'runtime.devtools_endpoint', 'devtools endpoint must be a local ws:// or wss:// URL with an explicit port'));
@@ -427,6 +517,42 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
     if (!writeRoots.some((root) => isSameOrChildPath(writeScope, root))) {
       diagnostics.push(diag('invalid_write_scope', 'studio.allowed_source_writes', `write scope "${writeScope}" is not within a declared workspace root`));
     }
+  }
+}
+
+function validateResourceProfiles(manifest: AshaGameManifest, diagnostics: AshaGameManifestDiagnostic[]): void {
+  validateNonEmptyRoots(manifest.devResourceProfile.localRoots, 'dev_resource_profile.local_roots', diagnostics);
+  validatePath(manifest.devResourceProfile.cacheDir, 'dev_resource_profile.cache_dir', diagnostics);
+  validatePath(manifest.publishResourceProfile.outputDir, 'publish_resource_profile.output_dir', diagnostics);
+  validatePath(manifest.publishResourceProfile.archiveDir, 'publish_resource_profile.archive_dir', diagnostics);
+
+  const workspaceRoots = [
+    ...manifest.workspace.sceneRoots,
+    ...manifest.workspace.assetRoots,
+    ...manifest.workspace.replayRoots,
+    ...manifest.workspace.catalogPackages,
+    ...manifest.workspace.policyPackages,
+  ];
+  for (const root of manifest.devResourceProfile.localRoots) {
+    if (!workspaceRoots.some((workspaceRoot) => isSameOrChildPath(root, workspaceRoot))) {
+      diagnostics.push(diag('invalid_resource_profile', 'dev_resource_profile.local_roots', `dev resource root "${root}" is not within a declared workspace root`));
+    }
+  }
+
+  for (const [path, value] of [
+    ['publish_resource_profile.output_dir', manifest.publishResourceProfile.outputDir],
+    ['publish_resource_profile.archive_dir', manifest.publishResourceProfile.archiveDir],
+  ] as const) {
+    if (workspaceRoots.some((root) => isSameOrChildPath(value, root))) {
+      diagnostics.push(diag('invalid_resource_profile', path, `publish resource path "${value}" must not be inside a dev-local workspace root`));
+    }
+  }
+
+  if (manifest.devResourceProfile.resolutionPolicy !== 'prefer-source') {
+    diagnostics.push(diag('invalid_resource_profile', 'dev_resource_profile.resolution_policy', 'dev resolution_policy must be "prefer-source"'));
+  }
+  if (manifest.publishResourceProfile.resolutionPolicy !== 'locked') {
+    diagnostics.push(diag('invalid_resource_profile', 'publish_resource_profile.resolution_policy', 'publish resolution_policy must be "locked"'));
   }
 }
 
@@ -498,6 +624,26 @@ function isSameOrChildPath(candidate: string, root: string): boolean {
 
 function isSupportedAssetKind(kind: string): kind is AshaGameAssetKind {
   return kind === 'static_mesh' || kind === 'material' || kind === 'texture' || kind === 'scene';
+}
+
+function validateKindSpecificAssetEntry(
+  entry: AshaGameAssetCatalogEntry,
+  path: string,
+  diagnostics: AshaGameAssetCatalogDiagnostic[],
+): void {
+  const expected = {
+    static_mesh: { importProfile: 'inline-static-mesh.v0', outputPrefix: 'meshes/', outputSuffix: '.mesh.json' },
+    material: { importProfile: 'inline-material.v0', outputPrefix: 'materials/', outputSuffix: '.material.json' },
+    texture: { importProfile: 'inline-texture.v0', outputPrefix: 'textures/', outputSuffix: '.texture.json' },
+    scene: { importProfile: 'flat-scene.v0', outputPrefix: 'scenes/', outputSuffix: '.scene.json' },
+  }[entry.kind];
+
+  if (entry.importProfile !== expected.importProfile) {
+    diagnostics.push(assetDiag('invalid_asset_entry', `${path}.importProfile`, `${entry.kind} assets require importProfile "${expected.importProfile}"`));
+  }
+  if (!entry.publish.outputKey.startsWith(expected.outputPrefix) || !entry.publish.outputKey.endsWith(expected.outputSuffix)) {
+    diagnostics.push(assetDiag('invalid_asset_entry', `${path}.publish.outputKey`, `${entry.kind} publish output must match ${expected.outputPrefix}*${expected.outputSuffix}`));
+  }
 }
 
 function getString(document: TomlDocument, section: string, key: string, diagnostics: AshaGameManifestDiagnostic[]): string {

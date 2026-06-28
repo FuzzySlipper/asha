@@ -27,3 +27,13 @@ allowed_source_writes = ["scenes", "assets", "packages/game-catalogs"]
 command = "npm run build:publish"
 artifact_dir = "dist"
 verify_command = "npm run verify:publish"
+
+[dev_resource_profile]
+local_roots = ["assets", "packages/game-catalogs"]
+cache_dir = "dist/dev-cache"
+resolution_policy = "prefer-source"
+
+[publish_resource_profile]
+output_dir = "dist/resources"
+archive_dir = "dist/archive"
+resolution_policy = "locked"

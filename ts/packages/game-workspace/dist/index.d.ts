@@ -29,8 +29,18 @@ export interface AshaGameManifest {
         readonly artifactDir: string;
         readonly verifyCommand: string;
     };
+    readonly devResourceProfile: {
+        readonly localRoots: readonly string[];
+        readonly cacheDir: string;
+        readonly resolutionPolicy: string;
+    };
+    readonly publishResourceProfile: {
+        readonly outputDir: string;
+        readonly archiveDir: string;
+        readonly resolutionPolicy: string;
+    };
 }
-export type AshaGameManifestDiagnosticCode = 'toml_parse_error' | 'missing_required_field' | 'missing_root' | 'bad_version' | 'unsupported_endpoint' | 'invalid_write_scope' | 'invalid_path';
+export type AshaGameManifestDiagnosticCode = 'toml_parse_error' | 'missing_required_field' | 'missing_root' | 'bad_version' | 'unsupported_endpoint' | 'invalid_write_scope' | 'invalid_resource_profile' | 'invalid_path';
 export interface AshaGameManifestDiagnostic {
     readonly code: AshaGameManifestDiagnosticCode;
     readonly path: string;
@@ -78,6 +88,7 @@ export interface AshaGameAssetCatalogEntry {
     readonly kind: AshaGameAssetKind;
     readonly source: string;
     readonly importProfile: string | null;
+    readonly dependencies?: readonly string[];
     readonly publish: {
         readonly include: boolean;
         readonly outputKey: string;
@@ -91,7 +102,7 @@ export interface AshaGameAssetCatalog {
     readonly schemaVersion: 1;
     readonly entries: readonly AshaGameAssetCatalogEntry[];
 }
-export type AshaGameAssetCatalogDiagnosticCode = 'duplicate_asset_id' | 'missing_asset_file' | 'forbidden_asset_path' | 'unsupported_asset_kind' | 'invalid_asset_entry';
+export type AshaGameAssetCatalogDiagnosticCode = 'duplicate_asset_id' | 'missing_asset_file' | 'forbidden_asset_path' | 'unsupported_asset_kind' | 'missing_asset_dependency' | 'duplicate_asset_dependency' | 'asset_dependency_cycle' | 'invalid_asset_entry';
 export interface AshaGameAssetCatalogDiagnostic {
     readonly code: AshaGameAssetCatalogDiagnosticCode;
     readonly path: string;
@@ -113,6 +124,7 @@ export interface AshaGameAssetDevResolution {
 }
 export interface AshaGamePublishAssetManifest {
     readonly schemaVersion: 1;
+    readonly dependencyOrder: readonly string[];
     readonly entries: readonly {
         readonly assetId: string;
         readonly kind: AshaGameAssetKind;
