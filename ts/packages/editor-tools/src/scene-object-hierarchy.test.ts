@@ -46,7 +46,7 @@ function doc(nodes: readonly SceneNodeRecord[]): FlatSceneDocument {
 
 test('scene object snapshot projects flat scene document parent links and renderable provenance', () => {
   const snapshot = buildSceneObjectSnapshot({
-    document: doc([group(1, 'Root'), group(2, 'Child', 1)]),
+    document: doc([{ ...group(1, 'Root'), tags: ['studio-root'] }, group(2, 'Child', 1)]),
     renderableLinks: [{ sceneNodeId: sceneNodeId(2), renderableId: 'renderable-child' }],
   });
 
@@ -58,6 +58,8 @@ test('scene object snapshot projects flat scene document parent links and render
   assert.ok(snapshot.sceneHash.startsWith('scene-object-'));
   assert.deepEqual(snapshot.diagnostics, []);
   assert.ok(snapshot.nonClaims.includes('not_authority_validation'));
+  assert.equal(snapshot.objects[0]?.editability.transform, false);
+  assert.equal(snapshot.objects[1]?.editability.transform, true);
 });
 
 test('scene object rename proposal targets scene metadata without mutating authority', () => {

@@ -27,7 +27,7 @@ export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVo
 export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch';
 
 // Stable classified scene-object command rejection code. The string form is a contract.
-export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label';
+export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label' | 'invalid-scene-object-transform' | 'readonly-scene-object-transform';
 
 // An asset version requirement.
 export type AssetVersionReq =
@@ -120,6 +120,8 @@ export type SceneObjectCommand =
   | { readonly kind: 'delete'; readonly id: SceneNodeId }
   | { readonly kind: 'rename'; readonly id: SceneNodeId; readonly label: string | null }
   | { readonly kind: 'reparent'; readonly id: SceneNodeId; readonly parent: SceneNodeId | null; readonly childOrder: number }
+  | { readonly kind: 'translate'; readonly id: SceneNodeId; readonly delta: readonly [number, number, number] }
+  | { readonly kind: 'rotate'; readonly id: SceneNodeId; readonly rotation: readonly [number, number, number, number] }
   | { readonly kind: 'select'; readonly id: SceneNodeId | null };
 
 // A classified scene-object command rejection.

@@ -150,6 +150,8 @@ test('scene-object hierarchy commands use generated contracts and bridge operati
     assert.ok(apply.runtimeRequirements.some((requirement) => requirement.kind === 'runtime_bridge_operation' && requirement.operation === 'apply_scene_object_command'));
     assert.equal(apply.retry, 'safe_to_retry_if_state_hash_unchanged');
     assert.deepEqual(validateExampleAgainstSchema(apply.id, 'typedInputExample', { sessionId: 's', request: { expectedDocumentHash: 1, command: { kind: 'rename', id: 1 } } }, apply.inputSchema.shape), [{ commandId: 'scene.apply_object_command', field: 'typedInputExample', message: 'typedInputExample does not match its declared schema' }]);
+    assert.deepEqual(validateExampleAgainstSchema(apply.id, 'typedInputExample', { sessionId: 's', request: { expectedDocumentHash: 1, command: { kind: 'translate', id: 1, delta: [0.25, 0, 0] } } }, apply.inputSchema.shape), []);
+    assert.deepEqual(validateExampleAgainstSchema(apply.id, 'typedInputExample', { sessionId: 's', request: { expectedDocumentHash: 1, command: { kind: 'rotate', id: 1, rotation: [0, 0.38268343, 0, 0.9238795] } } }, apply.inputSchema.shape), []);
 });
 test('set-active-entity selection command is editor-local and hierarchy-driven', () => {
     const select = requireKnownCommand('selection.set_active_entity', COMMAND_MANIFEST);

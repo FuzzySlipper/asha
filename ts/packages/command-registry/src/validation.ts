@@ -363,13 +363,15 @@ function isSceneObjectCommand(value: unknown): boolean {
   if (value.kind === 'delete') return hasExactKeys(value, ['kind', 'id']) && isInteger(value.id);
   if (value.kind === 'rename') return hasExactKeys(value, ['kind', 'id', 'label']) && isInteger(value.id) && (value.label === null || isString(value.label));
   if (value.kind === 'reparent') return hasExactKeys(value, ['kind', 'id', 'parent', 'childOrder']) && isInteger(value.id) && (value.parent === null || isInteger(value.parent)) && isInteger(value.childOrder);
+  if (value.kind === 'translate') return hasExactKeys(value, ['kind', 'id', 'delta']) && isInteger(value.id) && isNumberTuple3(value.delta);
+  if (value.kind === 'rotate') return hasExactKeys(value, ['kind', 'id', 'rotation']) && isInteger(value.id) && isNumberTuple4(value.rotation);
   return value.kind === 'select' && hasExactKeys(value, ['kind', 'id']) && (value.id === null || isInteger(value.id));
 }
 
 function isSceneObjectCommandRejection(value: unknown): boolean {
   return isPlainObject(value)
     && hasExactKeys(value, ['code', 'id', 'parent', 'expectedHash', 'actualHash', 'validationErrors'])
-    && isLiteral(value.code, ['stale-scene-object-snapshot', 'invalid-scene-before-command', 'invalid-scene-after-command', 'missing-scene-object', 'duplicate-scene-object', 'missing-scene-object-parent', 'scene-object-self-parent', 'blank-scene-object-label'])
+    && isLiteral(value.code, ['stale-scene-object-snapshot', 'invalid-scene-before-command', 'invalid-scene-after-command', 'missing-scene-object', 'duplicate-scene-object', 'missing-scene-object-parent', 'scene-object-self-parent', 'blank-scene-object-label', 'invalid-scene-object-transform', 'readonly-scene-object-transform'])
     && (value.id === null || isInteger(value.id))
     && (value.parent === null || isInteger(value.parent))
     && (value.expectedHash === null || isInteger(value.expectedHash))

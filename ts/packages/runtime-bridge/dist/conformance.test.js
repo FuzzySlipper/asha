@@ -36,7 +36,7 @@ const MODEL_MATERIAL_PREVIEW_REQUEST = {
     },
     instanceHandle: 7001,
 };
-import { MANIFEST_OPERATIONS, MockRuntimeBridge, RuntimeBridgeError, createMockRuntimeBridge, createNativeRuntimeBridge, createReferenceGameRuntimeLauncher, frameCursor, } from './index.js';
+import { MANIFEST_OPERATIONS, MockRuntimeBridge, RuntimeBridgeError, createNativeGameRuntimeLauncher, createMockRuntimeBridge, createNativeRuntimeBridge, createReferenceGameRuntimeLauncher, createSelectedBackendGameRuntimeLauncher, frameCursor, nativeBackendProfile, validateGameRuntimeBackendProfile, } from './index.js';
 test('facade exposes exactly the manifest operations (conformance)', () => {
     const bridge = createMockRuntimeBridge();
     const expected = MANIFEST_OPERATIONS.map((o) => o.facadeMethod).sort();
@@ -118,9 +118,8 @@ test('game runtime launcher public DTOs compile as package-root consumer fixture
     assert.equal(launch.identity.runtimeMode, 'reference');
     assert.equal(commandProposal.status, 'accepted');
 });
-test('reference game runtime launcher launches fixture and advances command projection', async () => {
-    const launcher = createReferenceGameRuntimeLauncher();
-    const config = {
+function gameRuntimeConfig() {
+    return {
         gameId: 'asha-demo',
         workspaceId: 'workspace.local',
         runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
@@ -139,6 +138,10 @@ test('reference game runtime launcher launches fixture and advances command proj
         world: { bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 7 },
         startedAtIso: '2026-06-28T00:00:00.000Z',
     };
+}
+test('reference game runtime launcher launches fixture and advances command projection', async () => {
+    const launcher = createReferenceGameRuntimeLauncher();
+    const config = gameRuntimeConfig();
     const session = await launcher.launch(config);
     assert.equal(launcher.mode, 'reference');
     assert.equal(session.identity.runtimeMode, 'reference');
@@ -199,6 +202,68 @@ test('reference game runtime launcher fails closed on unsupported world bundle',
         },
         world: { bundleSchemaVersion: 99, protocolVersion: 1, sceneId: 7 },
     }), (e) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input');
+});
+test('backend profile validation gates native claims and private transports', () => {
+    const config = gameRuntimeConfig();
+    const native = nativeBackendProfile(config);
+    assert.deepEqual(validateGameRuntimeBackendProfile(native), {
+        ok: true,
+        profile: native,
+        diagnostics: [],
+    });
+    const missingEvidence = validateGameRuntimeBackendProfile({
+        ...native,
+        evidenceRefs: [],
+    });
+    assert.equal(missingEvidence.ok, false);
+    assert.equal(!missingEvidence.ok && missingEvidence.diagnostics.some((diagnostic) => diagnostic.code === 'missing_backend_evidence'), true);
+    const privateHint = validateGameRuntimeBackendProfile({
+        ...native,
+        profileId: '@asha/native-bridge/native-bridge.node',
+    });
+    assert.equal(privateHint.ok, false);
+    assert.equal(!privateHint.ok && privateHint.diagnostics.some((diagnostic) => diagnostic.code === 'private_transport_hint'), true);
+    const unsupported = validateGameRuntimeBackendProfile({
+        ...native,
+        mode: 'raw-native',
+        rawTransport: '@asha/native-bridge',
+    });
+    assert.equal(unsupported.ok, false);
+    assert.equal(!unsupported.ok && unsupported.diagnostics.some((diagnostic) => diagnostic.code === 'private_transport_hint'), true);
+});
+test('selected backend launcher reports native mode through public facade', async () => {
+    const config = gameRuntimeConfig();
+    const launcher = createSelectedBackendGameRuntimeLauncher({
+        profile: nativeBackendProfile(config),
+        bridgeFactory: createMockRuntimeBridge,
+    });
+    const session = await launcher.launch(config);
+    assert.equal(launcher.mode, 'native');
+    assert.equal(session.identity.runtimeMode, 'native');
+    assert.ok(!session.identity.nonClaims.includes('not_native_runtime'));
+    const projection = await session.pullProjection();
+    assert.ok(projection.authorityHash.startsWith('native-authority:'));
+    const telemetry = await session.pullTelemetry();
+    assert.equal(telemetry.runtimeMode, 'native');
+    await session.shutdown();
+});
+test('selected backend launcher fails closed when native dependency is missing', async () => {
+    const launcher = createNativeGameRuntimeLauncher({ nativeModulePath: './definitely-not-built.node' });
+    await assert.rejects(() => launcher.launch(gameRuntimeConfig()), (e) => e instanceof RuntimeBridgeError && e.kind === 'native_unavailable');
+});
+test('selected backend launcher rejects non-native selected mode without fallback', async () => {
+    const config = gameRuntimeConfig();
+    const profile = {
+        ...nativeBackendProfile(config),
+        mode: 'wasm',
+        transport: 'wasm_module',
+        evidenceRefs: [{ kind: 'diagnostic', id: 'backend-profile:wasm' }],
+    };
+    const launcher = createSelectedBackendGameRuntimeLauncher({
+        profile,
+        bridgeFactory: createMockRuntimeBridge,
+    });
+    await assert.rejects(() => launcher.launch(config), (e) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input');
 });
 test('manifest exposes public camera view operations', () => {
     const cameraOps = MANIFEST_OPERATIONS.filter((op) => op.facadeMethod.includes('Camera'));

@@ -58,7 +58,7 @@ function sceneObjectRecord(doc, node, traceByNode, renderableByNode) {
             selectable: true,
             rename: true,
             reparent: true,
-            transform: true,
+            transform: !node.tags.includes('studio-root'),
         },
         provenance: {
             source: 'flat_scene_document',

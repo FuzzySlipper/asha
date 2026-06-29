@@ -1330,6 +1330,20 @@ pub fn scene_module() -> Module {
                         f("childOrder", num()),
                     ],
                 ),
+                v(
+                    "translate",
+                    vec![
+                        f("id", r("SceneNodeId")),
+                        f("delta", tuple3()),
+                    ],
+                ),
+                v(
+                    "rotate",
+                    vec![
+                        f("id", r("SceneNodeId")),
+                        f("rotation", tuple4()),
+                    ],
+                ),
                 v("select", vec![f("id", TsType::nullable(r("SceneNodeId")))]),
             ],
         ),

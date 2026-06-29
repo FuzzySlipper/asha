@@ -63,6 +63,8 @@ pub const SCENE_OBJECT_COMMAND_REJECTION_CODES: &[&str] = &[
     "missing-scene-object-parent",
     "scene-object-self-parent",
     "blank-scene-object-label",
+    "invalid-scene-object-transform",
+    "readonly-scene-object-transform",
 ];
 
 /// The scene-node kind tag as a closed enum with a stable string form.
@@ -143,6 +145,8 @@ pub enum SceneObjectCommandRejectionCode {
     MissingParent,
     SelfParent,
     BlankLabel,
+    InvalidTransform,
+    ReadonlyTransform,
 }
 
 impl SceneObjectCommandRejectionCode {
@@ -158,6 +162,8 @@ impl SceneObjectCommandRejectionCode {
             SceneObjectCommandRejectionCode::MissingParent => "missing-scene-object-parent",
             SceneObjectCommandRejectionCode::SelfParent => "scene-object-self-parent",
             SceneObjectCommandRejectionCode::BlankLabel => "blank-scene-object-label",
+            SceneObjectCommandRejectionCode::InvalidTransform => "invalid-scene-object-transform",
+            SceneObjectCommandRejectionCode::ReadonlyTransform => "readonly-scene-object-transform",
         }
     }
 }
@@ -172,6 +178,8 @@ pub const ALL_SCENE_OBJECT_COMMAND_REJECTION_CODES: &[SceneObjectCommandRejectio
     SceneObjectCommandRejectionCode::MissingParent,
     SceneObjectCommandRejectionCode::SelfParent,
     SceneObjectCommandRejectionCode::BlankLabel,
+    SceneObjectCommandRejectionCode::InvalidTransform,
+    SceneObjectCommandRejectionCode::ReadonlyTransform,
 ];
 
 // ── Asset reference border DTO ────────────────────────────────────────────────
@@ -374,6 +382,14 @@ pub enum SceneObjectCommandDto {
         parent: Option<SceneNodeId>,
         child_order: u32,
     },
+    Translate {
+        id: SceneNodeId,
+        delta: [f32; 3],
+    },
+    Rotate {
+        id: SceneNodeId,
+        rotation: [f32; 4],
+    },
     Select {
         id: Option<SceneNodeId>,
     },
@@ -534,6 +550,14 @@ mod tests {
             id: SceneNodeId::new(10),
             label: Some("renamed".into()),
         };
+        let translate = SceneObjectCommandDto::Translate {
+            id: SceneNodeId::new(10),
+            delta: [0.25, 0.0, 0.0],
+        };
+        let rotate = SceneObjectCommandDto::Rotate {
+            id: SceneNodeId::new(10),
+            rotation: [0.0, 0.38268343, 0.0, 0.9238795],
+        };
         let outcome = SceneObjectCommandOutcomeDto {
             document: doc,
             snapshot,
@@ -545,6 +569,8 @@ mod tests {
             rejection: None,
         };
         assert!(matches!(command, SceneObjectCommandDto::Rename { .. }));
+        assert!(matches!(translate, SceneObjectCommandDto::Translate { .. }));
+        assert!(matches!(rotate, SceneObjectCommandDto::Rotate { .. }));
         assert_eq!(
             result.outcome.unwrap().snapshot.objects[0].kind,
             SceneNodeKindTag::StaticMesh

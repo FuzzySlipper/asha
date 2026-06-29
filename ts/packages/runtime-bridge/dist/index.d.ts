@@ -128,9 +128,11 @@ export interface RuntimeBridge {
     loadReplayFixture(fixture: ReplayFixture): ReplaySessionHandle;
     runReplayStep(session: ReplaySessionHandle): ReplayStepReport;
 }
-export type GameRuntimeMode = 'reference' | 'native' | 'degraded';
+export type GameRuntimeMode = 'reference' | 'native' | 'wasm' | 'degraded';
+export type GameRuntimeBackendMode = 'reference' | 'native' | 'wasm';
+export type GameRuntimeBackendTransport = 'reference_mock' | 'napi_native' | 'wasm_module';
 export type GameRuntimeNonClaim = 'not_native_runtime' | 'not_hardware_gpu' | 'not_performance_evidence' | 'not_publish_artifact' | 'not_wasm_authority';
-export type GameRuntimeDiagnosticCode = 'missing_compatibility' | 'missing_world_bundle' | 'unsupported_runtime_entry' | 'runtime_unavailable' | 'operation_unimplemented' | 'command_rejected' | 'stale_sequence' | 'stale_readback' | 'internal';
+export type GameRuntimeDiagnosticCode = 'missing_compatibility' | 'missing_world_bundle' | 'unsupported_runtime_entry' | 'unsupported_backend_mode' | 'missing_backend_evidence' | 'private_transport_hint' | 'backend_claim_mismatch' | 'runtime_unavailable' | 'operation_unimplemented' | 'command_rejected' | 'stale_sequence' | 'stale_readback' | 'internal';
 export interface GameRuntimeDiagnostic {
     readonly code: GameRuntimeDiagnosticCode;
     readonly severity: 'info' | 'warning' | 'error';
@@ -149,6 +151,23 @@ export interface GameRuntimeProfile {
     readonly bridgeCompatibility: GameRuntimeCompatibility;
     readonly nonClaims: readonly GameRuntimeNonClaim[];
 }
+export interface GameRuntimeBackendProfile {
+    readonly profileId: string;
+    readonly mode: GameRuntimeBackendMode;
+    readonly transport: GameRuntimeBackendTransport;
+    readonly launcherName: string;
+    readonly bridgeCompatibility: GameRuntimeCompatibility;
+    readonly evidenceRefs: readonly GameRuntimeEvidenceRef[];
+    readonly nonClaims: readonly GameRuntimeNonClaim[];
+}
+export type GameRuntimeBackendProfileValidation = {
+    readonly ok: true;
+    readonly profile: GameRuntimeBackendProfile;
+    readonly diagnostics: readonly [];
+} | {
+    readonly ok: false;
+    readonly diagnostics: readonly GameRuntimeDiagnostic[];
+};
 export interface GameRuntimeResourceProfile {
     readonly profileId: string;
     readonly runtimeEntry: string;
@@ -284,11 +303,27 @@ export declare class MockRuntimeBridge implements RuntimeBridge {
 }
 /** Construct the default mock bridge. */
 export declare function createMockRuntimeBridge(): RuntimeBridge;
+export declare function validateGameRuntimeBackendProfile(input: unknown): GameRuntimeBackendProfileValidation;
+export declare function referenceBackendProfile(config: GameRuntimeConfig): GameRuntimeBackendProfile;
+export declare function nativeBackendProfile(config: GameRuntimeConfig): GameRuntimeBackendProfile;
 export declare class ReferenceGameRuntimeLauncher implements GameRuntimeLauncher {
     readonly mode = "reference";
     launch(config: GameRuntimeConfig): Promise<GameRuntimeSession>;
 }
 export declare function createReferenceGameRuntimeLauncher(): GameRuntimeLauncher;
+export interface SelectedBackendLauncherOptions {
+    readonly profile?: GameRuntimeBackendProfile;
+    readonly nativeModulePath?: string;
+    readonly bridgeFactory?: () => RuntimeBridge;
+}
+export declare class SelectedBackendGameRuntimeLauncher implements GameRuntimeLauncher {
+    private readonly options;
+    readonly mode: GameRuntimeMode;
+    constructor(options?: SelectedBackendLauncherOptions);
+    launch(config: GameRuntimeConfig): Promise<GameRuntimeSession>;
+}
+export declare function createSelectedBackendGameRuntimeLauncher(options?: SelectedBackendLauncherOptions): GameRuntimeLauncher;
+export declare function createNativeGameRuntimeLauncher(options?: SelectedBackendLauncherOptions): GameRuntimeLauncher;
 /**
  * Manifest names of operations whose native (`#[napi]`) implementation is actually
  * wired. Everything else on {@link NativeRuntimeBridge} fail-closes with

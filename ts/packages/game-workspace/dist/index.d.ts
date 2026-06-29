@@ -18,6 +18,9 @@ export interface AshaGameManifest {
         readonly devCommand: string;
         readonly devtoolsEndpoint: string;
         readonly wasmOrNativeEntry: string;
+        readonly backendMode: AshaGameRuntimeBackendMode;
+        readonly backendProfile: string;
+        readonly backendProofRefs: readonly string[];
     };
     readonly studio: {
         readonly workspaceMode: boolean;
@@ -40,7 +43,8 @@ export interface AshaGameManifest {
         readonly resolutionPolicy: string;
     };
 }
-export type AshaGameManifestDiagnosticCode = 'toml_parse_error' | 'missing_required_field' | 'missing_root' | 'bad_version' | 'unsupported_endpoint' | 'invalid_write_scope' | 'invalid_resource_profile' | 'invalid_path';
+export type AshaGameManifestDiagnosticCode = 'toml_parse_error' | 'missing_required_field' | 'missing_root' | 'bad_version' | 'unsupported_endpoint' | 'unsupported_backend_mode' | 'missing_backend_ref' | 'private_transport_hint' | 'invalid_write_scope' | 'invalid_resource_profile' | 'invalid_path';
+export type AshaGameRuntimeBackendMode = 'reference' | 'native' | 'wasm';
 export interface AshaGameManifestDiagnostic {
     readonly code: AshaGameManifestDiagnosticCode;
     readonly path: string;

@@ -18,6 +18,9 @@ export interface AshaGameManifest {
     readonly devCommand: string;
     readonly devtoolsEndpoint: string;
     readonly wasmOrNativeEntry: string;
+    readonly backendMode: AshaGameRuntimeBackendMode;
+    readonly backendProfile: string;
+    readonly backendProofRefs: readonly string[];
   };
   readonly studio: {
     readonly workspaceMode: boolean;
@@ -47,9 +50,14 @@ export type AshaGameManifestDiagnosticCode =
   | 'missing_root'
   | 'bad_version'
   | 'unsupported_endpoint'
+  | 'unsupported_backend_mode'
+  | 'missing_backend_ref'
+  | 'private_transport_hint'
   | 'invalid_write_scope'
   | 'invalid_resource_profile'
   | 'invalid_path';
+
+export type AshaGameRuntimeBackendMode = 'reference' | 'native' | 'wasm';
 
 export interface AshaGameManifestDiagnostic {
   readonly code: AshaGameManifestDiagnosticCode;
@@ -491,6 +499,9 @@ function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestVali
       devCommand: getString(document, 'runtime', 'dev_command', diagnostics),
       devtoolsEndpoint: getString(document, 'runtime', 'devtools_endpoint', diagnostics),
       wasmOrNativeEntry: getString(document, 'runtime', 'wasm_or_native_entry', diagnostics),
+      backendMode: getBackendMode(document, diagnostics),
+      backendProfile: getString(document, 'runtime', 'backend_profile', diagnostics),
+      backendProofRefs: getStringArray(document, 'runtime', 'backend_proof_refs', diagnostics),
     },
     studio: {
       workspaceMode: getBoolean(document, 'studio', 'workspace_mode', diagnostics),
@@ -528,6 +539,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
   validateNonEmptyRoots(manifest.workspace.replayRoots, 'workspace.replay_roots', diagnostics);
   validateEngineSource(manifest.asha.engineSource, 'asha.engine_source', diagnostics);
   validatePath(manifest.runtime.wasmOrNativeEntry, 'runtime.wasm_or_native_entry', diagnostics);
+  validateBackendMode(manifest, diagnostics);
   validatePath(manifest.publish.artifactDir, 'publish.artifact_dir', diagnostics);
   validateResourceProfiles(manifest, diagnostics);
 
@@ -647,6 +659,44 @@ function validateEngineSource(engineSource: string, path: string, diagnostics: A
   }
 }
 
+function containsPrivateTransportHint(value: string): boolean {
+  return [
+    '@asha/native-bridge',
+    '@asha/wasm-bridge',
+    '@asha/wasm-replay-bridge',
+    'native-bridge.node',
+    'wasm.memory',
+    'engine-rs/',
+    '/src/',
+  ].some((hint) => value.includes(hint));
+}
+
+function validateBackendMode(manifest: AshaGameManifest, diagnostics: AshaGameManifestDiagnostic[]): void {
+  const { backendMode, backendProfile, backendProofRefs, wasmOrNativeEntry } = manifest.runtime;
+  if (containsPrivateTransportHint(wasmOrNativeEntry)) {
+    diagnostics.push(diag('private_transport_hint', 'runtime.wasm_or_native_entry', 'runtime entry must point at a public launcher/facade entry, not a raw private transport'));
+  }
+  if (containsPrivateTransportHint(backendProfile)) {
+    diagnostics.push(diag('private_transport_hint', 'runtime.backend_profile', 'backend profile must not name private transports or ASHA internals'));
+  }
+  if (backendMode === 'reference') {
+    if (backendProfile !== 'reference') {
+      diagnostics.push(diag('unsupported_backend_mode', 'runtime.backend_profile', 'reference backend mode must use backend_profile = "reference"'));
+    }
+    return;
+  }
+  if (backendMode === 'native') {
+    if (backendProfile.length === 0 || backendProfile === 'reference') {
+      diagnostics.push(diag('missing_backend_ref', 'runtime.backend_profile', 'native backend mode requires a selected backend profile id'));
+    }
+    if (backendProofRefs.length === 0) {
+      diagnostics.push(diag('missing_backend_ref', 'runtime.backend_proof_refs', 'native backend mode requires at least one public proof/evidence ref'));
+    }
+    return;
+  }
+  diagnostics.push(diag('unsupported_backend_mode', 'runtime.backend_mode', 'wasm backend mode is declared but deferred until a public WASM runtime facade is approved'));
+}
+
 function isSameOrChildPath(candidate: string, root: string): boolean {
   return candidate === root || candidate.startsWith(`${root}/`);
 }
@@ -720,6 +770,15 @@ function getStringArray(document: TomlDocument, section: string, key: string, di
     return [];
   }
   return value;
+}
+
+function getBackendMode(document: TomlDocument, diagnostics: AshaGameManifestDiagnostic[]): AshaGameRuntimeBackendMode {
+  const value = document.runtime?.['backend_mode'];
+  if (value === 'reference' || value === 'native' || value === 'wasm') {
+    return value;
+  }
+  diagnostics.push(diag('unsupported_backend_mode', 'runtime.backend_mode', 'backend_mode must be one of reference, native, or wasm'));
+  return 'reference';
 }
 
 function diag(code: AshaGameManifestDiagnosticCode, path: string, message: string): AshaGameManifestDiagnostic {

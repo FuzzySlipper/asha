@@ -13,7 +13,7 @@ export type SceneNodeId = number & {
 export declare const sceneNodeId: (raw: number) => SceneNodeId;
 export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume';
 export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch';
-export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label';
+export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label' | 'invalid-scene-object-transform' | 'readonly-scene-object-transform';
 export type AssetVersionReq = {
     readonly req: 'any';
 } | {
@@ -104,6 +104,14 @@ export type SceneObjectCommand = {
     readonly id: SceneNodeId;
     readonly parent: SceneNodeId | null;
     readonly childOrder: number;
+} | {
+    readonly kind: 'translate';
+    readonly id: SceneNodeId;
+    readonly delta: readonly [number, number, number];
+} | {
+    readonly kind: 'rotate';
+    readonly id: SceneNodeId;
+    readonly rotation: readonly [number, number, number, number];
 } | {
     readonly kind: 'select';
     readonly id: SceneNodeId | null;

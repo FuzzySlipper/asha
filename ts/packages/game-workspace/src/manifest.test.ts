@@ -27,6 +27,9 @@ test('validates the golden asha.game.toml manifest', () => {
   }
   assert.equal(result.manifest.asha.engineVersion, '0.1.0');
   assert.equal(result.manifest.runtime.devtoolsEndpoint, 'ws://127.0.0.1:7391');
+  assert.equal(result.manifest.runtime.backendMode, 'reference');
+  assert.equal(result.manifest.runtime.backendProfile, 'reference');
+  assert.deepEqual(result.manifest.runtime.backendProofRefs, []);
   assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'assets', 'packages/game-catalogs']);
   assert.deepEqual(result.manifest.devResourceProfile.localRoots, ['assets', 'packages/game-catalogs']);
   assert.equal(result.manifest.devResourceProfile.cacheDir, 'dist/dev-cache');
@@ -67,6 +70,58 @@ test('classifies bad versions and unsupported devtools endpoints', () => {
   }
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === 'bad_version'), true);
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_endpoint'), true);
+});
+
+test('manifest accepts selected native backend mode with public proof refs', () => {
+  const manifest = fixture('asha.game.toml')
+    .replace('backend_mode = "reference"', 'backend_mode = "native"')
+    .replace('backend_profile = "reference"', 'backend_profile = "native.napi.launcher.v1"')
+    .replace('backend_proof_refs = []', 'backend_proof_refs = ["proof:dev-authority-smoke"]');
+  const result = parseAshaGameManifestToml(manifest);
+  assert.equal(result.ok, true);
+  if (!result.ok) {
+    throw new Error('native backend manifest should validate');
+  }
+  assert.equal(result.manifest.runtime.backendMode, 'native');
+  assert.deepEqual(result.manifest.runtime.backendProofRefs, ['proof:dev-authority-smoke']);
+});
+
+test('manifest fails closed on unsupported or unproved backend modes', () => {
+  const wasm = parseAshaGameManifestToml(
+    fixture('asha.game.toml').replace('backend_mode = "reference"', 'backend_mode = "wasm"'),
+  );
+  assert.equal(wasm.ok, false);
+  assert.equal(
+    !wasm.ok && wasm.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_backend_mode' && diagnostic.path === 'runtime.backend_mode'),
+    true,
+  );
+
+  const nativeMissingProof = parseAshaGameManifestToml(
+    fixture('asha.game.toml')
+      .replace('backend_mode = "reference"', 'backend_mode = "native"')
+      .replace('backend_profile = "reference"', 'backend_profile = "native.napi.launcher.v1"'),
+  );
+  assert.equal(nativeMissingProof.ok, false);
+  assert.equal(
+    !nativeMissingProof.ok && nativeMissingProof.diagnostics.some((diagnostic) => diagnostic.code === 'missing_backend_ref' && diagnostic.path === 'runtime.backend_proof_refs'),
+    true,
+  );
+});
+
+test('manifest rejects private transport hints in backend selection', () => {
+  const manifest = fixture('asha.game.toml')
+    .replace('wasm_or_native_entry = "dist/runtime/index.js"', 'wasm_or_native_entry = "@asha/native-bridge/native-bridge.node"')
+    .replace('backend_profile = "reference"', 'backend_profile = "@asha/native-bridge"');
+  const result = parseAshaGameManifestToml(manifest);
+  assert.equal(result.ok, false);
+  assert.equal(
+    !result.ok && result.diagnostics.some((diagnostic) => diagnostic.code === 'private_transport_hint' && diagnostic.path === 'runtime.wasm_or_native_entry'),
+    true,
+  );
+  assert.equal(
+    !result.ok && result.diagnostics.some((diagnostic) => diagnostic.code === 'private_transport_hint' && diagnostic.path === 'runtime.backend_profile'),
+    true,
+  );
 });
 
 test('fails closed when the publish resource profile is missing', () => {

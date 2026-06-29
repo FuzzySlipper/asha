@@ -17,6 +17,9 @@ policy_packages = ["packages/game-policy"]
 dev_command = "npm run dev"
 devtools_endpoint = "ws://127.0.0.1:7391"
 wasm_or_native_entry = "dist/runtime/index.js"
+backend_mode = "reference"
+backend_profile = "reference"
+backend_proof_refs = []
 
 [studio]
 workspace_mode = true
