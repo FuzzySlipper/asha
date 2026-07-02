@@ -46,6 +46,17 @@ make_rust_fixture() {
   printf '[crate."engine-rs/crates/foundation/core-a"]\nlane = "rust-foundation"\nmay_depend_on = []\n\n[crate."engine-rs/crates/foundation/core-b"]\nlane = "rust-foundation"\nmay_depend_on = []\n' > "$root/governance/ownership.toml"
 }
 
+make_rust_invalid_status_fixture() {
+  local root="$1"
+  mkdir -p \
+    "$root/governance" \
+    "$root/engine-rs/crates/foundation/core-a/src"
+  printf '[workspace]\nmembers = ["crates/foundation/core-a"]\nresolver = "2"\n' > "$root/engine-rs/Cargo.toml"
+  printf '[package]\nname = "core-a"\nversion = "0.1.0"\nedition = "2021"\n' > "$root/engine-rs/crates/foundation/core-a/Cargo.toml"
+  printf 'pub fn a() {}\n' > "$root/engine-rs/crates/foundation/core-a/src/lib.rs"
+  printf '[crate."engine-rs/crates/foundation/core-a"]\nlane = "rust-foundation"\nimplementation_status = "maybe-later"\nmay_depend_on = []\n' > "$root/governance/ownership.toml"
+}
+
 make_ts_unlisted_fixture() {
   local root="$1"
   mkdir -p "$root/governance" "$root/ts/packages/app/src" "$root/ts/packages/contracts/src"
@@ -80,6 +91,14 @@ make_ts_invalid_metadata_fixture() {
   printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "service"\nlayer = "presentation"\nmay_import = []\n' > "$root/governance/ownership.toml"
 }
 
+make_ts_invalid_status_fixture() {
+  local root="$1"
+  mkdir -p "$root/governance" "$root/ts/packages/app/src"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/app/package.json"
+  printf 'export {};\n' > "$root/ts/packages/app/src/index.ts"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "shell"\nlayer = "shell"\nimplementation_status = "maybe-later"\nmay_import = []\n' > "$root/governance/ownership.toml"
+}
+
 make_ts_deep_import_fixture() {
   local root="$1"
   mkdir -p "$root/governance" "$root/ts/packages/app/src" "$root/ts/packages/contracts/src/generated"
@@ -105,6 +124,13 @@ expect_failure \
   "unlisted Rust internal dependency" \
   "depends on unlisted internal crate 'core-b'" \
   bash "$REPO_ROOT/harness/depgraph/verify-rust-deps.sh" "$RUST_FIXTURE"
+
+RUST_INVALID_STATUS_FIXTURE="$TMP_ROOT/rust-invalid-status"
+make_rust_invalid_status_fixture "$RUST_INVALID_STATUS_FIXTURE"
+expect_failure \
+  "invalid Rust implementation status" \
+  "has invalid Rust ownership implementation_status 'maybe-later'" \
+  bash "$REPO_ROOT/harness/depgraph/verify-rust-deps.sh" "$RUST_INVALID_STATUS_FIXTURE"
 
 TS_UNLISTED_FIXTURE="$TMP_ROOT/ts-unlisted"
 make_ts_unlisted_fixture "$TS_UNLISTED_FIXTURE"
@@ -133,6 +159,13 @@ expect_failure \
   "invalid TypeScript ownership metadata" \
   "has invalid TypeScript ownership type 'service'" \
   bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_INVALID_METADATA_FIXTURE"
+
+TS_INVALID_STATUS_FIXTURE="$TMP_ROOT/ts-invalid-status"
+make_ts_invalid_status_fixture "$TS_INVALID_STATUS_FIXTURE"
+expect_failure \
+  "invalid TypeScript implementation status" \
+  "has invalid TypeScript ownership implementation_status 'maybe-later'" \
+  bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_INVALID_STATUS_FIXTURE"
 
 TS_DEEP_IMPORT_FIXTURE="$TMP_ROOT/ts-deep-import"
 make_ts_deep_import_fixture "$TS_DEEP_IMPORT_FIXTURE"

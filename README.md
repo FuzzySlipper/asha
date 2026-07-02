@@ -35,7 +35,7 @@ For the full architecture, start with `docs/design.md` and live Den guidance (`g
 ## Repository layout
 
 ```text
-engine-rs/          Rust workspace (60 crates)
+engine-rs/          Rust workspace (62 crates, including reserved cells)
   crates/
     foundation/     core IDs, math, time, errors, collections, coordinates, assets
     state/          authoritative state, entities, scene, catalog, voxel, commands, events, snapshots
@@ -48,7 +48,7 @@ engine-rs/          Rust workspace (60 crates)
     wasm/           wasm-api for replay/golden surfaces
     tools/          fixture-maker, replay-tool, diagnostics, protocol dump, asset import, snapshot diff, state inspector
 
-ts/                 pnpm workspace (18 packages)
+ts/                 pnpm workspace (21 packages, including reserved cells)
   packages/
     contracts/          generated TypeScript contract types (do not hand-edit generated/)
     script-sdk/         policy view/command helpers, deterministic env, test harness
@@ -118,7 +118,7 @@ A protocol change should include:
 
 ### Lanes
 
-Every crate/package is an assignment cell. Ownership and allowed dependency edges are machine-readable in `governance/ownership.toml`; prose lane expectations live in `governance/lanes/` and reviewer prompts.
+Every crate/package is an assignment cell. Ownership, implementation status, and allowed dependency edges are machine-readable in `governance/ownership.toml`; prose lane expectations live in `governance/lanes/` and reviewer prompts. Cells marked `implementation_status = "reserved"` are intentional placeholders, not mature implementation surfaces.
 
 Do not “just import” across lanes to make a task pass. If a dependency is needed, update the appropriate governance rule and justify the boundary change.
 

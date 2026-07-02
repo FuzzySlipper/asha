@@ -1,5 +1,7 @@
 # Ownership and lane assignments for all crates and packages.
 # Machine-readable by the dep-graph verifier and agent orchestrators.
+# Optional implementation_status defaults to "active". Use "reserved" for
+# intentionally empty workspace members kept as future assignment cells.
 
 # ─── Rust: Foundation ────────────────────────────────────────────────────────
 
@@ -194,6 +196,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/services/svc-rng"]
 lane = "rust-service"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-error"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
@@ -212,11 +215,13 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/services/svc-physics"]
 lane = "rust-service"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-math", "core-error", "svc-spatial"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/services/svc-pathfinding"]
 lane = "rust-service"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-math", "core-error", "core-state"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
@@ -257,11 +262,13 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/rules/rule-lifecycle"]
 lane = "rust-rule"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]
 lane = "rust-rule"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
@@ -272,11 +279,13 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-relationship"]
 lane = "rust-rule"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-state-machine"]
 lane = "rust-rule"
+implementation_status = "reserved"
 may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
@@ -428,6 +437,7 @@ forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "
 lane = "ts-catalog"
 type = "lib"
 layer = "domain"
+implementation_status = "reserved"
 may_import = ["@asha/contracts"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
 
@@ -435,6 +445,7 @@ may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge"
 lane = "ts-catalog"
 type = "lib"
 layer = "domain"
+implementation_status = "reserved"
 may_import = ["@asha/contracts", "@asha/catalog-core"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
 
@@ -492,6 +503,7 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/native-br
 lane = "ts-shell"
 type = "lib"
 layer = "renderer"
+implementation_status = "reserved"
 may_import = ["@asha/contracts", "@asha/renderer-three"]
 may_not_import = ["@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/native-bridge", "@asha/wasm-replay-bridge"]
 

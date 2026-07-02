@@ -176,6 +176,7 @@ function renderOwnershipBlock({ shortName, lane, type, layer, mayImport, mayNotI
     `lane = ${JSON.stringify(lane)}`,
     `type = ${JSON.stringify(type)}`,
     `layer = ${JSON.stringify(layer)}`,
+    `implementation_status = "active"`,
     `may_import = ${renderArray(mayImport)}`,
     `may_not_import = ${renderArray(mayNotImport)}`,
     '',

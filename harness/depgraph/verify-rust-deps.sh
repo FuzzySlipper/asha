@@ -25,6 +25,7 @@ failures = []
 ownership_exempt = set(ownership.get("ownership_exempt", {}).get("crates", []))
 workspace_members = workspace.get("workspace", {}).get("members", [])
 internal_crates = {}
+valid_implementation_statuses = {"active", "reserved"}
 
 for rel_path in workspace_members:
     cargo_toml = engine_rs / rel_path / "Cargo.toml"
@@ -35,6 +36,15 @@ for rel_path in workspace_members:
     package_name = crate_cfg.get("package", {}).get("name")
     if package_name:
         internal_crates[package_name] = f"engine-rs/{rel_path}"
+
+for ownership_key, crate_meta in crates.items():
+    implementation_status = crate_meta.get("implementation_status", "active")
+    if implementation_status not in valid_implementation_statuses:
+        failures.append(
+            f"FAIL: {ownership_key} has invalid Rust ownership implementation_status "
+            f"'{implementation_status}'. Allowed values: "
+            f"{', '.join(sorted(valid_implementation_statuses))}"
+        )
 
 
 def normalized(name: str) -> str:

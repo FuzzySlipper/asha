@@ -30,6 +30,7 @@ valid_package_layers = {
     "testing-fixtures",
     "tool",
 }
+valid_implementation_statuses = {"active", "reserved"}
 
 actual_packages: dict[str, tuple[str, pathlib.Path, dict]] = {}
 for pkg_dir in sorted(ts_packages.iterdir()):
@@ -157,6 +158,7 @@ for ownership_key in sorted(packages):
     pkg_meta = packages[ownership_key]
     package_type = pkg_meta.get("type")
     package_layer = pkg_meta.get("layer")
+    implementation_status = pkg_meta.get("implementation_status", "active")
     if package_type is None:
         failures.append(f"FAIL: {ownership_key} is missing required TypeScript ownership field 'type'")
     elif package_type not in valid_package_types:
@@ -170,6 +172,12 @@ for ownership_key in sorted(packages):
         failures.append(
             f"FAIL: {ownership_key} has invalid TypeScript ownership layer '{package_layer}'. "
             f"Allowed values: {', '.join(sorted(valid_package_layers))}"
+        )
+    if implementation_status not in valid_implementation_statuses:
+        failures.append(
+            f"FAIL: {ownership_key} has invalid TypeScript ownership implementation_status "
+            f"'{implementation_status}'. Allowed values: "
+            f"{', '.join(sorted(valid_implementation_statuses))}"
         )
 
 if failures:
