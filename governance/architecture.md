@@ -1,11 +1,14 @@
-# Architecture overview
+# Governance architecture
 
-See docs/design.md for the full design document.
+This document records governance-specific architecture metadata and boundary
+notes. It is not the canonical repository architecture; use `docs/design.md`
+for the full design and Den tasks/docs/messages for current planning state.
 
 Core split: Rust owns authority. TypeScript owns expression and projection.
 Generated contracts define the border.
 
-Layer order (lowest to highest): foundation → state → protocol → sim/services/rules → render/wasm/tools.
+Rust layer order, lowest to highest:
+foundation → state → protocol → sim/services/rules → render/wasm/tools.
 
 ## TypeScript package metadata axes
 
@@ -16,10 +19,14 @@ TypeScript package ownership has three independent axes in
 - `type` is the package shape: `lib`, `shell`, `testing`, or `tool`.
 - `layer` is the dependency-governance role: `protocol`, `transport`, `domain`,
   `renderer`, `components`, `shell`, `testing-fixtures`, or `tool`.
+- `implementation_status` is optional and defaults to `active`; `reserved`
+  marks intentionally empty workspace cells that should not be routed as mature
+  implementation surfaces.
 
 The depgraph verifier currently enforces that every TS package ownership entry
-has valid `type` and `layer` metadata. Layer ordering is deliberately not
-enforced yet; ordering rules should be reviewed as a separate governance change.
+has valid `type`, `layer`, and `implementation_status` metadata. Layer ordering
+is deliberately not enforced yet; ordering rules should be reviewed as a
+separate governance change.
 
 | Package(s) | Type | Layer | Notes |
 |---|---:|---:|---|

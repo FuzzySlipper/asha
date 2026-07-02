@@ -15,18 +15,18 @@ TypeScript never becomes a second authoritative engine.
 
 ---
 
-## Current posture
+## Repository posture
 
 This repo has moved past the original prototype-phase checklist. Do not infer current work from old phase language. Current planning, implementation queues, and architectural decisions live in Den under project `asha`; use Den tasks/docs/messages as the durable source of truth when available.
 
-Current major surfaces include:
+Major durable surfaces include:
 
 - Rust authoritative state, commands, events, snapshots, replay, voxel data, voxel edit rules, world-bundle load/save, diagnostics, and render projection infrastructure.
 - Generated protocol contracts for TypeScript packages.
 - A transport-agnostic runtime bridge with native-addon, reference/mock, and WASM replay-related surfaces.
 - Three.js retained renderer consuming render diffs.
 - Editor tools, DOM/devtools read models, smoke harnesses, fixtures, goldens, and CI governance checks.
-- Ongoing launchable voxel tooling work tracked in Den, not as README phases.
+- Launchable voxel tooling docs describe commands and known limitations; active work is tracked in Den, not as README phases.
 
 For the full architecture, start with `docs/design.md` and live Den guidance (`get_agent_guidance(project_id="asha")`).
 
@@ -200,8 +200,9 @@ Check the relevant package scripts before adding new commands; this workspace in
 |---|---|
 | `docs/launchable-voxel.md` | **Launchable voxel loop hub**: fixture, launch/smoke commands, regeneration, known limitations |
 | `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
-| `docs/design.md` | Full system design and architecture principles |
-| `docs/architecture-overview.md` | Layer model and dependency rules |
+| `docs/design.md` | Canonical repository architecture, layer model, dependency direction, and design principles |
+| `docs/architecture-overview.md` | Short orientation pointer to the canonical architecture and governance docs |
+| `governance/architecture.md` | Governance-specific TS metadata axes and boundary notes |
 | `docs/runtime-bridge-boundary.md` | Runtime bridge facade and transport boundary |
 | `docs/contract-governance.md` | Protocol/codegen change process |
 | `docs/replay-model.md` | Replay recording, playback, and determinism audit |

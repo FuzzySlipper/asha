@@ -4,9 +4,9 @@
 **Status:** Revised infrastructure-first design  
 **Scope:** Project-private engine infrastructure, not a generic public framework  
 **Primary goal:** Make a complex simulation/rendering codebase maintainable under high fan-out agent development  
-**Non-goal:** Solve specific product-domain, authored-content, or state-modeling problems during the infrastructure prototype
+**Non-goal:** Solve specific product-domain, authored-content, or state-modeling problems during infrastructure-first work
 
-> **Current-status note (2026-06):** this document is the architecture/design baseline, not the live implementation queue. Some package names and the prototype phase plan below are historical. Use `README.md`, `AGENTS.md`, `docs/launchable-voxel.md`, Den guidance, and current Den tasks for implementation status.
+> **Current-status note (2026-07):** this is the canonical repository architecture/design baseline, not the live implementation queue. Some package names and the prototype phase plan below are historical. Use `README.md` for repository orientation and Den guidance/tasks/docs/messages for current implementation status.
 
 ---
 
@@ -1679,12 +1679,17 @@ The wrapper should be replaceable because it owns little.
 
 ## 16. Documentation set
 
-The initial docs should be treated as part of the harness.
+Repository docs describe durable architecture, boundaries, and operating
+procedures. Current planning state belongs in Den tasks/docs/messages rather
+than in repo prose.
 
-Recommended docs:
+Canonical and supporting docs:
 
 ```txt
+/README.md
+/docs/design.md
 /governance/agents.md
+/governance/architecture.md
 /governance/boundary-rules.md
 /governance/contract-change-process.md
 /docs/architecture-overview.md
@@ -1814,7 +1819,10 @@ Required checks:
 
 ---
 
-## 18. Open questions
+## 18. Historical open questions
+
+These were original design prompts. Check Den planning docs/tasks before treating
+any item here as current work.
 
 1. **Replay target:** Should canonical replay be WASM-only, native-plus-WASM, or native until render integration forces WASM parity?
 2. **Crate granularity:** What is the smallest useful crate boundary before cross-crate API churn outweighs isolation?
