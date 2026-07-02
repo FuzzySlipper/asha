@@ -100,3 +100,8 @@
     or package-private files. Each package must expose `package.json` `exports["."]` and
     `src/index.ts`; approved internals are re-exported through that root barrel. Enforced by
     the TS depgraph verifier and generated ESLint boundary config.
+24. New TypeScript packages are scaffolded through `pnpm --dir ts new:package -- <name>
+    --lane <lane> --type <type> --layer <layer>`. The generator writes the package
+    skeleton and the `governance/ownership.toml` entry together, refuses overwrites,
+    and keeps package creation inside the same depgraph checks that enforce root
+    barrels and ownership completeness.

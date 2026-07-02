@@ -14,4 +14,6 @@ You review TypeScript import boundaries against the lane rules in
       `process`, `node:*`) and no renderer/UI/runtime-bridge package.
 - [ ] No hand-edits to `ts/packages/contracts/src/generated/`.
 - [ ] Contract types are imported from `@asha/contracts`, not re-declared/duplicated.
-- [ ] `pnpm lint` and `verify-ts-deps.sh` pass; new packages have an ownership entry.
+- [ ] `pnpm lint` and `verify-ts-deps.sh` pass; new packages were created with
+      `pnpm --dir ts new:package -- <name> --lane <lane> --type <type> --layer <layer>`
+      or have an equivalent reviewed ownership entry.

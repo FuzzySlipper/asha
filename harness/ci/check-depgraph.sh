@@ -14,3 +14,6 @@ python3 "$REPO_ROOT/harness/depgraph/generate-ts-eslint-boundaries.py" --check
 
 echo "==> Running depgraph negative fixtures"
 bash "$REPO_ROOT/harness/depgraph/check-negative-fixtures.sh"
+
+echo "==> Smoke-testing TypeScript package generator"
+bash "$REPO_ROOT/harness/depgraph/check-package-generator.sh"
