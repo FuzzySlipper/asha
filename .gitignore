@@ -17,6 +17,13 @@ harness/shell-out/
 harness/perf-out/
 ts/artifacts/
 
+# ── Root session artifacts ─────────────────────────────────────────────────────
+# Ad-hoc Studio/Agora sessions must write durable evidence under harness/ or the
+# owning repo, not as committed root logs/pids/capture JSON.
+/asha-studio-*-dev*.log
+/asha-studio-*-dev*.pid
+/asha-studio-*-agora-*.json
+
 # ── IDE / editor ────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
