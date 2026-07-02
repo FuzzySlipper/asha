@@ -1,0 +1,255 @@
+import type {
+  CameraCollisionSnapshot,
+  CameraProjectionSnapshot,
+  CameraSnapshot,
+  CommandBatch,
+  CommandResult,
+  ModelMaterialPreviewRequest,
+  ModelMaterialPreviewSnapshot,
+  PickResult,
+  RenderFrameDiff,
+  SceneObjectCommandResult,
+  SceneObjectSnapshot,
+  VoxelSelectionSnapshot,
+} from '@asha/contracts';
+import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
+import { MANIFEST_OPERATIONS } from './generated/operations.js';
+import {
+  RuntimeBridgeError,
+  nonNegativeSafeInteger,
+  u32,
+  type CompositionStatus,
+  type EngineConfig,
+  type EngineHandle,
+  type FrameCursor,
+  type ReplaySessionHandle,
+  type ReplayStepReport,
+  type RuntimeBridge,
+  type RuntimeBridgeErrorKind,
+  type RuntimeBufferView,
+  type StepInputEnvelope,
+  type StepResult,
+  type VoxelMeshEvidenceSnapshot,
+  type WorldLoadRequest,
+  type WorldSaveSummary,
+} from './bridge.js';
+
+// ── Native implementation factory ─────────────────────────────────────────────
+// The ONLY place that touches `@asha/native-bridge`. Wraps the addon's wired
+// exports and re-classifies load failures into the bridge error taxonomy.
+//
+// Fail-closed by construction: `NativeRuntimeBridge` implements `RuntimeBridge`
+// directly — it does NOT extend `MockRuntimeBridge`, so an unwired operation can
+// never silently inherit mock/reference behaviour. Every stable + quarantined
+// operation is either routed to a real `#[napi]` export (and listed in
+// NATIVE_WIRED_OPERATIONS) or throws a classified `operation_unimplemented`.
+// `native-fail-closed.test.ts` enforces that this stays true for every manifest op.
+
+/**
+ * Manifest names of operations whose native (`#[napi]`) implementation is actually
+ * wired. Everything else on {@link NativeRuntimeBridge} fail-closes with
+ * `operation_unimplemented`. Adding a name here is the explicit signal that a
+ * native implementation landed; the native conformance test keeps this set and the
+ * routed methods in lockstep with the bridge manifest.
+ */
+export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
+  'initialize_engine',
+  'load_world_bundle',
+  'submit_commands',
+  'step_simulation',
+  'read_render_diffs',
+  'save_current_world',
+  'get_composition_status',
+]);
+
+function nativeUnimplemented(manifestName: string): RuntimeBridgeError {
+  return new RuntimeBridgeError(
+    'operation_unimplemented',
+    `native bridge operation '${manifestName}' is not wired; the native facade is ` +
+      `fail-closed (no mock fallback). Wire its #[napi] export and add it to ` +
+      `NATIVE_WIRED_OPERATIONS.`,
+  );
+}
+
+const RUST_ERROR_KIND: Readonly<Record<string, RuntimeBridgeErrorKind>> = {
+  NotInitialized: 'not_initialized',
+  InvalidInput: 'invalid_input',
+  UnknownHandle: 'unknown_handle',
+  BufferExpired: 'buffer_expired',
+  Internal: 'internal',
+};
+
+function classifyNativeAddonError(cause: RuntimeBridgeError | Error | string | object): RuntimeBridgeError {
+  if (cause instanceof RuntimeBridgeError) return cause;
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const match = /^(\w+):\s*(.*)$/u.exec(message);
+  if (match?.[1]) {
+    const kind = RUST_ERROR_KIND[match[1]];
+    if (kind) return new RuntimeBridgeError(kind, match[2] || message);
+  }
+  return new RuntimeBridgeError('internal', message);
+}
+
+function callNative<T>(body: () => T): T {
+  try {
+    return body();
+  } catch (cause) {
+    throw classifyNativeAddonError(cause as RuntimeBridgeError | Error | string | object);
+  }
+}
+
+export class NativeRuntimeBridge implements RuntimeBridge {
+  readonly #addon: NativeAddon;
+  #seed = 0;
+  #initialized = false;
+
+  #engineHandle: EngineHandle | null = null;
+
+  constructor(addon: NativeAddon) {
+    this.#addon = addon;
+  }
+
+  // ── Wired native operations ───────────────────────────────────────────────
+  initializeEngine(config: EngineConfig): EngineHandle {
+    if (!Number.isInteger(config.seed) || config.seed < 0) {
+      throw new RuntimeBridgeError('invalid_input', `seed must be a non-negative integer`);
+    }
+    this.#seed = config.seed;
+    const handle = this.#addon.initializeEngine(config.seed) as EngineHandle;
+    this.#engineHandle = handle;
+    this.#initialized = true;
+    return handle;
+  }
+
+  #requireHandle(operation: string): EngineHandle {
+    if (!this.#initialized || this.#engineHandle === null) {
+      throw new RuntimeBridgeError('not_initialized', `${operation} before initializeEngine`);
+    }
+    return this.#engineHandle;
+  }
+
+  loadWorldBundle(request: WorldLoadRequest): CompositionStatus {
+    const handle = this.#requireHandle('loadWorldBundle');
+    const bundleSchemaVersion = u32(request.bundleSchemaVersion, 'bundleSchemaVersion');
+    const protocolVersion = u32(request.protocolVersion, 'protocolVersion');
+    const sceneId = nonNegativeSafeInteger(request.sceneId, 'sceneId');
+    return callNative(() =>
+      this.#addon.loadWorldBundle(handle, bundleSchemaVersion, protocolVersion, sceneId) as CompositionStatus,
+    );
+  }
+
+  submitCommands(batch: CommandBatch): CommandResult {
+    const handle = this.#requireHandle('submitCommands');
+    return callNative(() => this.#addon.submitCommands(handle, JSON.stringify(batch.commands)) as CommandResult);
+  }
+
+  stepSimulation(input: StepInputEnvelope): StepResult {
+    const handle = this.#requireHandle('stepSimulation');
+    const tick = nonNegativeSafeInteger(input.tick, 'tick');
+    const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
+    return { tick, diffCount };
+  }
+
+
+  readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {
+    void request;
+    throw nativeUnimplemented('read_model_material_preview');
+  }
+
+  readSceneObjectSnapshot(): SceneObjectSnapshot {
+    throw nativeUnimplemented('read_scene_object_snapshot');
+  }
+
+  applySceneObjectCommand(): SceneObjectCommandResult {
+    throw nativeUnimplemented('apply_scene_object_command');
+  }
+
+  readRenderDiffs(cursor: FrameCursor): RenderFrameDiff {
+    const handle = this.#requireHandle('readRenderDiffs');
+    const frame = nonNegativeSafeInteger(cursor as number, 'frame cursor') as FrameCursor;
+    return callNative(() => this.#addon.readRenderDiffs(handle, frame) as RenderFrameDiff);
+  }
+
+  saveCurrentWorld(): WorldSaveSummary {
+    const handle = this.#requireHandle('saveCurrentWorld');
+    return callNative(() => this.#addon.saveCurrentWorld(handle) as WorldSaveSummary);
+  }
+
+  getCompositionStatus(): CompositionStatus {
+    const handle = this.#requireHandle('getCompositionStatus');
+    return callNative(() => this.#addon.getCompositionStatus(handle) as CompositionStatus);
+  }
+
+  // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
+  // Replace each body with its real native call (and add the manifest name to
+  // NATIVE_WIRED_OPERATIONS) when the codegen emitter wires the `#[napi]` export.
+  pickVoxel(): PickResult {
+    throw nativeUnimplemented('pick_voxel');
+  }
+
+  applyCollisionConstrainedCameraInput(): CameraCollisionSnapshot {
+    throw nativeUnimplemented('apply_collision_constrained_camera_input');
+  }
+
+  selectVoxel(): VoxelSelectionSnapshot {
+    throw nativeUnimplemented('select_voxel');
+  }
+
+  readVoxelMeshEvidence(): VoxelMeshEvidenceSnapshot {
+    throw nativeUnimplemented('read_voxel_mesh_evidence');
+  }
+
+  createCamera(): CameraSnapshot {
+    throw nativeUnimplemented('create_camera');
+  }
+
+  applyFirstPersonCameraInput(): CameraSnapshot {
+    throw nativeUnimplemented('apply_first_person_camera_input');
+  }
+
+  readCameraProjection(): CameraProjectionSnapshot {
+    throw nativeUnimplemented('read_camera_projection');
+  }
+
+  getBuffer(): RuntimeBufferView {
+    throw nativeUnimplemented('get_buffer');
+  }
+
+  releaseBuffer(): void {
+    throw nativeUnimplemented('release_buffer');
+  }
+
+  unloadWorld(): void {
+    throw nativeUnimplemented('unload_world');
+  }
+
+  loadReplayFixture(): ReplaySessionHandle {
+    throw nativeUnimplemented('load_replay_fixture');
+  }
+
+  runReplayStep(): ReplayStepReport {
+    throw nativeUnimplemented('run_replay_step');
+  }
+}
+
+/**
+ * Construct the native (napi-rs) bridge. Throws a classified
+ * {@link RuntimeBridgeError} of kind `native_unavailable` if the addon is not built
+ * — callers can fall back to the mock for tests/dev.
+ */
+export function createNativeRuntimeBridge(modulePath?: string): RuntimeBridge {
+  try {
+    const addon = modulePath ? loadNativeAddon(modulePath) : loadNativeAddon();
+    return new NativeRuntimeBridge(addon);
+  } catch (cause) {
+    if (cause instanceof NativeAddonUnavailable) {
+      throw new RuntimeBridgeError('native_unavailable', cause.message);
+    }
+    throw cause;
+  }
+}
+
+/** Operation count for quick sanity in consumers/tests. */
+export const STABLE_OPERATION_COUNT = MANIFEST_OPERATIONS.filter(
+  (o) => o.surface === 'stable',
+).length;

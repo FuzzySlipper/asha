@@ -37,6 +37,12 @@ Forbidden for downstream consumers:
 
 The raw native addon wrapper remains internal transport plumbing. This package is the only public package that may import it, and unwired native operations must fail closed with `operation_unimplemented` rather than inheriting mock behavior.
 
+## Internal layout
+
+The package root remains the only public import path. Internally, `src/index.ts` is a barrel over concern-focused modules: `bridge.ts` owns handle/error/DTO/interface types, `mock.ts` owns the reference bridge used by tests and deterministic consumers, `native.ts` is the only raw `@asha/native-bridge` importer, and `launcher.ts` owns the `GameRuntimeLauncher` session facade.
+
+`GameRuntimeLauncher` stays in this package for now because it is a thin public orchestration facade over `RuntimeBridge` and must preserve the same fail-closed backend/profile rules as the transport facade. If launcher policy grows beyond bridge-backed launch/session read models, split it into a future domain package that depends on `@asha/runtime-bridge` instead of moving raw transport access upward.
+
 ## Metadata and checks
 
 The package declares its Tier 1 role in `package.json` under `asha.publicSurface`. The CI bridge check runs `harness/public-surface/check-public-boundary.py` to keep the engine-owned TS public surface manifest, compatibility anchors, raw transport status, and the Rust `runtime-bridge-api` metadata aligned with the Den public-surface design.

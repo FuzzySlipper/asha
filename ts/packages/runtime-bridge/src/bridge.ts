@@ -1,0 +1,192 @@
+import type {
+  CameraCollisionSnapshot,
+  CameraCreateRequest,
+  CameraProjectionRequest,
+  CameraProjectionSnapshot,
+  CameraSnapshot,
+  CollisionConstrainedCameraInputEnvelope,
+  CommandBatch,
+  CommandResult,
+  FirstPersonCameraInputEnvelope,
+  ModelMaterialPreviewRequest,
+  ModelMaterialPreviewSnapshot,
+  PickRay,
+  PickResult,
+  RenderFrameDiff,
+  SceneObjectCommandRequest,
+  SceneObjectCommandResult,
+  SceneObjectSnapshot,
+  ScreenPointToPickRayRequest,
+  VoxelSelectionSnapshot,
+} from '@asha/contracts';
+
+// ── Opaque handle types ───────────────────────────────────────────────────────
+// Branded numbers so a buffer handle can't be passed where an engine handle is
+// expected. They carry no transport detail and never expose a StateStore.
+
+export type EngineHandle = number & { readonly __brand: 'EngineHandle' };
+export type RuntimeBufferHandle = number & { readonly __brand: 'RuntimeBufferHandle' };
+export type FrameCursor = number & { readonly __brand: 'FrameCursor' };
+export type ReplaySessionHandle = number & { readonly __brand: 'ReplaySessionHandle' };
+
+export const frameCursor = (frame: number): FrameCursor => frame as FrameCursor;
+
+// ── Error taxonomy ────────────────────────────────────────────────────────────
+
+export type RuntimeBridgeErrorKind =
+  | 'not_initialized'
+  | 'invalid_input'
+  | 'unknown_handle'
+  | 'buffer_expired'
+  | 'native_unavailable'
+  // A stable operation exists on the facade but has no native implementation
+  // wired yet. The native bridge throws this instead of silently falling back to
+  // mock/reference behaviour — the seam is explicit and fail-closed.
+  | 'operation_unimplemented'
+  | 'internal';
+
+/** Typed, classified error for every facade operation. No JSON error blobs. */
+export class RuntimeBridgeError extends Error {
+  constructor(readonly kind: RuntimeBridgeErrorKind, message: string) {
+    super(`runtime bridge error [${kind}]: ${message}`);
+    this.name = 'RuntimeBridgeError';
+  }
+}
+
+export function nonNegativeSafeInteger(value: number, field: string): number {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new RuntimeBridgeError('invalid_input', `${field} must be a non-negative safe integer`);
+  }
+  return value;
+}
+
+export function u32(value: number, field: string): number {
+  nonNegativeSafeInteger(value, field);
+  if (value > 0xffffffff) {
+    throw new RuntimeBridgeError('invalid_input', `${field} must fit in u32`);
+  }
+  return value;
+}
+
+// ── Prototype operation payloads ──────────────────────────────────────────────
+// PROTOTYPE: replaced by generated protocol_runtime / protocol_script contracts
+// once the codegen emitter lands. The facade *shape* is the stable part.
+//
+// The simplified world DTOs below are deliberate subsets of the generated
+// protocol contracts (@asha/contracts: WorldBundleManifest / SaveSummary /
+// DiagnosticReportSet). `world-dto-conformance.test.ts` is a compile-time guard
+// that fails when a shared field's type drifts in the generated contract, keeping
+// this prototype debt visible until the DTOs are replaced outright.
+
+export interface EngineConfig {
+  readonly seed: number;
+}
+export interface StepInputEnvelope {
+  readonly tick: number;
+}
+export interface StepResult {
+  readonly tick: number;
+  readonly diffCount: number;
+}
+// `CommandBatch` / `CommandResult` are NOT prototype DTOs: they are the generated
+// voxel command border (imported from `@asha/contracts`). `submitCommands` carries
+// the real `VoxelCommand` union — there is no `{ kind: 'smoke-edit' }` placeholder
+// command tunnel; an ad-hoc command shape fails to type-check at the call site.
+/** Borrowed, read-only view over bridge-owned bytes (large payloads, e.g. mesh). */
+export interface RuntimeBufferView {
+  readonly handle: RuntimeBufferHandle;
+  readonly bytes: Uint8Array;
+}
+// Quarantined replay payloads.
+export interface ReplayFixture {
+  readonly name: string;
+  readonly steps: number;
+}
+export interface ReplayStepReport {
+  readonly step: number;
+  readonly hash: string;
+  readonly diverged: boolean;
+}
+// World load/save composition payloads (#2363). PROTOTYPE: replaced by generated
+// protocol_world_bundle / protocol_diagnostics contracts once the emitter wires them.
+export interface WorldLoadRequest {
+  readonly bundleSchemaVersion: number;
+  readonly protocolVersion: number;
+  readonly sceneId: number;
+}
+export interface CompositionStatus {
+  readonly loadedWorld: number | null;
+  readonly fatalCount: number;
+  readonly totalCount: number;
+  readonly blocksLoad: boolean;
+}
+export interface WorldSaveSummary {
+  readonly artifactsWritten: number;
+  readonly compactedEdits: number;
+  readonly retainedEdits: number;
+}
+// Compact voxel mesh/remesh evidence (#2646). Prototype DTOs until generated
+// protocol_render contracts grow the same shapes.
+export interface VoxelMeshEvidenceRequest {
+  readonly grid: number;
+  readonly chunks: readonly { readonly x: number; readonly y: number; readonly z: number }[];
+}
+export interface VoxelMeshStatsEvidence {
+  readonly vertices: number;
+  readonly indices: number;
+  readonly quads: number;
+  readonly facesEmitted: number;
+  readonly facesCulled: number;
+}
+export interface VoxelMeshBoundsEvidence {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+export interface VoxelMeshChunkEvidence {
+  readonly coord: { readonly x: number; readonly y: number; readonly z: number };
+  readonly resident: boolean;
+  readonly visible: boolean;
+  readonly contentHash: string | null;
+  readonly meshHash: string | null;
+  readonly stats: VoxelMeshStatsEvidence | null;
+  readonly bounds: VoxelMeshBoundsEvidence | null;
+  readonly materialSlots: readonly number[];
+}
+export interface VoxelMeshEvidenceSnapshot {
+  readonly grid: number;
+  readonly fixtureId: string;
+  readonly worldHash: string;
+  readonly meshingStrategy: string;
+  readonly chunks: readonly VoxelMeshChunkEvidence[];
+  readonly diagnostics: readonly string[];
+}
+
+// ── The facade surface ────────────────────────────────────────────────────────
+// Bounded verbs only — mirrors bridge-manifest.toml. No generic call(method, json).
+
+export interface RuntimeBridge {
+  initializeEngine(config: EngineConfig): EngineHandle;
+  stepSimulation(input: StepInputEnvelope): StepResult;
+  submitCommands(batch: CommandBatch): CommandResult;
+  pickVoxel(ray: PickRay): PickResult;
+  applyCollisionConstrainedCameraInput(input: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
+  selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
+  readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
+  readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
+  readSceneObjectSnapshot(): SceneObjectSnapshot;
+  applySceneObjectCommand(request: SceneObjectCommandRequest): SceneObjectCommandResult;
+  readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
+  createCamera(request: CameraCreateRequest): CameraSnapshot;
+  applyFirstPersonCameraInput(input: FirstPersonCameraInputEnvelope): CameraSnapshot;
+  readCameraProjection(request: CameraProjectionRequest): CameraProjectionSnapshot;
+  getBuffer(handle: RuntimeBufferHandle): RuntimeBufferView;
+  releaseBuffer(handle: RuntimeBufferHandle): void;
+  // World load/save composition (operational; not a replay-verification replacement).
+  loadWorldBundle(request: WorldLoadRequest): CompositionStatus;
+  saveCurrentWorld(): WorldSaveSummary;
+  getCompositionStatus(): CompositionStatus;
+  unloadWorld(): void;
+  // Quarantined: replay/golden harness, not the production renderer path.
+  loadReplayFixture(fixture: ReplayFixture): ReplaySessionHandle;
+  runReplayStep(session: ReplaySessionHandle): ReplayStepReport;
+}
