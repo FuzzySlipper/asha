@@ -1,4 +1,5 @@
-import { AppShell, threeRendererPort, type AppBridgeBoot, type FixtureChoice, type HostCapabilities, type ShellReadout } from './shell.js';
+import { threeRendererPort } from './shell.js';
+import type { AppBridgeBoot, AppShell, FixtureChoice, HostCapabilities, ShellReadout } from './shell.js';
 /** Which runtime the launch targets (mirrors the smoke harness intents). */
 export type LaunchMode = 'reference' | 'authority';
 /** The documented dev/launch commands (referenced by the host READMEs and Den docs). */

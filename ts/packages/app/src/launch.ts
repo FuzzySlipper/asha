@@ -15,14 +15,13 @@ import {
   RuntimeBridgeError,
 } from '@asha/runtime-bridge';
 
-import {
+import { composeAppShell, threeRendererPort } from './shell.js';
+import type {
+  AppBridgeBoot,
   AppShell,
-  composeAppShell,
-  threeRendererPort,
-  type AppBridgeBoot,
-  type FixtureChoice,
-  type HostCapabilities,
-  type ShellReadout,
+  FixtureChoice,
+  HostCapabilities,
+  ShellReadout,
 } from './shell.js';
 
 /** Which runtime the launch targets (mirrors the smoke harness intents). */

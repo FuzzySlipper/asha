@@ -9,7 +9,7 @@
 // deterministic `ShellReadout`. It never silently downgrades — an authority launch with
 // no native addon reports `unavailable`, not a faked mock success.
 import { createMockRuntimeBridge, createNativeRuntimeBridge, RuntimeBridgeError, } from '@asha/runtime-bridge';
-import { composeAppShell, threeRendererPort, } from './shell.js';
+import { composeAppShell, threeRendererPort } from './shell.js';
 /** The documented dev/launch commands (referenced by the host READMEs and Den docs). */
 export const SHELL_LAUNCH_COMMAND = 'pnpm --filter @asha/app dev:asha-shell';
 export const AUTHORITY_SHELL_LAUNCH_COMMAND = 'ASHA_SHELL_MODE=authority pnpm --filter @asha/app dev:asha-shell';

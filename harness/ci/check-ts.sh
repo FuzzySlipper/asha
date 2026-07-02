@@ -18,3 +18,6 @@ pnpm lint
 
 echo "==> policy sandbox negative smoke"
 bash "$REPO_ROOT/harness/lint/ts-eslint/policy-sandbox-smoke.sh"
+
+echo "==> type-aware lint negative smoke"
+bash "$REPO_ROOT/harness/lint/ts-eslint/type-aware-smoke.sh"

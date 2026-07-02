@@ -105,3 +105,9 @@
     skeleton and the `governance/ownership.toml` entry together, refuses overwrites,
     and keeps package creation inside the same depgraph checks that enforce root
     barrels and ownership completeness.
+25. TypeScript source is compiled with the shared strict base in `ts/tsconfig.base.json`
+    and linted through the type-aware ESLint tier. Enforced ratchets include
+    `noImplicitReturns`, type-only imports, explicit public module boundary types,
+    no explicit `any`, and no async promise callbacks in void callback positions.
+    Deferred stricter rules must be documented with the blocking remediation surface
+    rather than disabled broadly.

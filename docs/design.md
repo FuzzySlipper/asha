@@ -465,11 +465,24 @@ Recommended defaults:
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
     "noImplicitOverride": true,
     "useUnknownInCatchVariables": true
   }
 }
 ```
+
+The TypeScript ESLint tier also enforces type-only imports, explicit public module
+boundary types, no explicit `any`, and no async promise callbacks where a void
+callback is expected. `check-ts.sh` includes a negative smoke so these rules fail
+closed if the config drifts.
+
+Deferred strictness ratchets are intentional and should be handled as focused cleanup
+tasks rather than broad churn: `noPropertyAccessFromIndexSignature` currently hits
+decoder/validator and environment-variable access patterns, while `no-floating-promises`
+mostly flags Node test registration calls. `no-non-null-assertion` and the full
+`no-unsafe-*` family also require source/test remediation before they can be enabled
+workspace-wide.
 
 Policy packages should additionally be linted against:
 
