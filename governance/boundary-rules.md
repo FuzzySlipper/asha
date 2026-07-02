@@ -95,3 +95,8 @@
     `harness/ci/check-no-den-coupling.sh`. A save→load **round-trip** that does not reproduce
     authority-equivalent state (per-chunk voxel hashes + overall state hash) is a `Fatal` corrupt
     diagnostic, never a silently wrong load.
+23. TypeScript packages consume sibling ASHA packages through root package barrels only:
+    `@asha/name`, never `@asha/name/src/...`, `@asha/name/dist/...`, generated internals,
+    or package-private files. Each package must expose `package.json` `exports["."]` and
+    `src/index.ts`; approved internals are re-exported through that root barrel. Enforced by
+    the TS depgraph verifier and generated ESLint boundary config.

@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "package": "@asha/contracts",
+      "status": "public",
+      "ownershipKey": "ts/packages/contracts",
+      "intendedConsumerRole": "Generated semantic DTO/type border for consumers.",
+      "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
+      "compatibilityMarker": "contracts.v0",
+      "changelog": "docs/consumer-compatibility.md#generated-contract-compatibility-log"
+    },
+    {
+      "package": "@asha/runtime-bridge",
+      "status": "public",
+      "ownershipKey": "ts/packages/runtime-bridge",
+      "intendedConsumerRole": "Transport-neutral runtime facade; consumers never bypass it to raw transports.",
+      "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
+      "compatibilityMarker": "runtime-bridge.v0",
+      "changelog": "docs/consumer-compatibility.md#runtime-bridge-compatibility-log"
+    },
+    {
+      "package": "@asha/command-registry",
+      "status": "unstable",
+      "ownershipKey": "ts/packages/command-registry",
+      "intendedConsumerRole": "Studio command/evidence metadata registry consumed through the root barrel.",
+      "allowedConsumerRoles": ["asha-studio", "asha-demo"],
+      "compatibilityMarker": "command-registry.v0",
+      "changelog": "docs/consumer-compatibility.md#command-registry-compatibility-log"
+    },
+    {
+      "package": "@asha/devtools",
+      "status": "unstable",
+      "ownershipKey": "ts/packages/devtools",
+      "intendedConsumerRole": "Observational attach/readout protocol for Studio and testing harnesses.",
+      "allowedConsumerRoles": ["asha-testing", "asha-studio"],
+      "compatibilityMarker": "devtools-protocol.v0",
+      "changelog": "docs/consumer-compatibility.md#devtools-protocol-compatibility-log"
+    },
+    {
+      "package": "@asha/editor-tools",
+      "status": "unstable",
+      "ownershipKey": "ts/packages/editor-tools",
+      "intendedConsumerRole": "Editor-local state helpers for Studio/tooling; not authority.",
+      "allowedConsumerRoles": ["asha-studio"],
+      "changelog": "docs/consumer-compatibility.md#editor-tools-unstable-status"
+    },
+    {
+      "package": "@asha/game-workspace",
+      "status": "unstable",
+      "ownershipKey": "ts/packages/game-workspace",
+      "intendedConsumerRole": "Typed game/workspace manifest validation for consumer repos.",
+      "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
+      "compatibilityMarker": "game-workspace.v0",
+      "changelog": "docs/consumer-compatibility.md#game-workspace-compatibility-log"
+    },
+    {
+      "package": "@asha/renderer-three",
+      "status": "unstable",
+      "ownershipKey": "ts/packages/renderer-three",
+      "intendedConsumerRole": "Three.js render-diff implementation for engine smoke/testing; not the long-term public renderer contract.",
+      "allowedConsumerRoles": ["asha-testing"],
+      "changelog": "docs/consumer-compatibility.md#renderer-three-unstable-status"
+    },
+    {
+      "package": "@asha/app",
+      "status": "internal",
+      "ownershipKey": "ts/packages/app",
+      "intendedConsumerRole": "Engine shell composition root; downstream repos should run their own shell.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/catalog-core",
+      "status": "internal",
+      "ownershipKey": "ts/packages/catalog-core",
+      "intendedConsumerRole": "Internal catalog fixture/domain package.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/catalog-examples",
+      "status": "internal",
+      "ownershipKey": "ts/packages/catalog-examples",
+      "intendedConsumerRole": "Internal catalog examples.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/cosmetic",
+      "status": "internal",
+      "ownershipKey": "ts/packages/cosmetic",
+      "intendedConsumerRole": "Reserved/internal cosmetic renderer package.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/electron-main",
+      "status": "internal",
+      "ownershipKey": "ts/packages/electron-main",
+      "intendedConsumerRole": "Thin Electron host wrapper, not a consumer API.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/native-bridge",
+      "status": "internal",
+      "ownershipKey": "ts/packages/native-bridge",
+      "intendedConsumerRole": "Raw native transport wrapper imported only by @asha/runtime-bridge.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/policy-core",
+      "status": "internal",
+      "ownershipKey": "ts/packages/policy-core",
+      "intendedConsumerRole": "Internal policy fixture/domain package.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/policy-examples",
+      "status": "internal",
+      "ownershipKey": "ts/packages/policy-examples",
+      "intendedConsumerRole": "Internal policy examples.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/script-host",
+      "status": "internal",
+      "ownershipKey": "ts/packages/script-host",
+      "intendedConsumerRole": "Internal policy execution host.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/script-sdk",
+      "status": "internal",
+      "ownershipKey": "ts/packages/script-sdk",
+      "intendedConsumerRole": "Internal policy authoring SDK until a public policy-authoring surface is approved.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/smoke",
+      "status": "internal",
+      "ownershipKey": "ts/packages/smoke",
+      "intendedConsumerRole": "Engine-owned smoke/perf harness package.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/ui-dom",
+      "status": "internal",
+      "ownershipKey": "ts/packages/ui-dom",
+      "intendedConsumerRole": "Engine DOM component package, not a consumer API.",
+      "allowedConsumerRoles": []
+    },
+    {
+      "package": "@asha/wasm-replay-bridge",
+      "status": "internal",
+      "ownershipKey": "ts/packages/wasm-replay-bridge",
+      "intendedConsumerRole": "Replay/golden bridge for engine verification, not runtime transport.",
+      "allowedConsumerRoles": []
+    }
+  ]
+}

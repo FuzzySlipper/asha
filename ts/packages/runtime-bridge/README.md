@@ -39,4 +39,4 @@ The raw native addon wrapper remains internal transport plumbing. This package i
 
 ## Metadata and checks
 
-The package declares its Tier 1 role in `package.json` under `asha.publicSurface`. The CI bridge check runs `harness/public-surface/check-public-boundary.py` to keep `@asha/contracts`, `@asha/runtime-bridge`, `@asha/native-bridge`, and the Rust `runtime-bridge-api` metadata aligned with the Den public-surface design.
+The package declares its Tier 1 role in `package.json` under `asha.publicSurface`. The CI bridge check runs `harness/public-surface/check-public-boundary.py` to keep the engine-owned TS public surface manifest, compatibility anchors, raw transport status, and the Rust `runtime-bridge-api` metadata aligned with the Den public-surface design.

@@ -22,8 +22,8 @@
     },
     "compatibility": {
       "version": "command-registry.v0",
-      "metadataFile": "manifest.golden.json",
-      "changelog": "asha/asha-studio-command-evidence-architecture#command-identity-and-metadata"
+      "metadataFile": "src/manifest.golden.json",
+      "changelog": "docs/consumer-compatibility.md#command-registry-compatibility-log"
     }
   },
   "scripts": {

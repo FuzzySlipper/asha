@@ -7,6 +7,31 @@ Generated contracts define the border.
 
 Layer order (lowest to highest): foundation → state → protocol → sim/services/rules → render/wasm/tools.
 
+## TypeScript package metadata axes
+
+TypeScript package ownership has three independent axes in
+`governance/ownership.toml`:
+
+- `lane` is the agent assignment and review-routing scope.
+- `type` is the package shape: `lib`, `shell`, `testing`, or `tool`.
+- `layer` is the dependency-governance role: `protocol`, `transport`, `domain`,
+  `renderer`, `components`, `shell`, `testing-fixtures`, or `tool`.
+
+The depgraph verifier currently enforces that every TS package ownership entry
+has valid `type` and `layer` metadata. Layer ordering is deliberately not
+enforced yet; ordering rules should be reviewed as a separate governance change.
+
+| Package(s) | Type | Layer | Notes |
+|---|---:|---:|---|
+| `@asha/contracts` | `lib` | `protocol` | Generated contract border. |
+| `@asha/runtime-bridge`, `@asha/native-bridge`, `@asha/wasm-replay-bridge` | `lib` | `transport` | Runtime/replay transport facades and raw native wrapper. |
+| `@asha/script-sdk`, `@asha/script-host`, `@asha/policy-*`, `@asha/catalog-*`, `@asha/editor-tools`, `@asha/command-registry`, `@asha/game-workspace` | `lib` | `domain` | Policy/catalog/editor/workspace domain logic and metadata. |
+| `@asha/renderer-three`, `@asha/cosmetic` | `lib` | `renderer` | Render projection/application implementation packages. |
+| `@asha/ui-dom` | `lib` | `components` | DOM component/readout layer. |
+| `@asha/devtools` | `tool` | `tool` | Observational developer/operator tooling. |
+| `@asha/app`, `@asha/electron-main` | `shell` | `shell` | Composition root and thin host wrapper. |
+| `@asha/smoke` | `testing` | `testing-fixtures` | Launchable smoke/perf/testing harness. |
+
 ## Scene / world / asset foundation
 
 - `core-assets` (foundation) — typed asset-reference vocabulary: `AssetKind`, validated

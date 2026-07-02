@@ -81,9 +81,27 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/app must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/app (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/devtools/*"
+              ],
+              "message": "ts/packages/app must import @asha/devtools through its root barrel. Do not import @asha/devtools/src, @asha/devtools/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
+                "@asha/editor-tools/*"
+              ],
+              "message": "ts/packages/app must import @asha/editor-tools through its root barrel. Do not import @asha/editor-tools/src, @asha/editor-tools/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -117,6 +135,24 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/renderer-three/*"
+              ],
+              "message": "ts/packages/app must import @asha/renderer-three through its root barrel. Do not import @asha/renderer-three/src, @asha/renderer-three/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
+                "@asha/runtime-bridge/*"
+              ],
+              "message": "ts/packages/app must import @asha/runtime-bridge through its root barrel. Do not import @asha/runtime-bridge/src, @asha/runtime-bridge/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
+                "@asha/script-host/*"
+              ],
+              "message": "ts/packages/app must import @asha/script-host through its root barrel. Do not import @asha/script-host/src, @asha/script-host/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/script-sdk/*"
               ],
               "message": "ts/packages/app (lane ts-shell) may not import @asha/script-sdk (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -126,6 +162,12 @@ const generatedBoundaryConfigs = [
                 "@asha/smoke/*"
               ],
               "message": "ts/packages/app (lane ts-shell) may not import @asha/smoke (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/ui-dom/*"
+              ],
+              "message": "ts/packages/app must import @asha/ui-dom through its root barrel. Do not import @asha/ui-dom/src, @asha/ui-dom/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -238,6 +280,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/catalog-core (lane ts-catalog) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/catalog-core must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -421,9 +469,21 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/catalog-core/*"
+              ],
+              "message": "ts/packages/catalog-examples must import @asha/catalog-core through its root barrel. Do not import @asha/catalog-core/src, @asha/catalog-core/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/catalog-examples (lane ts-catalog) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/catalog-examples must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -620,6 +680,12 @@ const generatedBoundaryConfigs = [
                 "@asha/catalog-examples/*"
               ],
               "message": "ts/packages/command-registry (lane ts-command-registry) may not import @asha/catalog-examples (lane ts-catalog) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/command-registry must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -1027,6 +1093,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/cosmetic must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/devtools/*"
               ],
               "message": "ts/packages/cosmetic (lane ts-shell) may not import @asha/devtools (lane ts-tools) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -1066,6 +1138,12 @@ const generatedBoundaryConfigs = [
                 "@asha/policy-examples/*"
               ],
               "message": "ts/packages/cosmetic (lane ts-shell) may not import @asha/policy-examples (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/renderer-three/*"
+              ],
+              "message": "ts/packages/cosmetic must import @asha/renderer-three through its root barrel. Do not import @asha/renderer-three/src, @asha/renderer-three/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -1205,9 +1283,21 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/devtools must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/devtools (lane ts-tools) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/editor-tools/*"
+              ],
+              "message": "ts/packages/devtools must import @asha/editor-tools through its root barrel. Do not import @asha/editor-tools/src, @asha/editor-tools/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -1247,6 +1337,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/runtime-bridge/*"
+              ],
+              "message": "ts/packages/devtools must import @asha/runtime-bridge through its root barrel. Do not import @asha/runtime-bridge/src, @asha/runtime-bridge/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/script-host/*"
               ],
               "message": "ts/packages/devtools (lane ts-tools) may not import @asha/script-host (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -1268,6 +1364,12 @@ const generatedBoundaryConfigs = [
                 "@asha/ui-dom/*"
               ],
               "message": "ts/packages/devtools (lane ts-tools) may not import @asha/ui-dom (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/wasm-replay-bridge/*"
+              ],
+              "message": "ts/packages/devtools must import @asha/wasm-replay-bridge through its root barrel. Do not import @asha/wasm-replay-bridge/src, @asha/wasm-replay-bridge/dist, generated internals, or other package-private files."
             }
           ]
         }
@@ -1380,6 +1482,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/editor-tools (lane ts-shell) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/editor-tools must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -1991,6 +2099,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/native-bridge must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/native-bridge (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2161,6 +2275,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/catalog-core/*"
+              ],
+              "message": "ts/packages/policy-core must import @asha/catalog-core through its root barrel. Do not import @asha/catalog-core/src, @asha/catalog-core/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/catalog-examples/*"
               ],
               "message": "ts/packages/policy-core (lane ts-policy) may not import @asha/catalog-examples (lane ts-catalog) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2170,6 +2290,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/policy-core (lane ts-policy) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/policy-core must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2230,6 +2356,12 @@ const generatedBoundaryConfigs = [
                 "@asha/script-host/*"
               ],
               "message": "ts/packages/policy-core (lane ts-policy) may not import @asha/script-host (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/script-sdk/*"
+              ],
+              "message": "ts/packages/policy-core must import @asha/script-sdk through its root barrel. Do not import @asha/script-sdk/src, @asha/script-sdk/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2329,6 +2461,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/catalog-core/*"
+              ],
+              "message": "ts/packages/policy-examples must import @asha/catalog-core through its root barrel. Do not import @asha/catalog-core/src, @asha/catalog-core/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/catalog-examples/*"
               ],
               "message": "ts/packages/policy-examples (lane ts-policy) may not import @asha/catalog-examples (lane ts-catalog) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2338,6 +2476,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/policy-examples (lane ts-policy) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/policy-examples must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2377,6 +2521,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/policy-core/*"
+              ],
+              "message": "ts/packages/policy-examples must import @asha/policy-core through its root barrel. Do not import @asha/policy-core/src, @asha/policy-core/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/renderer-three/*"
               ],
               "message": "ts/packages/policy-examples (lane ts-policy) may not import @asha/renderer-three (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2386,6 +2536,18 @@ const generatedBoundaryConfigs = [
                 "@asha/runtime-bridge/*"
               ],
               "message": "ts/packages/policy-examples (lane ts-policy) may not import @asha/runtime-bridge (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/script-host/*"
+              ],
+              "message": "ts/packages/policy-examples must import @asha/script-host through its root barrel. Do not import @asha/script-host/src, @asha/script-host/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
+                "@asha/script-sdk/*"
+              ],
+              "message": "ts/packages/policy-examples must import @asha/script-sdk through its root barrel. Do not import @asha/script-sdk/src, @asha/script-sdk/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2515,6 +2677,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/renderer-three must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/renderer-three (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2560,6 +2728,12 @@ const generatedBoundaryConfigs = [
                 "@asha/policy-examples/*"
               ],
               "message": "ts/packages/renderer-three (lane ts-shell) may not import @asha/policy-examples (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/runtime-bridge/*"
+              ],
+              "message": "ts/packages/renderer-three must import @asha/runtime-bridge through its root barrel. Do not import @asha/runtime-bridge/src, @asha/runtime-bridge/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2701,6 +2875,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/runtime-bridge must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/runtime-bridge (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2728,6 +2908,12 @@ const generatedBoundaryConfigs = [
                 "@asha/game-workspace/*"
               ],
               "message": "ts/packages/runtime-bridge (lane ts-shell) may not import @asha/game-workspace (lane ts-game-workspace) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/native-bridge/*"
+              ],
+              "message": "ts/packages/runtime-bridge must import @asha/native-bridge through its root barrel. Do not import @asha/native-bridge/src, @asha/native-bridge/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -2883,6 +3069,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/script-host must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/script-host (lane ts-policy) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2919,6 +3111,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/policy-core/*"
+              ],
+              "message": "ts/packages/script-host must import @asha/policy-core through its root barrel. Do not import @asha/policy-core/src, @asha/policy-core/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/policy-examples/*"
               ],
               "message": "ts/packages/script-host (lane ts-policy) may not import @asha/policy-examples (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -2934,6 +3132,12 @@ const generatedBoundaryConfigs = [
                 "@asha/runtime-bridge/*"
               ],
               "message": "ts/packages/script-host (lane ts-policy) may not import @asha/runtime-bridge (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/script-sdk/*"
+              ],
+              "message": "ts/packages/script-host must import @asha/script-sdk through its root barrel. Do not import @asha/script-sdk/src, @asha/script-sdk/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3064,6 +3268,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/script-sdk (lane ts-policy) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/script-sdk must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3219,6 +3429,12 @@ const generatedBoundaryConfigs = [
           "patterns": [
             {
               "group": [
+                "@asha/app/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/app through its root barrel. Do not import @asha/app/src, @asha/app/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/catalog-core/*"
               ],
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/catalog-core (lane ts-catalog) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -3237,6 +3453,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -3246,6 +3468,12 @@ const generatedBoundaryConfigs = [
                 "@asha/devtools/*"
               ],
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/devtools (lane ts-tools) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/editor-tools/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/editor-tools through its root barrel. Do not import @asha/editor-tools/src, @asha/editor-tools/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3279,6 +3507,18 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/renderer-three/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/renderer-three through its root barrel. Do not import @asha/renderer-three/src, @asha/renderer-three/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
+                "@asha/runtime-bridge/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/runtime-bridge through its root barrel. Do not import @asha/runtime-bridge/src, @asha/runtime-bridge/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/script-host/*"
               ],
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/script-host (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -3288,6 +3528,12 @@ const generatedBoundaryConfigs = [
                 "@asha/script-sdk/*"
               ],
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/script-sdk (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/ui-dom/*"
+              ],
+              "message": "ts/packages/smoke must import @asha/ui-dom through its root barrel. Do not import @asha/ui-dom/src, @asha/ui-dom/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3401,6 +3647,12 @@ const generatedBoundaryConfigs = [
             },
             {
               "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/ui-dom must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
+            },
+            {
+              "group": [
                 "@asha/cosmetic/*"
               ],
               "message": "ts/packages/ui-dom (lane ts-shell) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
@@ -3410,6 +3662,12 @@ const generatedBoundaryConfigs = [
                 "@asha/devtools/*"
               ],
               "message": "ts/packages/ui-dom (lane ts-shell) may not import @asha/devtools (lane ts-tools) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/editor-tools/*"
+              ],
+              "message": "ts/packages/ui-dom must import @asha/editor-tools through its root barrel. Do not import @asha/editor-tools/src, @asha/editor-tools/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3446,6 +3704,12 @@ const generatedBoundaryConfigs = [
                 "@asha/renderer-three/*"
               ],
               "message": "ts/packages/ui-dom (lane ts-shell) may not import @asha/renderer-three (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/runtime-bridge/*"
+              ],
+              "message": "ts/packages/ui-dom must import @asha/runtime-bridge through its root barrel. Do not import @asha/runtime-bridge/src, @asha/runtime-bridge/dist, generated internals, or other package-private files."
             },
             {
               "group": [
@@ -3582,6 +3846,12 @@ const generatedBoundaryConfigs = [
                 "@asha/command-registry/*"
               ],
               "message": "ts/packages/wasm-replay-bridge (lane ts-shell) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+            },
+            {
+              "group": [
+                "@asha/contracts/*"
+              ],
+              "message": "ts/packages/wasm-replay-bridge must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [

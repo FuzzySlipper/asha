@@ -85,7 +85,15 @@ def render_config(repo: pathlib.Path) -> str:
         restricted_paths = []
         restricted_patterns = []
         for target_name in all_package_names:
-            if target_name == package_name or target_name in allowed:
+            if target_name == package_name:
+                continue
+            deep_message = (
+                f"{ownership_key} must import {target_name} through its root barrel. "
+                f"Do not import {target_name}/src, {target_name}/dist, generated internals, "
+                "or other package-private files."
+            )
+            if target_name in allowed:
+                restricted_patterns.append({"group": [f"{target_name}/*"], "message": deep_message})
                 continue
             target_short = target_name.split("/", 1)[-1]
             target_lane = packages.get(f"ts/packages/{target_short}", {}).get("lane", "?")

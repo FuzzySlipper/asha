@@ -19,8 +19,19 @@ with open(ownership_path, "rb") as f:
 packages = ownership.get("package", {})
 failures = []
 ownership_exempt = set(ownership.get("ownership_exempt", {}).get("packages", []))
+valid_package_types = {"lib", "shell", "testing", "tool"}
+valid_package_layers = {
+    "protocol",
+    "transport",
+    "domain",
+    "renderer",
+    "components",
+    "shell",
+    "testing-fixtures",
+    "tool",
+}
 
-actual_packages: dict[str, tuple[str, pathlib.Path]] = {}
+actual_packages: dict[str, tuple[str, pathlib.Path, dict]] = {}
 for pkg_dir in sorted(ts_packages.iterdir()):
     if not pkg_dir.is_dir():
         continue
@@ -30,7 +41,7 @@ for pkg_dir in sorted(ts_packages.iterdir()):
     data = json.loads(pkg_json.read_text())
     package_name = data.get("name")
     if package_name:
-        actual_packages[f"ts/packages/{pkg_dir.name}"] = (package_name, pkg_dir)
+        actual_packages[f"ts/packages/{pkg_dir.name}"] = (package_name, pkg_dir, data)
 
 
 def package_name_for_key(ownership_key: str) -> str:
@@ -38,27 +49,31 @@ def package_name_for_key(ownership_key: str) -> str:
     return f"@asha/{package_dir_name}"
 
 
-known_asha_packages = {name for name, _pkg_dir in actual_packages.values()}
+known_asha_packages = {name for name, _pkg_dir, _data in actual_packages.values()}
 known_asha_packages.update(package_name_for_key(key) for key in packages)
 
 
-def collect_source_imports(pkg_dir: pathlib.Path, package_name: str) -> set[str]:
+def collect_source_imports(pkg_dir: pathlib.Path, package_name: str) -> tuple[set[str], set[str]]:
     imports_found: set[str] = set()
+    deep_imports_found: set[str] = set()
     src_dir = pkg_dir / "src"
     if not src_dir.exists():
-        return imports_found
+        return imports_found, deep_imports_found
 
     import_re = re.compile(
         r"(?:from\s+|import\s+(?:type\s+)?|import\s*\(\s*)"
-        r"[\"'](@asha/[a-z0-9-]+)(?:/[^\"']*)?[\"']"
+        r"[\"'](@asha/[a-z0-9-]+)(/[^\"']*)?[\"']"
     )
     for src_file in src_dir.rglob("*.ts"):
         text = src_file.read_text()
         for match in import_re.finditer(text):
             imported_package = match.group(1)
+            imported_suffix = match.group(2)
             if imported_package != package_name and imported_package in known_asha_packages:
                 imports_found.add(imported_package)
-    return imports_found
+                if imported_suffix:
+                    deep_imports_found.add(f"{imported_package}{imported_suffix}")
+    return imports_found, deep_imports_found
 
 
 def collect_manifest_imports(pkg_dir: pathlib.Path, package_name: str) -> set[str]:
@@ -74,7 +89,19 @@ def collect_manifest_imports(pkg_dir: pathlib.Path, package_name: str) -> set[st
     return imports_found
 
 
-for ownership_key, (package_name, pkg_dir) in actual_packages.items():
+def has_root_export(pkg_data: dict) -> bool:
+    exports = pkg_data.get("exports")
+    return isinstance(exports, dict) and "." in exports
+
+
+def non_root_export_keys(pkg_data: dict) -> list[str]:
+    exports = pkg_data.get("exports")
+    if not isinstance(exports, dict):
+        return []
+    return sorted(key for key in exports if key != ".")
+
+
+for ownership_key, (package_name, pkg_dir, pkg_data) in actual_packages.items():
     if ownership_key not in packages and ownership_key not in ownership_exempt:
         failures.append(f"FAIL: {ownership_key} has no ownership entry in governance/ownership.toml")
         continue
@@ -83,11 +110,29 @@ for ownership_key, (package_name, pkg_dir) in actual_packages.items():
     pkg_lane = pkg_meta.get("lane", "?")
     allowed = set(pkg_meta.get("may_import", []))
     forbidden = set(pkg_meta.get("may_not_import", []))
-    imports_found = collect_source_imports(pkg_dir, package_name)
+    imports_found, deep_imports_found = collect_source_imports(pkg_dir, package_name)
     imports_found.update(collect_manifest_imports(pkg_dir, package_name))
+
+    if not has_root_export(pkg_data):
+        failures.append(f"FAIL: {ownership_key} package.json must expose root package API via exports['.']")
+    extra_export_keys = non_root_export_keys(pkg_data)
+    if extra_export_keys:
+        failures.append(
+            f"FAIL: {ownership_key} package.json exposes non-root export(s): "
+            f"{', '.join(extra_export_keys)}. ASHA packages are consumed through root barrels."
+        )
+    if not (pkg_dir / "src" / "index.ts").exists():
+        failures.append(f"FAIL: {ownership_key} must expose its source root barrel at src/index.ts")
 
     for dep in sorted(allowed & forbidden):
         failures.append(f"FAIL: {ownership_key} lists '{dep}' in both may_import and may_not_import.")
+
+    for specifier in sorted(deep_imports_found):
+        failures.append(
+            f"FAIL: {ownership_key} imports deep sibling package path '{specifier}'.\n"
+            f"      Import the package root barrel instead (for example '@asha/name'), "
+            f"and re-export approved API from that package's src/index.ts."
+        )
 
     for dep in sorted(imports_found):
         target_short = dep.split("/", 1)[-1]
@@ -107,6 +152,25 @@ for ownership_key, (package_name, pkg_dir) in actual_packages.items():
                 f"      Add it to governance/ownership.toml may_import only if this is an "
                 f"approved package boundary; otherwise route through the existing public API."
             )
+
+for ownership_key in sorted(packages):
+    pkg_meta = packages[ownership_key]
+    package_type = pkg_meta.get("type")
+    package_layer = pkg_meta.get("layer")
+    if package_type is None:
+        failures.append(f"FAIL: {ownership_key} is missing required TypeScript ownership field 'type'")
+    elif package_type not in valid_package_types:
+        failures.append(
+            f"FAIL: {ownership_key} has invalid TypeScript ownership type '{package_type}'. "
+            f"Allowed values: {', '.join(sorted(valid_package_types))}"
+        )
+    if package_layer is None:
+        failures.append(f"FAIL: {ownership_key} is missing required TypeScript ownership field 'layer'")
+    elif package_layer not in valid_package_layers:
+        failures.append(
+            f"FAIL: {ownership_key} has invalid TypeScript ownership layer '{package_layer}'. "
+            f"Allowed values: {', '.join(sorted(valid_package_layers))}"
+        )
 
 if failures:
     for msg in failures:

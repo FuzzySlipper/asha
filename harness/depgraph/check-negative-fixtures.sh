@@ -49,19 +49,54 @@ make_rust_fixture() {
 make_ts_unlisted_fixture() {
   local root="$1"
   mkdir -p "$root/governance" "$root/ts/packages/app/src" "$root/ts/packages/contracts/src"
-  printf '{"name":"@asha/app","dependencies":{"@asha/contracts":"workspace:*"}}\n' > "$root/ts/packages/app/package.json"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"},"dependencies":{"@asha/contracts":"workspace:*"}}\n' > "$root/ts/packages/app/package.json"
   printf "import '@asha/contracts';\n" > "$root/ts/packages/app/src/index.ts"
-  printf '{"name":"@asha/contracts"}\n' > "$root/ts/packages/contracts/package.json"
+  printf '{"name":"@asha/contracts","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/contracts/package.json"
   printf 'export {};\n' > "$root/ts/packages/contracts/src/index.ts"
-  printf '[package."ts/packages/app"]\nlane = "ts-shell"\nmay_import = []\n\n[package."ts/packages/contracts"]\nlane = "contract-steward"\nmay_import = []\n' > "$root/governance/ownership.toml"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "shell"\nlayer = "shell"\nmay_import = []\n\n[package."ts/packages/contracts"]\nlane = "contract-steward"\ntype = "lib"\nlayer = "protocol"\nmay_import = []\n' > "$root/governance/ownership.toml"
 }
 
 make_ts_missing_ownership_fixture() {
   local root="$1"
   mkdir -p "$root/governance" "$root/ts/packages/app/src"
-  printf '{"name":"@asha/app"}\n' > "$root/ts/packages/app/package.json"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/app/package.json"
   printf 'export {};\n' > "$root/ts/packages/app/src/index.ts"
   printf '' > "$root/governance/ownership.toml"
+}
+
+make_ts_missing_metadata_fixture() {
+  local root="$1"
+  mkdir -p "$root/governance" "$root/ts/packages/app/src"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/app/package.json"
+  printf 'export {};\n' > "$root/ts/packages/app/src/index.ts"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\nmay_import = []\n' > "$root/governance/ownership.toml"
+}
+
+make_ts_invalid_metadata_fixture() {
+  local root="$1"
+  mkdir -p "$root/governance" "$root/ts/packages/app/src"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/app/package.json"
+  printf 'export {};\n' > "$root/ts/packages/app/src/index.ts"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "service"\nlayer = "presentation"\nmay_import = []\n' > "$root/governance/ownership.toml"
+}
+
+make_ts_deep_import_fixture() {
+  local root="$1"
+  mkdir -p "$root/governance" "$root/ts/packages/app/src" "$root/ts/packages/contracts/src/generated"
+  printf '{"name":"@asha/app","type":"module","exports":{".":"./dist/index.js"},"dependencies":{"@asha/contracts":"workspace:*"}}\n' > "$root/ts/packages/app/package.json"
+  printf "import '@asha/contracts/src/generated/index.js';\n" > "$root/ts/packages/app/src/index.ts"
+  printf '{"name":"@asha/contracts","type":"module","exports":{".":"./dist/index.js"}}\n' > "$root/ts/packages/contracts/package.json"
+  printf 'export {};\n' > "$root/ts/packages/contracts/src/index.ts"
+  printf 'export {};\n' > "$root/ts/packages/contracts/src/generated/index.ts"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "shell"\nlayer = "shell"\nmay_import = ["@asha/contracts"]\n\n[package."ts/packages/contracts"]\nlane = "contract-steward"\ntype = "lib"\nlayer = "protocol"\nmay_import = []\n' > "$root/governance/ownership.toml"
+}
+
+make_ts_missing_root_export_fixture() {
+  local root="$1"
+  mkdir -p "$root/governance" "$root/ts/packages/app/src"
+  printf '{"name":"@asha/app","type":"module"}\n' > "$root/ts/packages/app/package.json"
+  printf 'export {};\n' > "$root/ts/packages/app/src/index.ts"
+  printf '[package."ts/packages/app"]\nlane = "ts-shell"\ntype = "shell"\nlayer = "shell"\nmay_import = []\n' > "$root/governance/ownership.toml"
 }
 
 RUST_FIXTURE="$TMP_ROOT/rust-unlisted"
@@ -84,5 +119,33 @@ expect_failure \
   "missing TypeScript ownership entry" \
   "has no ownership entry in governance/ownership.toml" \
   bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_MISSING_FIXTURE"
+
+TS_MISSING_METADATA_FIXTURE="$TMP_ROOT/ts-missing-metadata"
+make_ts_missing_metadata_fixture "$TS_MISSING_METADATA_FIXTURE"
+expect_failure \
+  "missing TypeScript ownership metadata" \
+  "is missing required TypeScript ownership field 'type'" \
+  bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_MISSING_METADATA_FIXTURE"
+
+TS_INVALID_METADATA_FIXTURE="$TMP_ROOT/ts-invalid-metadata"
+make_ts_invalid_metadata_fixture "$TS_INVALID_METADATA_FIXTURE"
+expect_failure \
+  "invalid TypeScript ownership metadata" \
+  "has invalid TypeScript ownership type 'service'" \
+  bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_INVALID_METADATA_FIXTURE"
+
+TS_DEEP_IMPORT_FIXTURE="$TMP_ROOT/ts-deep-import"
+make_ts_deep_import_fixture "$TS_DEEP_IMPORT_FIXTURE"
+expect_failure \
+  "deep TypeScript sibling import" \
+  "imports deep sibling package path '@asha/contracts/src/generated/index.js'" \
+  bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_DEEP_IMPORT_FIXTURE"
+
+TS_MISSING_ROOT_EXPORT_FIXTURE="$TMP_ROOT/ts-missing-root-export"
+make_ts_missing_root_export_fixture "$TS_MISSING_ROOT_EXPORT_FIXTURE"
+expect_failure \
+  "missing TypeScript root export" \
+  "package.json must expose root package API via exports['.']" \
+  bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh" "$TS_MISSING_ROOT_EXPORT_FIXTURE"
 
 echo "Depgraph negative fixtures: OK"

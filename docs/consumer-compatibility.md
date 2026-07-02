@@ -1,6 +1,6 @@
 # Consumer Compatibility Surface
 
-Status: task #2536 compatibility surface for `asha-demo` and future downstream consumers. This is not a public-registry semver promise.
+Status: task #2536 compatibility surface for downstream consumers. This is not a public-registry semver promise.
 
 ## Purpose
 
@@ -15,12 +15,35 @@ The answer is split between machine-readable package metadata and this human-rea
 
 ## Machine-readable metadata
 
-Tier 1 consumer packages carry `asha.compatibility` in `package.json` and a package-local `compatibility.json` file.
+The engine-owned public surface manifest is:
 
-| Surface | Metadata file | Compatibility version | Role |
-|---|---|---|---|
-| `@asha/contracts` | `ts/packages/contracts/compatibility.json` | `contracts.v0` | Generated semantic DTO/type border from Rust protocol crates. |
-| `@asha/runtime-bridge` | `ts/packages/runtime-bridge/compatibility.json` | `runtime-bridge.v0` | Transport-neutral runtime facade, manifest-backed operation vocabulary, typed errors. |
+```text
+harness/public-surface/ts-packages.json
+```
+
+Every `ts/packages/*` package is listed there as `public`, `unstable`, or `internal`.
+Consumer repos should validate allowlists against that manifest instead of inventing
+their own package truth. The manifest records each package's ownership key, intended
+consumer role, compatibility marker when one exists, and changelog anchor.
+
+Tier 1 public packages carry `asha.compatibility` in `package.json` and a package-local
+`compatibility.json` file. Some unstable surfaces carry package-local compatibility
+metadata while their consumer role is still being ratified.
+
+| Surface | Status | Metadata file | Compatibility version | Role |
+|---|---|---|---|---|
+| `@asha/contracts` | `public` | `ts/packages/contracts/compatibility.json` | `contracts.v0` | Generated semantic DTO/type border from Rust protocol crates. |
+| `@asha/runtime-bridge` | `public` | `ts/packages/runtime-bridge/compatibility.json` | `runtime-bridge.v0` | Transport-neutral runtime facade, manifest-backed operation vocabulary, typed errors. |
+| `@asha/command-registry` | `unstable` | `ts/packages/command-registry/src/manifest.golden.json` | `command-registry.v0` | Studio command/evidence metadata registry. |
+| `@asha/devtools` | `unstable` | `ts/packages/devtools/compatibility.json` | `devtools-protocol.v0` | Observational attach/readout protocol for tools and testing harnesses. |
+| `@asha/game-workspace` | `unstable` | `ts/packages/game-workspace/compatibility.json` | `game-workspace.v0` | Typed game/workspace manifest validation for consumer repos. |
+
+Additional unstable package statuses:
+
+- `@asha/editor-tools` is an unstable Studio/editor helper package. It is editor-local state only, not authority.
+- `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing. It is not the long-term public renderer contract; consumers should expect a renderer-neutral render-diff application API before broad promotion.
+
+Internal packages, including `@asha/native-bridge`, `@asha/wasm-replay-bridge`, `@asha/app`, `@asha/electron-main`, `@asha/ui-dom`, policy/catalog packages, and `@asha/smoke`, are not downstream public surfaces.
 
 The metadata schema is intentionally tiny for now:
 
@@ -35,7 +58,15 @@ The metadata schema is intentionally tiny for now:
 - `pinningGuidance`: how `asha-demo` should record the surface it tested.
 - `breakingChangeRequires`: minimum evidence checklist for border-breaking changes.
 
-`harness/public-surface/check-public-boundary.py` validates that Tier 1 packages publish this metadata and that package metadata mirrors the compatibility version.
+`harness/public-surface/check-public-boundary.py` validates that the engine manifest covers every TS package, compatibility metadata has real changelog anchors, ownership entries exist, and raw/native transports remain internal.
+
+## Consumer Repo Roles
+
+- `asha-testing` is the synthetic proof/conformance consumer. It owns boundary checks, compatibility evidence, generated proof artifacts, and scripted conformance workflows.
+- `asha-demo` is the new human-facing demo/product-content repo. It should start from a product README and consume approved engine public or unstable surfaces through the engine manifest. Proof harnesses can be added later, but should not become the repo identity.
+- `asha-studio` is the editor/product tooling repo. It may use Studio-approved unstable packages through its own boundary policy, but those allowlists should validate against the engine manifest.
+
+No consumer should import raw native transports, generated contract internals, ASHA package `src/*` paths, Rust crate paths, or arbitrary runtime JSON tunnels. Missing public API should become an ASHA engine feature request, not a private import.
 
 ## Generated contract compatibility log
 
@@ -91,9 +122,59 @@ Additive notes under `runtime-bridge.v0`:
 - #2564 adds three stable camera/view operations to the manifest-backed facade: `create_camera` / `createCamera`, `apply_first_person_camera_input` / `applyFirstPersonCameraInput`, and `read_camera_projection` / `readCameraProjection`. Native remains fail-closed with `operation_unimplemented` until a real native implementation lands; the mock/reference paths provide deterministic boundary evidence only. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #2895 adds one stable model/material preview/readback operation to the manifest-backed facade: `read_model_material_preview` / `readModelMaterialPreview`. The mock/reference facade derives a typed `RenderFrameDiff` from public `CatalogEntry` / `MaterialProjection` / `StaticMeshAsset` inputs. Native intentionally fail-closes with `operation_unimplemented` until a real native implementation is wired; consumers must not bypass this through renderer internals or raw transports. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 
+## Command registry compatibility log
+
+### `command-registry.v0` — unstable Studio command metadata
+
+Status: unstable root-barrel package surface for Studio command/evidence metadata.
+
+Source of truth:
+
+- Root export: `ts/packages/command-registry/src/index.ts`.
+- Registry implementation and golden: `ts/packages/command-registry/src/manifest.ts` and `src/manifest.golden.json`.
+
+Consumer behavior:
+
+- Consumers import only from `@asha/command-registry` root export.
+- Consumers do not treat command-registry examples as authority, runtime, or renderer truth.
+- The registry describes typed command metadata and evidence posture; execution and authority validation stay in the runtime/Rust surfaces.
+
+## Devtools protocol compatibility log
+
+### `devtools-protocol.v0` — unstable attach/readout protocol
+
+Status: unstable observational protocol for Studio and synthetic testing consumers.
+
+Consumer behavior:
+
+- Consumers import only from `@asha/devtools` root export.
+- Devtools is observational: it formats projected diagnostics, attach protocol state, and readouts; it does not mutate authority.
+- Consumers must fail closed on unsupported protocol versions or missing evidence instead of replacing the typed protocol with generic JSON method tunnels.
+
+## Game workspace compatibility log
+
+### `game-workspace.v0` — unstable consumer workspace manifest
+
+Status: unstable typed manifest/workspace validation package for consumer repos.
+
+Consumer behavior:
+
+- Consumers import only from `@asha/game-workspace` root export.
+- `asha-testing` uses it for synthetic conformance/proof workflows.
+- The new `asha-demo` may use it for human-facing project workspace setup, but should keep product identity separate from proof harness machinery.
+- Manifest validation rejects private transport hints, ASHA internals, generated paths, and unsupported backend/profile claims.
+
+## Renderer Three unstable status
+
+`@asha/renderer-three` is explicit but unstable. It is an engine-owned Three.js implementation package for smoke/testing and should not be treated as the cross-repo renderer contract. The planned renderer-neutral render-diff application API should be the preferred public contract before Studio or demos rely on renderer semantics broadly.
+
+## Editor Tools unstable status
+
+`@asha/editor-tools` is explicit but unstable. It holds editor-local state helpers and previews only; it does not validate or mutate authority. Studio may consume it through root exports while the engine manifest records it as an unstable editor/tooling surface.
+
 ## Consumer pinning guidance
 
-Until ASHA has registry/package publication, `asha-demo` pins by local path plus ASHA git commit:
+Until ASHA has registry/package publication, downstream consumers pin by local path plus ASHA git commit:
 
 ```json
 {
@@ -109,6 +190,7 @@ Conformance artifacts should record:
 - ASHA git commit or source path being tested;
 - `@asha/contracts` compatibility version from `compatibility.json`;
 - `@asha/runtime-bridge` compatibility version from `compatibility.json`;
+- any unstable package compatibility markers listed in `harness/public-surface/ts-packages.json`;
 - any explicit compatibility gaps or migration tasks.
 
 If a consumer sees an unknown `compatibilityVersion`, missing metadata file, missing required operation, or breaking-change log entry without a migration note, it should fail closed and file an ASHA engine compatibility/request task instead of papering over the gap.

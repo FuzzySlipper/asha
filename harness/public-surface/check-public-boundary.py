@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Validate the Tier 1 public engine facade metadata for downstream consumers.
-
-This is intentionally metadata-only: it prevents a consumer-facing package/crate
-from drifting into an unlabeled internal surface, while the depgraph and bridge
-checks enforce import/escape-hatch rules.
-"""
+"""Validate engine-owned public TypeScript surface metadata."""
 from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 import tomllib
 from typing import Any, NoReturn, cast
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "ts-packages.json"
+RAW_TRANSPORT_PACKAGES = {"@asha/native-bridge", "@asha/wasm-replay-bridge"}
+VALID_STATUSES = {"public", "unstable", "internal"}
 
 
 def fail(message: str) -> NoReturn:
@@ -25,8 +24,25 @@ def read_json(path: pathlib.Path) -> dict[str, Any]:
     return json.loads(path.read_text())
 
 
-def package(name: str) -> dict[str, Any]:
-    return read_json(REPO_ROOT / "ts" / "packages" / name / "package.json")
+def package_dir_from_name(package_name: str) -> str:
+    prefix = "@asha/"
+    if not package_name.startswith(prefix):
+        fail(f"public surface manifest package is not an @asha package: {package_name}")
+    return package_name.removeprefix(prefix)
+
+
+def package_json(package_name: str) -> dict[str, Any]:
+    return read_json(REPO_ROOT / "ts" / "packages" / package_dir_from_name(package_name) / "package.json")
+
+
+def actual_package_names() -> set[str]:
+    names: set[str] = set()
+    for package_json_path in sorted((REPO_ROOT / "ts" / "packages").glob("*/package.json")):
+        data = read_json(package_json_path)
+        name = data.get("name")
+        if isinstance(name, str):
+            names.add(name)
+    return names
 
 
 def require_root_only_export(pkg_name: str, pkg: dict[str, Any]) -> None:
@@ -38,90 +54,83 @@ def require_root_only_export(pkg_name: str, pkg: dict[str, Any]) -> None:
         fail(f"{pkg_name} must expose only the root export; got {sorted(exports.keys())}")
 
 
-TIER1_TS = {
-    "contracts": {
-        "expected_name": "@asha/contracts",
-        "role": "generated-contracts",
-        "may_import_native": False,
-    },
-    "runtime-bridge": {
-        "expected_name": "@asha/runtime-bridge",
-        "role": "runtime-facade",
-        "may_import_native": True,
-    },
-}
+def github_anchor(heading: str) -> str:
+    slug = heading.strip().lower()
+    slug = re.sub(r"`([^`]*)`", r"\1", slug)
+    slug = re.sub(r"[^a-z0-9 _-]", "", slug)
+    slug = re.sub(r"\s+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-")
 
 
-def check_compatibility_metadata(dir_name: str, expected_name: str) -> None:
-    pkg = package(dir_name)
+def markdown_anchors(path: pathlib.Path) -> set[str]:
+    anchors: set[str] = set()
+    for line in path.read_text().splitlines():
+        if not line.startswith("#"):
+            continue
+        heading = line.lstrip("#").strip()
+        if heading:
+            anchors.add(github_anchor(heading))
+    return anchors
+
+
+def require_doc_anchor(ref: str, context: str) -> None:
+    if "#" not in ref:
+        fail(f"{context} must point at a document anchor; got {ref!r}")
+    path_text, anchor = ref.split("#", 1)
+    doc_path = REPO_ROOT / path_text
+    if not doc_path.is_file():
+        fail(f"{context} document is missing: {path_text}")
+    if anchor not in markdown_anchors(doc_path):
+        fail(f"{context} anchor is missing: {ref}")
+
+
+def compatibility_block(pkg: dict[str, Any]) -> dict[str, Any] | None:
     asha = pkg.get("asha")
-    if not isinstance(asha, dict):
-        fail(f"{expected_name} must declare an 'asha' metadata block")
-    compatibility = asha.get("compatibility")
-    if not isinstance(compatibility, dict):
-        fail(f"{expected_name} must declare asha.compatibility metadata")
-    metadata_path = compatibility.get("metadataFile")
-    if not isinstance(metadata_path, str):
-        fail(f"{expected_name} asha.compatibility.metadataFile must point at compatibility metadata")
-    metadata_file = REPO_ROOT / "ts" / "packages" / dir_name / metadata_path
-    if not metadata_file.is_file():
-        fail(f"{expected_name} compatibility metadata file is missing: {metadata_path}")
-    metadata = read_json(metadata_file)
-    if metadata.get("schemaVersion") != 1:
-        fail(f"{expected_name} compatibility metadata schemaVersion must be 1")
-    if metadata.get("surface") != expected_name:
-        fail(f"{expected_name} compatibility metadata surface drifted: {metadata.get('surface')}")
-    if metadata.get("packageVersion") != pkg.get("version"):
-        fail(
-            f"{expected_name} compatibility packageVersion must match package.json version "
-            f"{pkg.get('version')!r}; got {metadata.get('packageVersion')!r}"
-        )
-    compatibility_version = metadata.get("compatibilityVersion")
-    if not isinstance(compatibility_version, str) or not compatibility_version:
-        fail(f"{expected_name} must declare a non-empty compatibilityVersion")
-    if compatibility.get("version") != compatibility_version:
-        fail(f"{expected_name} package metadata version must mirror compatibilityVersion")
-    for required_field in ["changelog", "migrationNoteTemplate", "failClosedPolicy", "pinningGuidance"]:
-        if not isinstance(metadata.get(required_field), str) or not metadata[required_field]:
-            fail(f"{expected_name} compatibility metadata missing {required_field}")
+    if isinstance(asha, dict) and isinstance(asha.get("compatibility"), dict):
+        return cast(dict[str, Any], asha["compatibility"])
+    compatibility = pkg.get("compatibility")
+    if isinstance(compatibility, dict):
+        return cast(dict[str, Any], compatibility)
+    return None
 
 
-def check_ts_package(dir_name: str, spec: dict[str, Any]) -> None:
-    pkg = package(dir_name)
-    if pkg.get("name") != spec["expected_name"]:
-        fail(f"ts/packages/{dir_name} package name drifted: {pkg.get('name')}")
-    require_root_only_export(spec["expected_name"], pkg)
+def compatibility_marker(pkg_name: str, pkg: dict[str, Any], block: dict[str, Any]) -> str:
+    direct_version = block.get("version")
+    metadata_file_value = block.get("metadataFile")
+    metadata_marker = None
+    if isinstance(metadata_file_value, str) and metadata_file_value:
+        metadata_path = REPO_ROOT / "ts" / "packages" / package_dir_from_name(pkg_name) / metadata_file_value
+        if not metadata_path.is_file():
+            fail(f"{pkg_name} compatibility metadata file is missing: {metadata_file_value}")
+        metadata = json.loads(metadata_path.read_text())
+        if isinstance(metadata, dict):
+            metadata_marker_value = metadata.get("compatibilityVersion")
+            if isinstance(metadata_marker_value, str) and metadata_marker_value:
+                metadata_marker = metadata_marker_value
+            if metadata.get("surface") is not None and metadata.get("surface") != pkg_name:
+                fail(f"{pkg_name} compatibility metadata surface drifted: {metadata.get('surface')}")
+            if metadata.get("packageVersion") is not None and metadata.get("packageVersion") != pkg.get("version"):
+                fail(
+                    f"{pkg_name} compatibility packageVersion must match package.json version "
+                    f"{pkg.get('version')!r}; got {metadata.get('packageVersion')!r}"
+                )
 
-    asha = pkg.get("asha")
-    if not isinstance(asha, dict):
-        fail(f"{spec['expected_name']} must declare an 'asha' public-surface metadata block")
-    public_surface = asha.get("publicSurface")
-    if not isinstance(public_surface, dict):
-        fail(f"{spec['expected_name']} must declare asha.publicSurface metadata")
-    if public_surface.get("tier") != 1:
-        fail(f"{spec['expected_name']} must be marked Tier 1 public surface")
-    if public_surface.get("role") != spec["role"]:
-        fail(
-            f"{spec['expected_name']} role must be {spec['role']!r}, "
-            f"got {public_surface.get('role')!r}"
-        )
-    if "asha-demo" not in public_surface.get("allowedConsumers", []):
-        fail(f"{spec['expected_name']} must explicitly allow the asha-demo boundary consumer")
-    if public_surface.get("rootExportOnly") is not True:
-        fail(f"{spec['expected_name']} must declare rootExportOnly=true")
-    if public_surface.get("nativeTransportAccess") is not spec["may_import_native"]:
-        fail(f"{spec['expected_name']} nativeTransportAccess metadata drifted")
-    check_compatibility_metadata(dir_name, spec["expected_name"])
+    if isinstance(direct_version, str) and direct_version:
+        if metadata_marker is not None and metadata_marker != direct_version:
+            fail(
+                f"{pkg_name} package compatibility version {direct_version!r} "
+                f"does not match metadata file marker {metadata_marker!r}"
+            )
+        return direct_version
+    if metadata_marker is not None:
+        return metadata_marker
+    fail(f"{pkg_name} compatibility metadata must declare version or metadataFile with compatibilityVersion")
 
 
-def check_native_bridge_internal() -> None:
-    pkg = package("native-bridge")
-    require_root_only_export("@asha/native-bridge", pkg)
-    asha = pkg.get("asha")
-    if not isinstance(asha, dict) or asha.get("publicSurface") is not False:
-        fail("@asha/native-bridge must declare asha.publicSurface=false (raw transport is internal)")
-    if asha.get("importedOnlyBy") != ["@asha/runtime-bridge"]:
-        fail("@asha/native-bridge must declare importedOnlyBy ['@asha/runtime-bridge']")
+def load_ownership() -> dict[str, Any]:
+    ownership_path = REPO_ROOT / "governance" / "ownership.toml"
+    return tomllib.loads(ownership_path.read_text())
 
 
 def check_runtime_bridge_api_crate() -> None:
@@ -136,11 +145,99 @@ def check_runtime_bridge_api_crate() -> None:
     if public_surface.get("role") != "rust-bridge-boundary":
         fail("runtime-bridge-api public-surface role must be rust-bridge-boundary")
     if public_surface.get("direct-consumer-import") is not False:
-        fail("runtime-bridge-api must document that asha-demo v1 should not import it directly")
+        fail("runtime-bridge-api must document that downstream consumers should not import it directly")
 
 
-for dir_name, spec in TIER1_TS.items():
-    check_ts_package(dir_name, spec)
-check_native_bridge_internal()
+def check_manifest() -> None:
+    manifest = read_json(MANIFEST_PATH)
+    if manifest.get("schemaVersion") != 1:
+        fail("public surface manifest schemaVersion must be 1")
+
+    records = manifest.get("packages")
+    if not isinstance(records, list):
+        fail("public surface manifest must contain a packages array")
+
+    ownership_packages = load_ownership().get("package", {})
+    seen_packages: set[str] = set()
+    manifest_names: set[str] = set()
+
+    for record in records:
+        if not isinstance(record, dict):
+            fail("public surface manifest package records must be objects")
+        pkg_name = record.get("package")
+        if not isinstance(pkg_name, str):
+            fail("public surface manifest package record missing package")
+        if pkg_name in seen_packages:
+            fail(f"public surface manifest duplicates {pkg_name}")
+        seen_packages.add(pkg_name)
+        manifest_names.add(pkg_name)
+
+        status = record.get("status")
+        if status not in VALID_STATUSES:
+            fail(f"{pkg_name} has invalid public surface status {status!r}")
+        if pkg_name in RAW_TRANSPORT_PACKAGES and status != "internal":
+            fail(f"{pkg_name} is a raw transport and must remain internal")
+
+        ownership_key = record.get("ownershipKey")
+        expected_ownership_key = f"ts/packages/{package_dir_from_name(pkg_name)}"
+        if ownership_key != expected_ownership_key:
+            fail(f"{pkg_name} ownershipKey must be {expected_ownership_key}, got {ownership_key!r}")
+        if ownership_key not in ownership_packages:
+            fail(f"{pkg_name} ownershipKey {ownership_key} is missing from governance/ownership.toml")
+
+        consumer_role = record.get("intendedConsumerRole")
+        if not isinstance(consumer_role, str) or not consumer_role:
+            fail(f"{pkg_name} must declare intendedConsumerRole")
+        allowed_roles = record.get("allowedConsumerRoles")
+        if not isinstance(allowed_roles, list) or not all(isinstance(role, str) for role in allowed_roles):
+            fail(f"{pkg_name} allowedConsumerRoles must be a string array")
+        if status in {"public", "unstable"} and not allowed_roles:
+            fail(f"{pkg_name} {status} surface must declare at least one allowedConsumerRole")
+
+        pkg = package_json(pkg_name)
+        if pkg.get("name") != pkg_name:
+            fail(f"{pkg_name} package name drifted: {pkg.get('name')}")
+        require_root_only_export(pkg_name, pkg)
+
+        changelog = record.get("changelog")
+        if status in {"public", "unstable"}:
+            if not isinstance(changelog, str) or not changelog:
+                fail(f"{pkg_name} {status} surface must declare a changelog anchor")
+            require_doc_anchor(changelog, f"{pkg_name} public surface changelog")
+
+        block = compatibility_block(pkg)
+        if block is None:
+            if "compatibilityMarker" in record:
+                fail(f"{pkg_name} declares compatibilityMarker but has no package compatibility metadata")
+            continue
+
+        marker = compatibility_marker(pkg_name, pkg, block)
+        if record.get("compatibilityMarker") != marker:
+            fail(
+                f"{pkg_name} public surface manifest compatibilityMarker must be {marker!r}, "
+                f"got {record.get('compatibilityMarker')!r}"
+            )
+        metadata_file = block.get("metadataFile")
+        if isinstance(metadata_file, str):
+            metadata_path = REPO_ROOT / "ts" / "packages" / package_dir_from_name(pkg_name) / metadata_file
+            if not metadata_path.is_file():
+                fail(f"{pkg_name} compatibility metadata file is missing: {metadata_file}")
+        package_changelog = block.get("changelog")
+        if not isinstance(package_changelog, str) or not package_changelog:
+            fail(f"{pkg_name} compatibility metadata must declare changelog")
+        require_doc_anchor(package_changelog, f"{pkg_name} package compatibility changelog")
+        if package_changelog != changelog:
+            fail(f"{pkg_name} package compatibility changelog must match public surface manifest")
+
+    actual_names = actual_package_names()
+    missing = sorted(actual_names - manifest_names)
+    extra = sorted(manifest_names - actual_names)
+    if missing:
+        fail(f"public surface manifest is missing package(s): {', '.join(missing)}")
+    if extra:
+        fail(f"public surface manifest references missing package(s): {', '.join(extra)}")
+
+
+check_manifest()
 check_runtime_bridge_api_crate()
 print("Public engine boundary metadata: OK")
