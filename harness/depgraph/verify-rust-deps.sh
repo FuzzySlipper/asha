@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Verifies that no Rust crate in the workspace depends on a crate listed
-# under may_not_depend_on in governance/ownership.toml.
+# Verifies that each Rust crate's internal ASHA crate dependencies are listed
+# under may_depend_on in governance/ownership.toml, and that explicit
+# may_not_depend_on entries are not present.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 python3 - "$REPO_ROOT" <<'PYEOF'
-import sys, tomllib, pathlib, re
+import sys, tomllib, pathlib
 
 repo = pathlib.Path(sys.argv[1])
 ownership_path = repo / "governance" / "ownership.toml"
@@ -21,39 +22,87 @@ with open(workspace_toml, "rb") as f:
     workspace = tomllib.load(f)
 
 failures = []
-
-# Crates deliberately excluded from ownership (documented exemptions). Empty today;
-# add a path here with a comment if a workspace member should not carry ownership.
 ownership_exempt = set(ownership.get("ownership_exempt", {}).get("crates", []))
+workspace_members = workspace.get("workspace", {}).get("members", [])
+internal_crates = {}
 
-for rel_path in workspace.get("workspace", {}).get("members", []):
+for rel_path in workspace_members:
+    cargo_toml = engine_rs / rel_path / "Cargo.toml"
+    if not cargo_toml.exists():
+        continue
+    with open(cargo_toml, "rb") as f:
+        crate_cfg = tomllib.load(f)
+    package_name = crate_cfg.get("package", {}).get("name")
+    if package_name:
+        internal_crates[package_name] = f"engine-rs/{rel_path}"
+
+
+def normalized(name: str) -> str:
+    return name.replace("-", "_")
+
+
+def configured_list(crate_meta: dict, key: str):
+    value = crate_meta.get(key, [])
+    if value == "unrestricted":
+        return value
+    return list(value)
+
+
+def dependency_package_name(dep_name: str, dep_spec) -> str:
+    if isinstance(dep_spec, dict):
+        return dep_spec.get("package", dep_name)
+    return dep_name
+
+
+def internal_dependencies(crate_cfg: dict):
+    deps = []
+    for section in ("dependencies", "dev-dependencies", "build-dependencies"):
+        for dep_name, dep_spec in crate_cfg.get(section, {}).items():
+            package_name = dependency_package_name(dep_name, dep_spec)
+            if package_name in internal_crates:
+                deps.append((section, package_name))
+    return deps
+
+
+for rel_path in workspace_members:
     crate_path = engine_rs / rel_path
     ownership_key = f"engine-rs/{rel_path}"
 
-    # Ownership completeness: every workspace member must have an ownership entry
-    # (or be an explicit, documented exemption). Missing ownership is a failure,
-    # not a silent gap — orchestrators route work by these entries.
     if ownership_key not in crates and ownership_key not in ownership_exempt:
         failures.append(f"FAIL: {ownership_key} has no ownership entry in governance/ownership.toml")
         continue
 
     crate_meta = crates.get(ownership_key, {})
-    forbidden = crate_meta.get("may_not_depend_on", [])
-    if not forbidden:
-        continue
-
     cargo_toml = crate_path / "Cargo.toml"
     if not cargo_toml.exists():
         continue
     with open(cargo_toml, "rb") as f:
         crate_cfg = tomllib.load(f)
 
-    actual_deps = set(crate_cfg.get("dependencies", {}).keys())
-    for fd in forbidden:
-        fd_norm = fd.replace("-", "_")
-        for dep in actual_deps:
-            if dep.replace("-", "_") == fd_norm:
-                failures.append(f"FAIL: {ownership_key} depends on forbidden crate '{fd}'")
+    crate_lane = crate_meta.get("lane", "?")
+    allowed = configured_list(crate_meta, "may_depend_on")
+    forbidden = set(crate_meta.get("may_not_depend_on", []))
+
+    for section, dep in internal_dependencies(crate_cfg):
+        dep_key = internal_crates.get(dep, "")
+        dep_lane = crates.get(dep_key, {}).get("lane", "?")
+
+        if dep in forbidden or any(normalized(dep) == normalized(fd) for fd in forbidden):
+            failures.append(
+                f"FAIL: {ownership_key} (lane {crate_lane}) depends on explicitly forbidden "
+                f"internal crate '{dep}' from {section} (lane {dep_lane}).\n"
+                f"      Route this through the approved boundary or move the code into a "
+                f"{dep_lane} crate; do not relax the boundary casually."
+            )
+            continue
+
+        if allowed != "unrestricted" and not any(normalized(dep) == normalized(ad) for ad in allowed):
+            failures.append(
+                f"FAIL: {ownership_key} (lane {crate_lane}) depends on unlisted internal "
+                f"crate '{dep}' from {section} (lane {dep_lane}).\n"
+                f"      Add it to governance/ownership.toml may_depend_on only if this is an "
+                f"approved lane boundary; otherwise route through the existing border."
+            )
 
 if failures:
     for msg in failures:

@@ -339,7 +339,7 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     loadWorldBundle(request: WorldLoadRequest): CompositionStatus;
     submitCommands(batch: CommandBatch): CommandResult;
     stepSimulation(input: StepInputEnvelope): StepResult;
-    readModelMaterialPreview(_request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
+    readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot;
     readSceneObjectSnapshot(): SceneObjectSnapshot;
     applySceneObjectCommand(): SceneObjectCommandResult;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;

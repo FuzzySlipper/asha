@@ -1,44 +1,6 @@
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-
-// Shell/UI/bridge packages a constrained policy or catalog package may never
-// import. The dependency graph (harness/depgraph/verify-ts-deps.sh) is the
-// canonical enforcement; these lint rules give the same boundary faster, local
-// feedback with a lane-routing message.
-const FORBIDDEN_SHELL_IMPORTS = [
-  {
-    name: "@asha/renderer-three",
-    message:
-      "ts-policy/ts-catalog may not import the ts-shell renderer. Route rendering through the generated contract border, not a direct import.",
-  },
-  {
-    name: "@asha/ui-dom",
-    message: "ts-policy/ts-catalog may not import ts-shell UI (@asha/ui-dom).",
-  },
-  {
-    name: "@asha/wasm-bridge",
-    message:
-      "ts-policy/ts-catalog may not import the ts-shell wasm bridge. Policy proposes commands; it never touches WASM memory.",
-  },
-  {
-    name: "@asha/wasm-replay-bridge",
-    message:
-      "ts-policy/ts-catalog may not import the ts-shell wasm replay bridge. Policy proposes commands; it never touches WASM memory.",
-  },
-  {
-    name: "@asha/runtime-bridge",
-    message:
-      "ts-policy/ts-catalog may not import the runtime bridge. Policy proposes commands across the contract border; it never drives the bridge.",
-  },
-  {
-    name: "@asha/native-bridge",
-    message: "ts-policy/ts-catalog may not import the native addon bridge.",
-  },
-  {
-    name: "@asha/electron-main",
-    message: "ts-policy/ts-catalog may not import the Electron main process.",
-  },
-];
+import generatedBoundaryConfigs from "./eslint-boundaries.generated.mjs";
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
@@ -55,6 +17,7 @@ export default [
       ...tseslint.configs.recommended.rules,
     },
   },
+  ...generatedBoundaryConfigs,
   // Policy/catalog sandbox: forbid dangerous globals everywhere in the package,
   // including tests — determinism must hold for fixtures too.
   {
@@ -98,7 +61,6 @@ export default [
         "error",
         {
           paths: [
-            ...FORBIDDEN_SHELL_IMPORTS,
             { name: "fs", message: "Policy source may not touch the filesystem." },
             { name: "net", message: "Policy source may not open sockets." },
             { name: "http", message: "Policy source may not make network calls." },

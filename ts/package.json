@@ -6,6 +6,8 @@
     "typecheck": "tsc --build packages/*/tsconfig.json",
     "test": "pnpm -r test",
     "lint": "eslint packages",
+    "lint:boundaries:generate": "python3 ../harness/depgraph/generate-ts-eslint-boundaries.py",
+    "lint:boundaries:check": "python3 ../harness/depgraph/generate-ts-eslint-boundaries.py --check",
     "pack:public": "node scripts/pack-public-artifacts.mjs",
     "dev:asha-smoke": "pnpm --filter @asha/smoke dev:asha-smoke",
     "dev:asha-gpu-perf": "pnpm --filter @asha/smoke dev:asha-gpu-perf"

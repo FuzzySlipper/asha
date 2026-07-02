@@ -1266,7 +1266,8 @@ export class NativeRuntimeBridge {
         const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
         return { tick, diffCount };
     }
-    readModelMaterialPreview(_request) {
+    readModelMaterialPreview(request) {
+        void request;
         throw nativeUnimplemented('read_model_material_preview');
     }
     readSceneObjectSnapshot() {

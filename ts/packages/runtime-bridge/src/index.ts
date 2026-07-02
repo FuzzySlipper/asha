@@ -24,10 +24,8 @@ import type {
   Face,
   PickRay,
   PickResult,
-  CatalogEntry,
   MaterialProjection,
   RenderFrameDiff,
-  StaticMeshAsset,
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   FlatSceneDocument,
@@ -1843,7 +1841,8 @@ export class NativeRuntimeBridge implements RuntimeBridge {
   }
 
 
-  readModelMaterialPreview(_request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {
+  readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {
+    void request;
     throw nativeUnimplemented('read_model_material_preview');
   }
 

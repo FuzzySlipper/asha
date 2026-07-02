@@ -91,7 +91,7 @@ may_depend_on = ["core-ids", "core-error", "core-state", "core-commands"]
 
 [crate."engine-rs/crates/protocol/protocol-render"]
 lane = "contract-steward"
-may_depend_on = ["core-ids", "core-error"]
+may_depend_on = ["core-ids", "core-error", "protocol-assets"]
 may_not_depend_on = ["core-state", "sim-kernel"]
 
 [crate."engine-rs/crates/protocol/protocol-view"]
@@ -287,7 +287,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-world-bundle"]
 lane = "rust-rule"
-may_depend_on = ["core-ids", "core-assets", "core-space", "core-voxel", "core-events", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit"]
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
 
 # ─── Rust: Render ────────────────────────────────────────────────────────────
@@ -308,6 +308,7 @@ may_depend_on = [
     "core-voxel",
     "core-space",
     "svc-spatial",
+    "svc-volume",
     "svc-mesh",
     "protocol-render",
 ]
@@ -342,7 +343,7 @@ may_not_depend_on = ["render-bridge"]
 # it stays off `protocol-render`/`render-bridge`.
 [crate."engine-rs/crates/tools/scene-diagnostics"]
 lane = "rust-tools"
-may_depend_on = ["core-ids", "core-assets", "core-space", "core-voxel", "core-events", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-world-bundle", "protocol-diagnostics"]
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-world-bundle", "protocol-diagnostics"]
 may_not_depend_on = ["render-bridge", "protocol-render", "wasm-api"]
 
 # Offline asset importer (asset-import super, #2384/#2385/#2386): deterministic
@@ -397,7 +398,7 @@ forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "
 
 [package."ts/packages/script-host"]
 lane = "ts-policy"
-may_import = ["@asha/contracts", "@asha/script-sdk"]
+may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/policy-core"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
 forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
 
@@ -409,7 +410,7 @@ forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "
 
 [package."ts/packages/policy-examples"]
 lane = "ts-policy"
-may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core", "@asha/policy-core"]
+may_import = ["@asha/contracts", "@asha/script-sdk", "@asha/catalog-core", "@asha/policy-core", "@asha/script-host"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
 forbid_globals = ["Date", "Math.random", "document", "window", "localStorage", "fetch"]
 
@@ -444,6 +445,13 @@ lane = "ts-command-registry"
 may_import = ["@asha/contracts"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/electron-main", "@asha/app", "@asha/devtools"]
 
+# Typed game/workspace manifest and validation package. Domain metadata only:
+# no renderer, UI, runtime bridge, native transport, policy execution, or Electron.
+[package."ts/packages/game-workspace"]
+lane = "ts-game-workspace"
+may_import = []
+may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/policy-core", "@asha/policy-examples", "@asha/script-host", "@asha/electron-main", "@asha/app", "@asha/devtools"]
+
 [package."ts/packages/ui-dom"]
 lane = "ts-shell"
 may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/editor-tools"]
@@ -466,7 +474,7 @@ may_not_import = ["@asha/policy-core", "@asha/policy-examples"]
 
 [package."ts/packages/app"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/ui-dom", "@asha/editor-tools", "@asha/script-host"]
+may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/ui-dom", "@asha/editor-tools", "@asha/script-host", "@asha/devtools"]
 may_not_import = ["@asha/electron-main", "@asha/native-bridge", "@asha/wasm-replay-bridge"]
 
 # Developer smoke harness (#2395–#2398): boots the facade against an abstract
@@ -474,7 +482,7 @@ may_not_import = ["@asha/electron-main", "@asha/native-bridge", "@asha/wasm-repl
 # facade + renderer; never imports the raw native addon directly.
 [package."ts/packages/smoke"]
 lane = "ts-shell"
-may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/editor-tools", "@asha/app"]
+may_import = ["@asha/contracts", "@asha/runtime-bridge", "@asha/renderer-three", "@asha/editor-tools", "@asha/ui-dom", "@asha/app"]
 may_not_import = ["@asha/native-bridge", "@asha/electron-main", "@asha/wasm-replay-bridge"]
 
 # ─── Runtime bridge boundary (ADR 0006) ──────────────────────────────────────
@@ -507,7 +515,7 @@ lane = "rust-bridge"
 # commands into rule-voxel-edit validation/apply (launchable-voxel, #2436),
 # raycasts picks against authority via svc-collision (picking, #2437), and reads
 # compact mesh/remesh evidence via svc-mesh + svc-serialization (#2646).
-may_depend_on = ["core-ids", "core-error", "core-space", "core-voxel", "core-commands", "svc-spatial", "svc-volume", "svc-collision", "svc-mesh", "svc-serialization", "rule-voxel-edit", "protocol-render", "protocol-script", "protocol-replay"]
+may_depend_on = ["core-ids", "core-error", "core-space", "core-voxel", "core-commands", "svc-spatial", "svc-volume", "svc-collision", "svc-mesh", "svc-serialization", "rule-voxel-edit", "protocol-view", "protocol-render", "protocol-script", "protocol-replay"]
 may_not_depend_on = ["napi", "wasm-bindgen"]
 
 [crate."engine-rs/crates/bridge/native-bridge"]
