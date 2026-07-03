@@ -1,7 +1,7 @@
 import type { CameraHandle } from '@asha/contracts';
 export type RuntimeActionIntentKind = 'primary_fire' | 'use';
 export type RuntimeActionIntentPhase = 'pressed' | 'released';
-export type RuntimeActionIntentSource = 'browser_fps_pointer' | 'programmatic';
+export type RuntimeActionIntentSource = 'browser_fps_pointer' | 'programmatic' | 'enemy_policy';
 export interface RuntimeActionIntentEnvelope {
     readonly kind: 'runtime_action_intent.v0';
     readonly action: RuntimeActionIntentKind;

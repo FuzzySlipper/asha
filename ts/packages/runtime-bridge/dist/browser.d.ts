@@ -6,5 +6,10 @@ export { RuntimeBridgeError, frameCursor } from './bridge.js';
 export type { CompositionStatus, EngineConfig, EngineHandle, FrameCursor, ReplayFixture, ReplaySessionHandle, ReplayStepReport, RuntimeBridge, RuntimeBridgeErrorKind, RuntimeBufferHandle, RuntimeBufferView, StepInputEnvelope, StepResult, VoxelMeshBoundsEvidence, VoxelMeshChunkEvidence, VoxelMeshEvidenceRequest, VoxelMeshEvidenceSnapshot, VoxelMeshStatsEvidence, WorldLoadRequest, WorldSaveSummary, } from './bridge.js';
 export * from './mock.js';
 export * from './browser-fps-input.js';
+export * from './combat-readout.js';
+export * from './generated-tunnel.js';
+export * from './nav-readout.js';
+export * from './enemy-policy.js';
+export * from './runtime-action.js';
 export * from './runtime-session.js';
 //# sourceMappingURL=browser.d.ts.map

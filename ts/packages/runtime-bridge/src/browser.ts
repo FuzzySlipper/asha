@@ -69,4 +69,9 @@ export type {
 } from './bridge.js';
 export * from './mock.js';
 export * from './browser-fps-input.js';
+export * from './combat-readout.js';
+export * from './generated-tunnel.js';
+export * from './nav-readout.js';
+export * from './enemy-policy.js';
+export * from './runtime-action.js';
 export * from './runtime-session.js';

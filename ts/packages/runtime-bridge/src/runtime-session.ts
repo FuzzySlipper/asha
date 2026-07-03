@@ -595,7 +595,11 @@ function validateRuntimeActionIntentEnvelope(envelope: RuntimeActionIntentEnvelo
   if (envelope.phase !== 'pressed' && envelope.phase !== 'released') {
     throw new RuntimeBridgeError('invalid_input', 'runtime action intent phase is unsupported');
   }
-  if (envelope.source !== 'browser_fps_pointer' && envelope.source !== 'programmatic') {
+  if (
+    envelope.source !== 'browser_fps_pointer' &&
+    envelope.source !== 'programmatic' &&
+    envelope.source !== 'enemy_policy'
+  ) {
     throw new RuntimeBridgeError('invalid_input', 'runtime action intent source is unsupported');
   }
   if (!Number.isSafeInteger(envelope.tick) || envelope.tick < 0) {
