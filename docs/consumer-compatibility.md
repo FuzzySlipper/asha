@@ -69,6 +69,50 @@ The metadata schema is intentionally tiny for now:
 
 No consumer should import raw native transports, generated contract internals, ASHA package `src/*` paths, Rust crate paths, or arbitrary runtime JSON tunnels. Missing public API should become an ASHA engine feature request, not a private import.
 
+## asha-demo Initial Import Policy
+
+Status: task #4018 policy gate for the first minimal `/home/dev/asha-demo`
+skeleton. This section does not promote new public packages; it records the
+current manifest decision in `harness/public-surface/ts-packages.json`.
+
+The first `asha-demo` skeleton may depend on only these ASHA package roots:
+
+| Package | Manifest status | Initial demo use | Rationale |
+|---|---|---|---|
+| `@asha/contracts` | `public` | Allowed | Generated DTO/type border from Rust protocol crates. Import from the package root only; never from `src/generated/*` or `dist/generated/*`. |
+| `@asha/runtime-bridge` | `public` | Allowed, but no native/raw transport bypass | Transport-neutral runtime facade. Current World* method names are compatibility names; demo docs should use RuntimeSession/ProjectBundle vocabulary. |
+| `@asha/game-workspace` | `unstable` | Allowed for manifest/workspace validation | The current typed ASHA Game Project manifest/workspace surface. This is the preferred first skeleton dependency. |
+| `@asha/render-projection` | `unstable` | Allowed for renderer-neutral projection state only | Consumers may use retained render-diff projection semantics through the root package. This is not permission to mutate authority or decode arbitrary JSON. |
+| `@asha/command-registry` | `unstable` | Optional, only for declared command/readout metadata | Useful for Studio-compatible typed command/evidence metadata. The skeleton should not require it unless it has a concrete manifest/readout need. |
+
+The first skeleton must not import these ASHA surfaces directly:
+
+| Forbidden surface | Decision |
+|---|---|
+| `@asha/renderer-three` | Remains `unstable` and allowed only for `asha-testing`. It is an engine-owned Three.js implementation package for smoke/testing, not the initial `asha-demo` renderer contract. A future visual demo must first choose an upstream path: promote/widen a renderer package with compatibility risk documented, or expose another public renderer facade. |
+| `@asha/devtools` | Remains Studio/testing-only. Studio owns live/runtime readouts; `asha-demo` should not make devtools a direct product dependency. |
+| `@asha/script-sdk`, `@asha/script-host`, `@asha/policy-core`, `@asha/policy-examples` | Remain internal. Demo-owned policy packs are deferred until ASHA main exposes a public policy-authoring/packaging surface. `@asha/game-workspace` already classifies policy source authoring as reserved/deferred. |
+| `@asha/native-bridge`, `@asha/wasm-replay-bridge` | Remain internal. Runtime access goes through `@asha/runtime-bridge`; replay/WASM proof paths stay engine/testing-owned. |
+| ASHA package `src/*` or `dist/generated/*` paths | Forbidden. Consumers use package roots only. |
+| Rust crate paths or generated contract hand edits | Forbidden. Protocol changes go through Rust protocol source plus `protocol-codegen`. |
+
+Renderer decision for this gate: the initial `asha-demo` skeleton should not
+claim a Three.js-rendered game. It may record a future rendering placeholder and
+may consume `@asha/render-projection` for renderer-neutral data if needed, but a
+human-facing Three.js renderer is blocked until an upstream public renderer path
+is approved. Directly adding `@asha/renderer-three` to `asha-demo` is not allowed
+by the current manifest.
+
+Policy decision for this gate: no demo-owned TypeScript policy package is
+allowed yet. Catalog or policy directories may exist as documented placeholders
+only if they do not import internal ASHA policy packages and do not claim runtime
+policy execution.
+
+No manifest change was made for #4018 because the current engine manifest already
+encodes the intended roles: `asha-demo` may use the allowed package roots above,
+while renderer-three, devtools, raw transports, replay bridge, and policy authoring
+packages remain outside the demo boundary.
+
 ## Generated contract compatibility log
 
 ### `contracts.v0` — initial local-path boundary

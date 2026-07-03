@@ -2,6 +2,7 @@
 //! replay unit, and runtime/scene transform divergence (subtask #2316).
 
 use core_assets::{markers, AssetRef, AssetReference, AssetVersionReq};
+use core_entity::EntitySource;
 use core_ids::{EntityId, SceneId, SceneNodeId, WorldId};
 use core_math::Vec3;
 use core_scene::{
@@ -124,6 +125,49 @@ fn replay_sees_one_bootstrap_unit() {
     assert_eq!(record.node_count, record.entity_count);
     assert_eq!(record.source_trace.len(), 2);
     assert_eq!(record.scene_id, SceneId::new(100));
+}
+
+#[test]
+fn ecrp_project_bundle_scene_bootstrap_seeds_session_capability_state() {
+    // Current implementation compatibility:
+    // - stored ProjectBundle-like content is represented by FlatSceneDocument;
+    // - RuntimeSession/SessionState is represented by core_scene::WorldState.
+    // The proof stays in Rust authority and uses deterministic replay/hash
+    // readouts instead of exposing StateStore or inventing a TS JSON hatch.
+    let doc = minimal_doc();
+    let (world, record) = bootstrap_scene(&doc, WorldId::new(44)).unwrap();
+
+    assert_eq!(record.replay_unit_label(), "scene.bootstrap");
+    assert_eq!(record.world_id, WorldId::new(44));
+    assert_eq!(record.world_hash, world.hash());
+    assert_eq!(record.source_trace.len(), 2);
+
+    let mesh_entity = world.entity_for_node(SceneNodeId::new(2)).unwrap();
+    let runtime = world.entity(mesh_entity).unwrap();
+    assert_eq!(runtime.source_node, Some(SceneNodeId::new(2)));
+    assert_eq!(
+        runtime.transform.unwrap().translation,
+        Vec3::new(2.0, 0.0, 0.0)
+    );
+
+    let snapshot = world.entity_snapshot();
+    let mesh_record = snapshot
+        .records
+        .iter()
+        .find(|record| record.core.id == mesh_entity)
+        .expect("bootstrapped mesh entity is snapshotted");
+    assert!(matches!(
+        &mesh_record.core.source,
+        EntitySource::SceneBootstrap { node } if *node == SceneNodeId::new(2)
+    ));
+    assert_eq!(
+        mesh_record.transform.unwrap().transform.translation,
+        Vec3::new(2.0, 0.0, 0.0)
+    );
+
+    let baseline_hash = world.entity_hash();
+    assert_eq!(baseline_hash, world.entity_hash());
+    assert_eq!(doc, minimal_doc(), "bootstrap does not mutate stored content");
 }
 
 #[test]
