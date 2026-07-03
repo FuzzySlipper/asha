@@ -25,6 +25,8 @@ Every `ts/packages/*` package is listed there as `public`, `unstable`, or `inter
 Consumer repos should validate allowlists against that manifest instead of inventing
 their own package truth. The manifest records each package's ownership key, intended
 consumer role, compatibility marker when one exists, and changelog anchor.
+It also records consumer-role import policies, starting with the `asha-demo`
+package-root allowlist and private/internal forbidden alternatives.
 
 Tier 1 public packages carry `asha.compatibility` in `package.json` and a package-local
 `compatibility.json` file. Some unstable surfaces carry package-local compatibility
@@ -38,13 +40,15 @@ metadata while their consumer role is still being ratified.
 | `@asha/devtools` | `unstable` | `ts/packages/devtools/compatibility.json` | `devtools-protocol.v0` | Observational attach/readout protocol for tools and testing harnesses. |
 | `@asha/game-workspace` | `unstable` | `ts/packages/game-workspace/compatibility.json` | `game-workspace.v0` | Typed game/workspace manifest validation for consumer repos. |
 | `@asha/render-projection` | `unstable` | `ts/packages/render-projection/compatibility.json` | `render-projection.v0` | Renderer-neutral retained render-diff application model. |
+| `@asha/ui-dom` | `unstable` | none | none | Render-agnostic UI projection/control descriptors; not authority. |
 
 Additional unstable package statuses:
 
 - `@asha/editor-tools` is an unstable Studio/editor helper package. It is editor-local state only, not authority.
 - `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing and the approved `asha-demo` static-room render path. It is not the long-term public renderer contract; consumers should prefer `@asha/render-projection` for renderer-neutral retained semantics unless a task explicitly approves the root package binding.
+- `@asha/ui-dom` is an unstable render-agnostic UI projection/control descriptor package. It can expose root-level HUD/menu projection helpers, but it does not execute runtime commands or own DOM framework state.
 
-Internal packages, including `@asha/native-bridge`, `@asha/wasm-replay-bridge`, `@asha/app`, `@asha/electron-main`, `@asha/ui-dom`, policy/catalog packages, and `@asha/smoke`, are not downstream public surfaces.
+Internal packages, including `@asha/native-bridge`, `@asha/wasm-replay-bridge`, `@asha/app`, `@asha/electron-main`, policy/catalog packages, and `@asha/smoke`, are not downstream public surfaces.
 
 The metadata schema is intentionally tiny for now:
 
@@ -85,6 +89,7 @@ The first `asha-demo` skeleton may depend on only these ASHA package roots:
 | `@asha/render-projection` | `unstable` | Allowed for renderer-neutral projection state only | Consumers may use retained render-diff projection semantics through the root package. This is not permission to mutate authority or decode arbitrary JSON. |
 | `@asha/renderer-three` | `unstable` | Allowed for the static-room renderer path approved in #4029 | Consumers may import only from the package root and must treat it as an implementation binding over public render diffs/projection state, not as authority or a stable renderer contract. |
 | `@asha/command-registry` | `unstable` | Optional, only for declared command/readout metadata | Useful for Studio-compatible typed command/evidence metadata. The skeleton should not require it unless it has a concrete manifest/readout need. |
+| `@asha/ui-dom` | `unstable` | Optional, only for typed HUD/menu projection/control descriptors approved in #4043 | Useful for render-agnostic health/status/menu readouts and typed UI intents. It must not execute runtime authority commands. |
 
 The first skeleton must not import these ASHA surfaces directly:
 
@@ -114,6 +119,18 @@ No manifest change was made for #4018 because the current engine manifest alread
 encodes the intended roles: `asha-demo` may use the allowed package roots above,
 while renderer-three, devtools, raw transports, replay bridge, and policy authoring
 packages remain outside the demo boundary.
+
+Task #4053 adds an engine-owned consumer compatibility proof in
+`@asha/smoke` (`public-consumer-compat.test.ts`). The proof imports only
+`@asha/runtime-bridge` and `@asha/ui-dom` package roots, exercises the approved
+RuntimeSession motion/collision, generated tunnel, combat/health, nav/path,
+policy-view, and HUD/menu projections, and verifies fail-closed typed receipts
+instead of arbitrary JSON payloads. It also imports `@asha/runtime-bridge` through
+the package `browser` condition and fails if native-only symbols leak into the
+browser entry. This is the explicit public-surface safety gate for resuming
+#4037, #4044, #4045, and #4046 as long as those tasks stay on approved package
+roots and do not introduce private ASHA paths, raw transports, Rust crate imports,
+or JSON command tunnels.
 
 ## Generated contract compatibility log
 
@@ -242,6 +259,14 @@ Additive notes under this unstable status:
 ## Editor Tools unstable status
 
 `@asha/editor-tools` is explicit but unstable. It holds editor-local state helpers and previews only; it does not validate or mutate authority. Studio may consume it through root exports while the engine manifest records it as an unstable editor/tooling surface.
+
+## UI DOM unstable status
+
+`@asha/ui-dom` is explicit but unstable. It holds render-agnostic UI projection/control descriptors for engine-owned UI surfaces; it does not own authority, runtime command execution, native transport, policy behavior, or a DOM framework requirement.
+
+Additive notes under this unstable status:
+
+- #4043 adds `buildHudProjection` and `hudControlToIntent` for typed HUD/menu projection. The projection exposes health, status, non-claim text, and resume/restart/options/exit controls as pure data. `hudControlToIntent` emits typed proposals such as `runtime.restart_session_intent`; runtime/session code must still validate and execute restart behavior. No arbitrary JSON payloads or UI authority are introduced.
 
 ## Consumer pinning guidance
 

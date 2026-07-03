@@ -1,0 +1,193 @@
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  BrowserFpsInputCollector,
+  RuntimeBridgeError,
+  createMockRuntimeSession,
+  type CameraCreateRequest,
+  type CollisionConstrainedCameraInputEnvelope,
+} from '@asha/runtime-bridge';
+import { buildHudProjection, hudControlToIntent } from '@asha/ui-dom';
+
+function sessionInput() {
+  return {
+    sessionId: 'runtime-session.asha-demo.consumer-compat',
+    seed: 17,
+    project: {
+      gameId: 'asha-demo',
+      workspaceId: 'workspace.local',
+    },
+    projectBundle: {
+      bundleSchemaVersion: 1,
+      protocolVersion: 1,
+      sceneId: 42,
+    },
+  };
+}
+
+const cameraRequest: CameraCreateRequest = {
+  initialPose: {
+    position: [0, 1.6, 0],
+    yawDegrees: 0,
+    pitchDegrees: 0,
+  },
+  projection: {
+    fovYDegrees: 60,
+    near: 0.1,
+    far: 100,
+  },
+  viewport: {
+    width: 1280,
+    height: 720,
+  },
+};
+
+test('asha-demo public roots cover RuntimeSession readouts and HUD/menu projection', () => {
+  const session = createMockRuntimeSession();
+  const initialized = session.initialize(sessionInput());
+  assert.equal(initialized.identity.mode, 'reference');
+  assert.ok(initialized.identity.nonClaims.includes('not_arbitrary_json_bridge'));
+
+  const camera = session.createCamera(cameraRequest).snapshot.camera;
+  const collector = new BrowserFpsInputCollector({
+    camera,
+    moveSpeedUnitsPerSecond: 3,
+    mouseSensitivityDegreesPerPixel: 0.1,
+    pointerLocked: true,
+  });
+
+  collector.handleKeyDown({ code: 'KeyW' });
+  collector.handleMouseMove({ movementX: 6, movementY: -2 });
+  const frame = collector.drainFrame({ tick: 1, dtSeconds: 1 / 60 });
+  assert.equal(frame.runtimeCommand.kind, 'runtime.apply_first_person_camera_input');
+  const motion = session.applyFirstPersonCameraInput(frame.runtimeCommand.envelope);
+  assert.equal(motion.snapshot.tick, 1);
+  assert.notDeepEqual(motion.snapshot.pose.position, cameraRequest.initialPose.position);
+
+  const collisionEnvelope: CollisionConstrainedCameraInputEnvelope = {
+    camera: motion.snapshot.camera,
+    grid: 1,
+    input: {
+      moveForward: 1,
+      moveRight: 0,
+      moveUp: 0,
+      yawDeltaDegrees: 0,
+      pitchDeltaDegrees: 0,
+      dtSeconds: 1,
+      moveSpeedUnitsPerSecond: 99,
+    },
+    tick: 2,
+    shape: {
+      halfExtents: [0.25, 0.25, 0.25],
+    },
+    policy: {
+      mode: 'axis_separable_slide',
+      maxIterations: 3,
+    },
+  };
+  const collision = session.applyCollisionConstrainedCameraInput(collisionEnvelope);
+  assert.equal(collision.collided, true);
+  assert.deepEqual(collision.blockedAxes, ['z']);
+  assert.ok(collision.collisionProjectionHash.startsWith('fnv1a64:'));
+
+  const tunnel = session.readGeneratedTunnelReadout({ presetId: 'tiny-enclosed', seed: 17 });
+  assert.equal(tunnel.status, 'available');
+  assert.equal(tunnel.generator.outputHash, 'a9b504096397f5b4');
+  assert.deepEqual(tunnel.spawnMarkers.map((marker) => marker.id), ['player_start', 'exit_hint']);
+
+  const unsupportedTunnelOperation = session.requestGeneratedTunnelOperation({
+    operation: 'regenerate',
+    presetId: 'tiny-enclosed',
+    seed: 17,
+  });
+  assert.equal(unsupportedTunnelOperation.status, 'unsupported');
+  assert.equal(unsupportedTunnelOperation.reason, 'generated_tunnel_operation_not_wired');
+  assert.equal('payload' in unsupportedTunnelOperation, false);
+
+  const primaryFire = session.submitRuntimeActionIntent({
+    kind: 'runtime_action_intent.v0',
+    action: 'primary_fire',
+    phase: 'pressed',
+    camera: motion.snapshot.camera,
+    tick: 7,
+    source: 'programmatic',
+    pressed: true,
+  });
+  assert.equal(primaryFire.accepted, true);
+  assert.equal(primaryFire.combatReadout?.outcome.kind, 'hit');
+  const health = primaryFire.combatReadout?.health[0];
+  assert.ok(health);
+  assert.equal(health.dead, true);
+
+  const unsupportedUse = session.submitRuntimeActionIntent({
+    kind: 'runtime_action_intent.v0',
+    action: 'use',
+    phase: 'pressed',
+    camera: motion.snapshot.camera,
+    tick: 8,
+    source: 'programmatic',
+    pressed: true,
+  });
+  assert.equal(unsupportedUse.status, 'unsupported');
+  assert.equal(unsupportedUse.rejection?.reason, 'combat_runtime_not_wired');
+  assert.equal('payload' in unsupportedUse, false);
+
+  const navProjection = session.readNavProjection();
+  assert.equal(navProjection.available, true);
+  assert.equal(navProjection.projectionHash, 'd1f6ac3e051d6b6e');
+  const reachable = session.queryNavPath({ scenario: 'generated_tunnel_reachable' });
+  assert.equal(reachable.outcome, 'reached');
+  assert.equal(reachable.pathHash, 'e8e1ea7a09811ced');
+  const blocked = session.queryNavPath({ scenario: 'generated_tunnel_no_path' });
+  assert.equal(blocked.outcome, 'no_path');
+  assert.equal(blocked.rejectionReason, 'blocked');
+  const policyView = session.readNavPolicyView();
+  assert.equal(policyView.readOnly, true);
+  assert.equal(policyView.proposalOnly, true);
+  assert.equal('mutate' in policyView, false);
+  assert.equal('applyPath' in policyView, false);
+
+  const hud = buildHudProjection({
+    health,
+    status: [{ id: 'runtime', tone: 'info', text: 'Reference runtime' }],
+    nonClaims: initialized.identity.nonClaims,
+    menuOpen: true,
+  });
+  assert.equal(hud.kind, 'hud_projection.v0');
+  assert.equal(hud.health.label, 'Health 0/40 defeated');
+  assert.deepEqual(hudControlToIntent('hud-restart'), {
+    kind: 'runtime.restart_session_intent',
+    source: 'hud_menu',
+  });
+  assert.deepEqual(hudControlToIntent('hud-options'), {
+    kind: 'ui.open_options_intent',
+    source: 'hud_menu',
+  });
+
+  assert.throws(
+    () => session.queryNavPath({ maxVisited: 0 }),
+    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
+  );
+});
+
+test('asha-demo browser condition imports runtime bridge without native-only exports', () => {
+  const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const proof = `
+    const surface = await import('@asha/runtime-bridge');
+    const required = ['createMockRuntimeSession', 'BrowserFpsInputCollector', 'RuntimeBridgeError'];
+    const forbidden = ['NativeRuntimeBridge', 'createNativeRuntimeBridge', 'NATIVE_WIRED_OPERATIONS'];
+    const missing = required.filter((name) => !(name in surface));
+    const leaked = forbidden.filter((name) => name in surface);
+    if (missing.length > 0 || leaked.length > 0) {
+      throw new Error(JSON.stringify({ missing, leaked }));
+    }
+  `;
+  execFileSync(process.execPath, ['--conditions=browser', '--input-type=module', '--eval', proof], {
+    cwd: packageRoot,
+    stdio: 'pipe',
+  });
+});

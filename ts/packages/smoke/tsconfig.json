@@ -7,6 +7,7 @@
     { "path": "../runtime-bridge" },
     { "path": "../renderer-three" },
     { "path": "../editor-tools" },
+    { "path": "../ui-dom" },
     { "path": "../app" }
   ]
 }

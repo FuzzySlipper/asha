@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EditorStore, initialEditorContext, reduce } from '@asha/editor-tools';
-import { defaultCamera, cameraPointerRay, orbitYaw, dolly, clampCameraOutOfSolid, inspect, previewOverlayDiffs, materialPalette, buildEditorControls, controlToAction, MAX_BRUSH_SIZE, OVERLAY_HANDLE_BASE, } from './index.js';
+import { defaultCamera, cameraPointerRay, orbitYaw, dolly, clampCameraOutOfSolid, inspect, previewOverlayDiffs, materialPalette, buildEditorControls, controlToAction, buildHudProjection, hudControlToIntent, MAX_BRUSH_SIZE, OVERLAY_HANDLE_BASE, } from './index.js';
 function selectedContext(over = {}) {
     return {
         ...initialEditorContext(0),
@@ -177,5 +177,68 @@ test('controlToAction maps interactions to editor actions and round-trips throug
     // Command buttons are app-level, not editor actions.
     assert.equal(controlToAction('commit', 'commit'), null);
     assert.equal(controlToAction('cancel', 'cancel'), null);
+});
+// ── HUD/menu projection (#4043) ───────────────────────────────────────────────
+test('buildHudProjection exposes health, status, non-claims, and menu controls', () => {
+    const projection = buildHudProjection({
+        health: { entity: 20, current: 24, max: 40, dead: false },
+        status: [{ id: 'runtime', tone: 'info', text: 'Reference runtime' }],
+        nonClaims: ['not_native_runtime', 'not_gameplay_loop'],
+        menuOpen: true,
+    });
+    assert.equal(projection.kind, 'hud_projection.v0');
+    assert.equal(projection.health.entity, 20);
+    assert.equal(projection.health.current, 24);
+    assert.equal(projection.health.max, 40);
+    assert.equal(projection.health.ratio, 0.6);
+    assert.equal(projection.health.label, 'Health 24/40');
+    assert.deepEqual(projection.status, [{ id: 'runtime', tone: 'info', text: 'Reference runtime' }]);
+    assert.deepEqual(projection.nonClaims, ['not_native_runtime', 'not_gameplay_loop']);
+    const controlsById = new Map(projection.menu.controls.map((control) => [control.id, control]));
+    assert.equal(projection.menu.open, true);
+    assert.equal(controlsById.get('hud-resume')?.disabled, false);
+    assert.equal(controlsById.get('hud-restart')?.label, 'Restart session');
+    assert.equal(controlsById.get('hud-options')?.label, 'Options');
+    assert.equal(controlsById.get('hud-exit')?.label, 'Exit');
+    for (const control of projection.menu.controls) {
+        assert.equal(control.role, 'button');
+        assert.ok(control.label.length > 0);
+    }
+});
+test('HUD menu controls map to typed intents only', () => {
+    assert.deepEqual(hudControlToIntent('hud-restart'), {
+        kind: 'runtime.restart_session_intent',
+        source: 'hud_menu',
+    });
+    assert.deepEqual(hudControlToIntent('hud-options'), {
+        kind: 'ui.open_options_intent',
+        source: 'hud_menu',
+    });
+    assert.deepEqual(hudControlToIntent('hud-exit'), {
+        kind: 'ui.exit_to_menu_intent',
+        source: 'hud_menu',
+    });
+    assert.deepEqual(hudControlToIntent('hud-resume'), {
+        kind: 'ui.resume_intent',
+        source: 'hud_menu',
+    });
+    assert.equal(hudControlToIntent('commit'), null);
+    const restart = hudControlToIntent('hud-restart');
+    assert.ok(restart);
+    assert.equal('payload' in restart, false);
+    assert.equal('command' in restart, false);
+    assert.equal('submit' in restart, false);
+});
+test('HUD health projection validates invalid readout data and marks defeated state', () => {
+    const defeated = buildHudProjection({
+        health: { entity: 20, current: 0, max: 40, dead: true },
+        status: [{ id: 'combat', tone: 'danger', text: 'Defeated' }],
+        nonClaims: [],
+    });
+    assert.equal(defeated.health.dead, true);
+    assert.equal(defeated.health.ratio, 0);
+    assert.equal(defeated.health.label, 'Health 0/40 defeated');
+    assert.equal(defeated.menu.controls.find((control) => control.id === 'hud-resume')?.disabled, true);
+    assert.throws(() => buildHudProjection({ health: { entity: 1, current: 41, max: 40, dead: false }, status: [], nonClaims: [] }), /current must not exceed max/);
 });
 //# sourceMappingURL=ui.test.js.map

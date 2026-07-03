@@ -12,6 +12,11 @@ import { createMockRuntimeSession, type RuntimeSessionFacade } from '@asha/runti
 
 No consumer should import package internals, raw native transports, generated file paths, or Rust crate paths.
 
+The cross-surface consumer proof for #4053 lives in
+`ts/packages/smoke/src/public-consumer-compat.test.ts`. It intentionally imports
+only package roots and is the current evidence that `asha-demo` can consume the
+RuntimeSession readout/HUD surfaces without private ASHA paths.
+
 ## Current API
 
 `RuntimeSessionFacade` exposes:

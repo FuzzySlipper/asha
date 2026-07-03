@@ -224,6 +224,80 @@ export function controlToAction(id, value) {
             return null; // commit / cancel are app-level
     }
 }
+export function buildHudProjection(input) {
+    validateHealth(input.health);
+    const health = projectHudHealth(input.health);
+    const controls = [
+        {
+            id: 'hud-resume',
+            role: 'button',
+            label: 'Resume',
+            value: 'resume',
+            disabled: input.menuOpen !== true,
+        },
+        {
+            id: 'hud-restart',
+            role: 'button',
+            label: 'Restart session',
+            value: 'restart',
+        },
+        {
+            id: 'hud-options',
+            role: 'button',
+            label: 'Options',
+            value: 'options',
+        },
+        {
+            id: 'hud-exit',
+            role: 'button',
+            label: 'Exit',
+            value: 'exit',
+        },
+    ];
+    return {
+        kind: 'hud_projection.v0',
+        health,
+        status: [...input.status],
+        nonClaims: [...input.nonClaims],
+        menu: {
+            open: input.menuOpen ?? false,
+            controls,
+        },
+    };
+}
+export function hudControlToIntent(controlId) {
+    switch (controlId) {
+        case 'hud-resume':
+            return { kind: 'ui.resume_intent', source: 'hud_menu' };
+        case 'hud-restart':
+            return { kind: 'runtime.restart_session_intent', source: 'hud_menu' };
+        case 'hud-options':
+            return { kind: 'ui.open_options_intent', source: 'hud_menu' };
+        case 'hud-exit':
+            return { kind: 'ui.exit_to_menu_intent', source: 'hud_menu' };
+        default:
+            return null;
+    }
+}
+function validateHealth(health) {
+    if (!Number.isFinite(health.current) || !Number.isFinite(health.max) || health.max <= 0 || health.current < 0) {
+        throw new Error('HUD health must satisfy finite 0 <= current and max > 0');
+    }
+    if (health.current > health.max) {
+        throw new Error('HUD health current must not exceed max');
+    }
+}
+function projectHudHealth(health) {
+    const ratio = health.max === 0 ? 0 : health.current / health.max;
+    return {
+        entity: health.entity,
+        current: health.current,
+        max: health.max,
+        dead: health.dead,
+        ratio,
+        label: health.dead ? `Health ${health.current}/${health.max} defeated` : `Health ${health.current}/${health.max}`,
+    };
+}
 function gatedLabel(base, gate) {
     return gate.eligible ? base : `${base} (${gate.reason})`;
 }

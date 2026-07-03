@@ -148,6 +148,65 @@ def check_runtime_bridge_api_crate() -> None:
         fail("runtime-bridge-api must document that downstream consumers should not import it directly")
 
 
+def check_consumer_policies(manifest: dict[str, Any], records_by_package: dict[str, dict[str, Any]]) -> None:
+    policies = manifest.get("consumerPolicies")
+    if not isinstance(policies, list) or not policies:
+        fail("public surface manifest must declare consumerPolicies")
+
+    seen_roles: set[str] = set()
+    for policy in policies:
+        if not isinstance(policy, dict):
+            fail("consumer policy records must be objects")
+        role = policy.get("consumerRole")
+        if not isinstance(role, str) or not role:
+            fail("consumer policy must declare consumerRole")
+        if role in seen_roles:
+            fail(f"consumer policy duplicates role {role}")
+        seen_roles.add(role)
+
+        approved = policy.get("approvedPackageRoots")
+        forbidden = policy.get("forbiddenPackageRoots")
+        patterns = policy.get("forbiddenSpecifierPatterns")
+        if not isinstance(approved, list) or not all(isinstance(pkg, str) for pkg in approved):
+            fail(f"{role} consumer policy approvedPackageRoots must be a string array")
+        if not isinstance(forbidden, list) or not all(isinstance(pkg, str) for pkg in forbidden):
+            fail(f"{role} consumer policy forbiddenPackageRoots must be a string array")
+        if not isinstance(patterns, list) or not all(isinstance(pattern, str) for pattern in patterns):
+            fail(f"{role} consumer policy forbiddenSpecifierPatterns must be a string array")
+
+        approved_set = set(cast(list[str], approved))
+        forbidden_set = set(cast(list[str], forbidden))
+        overlap = sorted(approved_set & forbidden_set)
+        if overlap:
+            fail(f"{role} consumer policy approves and forbids package(s): {', '.join(overlap)}")
+
+        for pkg_name in sorted(approved_set):
+            record = records_by_package.get(pkg_name)
+            if record is None:
+                fail(f"{role} consumer policy approves unknown package {pkg_name}")
+            if record.get("status") not in {"public", "unstable"}:
+                fail(f"{role} consumer policy approves non-public package {pkg_name}")
+            allowed_roles = record.get("allowedConsumerRoles")
+            if not isinstance(allowed_roles, list) or role not in allowed_roles:
+                fail(f"{role} consumer policy approves {pkg_name}, but package manifest does not allow that role")
+
+        for pkg_name, record in sorted(records_by_package.items()):
+            allowed_roles = record.get("allowedConsumerRoles")
+            if isinstance(allowed_roles, list) and role in allowed_roles and pkg_name not in approved_set:
+                fail(f"{role} is allowed by {pkg_name}, but the consumer policy does not approve that root")
+
+        for pkg_name in sorted(forbidden_set):
+            record = records_by_package.get(pkg_name)
+            if record is None:
+                fail(f"{role} consumer policy forbids unknown package {pkg_name}")
+            allowed_roles = record.get("allowedConsumerRoles")
+            if isinstance(allowed_roles, list) and role in allowed_roles:
+                fail(f"{role} consumer policy forbids {pkg_name}, but package manifest allows that role")
+
+        if not any("*" in pattern for pattern in cast(list[str], patterns)):
+            fail(f"{role} consumer policy must include glob-like forbidden specifier patterns")
+
+
 def check_manifest() -> None:
     manifest = read_json(MANIFEST_PATH)
     if manifest.get("schemaVersion") != 1:
@@ -160,6 +219,7 @@ def check_manifest() -> None:
     ownership_packages = load_ownership().get("package", {})
     seen_packages: set[str] = set()
     manifest_names: set[str] = set()
+    records_by_package: dict[str, dict[str, Any]] = {}
 
     for record in records:
         if not isinstance(record, dict):
@@ -171,6 +231,7 @@ def check_manifest() -> None:
             fail(f"public surface manifest duplicates {pkg_name}")
         seen_packages.add(pkg_name)
         manifest_names.add(pkg_name)
+        records_by_package[pkg_name] = record
 
         status = record.get("status")
         if status not in VALID_STATUSES:
@@ -236,6 +297,7 @@ def check_manifest() -> None:
         fail(f"public surface manifest is missing package(s): {', '.join(missing)}")
     if extra:
         fail(f"public surface manifest references missing package(s): {', '.join(extra)}")
+    check_consumer_policies(manifest, records_by_package)
 
 
 check_manifest()

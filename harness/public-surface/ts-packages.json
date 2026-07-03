@@ -1,5 +1,34 @@
 {
   "schemaVersion": 1,
+  "consumerPolicies": [
+    {
+      "consumerRole": "asha-demo",
+      "approvedPackageRoots": [
+        "@asha/contracts",
+        "@asha/runtime-bridge",
+        "@asha/game-workspace",
+        "@asha/render-projection",
+        "@asha/renderer-three",
+        "@asha/command-registry",
+        "@asha/ui-dom"
+      ],
+      "forbiddenPackageRoots": [
+        "@asha/app",
+        "@asha/devtools",
+        "@asha/native-bridge",
+        "@asha/wasm-replay-bridge",
+        "@asha/script-sdk",
+        "@asha/script-host",
+        "@asha/policy-core",
+        "@asha/policy-examples"
+      ],
+      "forbiddenSpecifierPatterns": [
+        "@asha/*/src/*",
+        "@asha/*/dist/generated/*",
+        "engine-rs/crates/*"
+      ]
+    }
+  ],
   "packages": [
     {
       "package": "@asha/contracts",
@@ -150,10 +179,11 @@
     },
     {
       "package": "@asha/ui-dom",
-      "status": "internal",
+      "status": "unstable",
       "ownershipKey": "ts/packages/ui-dom",
-      "intendedConsumerRole": "Engine DOM component package, not a consumer API.",
-      "allowedConsumerRoles": []
+      "intendedConsumerRole": "Render-agnostic UI projection/control descriptors for HUD/menu and engine-owned UI surfaces; not authority.",
+      "allowedConsumerRoles": ["asha-demo", "asha-studio"],
+      "changelog": "docs/consumer-compatibility.md#ui-dom-unstable-status"
     },
     {
       "package": "@asha/wasm-replay-bridge",

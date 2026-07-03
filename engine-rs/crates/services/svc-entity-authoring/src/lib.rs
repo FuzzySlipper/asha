@@ -291,7 +291,7 @@ fn validate_entity_definition_capability(
                     "transform initial value must be finite",
                 ));
             }
-            if transform.scale.iter().any(|axis| *axis == 0.0) {
+            if transform.scale.contains(&0.0) {
                 diagnostics.push(entity_definition_diag(
                     EntityDefinitionDiagnosticCode::InvalidInitialValue,
                     path,
