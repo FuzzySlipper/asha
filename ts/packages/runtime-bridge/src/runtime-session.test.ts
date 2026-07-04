@@ -130,7 +130,7 @@ test('RuntimeSession applies collision-constrained camera input against the stat
   const blocked = session.applyCollisionConstrainedCameraInput(blockedEnvelope);
 
   assert.equal(blocked.collided, true);
-  assert.deepEqual(blocked.blockedAxes, ['z']);
+  assert.deepEqual(blocked.blockedAxes, ['x', 'z']);
   assert.deepEqual(blocked.snapshot.after.pose.position, blocked.snapshot.before.pose.position);
   assert.ok(blocked.snapshot.attempted.pose.position[2] < -90);
   assert.equal(blocked.snapshot.after.pose.yawDegrees, 10);
@@ -161,6 +161,134 @@ test('RuntimeSession applies collision-constrained camera input against the stat
 
   const telemetry = session.readTelemetry();
   assert.equal(telemetry.replayRecords.at(-1)?.kind, 'applyCollisionConstrainedCameraInput');
+});
+
+test('collision-constrained camera movement is horizontal and target-obstacle constrained', () => {
+  const session = createMockRuntimeSession();
+  session.initialize(sessionInput());
+  const collisionShape = { halfExtents: [0.25, 0.7, 0.25] as const };
+  const collisionPolicy = { mode: 'axis_separable_slide' as const, maxIterations: 3 };
+  const camera = session.createCamera({
+    initialPose: {
+      position: [0, 1.62, 0],
+      yawDegrees: 0,
+      pitchDegrees: 55,
+    },
+    projection: {
+      fovYDegrees: 60,
+      near: 0.1,
+      far: 100,
+    },
+    viewport: {
+      width: 1280,
+      height: 720,
+    },
+  }).snapshot.camera;
+
+  const intoTarget = session.applyCollisionConstrainedCameraInput({
+    camera,
+    grid: 1,
+    input: {
+      moveForward: 1,
+      moveRight: 0,
+      moveUp: 0,
+      yawDeltaDegrees: 0,
+      pitchDeltaDegrees: 0,
+      dtSeconds: 1,
+      moveSpeedUnitsPerSecond: 2,
+    },
+    tick: 1,
+    shape: collisionShape,
+    policy: collisionPolicy,
+  });
+
+  assert.equal(intoTarget.collided, true);
+  assert.deepEqual(intoTarget.blockedAxes, ['z']);
+  assert.ok(Math.abs(intoTarget.snapshot.attempted.pose.position[1] - 1.62) < 0.00001);
+  assert.ok(Math.abs(intoTarget.snapshot.after.pose.position[1] - 1.62) < 0.00001);
+
+  const yawedCamera = session.createCamera({
+    initialPose: {
+      position: [0, 1.62, 0],
+      yawDegrees: 45,
+      pitchDegrees: 55,
+    },
+    projection: {
+      fovYDegrees: 60,
+      near: 0.1,
+      far: 100,
+    },
+    viewport: {
+      width: 1280,
+      height: 720,
+    },
+  }).snapshot.camera;
+
+  const yawedForward = session.applyCollisionConstrainedCameraInput({
+    camera: yawedCamera,
+    grid: 1,
+    input: {
+      moveForward: 1,
+      moveRight: 0,
+      moveUp: 0,
+      yawDeltaDegrees: 0,
+      pitchDeltaDegrees: 0,
+      dtSeconds: 0.1,
+      moveSpeedUnitsPerSecond: 2,
+    },
+    tick: 1,
+    shape: collisionShape,
+    policy: collisionPolicy,
+  });
+
+  assert.equal(yawedForward.collided, false);
+  assert.ok(yawedForward.snapshot.after.pose.position[0] > 0);
+  assert.ok(yawedForward.snapshot.after.pose.position[2] < 0);
+  assert.ok(Math.abs(yawedForward.snapshot.after.pose.position[1] - 1.62) < 0.00001);
+});
+
+test('collision-constrained camera movement uses same-tick look deltas for forward movement', () => {
+  const session = createMockRuntimeSession();
+  session.initialize(sessionInput());
+  const camera = session.createCamera({
+    initialPose: {
+      position: [0, 1.62, 1.5],
+      yawDegrees: 0,
+      pitchDegrees: 0,
+    },
+    projection: {
+      fovYDegrees: 60,
+      near: 0.1,
+      far: 100,
+    },
+    viewport: {
+      width: 1280,
+      height: 720,
+    },
+  }).snapshot.camera;
+
+  const moved = session.applyCollisionConstrainedCameraInput({
+    camera,
+    grid: 1,
+    input: {
+      moveForward: 1,
+      moveRight: 0,
+      moveUp: 0,
+      yawDeltaDegrees: 45,
+      pitchDeltaDegrees: 0,
+      dtSeconds: 0.1,
+      moveSpeedUnitsPerSecond: 2,
+    },
+    tick: 1,
+    shape: { halfExtents: [0.25, 0.7, 0.25] },
+    policy: { mode: 'axis_separable_slide', maxIterations: 3 },
+  });
+
+  assert.equal(moved.collided, false);
+  assert.equal(moved.snapshot.after.pose.yawDegrees, 45);
+  assert.ok(moved.snapshot.after.pose.position[0] > 0);
+  assert.ok(moved.snapshot.after.pose.position[2] < 1.5);
+  assert.ok(Math.abs(moved.snapshot.after.pose.position[1] - 1.62) < 0.00001);
 });
 
 test('RuntimeSession exposes the generated tunnel fixture readout and fail-closed operations', () => {

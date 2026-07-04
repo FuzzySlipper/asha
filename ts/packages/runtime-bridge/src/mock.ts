@@ -114,6 +114,16 @@ function basisFromPose(pose: CameraSnapshot['pose']): CameraSnapshot['basis'] {
   };
 }
 
+function horizontalMovementBasisFromPose(pose: CameraSnapshot['pose']): Pick<CameraSnapshot['basis'], 'forward' | 'right'> {
+  const yaw = f32((pose.yawDegrees * Math.PI) / 180);
+  const sy = f32(Math.sin(yaw));
+  const cy = f32(Math.cos(yaw));
+  return {
+    forward: [sy, 0, f32(-cy)],
+    right: [cy, 0, sy],
+  };
+}
+
 function matrixKey(values: readonly number[]): string {
   return values.map((value) => value.toFixed(3)).join(',');
 }
@@ -134,6 +144,10 @@ const STATIC_ROOM_COLLIDERS: readonly StaticRoomCollider[] = [
   { id: 'static-room.wall.south', min: [-3, -1, 2], max: [3, 2, 3] },
   { id: 'static-room.wall.west', min: [-3, -1, -3], max: [-2, 2, 3] },
   { id: 'static-room.wall.east', min: [2, -1, -3], max: [3, 2, 3] },
+  { id: 'static-room.target.01', min: [-0.31, 0, -1.66], max: [0.31, 2.2, -1.04] },
+  { id: 'static-room.target.02', min: [1.01, 0, -0.89], max: [1.49, 0.85, -0.41] },
+  { id: 'static-room.target.03', min: [-1.41, 0, -1.16], max: [-0.89, 1.05, -0.64] },
+  { id: 'static-room.target.04', min: [0.63, 0, 0.88], max: [1.07, 0.75, 1.32] },
 ];
 
 const STATIC_ROOM_WORLD_HASH = `fnv1a64:${fnv1a64(
@@ -582,39 +596,46 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (input.policy.mode !== 'axis_separable_slide' || input.policy.maxIterations < 1 || input.policy.maxIterations > 3) {
       throw new RuntimeBridgeError('invalid_input', 'only axis_separable_slide with maxIterations in 1..=3 is supported');
     }
+    const lookPose: CameraSnapshot['pose'] = {
+      position: before.pose.position,
+      yawDegrees: f32(before.pose.yawDegrees + input.input.yawDeltaDegrees),
+      pitchDegrees: Math.max(-89, Math.min(89, f32(before.pose.pitchDegrees + input.input.pitchDeltaDegrees))),
+    };
+    const lookBasis = basisFromPose(lookPose);
+    const movementBasis = horizontalMovementBasisFromPose(lookPose);
     const distance = f32(input.input.dtSeconds * input.input.moveSpeedUnitsPerSecond);
     const attemptedPose = {
       position: [
         f32(
           before.pose.position[0] +
             f32(
-              f32(before.basis.forward[0] * input.input.moveForward) +
-                f32(before.basis.right[0] * input.input.moveRight) +
-                f32(before.basis.up[0] * input.input.moveUp),
+                f32(movementBasis.forward[0] * input.input.moveForward) +
+                f32(movementBasis.right[0] * input.input.moveRight) +
+                f32(lookBasis.up[0] * input.input.moveUp),
             ) *
               distance,
         ),
         f32(
           before.pose.position[1] +
             f32(
-              f32(before.basis.forward[1] * input.input.moveForward) +
-                f32(before.basis.right[1] * input.input.moveRight) +
-                f32(before.basis.up[1] * input.input.moveUp),
+                f32(movementBasis.forward[1] * input.input.moveForward) +
+                f32(movementBasis.right[1] * input.input.moveRight) +
+                f32(lookBasis.up[1] * input.input.moveUp),
             ) *
               distance,
         ),
         f32(
           before.pose.position[2] +
             f32(
-              f32(before.basis.forward[2] * input.input.moveForward) +
-                f32(before.basis.right[2] * input.input.moveRight) +
-                f32(before.basis.up[2] * input.input.moveUp),
+                f32(movementBasis.forward[2] * input.input.moveForward) +
+                f32(movementBasis.right[2] * input.input.moveRight) +
+                f32(lookBasis.up[2] * input.input.moveUp),
             ) *
               distance,
         ),
       ] as readonly [number, number, number],
-      yawDegrees: f32(before.pose.yawDegrees + input.input.yawDeltaDegrees),
-      pitchDegrees: Math.max(-89, Math.min(89, f32(before.pose.pitchDegrees + input.input.pitchDeltaDegrees))),
+      yawDegrees: lookPose.yawDegrees,
+      pitchDegrees: lookPose.pitchDegrees,
     };
     const attempted: CameraSnapshot = { ...before, tick: input.tick, pose: attemptedPose, basis: basisFromPose(attemptedPose) };
     const delta = [

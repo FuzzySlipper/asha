@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMockRuntimeSession } from '@asha/runtime-bridge';
-import { FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, renderFirstPersonTunnelViewport, summarizeFirstPersonTunnelViewport, } from './index.js';
+import { createAshaRendererBrowserSurfaceFrame, FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, renderProjectedFrame, renderFirstPersonTunnelViewport, summarizeFirstPersonTunnelViewport, } from './index.js';
 function sessionInput() {
     return {
         sessionId: 'renderer-three.generated-tunnel.viewport',
@@ -92,6 +92,8 @@ test('renderer-three package root exposes tunnel viewport helpers under browser 
     const proof = `
     const surface = await import('@asha/renderer-three');
     const required = [
+      'createAshaRendererBrowserSurfaceFrame',
+      'mountAshaRendererBrowserSurface',
       'createGeneratedTunnelViewportFrame',
       'renderFirstPersonTunnelViewport',
       'summarizeFirstPersonTunnelViewport'
@@ -107,5 +109,16 @@ test('renderer-three package root exposes tunnel viewport helpers under browser 
         cwd: packageRoot,
         stdio: 'pipe',
     });
+});
+test('browser surface frame is an ASHA render diff consumed by the retained renderer', () => {
+    const frame = createAshaRendererBrowserSurfaceFrame();
+    const result = renderProjectedFrame(frame);
+    assert.equal(frame.ops.length, 33);
+    assert.equal(result.projection.handleCount, 33);
+    assert.equal(result.renderer.handleCount, 33);
+    assert.match(result.structuralSnapshot, /asha-renderer-flat-plane/);
+    assert.match(result.structuralSnapshot, /asha-renderer-collision-wall-north/);
+    assert.match(result.structuralSnapshot, /asha-renderer-random-cube-01/);
+    assert.match(result.structuralSnapshot, /asha-renderer-random-cube-28/);
 });
 //# sourceMappingURL=tunnel-viewport.test.js.map
