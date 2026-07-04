@@ -151,18 +151,51 @@ test('asha-demo public roots cover RuntimeSession readouts and HUD/menu projecti
   assert.equal('mutate' in policyView, false);
   assert.equal('applyPath' in policyView, false);
 
+  const autonomousTick = session.runAutonomousPolicyTick({
+    targetCamera: motion.snapshot.camera,
+    policySource: 'export const policy = (view) => view;',
+  });
+  assert.equal(autonomousTick.kind, 'runtime_session.autonomous_policy_tick.v0');
+  assert.equal(autonomousTick.nav.pathHash, reachable.pathHash);
+  assert.equal(autonomousTick.proposalSummary.acceptedProposalCount, 1);
+  assert.equal(autonomousTick.proposalSummary.unsupportedProposalCount, 1);
+  assert.equal(autonomousTick.commandSummary.acceptedRuntimeActionCount, 1);
+  assert.equal(autonomousTick.movementSummary?.reason, 'movement_authority_not_wired');
+  assert.equal(autonomousTick.combatSummary?.healthHash, '3c89045230f2d9d9');
+  assert.equal(autonomousTick.replay.lastRecordKind, 'runAutonomousPolicyTick');
+  assert.ok(autonomousTick.tickHash.startsWith('fnv1a64:'));
+
+  const lifecycle = session.readLifecycleStatus();
+  assert.equal(lifecycle.kind, 'runtime_session.lifecycle_status.v0');
+  assert.equal(lifecycle.outcome.kind, 'won');
+  assert.equal(lifecycle.enemy.dead, true);
+  assert.equal(lifecycle.enemy.health.current, 0);
+  assert.equal(lifecycle.hashes.lifecycleHash, 'fnv1a64:5fbf190733451da1');
+  const playerLossFixture = session.readLifecycleStatus({ scenario: 'generated_tunnel_player_defeated' });
+  assert.equal(playerLossFixture.outcome.kind, 'lost');
+  assert.equal(playerLossFixture.player.dead, true);
+
   const hud = buildHudProjection({
-    health,
-    status: [{ id: 'runtime', tone: 'info', text: 'Reference runtime' }],
+    health: lifecycle.player.health,
+    status: [{ id: 'lifecycle', tone: 'info', text: lifecycle.outcome.label }],
     nonClaims: initialized.identity.nonClaims,
     menuOpen: true,
   });
   assert.equal(hud.kind, 'hud_projection.v0');
-  assert.equal(hud.health.label, 'Health 0/40 defeated');
-  assert.deepEqual(hudControlToIntent('hud-restart'), {
-    kind: 'runtime.restart_session_intent',
-    source: 'hud_menu',
+  assert.equal(hud.health.label, 'Health 100/100');
+  const restartIntent = hudControlToIntent('hud-restart');
+  assert.deepEqual(restartIntent, { kind: 'runtime.restart_session_intent', source: 'hud_menu' });
+  if (restartIntent?.kind !== 'runtime.restart_session_intent') {
+    throw new Error('hud-restart did not produce a runtime restart intent');
+  }
+  const restartReceipt = session.requestSessionRestart({
+    ...restartIntent,
+    requireTerminal: true,
+    expectedSessionHash: lifecycle.sessionHash,
   });
+  assert.equal(restartReceipt.accepted, true);
+  assert.equal(restartReceipt.statusAfter.outcome.kind, 'in_progress');
+  assert.equal(restartReceipt.statusAfter.fixture.resetHash, lifecycle.fixture.resetHash);
   assert.deepEqual(hudControlToIntent('hud-options'), {
     kind: 'ui.open_options_intent',
     source: 'hud_menu',

@@ -28,6 +28,9 @@ RuntimeSession readout/HUD surfaces without private ASHA paths.
 - `applyFirstPersonCameraInput(envelope)`: applies unconstrained first-person camera motion/look input.
 - `applyCollisionConstrainedCameraInput(envelope)`: applies first-person camera motion/look input through the typed collision bridge surface and returns a receipt with collided, blocked axes, world/collision projection hashes, movement hash, and the generated before/attempted/after `CameraCollisionSnapshot`.
 - `submitRuntimeActionIntent(envelope)`: accepts a typed `RuntimeActionIntentEnvelope` proposal. The reference slice accepts `primary_fire` pressed intents and returns combat/fire/health readout evidence; unsupported action intents still fail closed with typed receipts.
+- `runAutonomousPolicyTick(input)`: advances a narrow generated-tunnel enemy policy loop, validates typed movement/fire proposals, routes primary fire through runtime action authority, and reports proposal counts, nav/replay hashes, movement/combat summaries, and deterministic tick hash.
+- `readLifecycleStatus(request?)`: reads player/enemy lifecycle status, win/loss/in-progress outcome, restart eligibility, fixture reset hash, lifecycle/replay hashes, and terminal death events.
+- `requestSessionRestart(intent)`: validates a typed `runtime.restart_session_intent`, rejects stale/non-terminal requests with typed receipts, or resets the session deterministically through the existing restart path.
 - `readCombatReadout(request?)`: reads the #4040 generated-tunnel combat fixture readouts for hit/death and geometry-blocked miss evidence.
 - `readGeneratedTunnelReadout(request?)`: reads the #4038 tiny generated tunnel fixture evidence, including seed, config/output/replay hashes, spawn markers, material roles, and render/collision projection hashes.
 - `requestGeneratedTunnelOperation(request)`: returns typed fail-closed receipts for unsupported generated tunnel regenerate/apply operations.
@@ -37,7 +40,13 @@ RuntimeSession readout/HUD surfaces without private ASHA paths.
 - `readCameraProjection(request)`: reads typed camera projection matrices and projection hash.
 - `readProjection()`: returns a render/projection summary from public render diff contracts.
 - `readTelemetry()`: returns sequence/tick/composition/command/replay/hash summary.
-- `restart()`: unloads/reinitializes/reloads the same ProjectBundle input and resets tick/command counters.
+- `restart()`: unloads/reinitializes/reloads the same ProjectBundle input and resets tick/command counters and lifecycle state.
+
+Lifecycle fixture hashes in the current reference slice:
+
+- initial reset hash: `fnv1a64:d0c05bd05488e8a5`
+- enemy defeated lifecycle hash: `fnv1a64:5fbf190733451da1`
+- player defeated fixture lifecycle hash: `fnv1a64:32322a108d4f2767`
 
 The first implementation is `createMockRuntimeSession`, a reference/mock facade over the existing public `RuntimeBridge` mock. It is sufficient for downstream skeleton boot/readout tests and Studio contract work. For collision-constrained camera input, the reference mock hosts the upstream static-room collision fixture so consumers can prove wall-stop/open-space behavior without importing demo-local physics. It does not claim native authority, renderer ownership, or gameplay behavior.
 

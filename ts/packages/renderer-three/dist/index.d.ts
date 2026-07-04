@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { RenderProjection } from '@asha/render-projection';
 import { type RuntimeBufferHandle, type RuntimeBufferView } from '@asha/runtime-bridge';
 import type { MeshPickHit, RenderDiff, RenderFrameDiff, RenderHandle, SpritePickHit, RenderMaterialDescriptor, TextureDescriptor, SpriteAtlasDescriptor } from '@asha/contracts';
+import { type FirstPersonTunnelViewportInput, type FirstPersonTunnelViewportSummary } from './tunnel-viewport.js';
 export * from './static-room.js';
+export * from './tunnel-viewport.js';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export declare class RenderApplyError extends Error {
     constructor(message: string);
@@ -98,10 +100,15 @@ export interface ProjectedThreeRenderResult {
     readonly renderer: ThreeRenderer;
     readonly structuralSnapshot: string;
 }
+export interface FirstPersonTunnelViewportRenderResult extends ProjectedThreeRenderResult {
+    readonly frame: RenderFrameDiff;
+    readonly summary: FirstPersonTunnelViewportSummary;
+}
 /**
  * Apply a render frame through the renderer-neutral projection and then the
  * retained Three.js renderer. This is the package-root bridge used by demo
  * proofs: no authority state, no raw transport, no arbitrary JSON tunnel.
  */
 export declare function renderProjectedFrame(frame: RenderFrameDiff, renderer?: ThreeRenderer): ProjectedThreeRenderResult;
+export declare function renderFirstPersonTunnelViewport(input: FirstPersonTunnelViewportInput, renderer?: ThreeRenderer): FirstPersonTunnelViewportRenderResult;
 //# sourceMappingURL=index.d.ts.map

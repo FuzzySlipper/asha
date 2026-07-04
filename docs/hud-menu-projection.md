@@ -31,8 +31,10 @@ bindings because no state or authority is hidden in DOM components.
 - `ui.exit_to_menu_intent`
 - `ui.resume_intent`
 
-The restart intent is a UI proposal. Runtime/session code still validates and
-executes restarts through the runtime facade.
+The restart intent is a UI proposal. Runtime/session code validates and executes
+restarts through `RuntimeSessionFacade.requestSessionRestart`, which returns a
+typed restart receipt and rejects stale or non-terminal-gated requests without UI
+authority.
 
 Non-claims:
 

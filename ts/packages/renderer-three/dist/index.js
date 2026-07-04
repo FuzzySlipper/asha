@@ -9,7 +9,9 @@
 import * as THREE from 'three';
 import { RenderProjection } from '@asha/render-projection';
 import { decodeRenderFrameDiff, RuntimeBridgeError, } from '@asha/runtime-bridge';
+import { createGeneratedTunnelViewportFrame, summarizeFirstPersonTunnelViewport, } from './tunnel-viewport.js';
 export * from './static-room.js';
+export * from './tunnel-viewport.js';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export class RenderApplyError extends Error {
     constructor(message) {
@@ -558,6 +560,21 @@ export function renderProjectedFrame(frame, renderer = new ThreeRenderer()) {
         projection,
         renderer,
         structuralSnapshot: renderer.snapshot(),
+    };
+}
+export function renderFirstPersonTunnelViewport(input, renderer = new ThreeRenderer()) {
+    const frame = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
+    const rendered = renderProjectedFrame(frame, renderer);
+    return {
+        ...rendered,
+        frame,
+        summary: summarizeFirstPersonTunnelViewport({
+            tunnel: input.tunnel,
+            camera: input.camera,
+            frame,
+            structuralSnapshot: rendered.structuralSnapshot,
+            ...(input.collision === undefined ? {} : { collision: input.collision }),
+        }),
     };
 }
 // ── Snapshot lines (deterministic golden artifact) ────────────────────────────

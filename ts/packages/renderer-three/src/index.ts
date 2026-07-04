@@ -37,8 +37,15 @@ import type {
   SpriteAtlasDescriptor,
   Transform,
 } from '@asha/contracts';
+import {
+  createGeneratedTunnelViewportFrame,
+  summarizeFirstPersonTunnelViewport,
+  type FirstPersonTunnelViewportInput,
+  type FirstPersonTunnelViewportSummary,
+} from './tunnel-viewport.js';
 
 export * from './static-room.js';
+export * from './tunnel-viewport.js';
 
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export class RenderApplyError extends Error {
@@ -693,6 +700,11 @@ export interface ProjectedThreeRenderResult {
   readonly structuralSnapshot: string;
 }
 
+export interface FirstPersonTunnelViewportRenderResult extends ProjectedThreeRenderResult {
+  readonly frame: RenderFrameDiff;
+  readonly summary: FirstPersonTunnelViewportSummary;
+}
+
 /**
  * Apply a render frame through the renderer-neutral projection and then the
  * retained Three.js renderer. This is the package-root bridge used by demo
@@ -709,6 +721,25 @@ export function renderProjectedFrame(
     projection,
     renderer,
     structuralSnapshot: renderer.snapshot(),
+  };
+}
+
+export function renderFirstPersonTunnelViewport(
+  input: FirstPersonTunnelViewportInput,
+  renderer: ThreeRenderer = new ThreeRenderer(),
+): FirstPersonTunnelViewportRenderResult {
+  const frame = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
+  const rendered = renderProjectedFrame(frame, renderer);
+  return {
+    ...rendered,
+    frame,
+    summary: summarizeFirstPersonTunnelViewport({
+      tunnel: input.tunnel,
+      camera: input.camera,
+      frame,
+      structuralSnapshot: rendered.structuralSnapshot,
+      ...(input.collision === undefined ? {} : { collision: input.collision }),
+    }),
   };
 }
 
