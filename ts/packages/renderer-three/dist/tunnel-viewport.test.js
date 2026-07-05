@@ -3,7 +3,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import * as THREE from 'three';
 import { renderHandle } from '@asha/contracts';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 import { createAshaRendererBrowserSurfaceFrame, createAshaRendererGeneratedTunnelRoomSurfaceFrame, FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, renderProjectedFrame, renderFirstPersonTunnelViewport, summarizeFirstPersonTunnelViewport, } from './index.js';
@@ -54,16 +53,20 @@ void test('first-person tunnel viewport renders generated tunnel frame from runt
     assert.equal(result.renderer.fallbackMaterialCount, 0);
     assert.match(result.structuralSnapshot, /label "generated-tunnel-floor"/);
     assert.match(result.structuralSnapshot, /label "generated-tunnel-spawn-player_start"/);
+    const staticMeshDefs = result.frame.ops.filter(isDefineStaticMeshDiff);
+    const floorAsset = staticMeshDefs.find((op) => op.asset.asset === 'mesh/generated-tunnel-floor');
+    assert.equal(floorAsset?.asset.payload.layout.vertexCount, 24);
+    assert.equal(floorAsset?.asset.payload.layout.indexCount, 36);
     const floor = result.renderer.objectFor(renderHandle(100));
     const westWall = result.renderer.objectFor(renderHandle(102));
-    assert.ok(floor instanceof THREE.Mesh);
-    assert.ok(westWall instanceof THREE.Mesh);
-    assert.equal(floor.geometry.getAttribute('position').count, 24);
-    assert.deepEqual(floor.scale.toArray(), [5, 0.1, 9]);
-    assert.deepEqual(westWall.scale.toArray(), [0.1, 4, 9]);
+    assert.deepEqual(floor?.scale.toArray(), [5, 0.1, 9]);
+    assert.deepEqual(westWall?.scale.toArray(), [0.1, 4, 9]);
     assert.ok(result.summary.nonClaims.includes('not_runtime_authority'));
     assert.ok(result.summary.nonClaims.includes('not_pixel_golden'));
 });
+function isDefineStaticMeshDiff(op) {
+    return op.op === 'defineStaticMesh';
+}
 void test('first-person tunnel viewport summary can carry optional collision debug hashes', () => {
     const session = createMockRuntimeSession();
     session.initialize(sessionInput());
