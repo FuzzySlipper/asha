@@ -14,12 +14,19 @@ For Den Review GitHub check gates, use:
 ```json
 {
   "project_id": "asha",
+  "task_id": "<den-task-id>",
   "repository": "FuzzySlipper/asha",
+  "commit_sha": "<full-40-character-sha>",
   "ref": "main",
-  "required_checks": ["Verify ASHA"]
+  "required_checks": ["Verify ASHA"],
+  "requested_by": "<agent-name>"
 }
 ```
 
 Agents should register the exact pushed commit SHA after a task commit is
 pushed. The Den service records pass, fail, timeout, or superseded evidence on
 the task thread; GitHub Actions remains the runner.
+
+`Verify ASHA` is the GitHub Actions job/check-run name from
+`.github/workflows/offline-ci.yml`. Do not use the workflow file name as the
+required check.

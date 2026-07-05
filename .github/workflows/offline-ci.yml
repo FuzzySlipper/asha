@@ -40,7 +40,9 @@ jobs:
         with:
           node-version: "22"
           cache: pnpm
-          cache-dependency-path: ts/pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            ts/pnpm-lock.yaml
 
       - name: Run ASHA checks
         run: ./harness/ci/check-all.sh
