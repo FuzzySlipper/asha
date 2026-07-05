@@ -3,8 +3,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { renderHandle } from '@asha/contracts';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
-import { createAshaRendererBrowserSurfaceFrame, FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, renderProjectedFrame, renderFirstPersonTunnelViewport, summarizeFirstPersonTunnelViewport, } from './index.js';
+import { createAshaRendererBrowserSurfaceFrame, createAshaRendererGeneratedTunnelRoomSurfaceFrame, FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, renderProjectedFrame, renderFirstPersonTunnelViewport, summarizeFirstPersonTunnelViewport, } from './index.js';
 function sessionInput() {
     return {
         sessionId: 'renderer-three.generated-tunnel.viewport',
@@ -120,5 +121,24 @@ void test('browser surface frame is an ASHA render diff consumed by the retained
     assert.match(result.structuralSnapshot, /asha-renderer-collision-wall-north/);
     assert.match(result.structuralSnapshot, /asha-renderer-random-cube-01/);
     assert.match(result.structuralSnapshot, /asha-renderer-random-cube-28/);
+});
+void test('generated tunnel browser surface frame carries combat target metadata', () => {
+    const session = createMockRuntimeSession();
+    session.initialize(sessionInput());
+    const tunnel = session.readGeneratedTunnelReadout({ presetId: 'tiny-enclosed', seed: 17 });
+    const frame = createAshaRendererGeneratedTunnelRoomSurfaceFrame({
+        tunnel,
+        enemy: {
+            label: 'generated-tunnel-enemy',
+            position: [0, 1.1, -1.35],
+            scale: [0.7, 1.8, 0.7],
+        },
+    });
+    const result = renderProjectedFrame(frame);
+    assert.ok(frame.ops.length > createAshaRendererBrowserSurfaceFrame().ops.length / 2);
+    assert.match(result.structuralSnapshot, /generated-tunnel-floor/);
+    assert.match(result.structuralSnapshot, /generated-tunnel-enemy/);
+    const enemy = result.renderer.objectFor(renderHandle(4103901));
+    assert.equal(enemy?.name, 'generated-tunnel-enemy');
 });
 //# sourceMappingURL=tunnel-viewport.test.js.map

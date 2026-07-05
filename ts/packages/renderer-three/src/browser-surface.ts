@@ -3,13 +3,17 @@
 import * as THREE from 'three';
 import { RenderProjection } from '@asha/render-projection';
 import { renderHandle, type CameraBasis, type Geometry, type RenderFrameDiff, type RenderNode, type Transform } from '@asha/contracts';
+import type { RenderDiff } from '@asha/contracts';
 import { ThreeRenderer } from './three-renderer.js';
 import {
   createGeneratedTunnelViewportFrame,
   summarizeFirstPersonTunnelViewport,
   type FirstPersonTunnelViewportInput,
   type FirstPersonTunnelViewportSummary,
+  type TunnelViewportMaterialPalette,
+  type TunnelViewportVec3,
 } from './tunnel-viewport.js';
+import type { GeneratedTunnelReadout } from '@asha/runtime-bridge';
 
 export interface ProjectedThreeRenderResult {
   readonly projection: RenderProjection;
@@ -26,6 +30,7 @@ export interface AshaRendererBrowserSurfaceOptions {
   readonly autoStart?: boolean;
   readonly clearColor?: number;
   readonly controls?: AshaRendererBrowserSurfaceControlsOptions;
+  readonly frame?: RenderFrameDiff;
   readonly pixelRatio?: number;
 }
 
@@ -101,6 +106,18 @@ export interface AshaRendererBrowserSurfaceTargetProjection {
   readonly visible: boolean;
 }
 
+export interface AshaRendererGeneratedTunnelRoomTarget {
+  readonly label?: string;
+  readonly position: TunnelViewportVec3;
+  readonly scale?: TunnelViewportVec3;
+}
+
+export interface AshaRendererGeneratedTunnelRoomSurfaceInput {
+  readonly enemy?: AshaRendererGeneratedTunnelRoomTarget | null;
+  readonly materials?: Partial<TunnelViewportMaterialPalette>;
+  readonly tunnel: GeneratedTunnelReadout;
+}
+
 export interface AshaRendererBrowserSurface {
   readonly kind: 'asha_renderer_browser_surface.v0';
   readonly canvas: HTMLCanvasElement;
@@ -171,7 +188,7 @@ export function mountAshaRendererBrowserSurface(
   options: AshaRendererBrowserSurfaceOptions = {},
 ): AshaRendererBrowserSurface {
   const renderer = new ThreeRenderer();
-  const frame = createAshaRendererBrowserSurfaceFrame();
+  const frame = options.frame ?? createAshaRendererBrowserSurfaceFrame();
   renderer.applyFrame(frame);
 
   const webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -336,6 +353,80 @@ export function createAshaRendererBrowserSurfaceFrame(): RenderFrameDiff {
           cube.color,
         ),
       })),
+    ],
+  };
+}
+
+export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(
+  input: AshaRendererGeneratedTunnelRoomSurfaceInput,
+): RenderFrameDiff {
+  const base = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
+  const centeredBaseOps = base.ops.map((op) => offsetRenderOp(op, [-2.5, 0, -4.5]));
+  const enemy = input.enemy ?? {
+    label: 'generated-tunnel-enemy',
+    position: [0, 1.1, -1.35],
+    scale: [0.7, 1.8, 0.7],
+  };
+  return {
+    ops: [
+      ...centeredBaseOps,
+      {
+        op: 'create',
+        handle: renderHandle(4103901),
+        parent: null,
+        node: primitiveNode(
+          enemy.label ?? 'generated-tunnel-enemy',
+          'cube',
+          enemy.position,
+          enemy.scale ?? [0.7, 1.8, 0.7],
+          [0.92, 0.22, 0.18, 1],
+        ),
+      },
+      {
+        op: 'create',
+        handle: renderHandle(4103902),
+        parent: null,
+        node: primitiveNode(
+          'generated-tunnel-centerline',
+          'cube',
+          [0, 0.02, -0.4],
+          [0.28, 0.04, 4.8],
+          [0.94, 0.62, 0.2, 1],
+        ),
+      },
+    ],
+  };
+}
+
+function offsetRenderOp(op: RenderDiff, offset: TunnelViewportVec3): RenderDiff {
+  if (op.op === 'createStaticMeshInstance') {
+    return {
+      ...op,
+      instance: {
+        ...op.instance,
+        transform: offsetTransform(op.instance.transform, offset),
+      },
+    };
+  }
+  if (op.op === 'create') {
+    return {
+      ...op,
+      node: {
+        ...op.node,
+        transform: offsetTransform(op.node.transform, offset),
+      },
+    };
+  }
+  return op;
+}
+
+function offsetTransform(transform: Transform, offset: TunnelViewportVec3): Transform {
+  return {
+    ...transform,
+    translation: [
+      transform.translation[0] + offset[0],
+      transform.translation[1] + offset[1],
+      transform.translation[2] + offset[2],
     ],
   };
 }
@@ -745,7 +836,8 @@ function createBrowserSurfaceInteractionController(
 function collectBrowserSurfaceTargets(scene: THREE.Scene): BrowserSurfaceTarget[] {
   const targets: BrowserSurfaceTarget[] = [];
   scene.traverse((object) => {
-    if (!object.name.startsWith('asha-renderer-random-cube-')) {
+    const isCombatTarget = object.name.includes('generated-tunnel-enemy');
+    if (!isCombatTarget && !object.name.startsWith('asha-renderer-random-cube-')) {
       return;
     }
     const mesh = object as THREE.Mesh;

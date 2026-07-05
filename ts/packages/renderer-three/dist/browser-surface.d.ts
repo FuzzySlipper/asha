@@ -1,7 +1,8 @@
 import { RenderProjection } from '@asha/render-projection';
 import { type CameraBasis, type RenderFrameDiff } from '@asha/contracts';
 import { ThreeRenderer } from './three-renderer.js';
-import { type FirstPersonTunnelViewportInput, type FirstPersonTunnelViewportSummary } from './tunnel-viewport.js';
+import { type FirstPersonTunnelViewportInput, type FirstPersonTunnelViewportSummary, type TunnelViewportMaterialPalette, type TunnelViewportVec3 } from './tunnel-viewport.js';
+import type { GeneratedTunnelReadout } from '@asha/runtime-bridge';
 export interface ProjectedThreeRenderResult {
     readonly projection: RenderProjection;
     readonly renderer: ThreeRenderer;
@@ -15,6 +16,7 @@ export interface AshaRendererBrowserSurfaceOptions {
     readonly autoStart?: boolean;
     readonly clearColor?: number;
     readonly controls?: AshaRendererBrowserSurfaceControlsOptions;
+    readonly frame?: RenderFrameDiff;
     readonly pixelRatio?: number;
 }
 export interface AshaRendererBrowserSurfaceControlsOptions {
@@ -77,6 +79,16 @@ export interface AshaRendererBrowserSurfaceTargetProjection {
     readonly lastEvent?: string;
     readonly visible: boolean;
 }
+export interface AshaRendererGeneratedTunnelRoomTarget {
+    readonly label?: string;
+    readonly position: TunnelViewportVec3;
+    readonly scale?: TunnelViewportVec3;
+}
+export interface AshaRendererGeneratedTunnelRoomSurfaceInput {
+    readonly enemy?: AshaRendererGeneratedTunnelRoomTarget | null;
+    readonly materials?: Partial<TunnelViewportMaterialPalette>;
+    readonly tunnel: GeneratedTunnelReadout;
+}
 export interface AshaRendererBrowserSurface {
     readonly kind: 'asha_renderer_browser_surface.v0';
     readonly canvas: HTMLCanvasElement;
@@ -112,4 +124,5 @@ export declare function renderFirstPersonTunnelViewport(input: FirstPersonTunnel
  */
 export declare function mountAshaRendererBrowserSurface(canvas: HTMLCanvasElement, options?: AshaRendererBrowserSurfaceOptions): AshaRendererBrowserSurface;
 export declare function createAshaRendererBrowserSurfaceFrame(): RenderFrameDiff;
+export declare function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input: AshaRendererGeneratedTunnelRoomSurfaceInput): RenderFrameDiff;
 //# sourceMappingURL=browser-surface.d.ts.map

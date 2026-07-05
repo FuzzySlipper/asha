@@ -43,7 +43,7 @@ export function renderFirstPersonTunnelViewport(input, renderer = new ThreeRende
  */
 export function mountAshaRendererBrowserSurface(canvas, options = {}) {
     const renderer = new ThreeRenderer();
-    const frame = createAshaRendererBrowserSurfaceFrame();
+    const frame = options.frame ?? createAshaRendererBrowserSurfaceFrame();
     renderer.applyFrame(frame);
     const webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
     webgl.setClearColor(options.clearColor ?? 0x101820, 1);
@@ -188,6 +188,63 @@ export function createAshaRendererBrowserSurfaceFrame() {
                 parent: null,
                 node: primitiveNode(`asha-renderer-random-cube-${String(index + 1).padStart(2, '0')}`, 'cube', [cube.position[0], cube.size[1] / 2, cube.position[1]], cube.size, cube.color),
             })),
+        ],
+    };
+}
+export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input) {
+    const base = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
+    const centeredBaseOps = base.ops.map((op) => offsetRenderOp(op, [-2.5, 0, -4.5]));
+    const enemy = input.enemy ?? {
+        label: 'generated-tunnel-enemy',
+        position: [0, 1.1, -1.35],
+        scale: [0.7, 1.8, 0.7],
+    };
+    return {
+        ops: [
+            ...centeredBaseOps,
+            {
+                op: 'create',
+                handle: renderHandle(4103901),
+                parent: null,
+                node: primitiveNode(enemy.label ?? 'generated-tunnel-enemy', 'cube', enemy.position, enemy.scale ?? [0.7, 1.8, 0.7], [0.92, 0.22, 0.18, 1]),
+            },
+            {
+                op: 'create',
+                handle: renderHandle(4103902),
+                parent: null,
+                node: primitiveNode('generated-tunnel-centerline', 'cube', [0, 0.02, -0.4], [0.28, 0.04, 4.8], [0.94, 0.62, 0.2, 1]),
+            },
+        ],
+    };
+}
+function offsetRenderOp(op, offset) {
+    if (op.op === 'createStaticMeshInstance') {
+        return {
+            ...op,
+            instance: {
+                ...op.instance,
+                transform: offsetTransform(op.instance.transform, offset),
+            },
+        };
+    }
+    if (op.op === 'create') {
+        return {
+            ...op,
+            node: {
+                ...op.node,
+                transform: offsetTransform(op.node.transform, offset),
+            },
+        };
+    }
+    return op;
+}
+function offsetTransform(transform, offset) {
+    return {
+        ...transform,
+        translation: [
+            transform.translation[0] + offset[0],
+            transform.translation[1] + offset[1],
+            transform.translation[2] + offset[2],
         ],
     };
 }
@@ -522,7 +579,8 @@ function createBrowserSurfaceInteractionController(scene, camera) {
 function collectBrowserSurfaceTargets(scene) {
     const targets = [];
     scene.traverse((object) => {
-        if (!object.name.startsWith('asha-renderer-random-cube-')) {
+        const isCombatTarget = object.name.includes('generated-tunnel-enemy');
+        if (!isCombatTarget && !object.name.startsWith('asha-renderer-random-cube-')) {
             return;
         }
         const mesh = object;
