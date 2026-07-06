@@ -4,7 +4,7 @@ export type CombatFireOutcomeReadout = {
     readonly target: number;
     readonly distance: number;
     readonly hitPosition: null;
-    readonly defeated: true;
+    readonly defeated: boolean;
 } | {
     readonly kind: 'miss';
     readonly reason: 'geometryBlocked' | 'noTarget';

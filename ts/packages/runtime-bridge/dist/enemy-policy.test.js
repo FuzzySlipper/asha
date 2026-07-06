@@ -59,7 +59,12 @@ void test('enemy policy fixture proposes movement and typed fire intent from rea
     assert.equal(receipt.rejection, null);
     assert.equal(receipt.envelope.source, 'enemy_policy');
     assert.equal(receipt.combatReadout?.outcome.kind, 'hit');
-    assert.equal(receipt.combatReadout?.health[0]?.dead, true);
+    assert.deepEqual(receipt.combatReadout?.health[0], {
+        entity: 10,
+        current: 90,
+        max: 100,
+        dead: false,
+    });
     assert.equal('payload' in receipt, false);
 });
 void test('enemy policy fixture records proposal diagnostics without mutating authority', () => {

@@ -283,6 +283,27 @@ export function unsupportedAutonomousMovementReceipt(proposal) {
         combat: null,
     };
 }
+export function acceptedAutonomousMovementReceipt(proposal) {
+    return {
+        proposalKind: proposal.kind,
+        actor: proposal.actor,
+        target: proposal.target,
+        accepted: true,
+        status: 'accepted',
+        rejection: null,
+        movement: {
+            status: 'accepted',
+            actor: proposal.actor,
+            target: proposal.target,
+            from: proposal.from,
+            nextWaypoint: proposal.nextWaypoint,
+            pathHash: proposal.pathHash,
+            reason: null,
+        },
+        actionReceipt: null,
+        combat: null,
+    };
+}
 export function runtimeActionReceiptToAutonomousReceipt(proposal, actionReceipt) {
     const status = actionReceipt.accepted ? 'accepted' : 'rejected';
     const rejection = actionReceipt.accepted

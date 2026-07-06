@@ -62,36 +62,47 @@ void test('RuntimeSession runs deterministic autonomous enemy policy ticks throu
   assert.equal(first.policy.sourceChecked, true);
   assert.deepEqual(first.policy.sourceDiagnostics, []);
   assert.deepEqual(first.policy.proposalValidationDiagnostics, []);
-  assert.equal(first.proposalSummary.acceptedProposalCount, 1);
-  assert.equal(first.proposalSummary.unsupportedProposalCount, 1);
+  assert.equal(first.proposalSummary.acceptedProposalCount, 2);
+  assert.equal(first.proposalSummary.unsupportedProposalCount, 0);
   assert.equal(first.proposalSummary.rejectedProposalCount, 0);
   assert.equal(first.commandSummary.acceptedRuntimeActionCount, 1);
   assert.equal(first.commandSummary.rejectedRuntimeActionCount, 0);
   assert.equal(first.commandSummary.acceptedCommandCount, 0);
   assert.equal(first.commandSummary.rejectedCommandCount, 0);
-  assert.equal(first.movementSummary?.status, 'unsupported');
-  assert.equal(first.movementSummary?.reason, 'movement_authority_not_wired');
+  assert.equal(first.movementSummary?.status, 'accepted');
+  assert.equal(first.movementSummary?.reason, null);
   assert.deepEqual(first.movementSummary?.nextWaypoint, [2, 1, 7]);
   assert.equal(first.combatSummary?.status, 'accepted');
   assert.equal(first.combatSummary?.outcome?.kind, 'hit');
   assert.match(first.combatSummary?.healthHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
   assert.match(first.combatSummary?.replayHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
-  assert.equal(first.proposalReceipts[0]?.status, 'unsupported');
-  assert.equal(first.proposalReceipts[0]?.rejection?.reason, 'movement_authority_not_wired');
+  assert.equal(first.proposalReceipts[0]?.status, 'accepted');
+  assert.equal(first.proposalReceipts[0]?.rejection, null);
   assert.equal(first.proposalReceipts[1]?.status, 'accepted');
   assert.equal(first.proposalReceipts[1]?.actionReceipt?.accepted, true);
-  assert.equal(first.proposalReceipts[1]?.actionReceipt?.combatReadout?.health[0]?.dead, true);
+  assert.deepEqual(first.proposalReceipts[1]?.actionReceipt?.combatReadout?.health[0], {
+    entity: 10,
+    current: 90,
+    max: 100,
+    dead: false,
+  });
   assert.equal(first.replay.lastRecordKind, 'runAutonomousPolicyTick');
   assert.equal(first.replay.recordHashes.every((hash) => hash.startsWith('fnv1a64:')), true);
   assert.ok(first.tickHash.startsWith('fnv1a64:'));
-  assert.ok(first.replay.recordCount >= 6);
+  assert.ok(first.replay.recordCount >= 5);
   assert.ok(first.nonClaims.includes('not_generic_event_bus'));
-  assert.ok(first.nonClaims.includes('movement_authority_not_wired'));
   assert.notEqual(first.sessionHashAfter, first.sessionHashBefore);
   assert.equal(
     session.readTelemetry().replayRecords.some((record) => record.kind === 'lifecycleDeath'),
-    true,
+    false,
   );
+  const movedEnemy = session.readEcrpRuntimeReadout().entities.find(
+    (entity) => entity.definitionStableId === 'actor/generated-tunnel-enemy',
+  );
+  const movedEnemyTransform = movedEnemy?.capabilities.find((capability) => capability.kind === 'transform');
+  assert.equal(movedEnemyTransform?.kind, 'transform');
+  assert.deepEqual(movedEnemyTransform?.position, [2, 1, 7]);
+  assert.match(movedEnemyTransform?.stateHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
 
   const second = session.runAutonomousPolicyTick({ targetCamera: camera });
 

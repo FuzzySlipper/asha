@@ -11,6 +11,7 @@ export declare function lifecycleHealth(entity: number, current: number, max: nu
 export declare function buildRuntimeSessionPrimaryFireReadout(input: {
     readonly projectState: RuntimeSessionEcrpProjectState | null;
     readonly lifecycleState: RuntimeSessionLifecycleState;
+    readonly source: RuntimeActionIntentEnvelope['source'];
     readonly tick: number;
 }): CombatRuntimeReadout;
 export declare function lifecycleEvent(kind: RuntimeSessionLifecycleEventKind, entity: number, tick: number, reason: RuntimeSessionLifecycleEventReadout['reason']): RuntimeSessionLifecycleEventReadout;
@@ -30,6 +31,9 @@ export declare function validateAutonomousPolicyTickInput(input: RuntimeSessionA
 export declare function validateAutonomousPolicyProposal(proposal: EnemyPolicyProposal, tick: number): RuntimeSessionAutonomousPolicyProposalRejection | null;
 export declare function rejectedAutonomousPolicyProposalReceipt(proposal: EnemyPolicyProposal, rejection: RuntimeSessionAutonomousPolicyProposalRejection): RuntimeSessionAutonomousPolicyProposalReceipt;
 export declare function unsupportedAutonomousMovementReceipt(proposal: Extract<EnemyPolicyProposal, {
+    readonly kind: 'enemy_policy.move_toward_target.v0';
+}>): RuntimeSessionAutonomousPolicyProposalReceipt;
+export declare function acceptedAutonomousMovementReceipt(proposal: Extract<EnemyPolicyProposal, {
     readonly kind: 'enemy_policy.move_toward_target.v0';
 }>): RuntimeSessionAutonomousPolicyProposalReceipt;
 export declare function runtimeActionReceiptToAutonomousReceipt(proposal: Extract<EnemyPolicyProposal, {

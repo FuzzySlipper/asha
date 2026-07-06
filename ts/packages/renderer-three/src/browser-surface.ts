@@ -103,6 +103,8 @@ export interface AshaRendererBrowserSurfaceInteractionState {
 
 export interface AshaRendererBrowserSurfaceTargetProjection {
   readonly lastEvent?: string;
+  readonly position?: TunnelViewportVec3;
+  readonly scale?: TunnelViewportVec3;
   readonly visible: boolean;
 }
 
@@ -895,6 +897,12 @@ function createBrowserSurfaceInteractionController(
     for (const target of targets) {
       target.mesh.visible = projection.visible;
       target.health = projection.visible ? target.maxHealth : 0;
+      if (projection.position !== undefined) {
+        target.mesh.position.set(projection.position[0], projection.position[1], projection.position[2]);
+      }
+      if (projection.scale !== undefined) {
+        target.mesh.scale.set(projection.scale[0], projection.scale[1], projection.scale[2]);
+      }
       if (projection.visible) {
         target.material.color.copy(target.baseColor);
       }

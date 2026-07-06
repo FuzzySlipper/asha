@@ -77,6 +77,8 @@ export interface AshaRendererBrowserSurfaceInteractionState {
 }
 export interface AshaRendererBrowserSurfaceTargetProjection {
     readonly lastEvent?: string;
+    readonly position?: TunnelViewportVec3;
+    readonly scale?: TunnelViewportVec3;
     readonly visible: boolean;
 }
 export interface AshaRendererGeneratedTunnelRoomTarget {

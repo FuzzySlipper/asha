@@ -89,6 +89,7 @@ export function lifecycleHealth(
 export function buildRuntimeSessionPrimaryFireReadout(input: {
   readonly projectState: RuntimeSessionEcrpProjectState | null;
   readonly lifecycleState: RuntimeSessionLifecycleState;
+  readonly source: RuntimeActionIntentEnvelope['source'];
   readonly tick: number;
 }): CombatRuntimeReadout {
   return buildRustFpsAuthorityPrimaryFireReadout(input);
@@ -361,6 +362,30 @@ export function unsupportedAutonomousMovementReceipt(
       nextWaypoint: proposal.nextWaypoint,
       pathHash: proposal.pathHash,
       reason: 'movement_authority_not_wired',
+    },
+    actionReceipt: null,
+    combat: null,
+  };
+}
+
+export function acceptedAutonomousMovementReceipt(
+  proposal: Extract<EnemyPolicyProposal, { readonly kind: 'enemy_policy.move_toward_target.v0' }>,
+): RuntimeSessionAutonomousPolicyProposalReceipt {
+  return {
+    proposalKind: proposal.kind,
+    actor: proposal.actor,
+    target: proposal.target,
+    accepted: true,
+    status: 'accepted',
+    rejection: null,
+    movement: {
+      status: 'accepted',
+      actor: proposal.actor,
+      target: proposal.target,
+      from: proposal.from,
+      nextWaypoint: proposal.nextWaypoint,
+      pathHash: proposal.pathHash,
+      reason: null,
     },
     actionReceipt: null,
     combat: null,

@@ -11,6 +11,7 @@ import type {
   RuntimeSessionEcrpProjectDiagnostic,
   RuntimeSessionEcrpProjectLoadInput,
   RuntimeSessionEcrpProjectState,
+  RuntimeSessionEcrpTransformState,
   RuntimeSessionEcrpReadout,
   RuntimeSessionEcrpScenePlacement,
   RuntimeSessionIdentity,
@@ -372,18 +373,22 @@ function lifecycleHealthFromEntity(
 function ecrpCapabilitiesForEntity(
   entity: RuntimeSessionEcrpEntityState,
   lifecycleState: RuntimeSessionLifecycleState,
+  runtimeTransforms: ReadonlyMap<number, RuntimeSessionEcrpTransformState>,
 ): readonly RuntimeSessionEcrpCapabilityState[] {
-  return entity.definition.capabilities.map((capability) => ecrpCapabilityForDefinition(entity, capability, lifecycleState));
+  return entity.definition.capabilities.map((capability) =>
+    ecrpCapabilityForDefinition(entity, capability, lifecycleState, runtimeTransforms),
+  );
 }
 
 function ecrpCapabilityForDefinition(
   entity: RuntimeSessionEcrpEntityState,
   capability: RuntimeSessionEcrpProjectCapabilityDefinition,
   lifecycleState: RuntimeSessionLifecycleState,
+  runtimeTransforms: ReadonlyMap<number, RuntimeSessionEcrpTransformState>,
 ): RuntimeSessionEcrpCapabilityState {
   switch (capability.kind) {
     case 'transform':
-      return ecrpTransform(capability.initial.position, capability.initial.yawDegrees, capability.initial.pitchDegrees);
+      return ecrpRuntimeTransform(entity, capability, runtimeTransforms);
     case 'collisionBody':
       return ecrpCollisionBody(capability.staticCollider ?? false, capability.halfExtents);
     case 'controller':
@@ -438,6 +443,7 @@ export function buildEcrpRuntimeReadout(input: {
   readonly identity: RuntimeSessionIdentity;
   readonly projectState: RuntimeSessionEcrpProjectState | null;
   readonly lifecycleState: RuntimeSessionLifecycleState;
+  readonly runtimeTransforms?: ReadonlyMap<number, RuntimeSessionEcrpTransformState>;
   readonly sequenceId: number;
   readonly tick: number;
   readonly sessionHash: string;
@@ -453,7 +459,7 @@ export function buildEcrpRuntimeReadout(input: {
     ecrpEntityReadout({
       entity: entity.entity,
       definition: entity.definition,
-      capabilities: ecrpCapabilitiesForEntity(entity, input.lifecycleState),
+      capabilities: ecrpCapabilitiesForEntity(entity, input.lifecycleState, input.runtimeTransforms ?? new Map()),
       events: ecrpEventsForEntity(input.lifecycleState, entity.entity),
     }),
   );
@@ -556,6 +562,18 @@ function ecrpTransform(
 ): RuntimeSessionEcrpCapabilityState {
   const state = { kind: 'transform' as const, position, yawDegrees, pitchDegrees };
   return { ...state, stateHash: stableHash(state) };
+}
+
+function ecrpRuntimeTransform(
+  entity: RuntimeSessionEcrpEntityState,
+  capability: Extract<RuntimeSessionEcrpProjectCapabilityDefinition, { readonly kind: 'transform' }>,
+  runtimeTransforms: ReadonlyMap<number, RuntimeSessionEcrpTransformState>,
+): RuntimeSessionEcrpCapabilityState {
+  const runtimeTransform = runtimeTransforms.get(entity.entity);
+  if (runtimeTransform === undefined) {
+    return ecrpTransform(capability.initial.position, capability.initial.yawDegrees, capability.initial.pitchDegrees);
+  }
+  return ecrpTransform(runtimeTransform.position, runtimeTransform.yawDegrees, runtimeTransform.pitchDegrees);
 }
 
 function ecrpCollisionBody(

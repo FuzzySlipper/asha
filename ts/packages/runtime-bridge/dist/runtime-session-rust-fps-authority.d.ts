@@ -1,4 +1,5 @@
 import { type CombatRuntimeReadout } from './combat-readout.js';
+import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
 import type { RuntimeSessionEcrpProjectState, RuntimeSessionLifecycleState } from './runtime-session.js';
 export declare const RUNTIME_SESSION_RUST_FPS_AUTHORITY: {
     readonly ruleCrate: "rule-lifecycle";
@@ -9,6 +10,7 @@ export declare const RUNTIME_SESSION_RUST_FPS_AUTHORITY: {
 export declare function buildRustFpsAuthorityPrimaryFireReadout(input: {
     readonly projectState: RuntimeSessionEcrpProjectState | null;
     readonly lifecycleState: RuntimeSessionLifecycleState;
+    readonly source: RuntimeActionIntentEnvelope['source'];
     readonly tick: number;
 }): CombatRuntimeReadout;
 //# sourceMappingURL=runtime-session-rust-fps-authority.d.ts.map

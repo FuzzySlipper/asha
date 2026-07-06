@@ -329,13 +329,13 @@ function lifecycleHealthFromEntity(entity, fallbackMax) {
     }
     return lifecycleHealth(entity?.entity ?? 0, fallbackMax, fallbackMax, false);
 }
-function ecrpCapabilitiesForEntity(entity, lifecycleState) {
-    return entity.definition.capabilities.map((capability) => ecrpCapabilityForDefinition(entity, capability, lifecycleState));
+function ecrpCapabilitiesForEntity(entity, lifecycleState, runtimeTransforms) {
+    return entity.definition.capabilities.map((capability) => ecrpCapabilityForDefinition(entity, capability, lifecycleState, runtimeTransforms));
 }
-function ecrpCapabilityForDefinition(entity, capability, lifecycleState) {
+function ecrpCapabilityForDefinition(entity, capability, lifecycleState, runtimeTransforms) {
     switch (capability.kind) {
         case 'transform':
-            return ecrpTransform(capability.initial.position, capability.initial.yawDegrees, capability.initial.pitchDegrees);
+            return ecrpRuntimeTransform(entity, capability, runtimeTransforms);
         case 'collisionBody':
             return ecrpCollisionBody(capability.staticCollider ?? false, capability.halfExtents);
         case 'controller':
@@ -385,7 +385,7 @@ export function buildEcrpRuntimeReadout(input) {
     const entities = projectState.entities.map((entity) => ecrpEntityReadout({
         entity: entity.entity,
         definition: entity.definition,
-        capabilities: ecrpCapabilitiesForEntity(entity, input.lifecycleState),
+        capabilities: ecrpCapabilitiesForEntity(entity, input.lifecycleState, input.runtimeTransforms ?? new Map()),
         events: ecrpEventsForEntity(input.lifecycleState, entity.entity),
     }));
     const capabilityStateHash = stableHash(entities.map((entity) => entity.capabilities.map((capability) => capability.stateHash)));
@@ -467,6 +467,13 @@ function ecrpEventsForEntity(state, entity) {
 function ecrpTransform(position, yawDegrees, pitchDegrees) {
     const state = { kind: 'transform', position, yawDegrees, pitchDegrees };
     return { ...state, stateHash: stableHash(state) };
+}
+function ecrpRuntimeTransform(entity, capability, runtimeTransforms) {
+    const runtimeTransform = runtimeTransforms.get(entity.entity);
+    if (runtimeTransform === undefined) {
+        return ecrpTransform(capability.initial.position, capability.initial.yawDegrees, capability.initial.pitchDegrees);
+    }
+    return ecrpTransform(runtimeTransform.position, runtimeTransform.yawDegrees, runtimeTransform.pitchDegrees);
 }
 function ecrpCollisionBody(staticCollider, bounds) {
     const state = { kind: 'collisionBody', staticCollider, bounds };

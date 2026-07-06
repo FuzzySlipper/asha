@@ -474,8 +474,7 @@ export interface RuntimeSessionAutonomousPolicyTickReadout {
     readonly nonClaims: readonly [
         'not_generic_event_bus',
         'not_behavior_tree',
-        'not_demo_local_authority',
-        'movement_authority_not_wired'
+        'not_demo_local_authority'
     ];
 }
 export interface RuntimeSessionCombatReadoutRequest {
@@ -536,6 +535,11 @@ export interface RuntimeSessionEcrpEntityState {
     readonly entity: number;
     readonly definition: RuntimeSessionEcrpEntityDefinition;
     readonly role: RuntimeSessionLifecycleRole | 'neutral';
+}
+export interface RuntimeSessionEcrpTransformState {
+    readonly position: readonly [number, number, number];
+    readonly yawDegrees: number;
+    readonly pitchDegrees: number;
 }
 export interface RuntimeSessionEcrpProjectState {
     readonly input: RuntimeSessionEcrpProjectLoadInput;

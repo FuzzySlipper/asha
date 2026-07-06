@@ -1,4 +1,4 @@
-import { GENERATED_TUNNEL_FIRE_HIT_READOUT } from './combat-readout.js';
+import { GENERATED_TUNNEL_FIRE_HIT_READOUT, } from './combat-readout.js';
 import { stableHash } from './runtime-session-hash.js';
 export const RUNTIME_SESSION_RUST_FPS_AUTHORITY = {
     ruleCrate: 'rule-lifecycle',
@@ -7,15 +7,19 @@ export const RUNTIME_SESSION_RUST_FPS_AUTHORITY = {
     primaryFireReplayUnit: 'runtime_session.fps.primary_fire.v0',
 };
 export function buildRustFpsAuthorityPrimaryFireReadout(input) {
+    if (input.source === 'enemy_policy') {
+        return buildPrimaryFireHitReadout({
+            projectState: input.projectState,
+            tick: input.tick,
+            shooter: input.lifecycleState.enemy.entity,
+            targetBefore: input.lifecycleState.player,
+            damage: 10,
+            distance: 2.25,
+            weaponOwnerRole: 'enemy',
+        });
+    }
     const shooter = input.lifecycleState.player.entity;
     const targetBefore = input.lifecycleState.enemy;
-    const damage = targetBefore.current;
-    const targetAfter = {
-        entity: targetBefore.entity,
-        current: 0,
-        max: targetBefore.max,
-        dead: true,
-    };
     if (shooter === 10 &&
         targetBefore.entity === 20 &&
         targetBefore.current === 40 &&
@@ -23,36 +27,56 @@ export function buildRustFpsAuthorityPrimaryFireReadout(input) {
         input.tick === 7) {
         return GENERATED_TUNNEL_FIRE_HIT_READOUT;
     }
+    return buildPrimaryFireHitReadout({
+        projectState: input.projectState,
+        tick: input.tick,
+        shooter,
+        targetBefore,
+        damage: targetBefore.current,
+        distance: 3.5,
+        weaponOwnerRole: 'player',
+    });
+}
+function buildPrimaryFireHitReadout(input) {
+    const damage = Math.min(input.damage, input.targetBefore.current);
+    const targetAfter = {
+        entity: input.targetBefore.entity,
+        current: Math.max(0, input.targetBefore.current - damage),
+        max: input.targetBefore.max,
+        dead: input.targetBefore.current - damage <= 0,
+    };
     const health = [targetAfter];
     const events = [
         {
             kind: 'fire_hit',
-            shooter,
+            shooter: input.shooter,
             target: targetAfter.entity,
-            distance: 3.5,
+            distance: input.distance,
             tick: input.tick,
         },
         {
             kind: 'damage_applied',
             target: targetAfter.entity,
             amount: damage,
-            before: targetBefore.current,
+            before: input.targetBefore.current,
             after: targetAfter.current,
         },
-        {
+    ];
+    if (targetAfter.dead) {
+        events.push({
             kind: 'entity_defeated',
             target: targetAfter.entity,
-        },
-    ];
+        });
+    }
     const weaponMount = input.projectState?.entities
-        .find((entity) => entity.role === 'player')
+        .find((entity) => entity.role === input.weaponOwnerRole)
         ?.definition.capabilities.find((capability) => capability.kind === 'weaponMount');
     const combatRecord = {
         replayUnit: RUNTIME_SESSION_RUST_FPS_AUTHORITY.primaryFireReplayUnit,
         ruleCrate: RUNTIME_SESSION_RUST_FPS_AUTHORITY.ruleCrate,
         combatServiceCrate: RUNTIME_SESSION_RUST_FPS_AUTHORITY.combatServiceCrate,
         scenario: 'runtime_session_loaded_project_fire_hit',
-        shooter,
+        shooter: input.shooter,
         target: targetAfter.entity,
         weaponId: weaponMount?.kind === 'weaponMount' ? weaponMount.weaponId : null,
         health,
@@ -63,9 +87,9 @@ export function buildRustFpsAuthorityPrimaryFireReadout(input) {
         outcome: {
             kind: 'hit',
             target: targetAfter.entity,
-            distance: 3.5,
+            distance: input.distance,
             hitPosition: null,
-            defeated: true,
+            defeated: targetAfter.dead,
         },
         events,
         health,
