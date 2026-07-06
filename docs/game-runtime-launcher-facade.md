@@ -99,6 +99,39 @@ The exact field names can evolve in #3653, but the boundary must stay command-sh
 read-model-shaped. Avoid `call(methodName, json)`, private mutation callbacks, package
 `src/**` imports, raw native bridge imports, or generated-schema path imports.
 
+## Native Rust Provider Contract
+
+Browser and standalone hosts that already have a compiled/native bridge can hand
+it to product demos through the package-root provider resolver instead of
+exposing raw native transports:
+
+```ts
+import {
+  assertNativeRustRuntimeBridgeAuthority,
+  resolveNativeRustRuntimeBridgeProvider,
+} from '@asha/runtime-bridge';
+
+const provider = await resolveNativeRustRuntimeBridgeProvider({
+  globalScope: globalThis,
+});
+```
+
+The preferred global is `globalThis.ashaRuntimeBridge` with provider kind
+`asha.runtime_bridge.native_rust_provider.v1`. The resolver also accepts the
+existing `globalThis.ashaDemoRuntimeBridge` /
+`asha_demo.native_runtime_bridge_provider.v1` alias for current demo hosts.
+Providers must declare `backend: "native_rust"`, `productAuthority: true`, and
+`referenceFallback: false`, and must return the public `RuntimeBridge` facade
+operations needed by RuntimeSession. Missing providers, spoofed reference
+metadata, missing bridge objects, and missing operations return typed
+fail-closed diagnostics.
+
+After a RuntimeSession loads project content, consumers should call
+`assertNativeRustRuntimeBridgeAuthority()` with the ECRP authority readout and
+FPS runtime snapshot. This keeps provider shape validation separate from loaded
+runtime provenance and prevents a reference-backed bridge from becoming product
+authority through metadata alone.
+
 ## Launch Sequence
 
 The reference launcher performs the same sequence every time:

@@ -38,7 +38,7 @@ const MODEL_MATERIAL_PREVIEW_REQUEST = {
     },
     instanceHandle: 7001,
 };
-import { MANIFEST_OPERATIONS, RuntimeBridgeError, createNativeGameRuntimeLauncher, createNativeRuntimeBridge, createSelectedBackendGameRuntimeLauncher, frameCursor, nativeBackendProfile, validateGameRuntimeBackendProfile, } from './index.js';
+import { MANIFEST_OPERATIONS, RuntimeBridgeError, assertNativeRustRuntimeBridgeAuthority, createNativeGameRuntimeLauncher, createNativeRuntimeBridge, createSelectedBackendGameRuntimeLauncher, frameCursor, nativeBackendProfile, resolveNativeRustRuntimeBridgeProvider, validateGameRuntimeBackendProfile, } from './index.js';
 import { MockRuntimeBridge, REFERENCE_RUNTIME_BACKEND_PROFILE, createMockRuntimeBridge, createMockRuntimeSession, createReferenceGameRuntimeLauncher, referenceBackendProfile, } from './reference.js';
 function writeStaleNativeAddonModule() {
     const dir = mkdtempSync(join(tmpdir(), 'asha-runtime-bridge-'));
@@ -343,6 +343,69 @@ void test('selected backend launcher rejects reference profile before bridge cre
         && e.kind === 'invalid_input'
         && e.message.includes('reference_mock'));
     assert.equal(bridgeFactoryCalls, 0);
+});
+void test('native Rust RuntimeBridge provider resolver fails closed without a provider', async () => {
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({ globalScope: {} });
+    assert.equal(resolution.status, 'unavailable');
+    assert.equal(resolution.bridge, null);
+    assert.equal(resolution.diagnostics[0]?.code, 'missing_rust_runtime_backend');
+    assert.equal(resolution.profile.productAuthority, true);
+    assert.equal(resolution.profile.referenceFallback, false);
+});
+void test('native Rust RuntimeBridge provider resolver rejects spoofed reference metadata', async () => {
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({
+        provider: {
+            kind: 'asha.runtime_bridge.native_rust_provider.v1',
+            backend: 'reference_bridge',
+            productAuthority: true,
+            referenceFallback: true,
+            createRuntimeBridge: createMockRuntimeBridge,
+        },
+    });
+    assert.equal(resolution.status, 'unavailable');
+    assert.equal(resolution.diagnostics[0]?.code, 'invalid_rust_runtime_provider');
+});
+void test('native Rust RuntimeBridge provider resolver reports missing operations', async () => {
+    const provider = {
+        kind: 'asha.runtime_bridge.native_rust_provider.v1',
+        backend: 'native_rust',
+        productAuthority: true,
+        referenceFallback: false,
+        createRuntimeBridge: () => ({
+            initializeEngine() {
+                return 1;
+            },
+        }),
+    };
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({ provider });
+    assert.equal(resolution.status, 'unavailable');
+    assert.equal(resolution.diagnostics[0]?.code, 'missing_runtime_bridge_operation');
+    assert.match(resolution.diagnostics[0]?.message ?? '', /loadWorldBundle/);
+});
+void test('native Rust RuntimeBridge provider resolver accepts public native provider shape', async () => {
+    const bridge = createMockRuntimeBridge();
+    const provider = {
+        kind: 'asha.runtime_bridge.native_rust_provider.v1',
+        backend: 'native_rust',
+        productAuthority: true,
+        referenceFallback: false,
+        createRuntimeBridge: () => bridge,
+    };
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({
+        globalScope: { ashaRuntimeBridge: provider },
+    });
+    assert.equal(resolution.status, 'available');
+    assert.equal(resolution.bridge, bridge);
+    assert.equal(resolution.providerGlobal, 'globalThis.ashaRuntimeBridge');
+    assert.equal(resolution.profile.providerContract, 'asha.runtime_bridge.native_rust_provider.v1');
+});
+void test('native Rust RuntimeBridge authority validator rejects reference-backed readouts', () => {
+    assert.throws(() => assertNativeRustRuntimeBridgeAuthority({
+        ecrpAuthority: { mode: 'rust', source: 'reference_bridge' },
+        fpsSnapshot: { backend: 'reference_bridge' },
+    }), (e) => e instanceof RuntimeBridgeError
+        && e.kind === 'invalid_input'
+        && e.message.includes('reference_bridge'));
 });
 void test('manifest exposes public camera view operations', () => {
     const cameraOps = MANIFEST_OPERATIONS.filter((op) => op.facadeMethod.includes('Camera'));

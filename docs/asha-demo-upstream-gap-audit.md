@@ -37,11 +37,12 @@ because ASHA does not yet expose the durable upstream surface.
    gating from RuntimeSession lifecycle/ECRP/telemetry instead of carrying local
    historical counters.
 
-3. Native runtime bootstrap is local.
-   `asha-demo` defines `globalThis.ashaDemoRuntimeBridge`, checks
-   `native_rust`, rejects reference authority, and builds unavailable-backend
-   diagnostics locally. That fail-closed posture should become an upstream
-   launcher/provider helper so browser and standalone hosts do not repeat it.
+3. Native runtime bootstrap has an upstream provider resolver.
+   #4401 added `resolveNativeRustRuntimeBridgeProvider()` and
+   `assertNativeRustRuntimeBridgeAuthority()` at the `@asha/runtime-bridge`
+   package root. `asha-demo` still supplies unavailable-backend presentation,
+   but provider contract validation, required RuntimeBridge operation checks,
+   and loaded-session Rust authority rejection now live upstream.
 
 4. Generated room frame composition still sits behind the Three backend.
    The generated-tunnel room helper emits renderer-neutral render diffs, but it
