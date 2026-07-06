@@ -591,6 +591,11 @@ dependencies = [
 [[package]]
 name = "rule-relationship"
 version = "0.1.0"
+dependencies = [
+ "core-entity",
+ "core-error",
+ "core-ids",
+]
 
 [[package]]
 name = "rule-scheduler"
