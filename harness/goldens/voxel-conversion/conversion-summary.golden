@@ -1,0 +1,8 @@
+quad.surface.voxels=4
+quad.surface.bounds=0,0,0..3,3,0
+quad.surface.materials=3,5
+cube.solid.voxels=8
+cube.solid.bounds=0,0,0..1,1,1
+cube.solid.materials=3
+oversized.code=output_limit_exceeded
+stale.code=source_hash_mismatch

@@ -946,6 +946,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc-voxel-conversion"
+version = "0.1.0"
+dependencies = [
+ "core-voxel",
+ "protocol-diagnostics",
+ "protocol-voxel-conversion",
+ "serde_json",
+]
+
+[[package]]
 name = "syn"
 version = "2.0.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"

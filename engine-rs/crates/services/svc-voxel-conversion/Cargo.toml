@@ -1,0 +1,17 @@
+[package]
+name = "svc-voxel-conversion"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Rust authority service for bounded static-mesh/source-asset to Asha voxel
+# conversion. It consumes protocol DTOs, validates supported source assets, and
+# produces deterministic plan/preview/apply receipts. It has no renderer/Studio
+# dependency and performs no TypeScript-side authority work.
+[dependencies]
+core-voxel = { path = "../../state/core-voxel" }
+protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
+protocol-voxel-conversion = { path = "../../protocol/protocol-voxel-conversion" }
+
+[dev-dependencies]
+serde_json = "1"

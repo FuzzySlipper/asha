@@ -246,6 +246,11 @@ lane = "rust-service"
 may_depend_on = ["core-ids", "core-math", "core-error", "core-space", "core-voxel", "svc-volume", "svc-spatial"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
+[crate."engine-rs/crates/services/svc-voxel-conversion"]
+lane = "rust-service"
+may_depend_on = ["core-voxel", "protocol-diagnostics", "protocol-voxel-conversion"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "ts/packages"]
+
 # Deterministic policy world-layer service (policy-integration super, #2391/#2392/
 # #2394): projects authority state into the read-only PolicyWorldView, validates
 # proposed PolicyWorldCommands into events or classified rejections, and records the
