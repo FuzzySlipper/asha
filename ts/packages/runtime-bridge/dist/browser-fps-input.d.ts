@@ -27,7 +27,26 @@ export interface BrowserFpsUnsupportedIntent {
     readonly triggered: boolean;
     readonly reason: 'no_public_runtime_action_protocol';
 }
+export type BrowserFpsInputShellMode = 'active' | 'disabled' | 'paused';
+export interface BrowserFpsInputShellState {
+    readonly mode: BrowserFpsInputShellMode;
+}
+export interface BrowserFpsInputShellReadout {
+    readonly acceptsInput: boolean;
+    readonly blockedReason: BrowserFpsInputShellMode | null;
+    readonly mode: BrowserFpsInputShellMode;
+}
+export interface BrowserFpsMovementInput {
+    readonly dtSeconds: number;
+    readonly moveForward: number;
+    readonly moveRight: number;
+    readonly moveSpeedUnitsPerSecond: number;
+    readonly moveUp: number;
+    readonly pitchDeltaDegrees: number;
+    readonly yawDeltaDegrees: number;
+}
 export interface BrowserFpsInputReadout {
+    readonly shell: BrowserFpsInputShellReadout;
     readonly pointerLocked: boolean;
     readonly releaseRequestedByEscape: boolean;
     readonly pressedKeys: readonly BrowserFpsKeyCode[];
@@ -36,6 +55,12 @@ export interface BrowserFpsInputReadout {
     readonly pendingMouseDelta: readonly [number, number];
     readonly primaryFirePressed: boolean;
     readonly primaryFireTriggered: boolean;
+}
+export interface BrowserFpsInputFrame {
+    readonly tick: number;
+    readonly input: BrowserFpsMovementInput;
+    readonly pointerLockIntents: readonly BrowserFpsPointerLockIntent[];
+    readonly readout: BrowserFpsInputReadout;
 }
 export type BrowserFpsRuntimeCommand = {
     readonly kind: 'runtime.apply_first_person_camera_input';
@@ -47,6 +72,7 @@ export type BrowserFpsRuntimeActionCommand = {
 };
 export interface BrowserFpsCommandFrame {
     readonly tick: number;
+    readonly input: BrowserFpsMovementInput;
     readonly runtimeCommand: BrowserFpsRuntimeCommand;
     readonly runtimeActionIntents: readonly BrowserFpsRuntimeActionCommand[];
     readonly pointerLockIntents: readonly BrowserFpsPointerLockIntent[];
@@ -54,7 +80,8 @@ export interface BrowserFpsCommandFrame {
     readonly readout: BrowserFpsInputReadout;
 }
 export interface BrowserFpsInputCollectorOptions {
-    readonly camera: CameraHandle;
+    readonly camera?: CameraHandle;
+    readonly shellState?: BrowserFpsInputShellState;
     readonly moveSpeedUnitsPerSecond: number;
     readonly mouseSensitivityDegreesPerPixel: number;
     readonly pointerLocked?: boolean;
@@ -66,6 +93,7 @@ export interface BrowserFpsDrainInput {
 export declare class BrowserFpsInputCollector {
     #private;
     constructor(options: BrowserFpsInputCollectorOptions);
+    setShellState(state: BrowserFpsInputShellState): BrowserFpsInputReadout;
     setPointerLockActive(active: boolean): BrowserFpsInputReadout;
     requestPointerLock(): readonly BrowserFpsPointerLockIntent[];
     releasePointerLock(): readonly BrowserFpsPointerLockIntent[];
@@ -74,6 +102,8 @@ export declare class BrowserFpsInputCollector {
     handleMouseMove(event: BrowserFpsMouseMoveInput): void;
     handlePointerDown(event: BrowserFpsPointerButtonInput): readonly BrowserFpsPointerLockIntent[];
     handlePointerUp(event: BrowserFpsPointerButtonInput): void;
+    reset(): BrowserFpsInputReadout;
+    drainInputFrame(input: BrowserFpsDrainInput): BrowserFpsInputFrame;
     drainFrame(input: BrowserFpsDrainInput): BrowserFpsCommandFrame;
     readout(): BrowserFpsInputReadout;
 }

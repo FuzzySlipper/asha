@@ -30,7 +30,30 @@ export interface BrowserFpsUnsupportedIntent {
   readonly reason: 'no_public_runtime_action_protocol';
 }
 
+export type BrowserFpsInputShellMode = 'active' | 'disabled' | 'paused';
+
+export interface BrowserFpsInputShellState {
+  readonly mode: BrowserFpsInputShellMode;
+}
+
+export interface BrowserFpsInputShellReadout {
+  readonly acceptsInput: boolean;
+  readonly blockedReason: BrowserFpsInputShellMode | null;
+  readonly mode: BrowserFpsInputShellMode;
+}
+
+export interface BrowserFpsMovementInput {
+  readonly dtSeconds: number;
+  readonly moveForward: number;
+  readonly moveRight: number;
+  readonly moveSpeedUnitsPerSecond: number;
+  readonly moveUp: number;
+  readonly pitchDeltaDegrees: number;
+  readonly yawDeltaDegrees: number;
+}
+
 export interface BrowserFpsInputReadout {
+  readonly shell: BrowserFpsInputShellReadout;
   readonly pointerLocked: boolean;
   readonly releaseRequestedByEscape: boolean;
   readonly pressedKeys: readonly BrowserFpsKeyCode[];
@@ -39,6 +62,13 @@ export interface BrowserFpsInputReadout {
   readonly pendingMouseDelta: readonly [number, number];
   readonly primaryFirePressed: boolean;
   readonly primaryFireTriggered: boolean;
+}
+
+export interface BrowserFpsInputFrame {
+  readonly tick: number;
+  readonly input: BrowserFpsMovementInput;
+  readonly pointerLockIntents: readonly BrowserFpsPointerLockIntent[];
+  readonly readout: BrowserFpsInputReadout;
 }
 
 export type BrowserFpsRuntimeCommand = {
@@ -53,6 +83,7 @@ export type BrowserFpsRuntimeActionCommand = {
 
 export interface BrowserFpsCommandFrame {
   readonly tick: number;
+  readonly input: BrowserFpsMovementInput;
   readonly runtimeCommand: BrowserFpsRuntimeCommand;
   readonly runtimeActionIntents: readonly BrowserFpsRuntimeActionCommand[];
   readonly pointerLockIntents: readonly BrowserFpsPointerLockIntent[];
@@ -61,7 +92,8 @@ export interface BrowserFpsCommandFrame {
 }
 
 export interface BrowserFpsInputCollectorOptions {
-  readonly camera: CameraHandle;
+  readonly camera?: CameraHandle;
+  readonly shellState?: BrowserFpsInputShellState;
   readonly moveSpeedUnitsPerSecond: number;
   readonly mouseSensitivityDegreesPerPixel: number;
   readonly pointerLocked?: boolean;
@@ -73,11 +105,12 @@ export interface BrowserFpsDrainInput {
 }
 
 export class BrowserFpsInputCollector {
-  readonly #camera: CameraHandle;
+  readonly #camera: CameraHandle | null;
   readonly #moveSpeedUnitsPerSecond: number;
   readonly #mouseSensitivityDegreesPerPixel: number;
   readonly #keys = new Set<BrowserFpsKeyCode>();
   readonly #pointerLockIntents: BrowserFpsPointerLockIntent[] = [];
+  #shellMode: BrowserFpsInputShellMode;
   #pointerLocked: boolean;
   #releaseRequestedByEscape = false;
   #mouseX = 0;
@@ -93,10 +126,19 @@ export class BrowserFpsInputCollector {
     if (!Number.isFinite(options.mouseSensitivityDegreesPerPixel)) {
       throw new Error('mouseSensitivityDegreesPerPixel must be finite');
     }
-    this.#camera = options.camera;
+    this.#camera = options.camera ?? null;
+    this.#shellMode = options.shellState?.mode ?? 'active';
     this.#moveSpeedUnitsPerSecond = options.moveSpeedUnitsPerSecond;
     this.#mouseSensitivityDegreesPerPixel = options.mouseSensitivityDegreesPerPixel;
     this.#pointerLocked = options.pointerLocked ?? false;
+  }
+
+  setShellState(state: BrowserFpsInputShellState): BrowserFpsInputReadout {
+    if (this.#shellMode !== state.mode) {
+      this.#shellMode = state.mode;
+      this.#clearTransientInput();
+    }
+    return this.readout();
   }
 
   setPointerLockActive(active: boolean): BrowserFpsInputReadout {
@@ -108,6 +150,9 @@ export class BrowserFpsInputCollector {
   }
 
   requestPointerLock(): readonly BrowserFpsPointerLockIntent[] {
+    if (!this.#acceptsInput()) {
+      return [];
+    }
     const intent: BrowserFpsPointerLockIntent = { kind: 'request_pointer_lock', reason: 'programmatic' };
     this.#pointerLockIntents.push(intent);
     return [intent];
@@ -125,6 +170,9 @@ export class BrowserFpsInputCollector {
       return [];
     }
     event.preventDefault?.();
+    if (!this.#acceptsInput()) {
+      return [];
+    }
     if (key === 'Escape') {
       this.#releaseRequestedByEscape = true;
       if (!this.#pointerLocked) {
@@ -144,11 +192,14 @@ export class BrowserFpsInputCollector {
       return;
     }
     event.preventDefault?.();
+    if (!this.#acceptsInput()) {
+      return;
+    }
     this.#keys.delete(key);
   }
 
   handleMouseMove(event: BrowserFpsMouseMoveInput): void {
-    if (!this.#pointerLocked) {
+    if (!this.#acceptsInput() || !this.#pointerLocked) {
       return;
     }
     if (!Number.isFinite(event.movementX) || !Number.isFinite(event.movementY)) {
@@ -161,6 +212,9 @@ export class BrowserFpsInputCollector {
   handlePointerDown(event: BrowserFpsPointerButtonInput): readonly BrowserFpsPointerLockIntent[] {
     event.preventDefault?.();
     if (event.button !== 0) {
+      return [];
+    }
+    if (!this.#acceptsInput()) {
       return [];
     }
     this.#primaryFirePressed = true;
@@ -178,6 +232,9 @@ export class BrowserFpsInputCollector {
       return;
     }
     event.preventDefault?.();
+    if (!this.#acceptsInput()) {
+      return;
+    }
     const wasPressed = this.#primaryFirePressed;
     this.#primaryFirePressed = false;
     if (wasPressed) {
@@ -185,48 +242,57 @@ export class BrowserFpsInputCollector {
     }
   }
 
+  reset(): BrowserFpsInputReadout {
+    this.#keys.clear();
+    this.#pointerLockIntents.length = 0;
+    this.#releaseRequestedByEscape = false;
+    this.#clearTransientInput();
+    return this.readout();
+  }
+
+  drainInputFrame(input: BrowserFpsDrainInput): BrowserFpsInputFrame {
+    validateDrainInput(input);
+    const frame = this.#buildInputFrame(input);
+    this.#resetDrainedFrameState();
+    this.#primaryFireTriggered = false;
+    this.#primaryFireReleased = false;
+    return frame;
+  }
+
   drainFrame(input: BrowserFpsDrainInput): BrowserFpsCommandFrame {
     validateDrainInput(input);
-    const moveForward = directional(this.#keys.has('KeyW'), this.#keys.has('KeyS'));
-    const moveRight = directional(this.#keys.has('KeyD'), this.#keys.has('KeyA'));
-    const mouseX = this.#mouseX;
-    const mouseY = this.#mouseY;
-    const readoutBeforeReset = this.readout();
+    if (this.#camera === null) {
+      throw new Error('camera is required to drain a RuntimeSession browser FPS command frame');
+    }
+    const inputFrame = this.#buildInputFrame(input);
     const runtimeCommand: BrowserFpsRuntimeCommand = {
       kind: 'runtime.apply_first_person_camera_input',
       envelope: {
         camera: this.#camera,
         tick: input.tick,
-        input: {
-          moveForward,
-          moveRight,
-          moveUp: 0,
-          yawDeltaDegrees: mouseX * this.#mouseSensitivityDegreesPerPixel,
-          pitchDeltaDegrees: -mouseY * this.#mouseSensitivityDegreesPerPixel,
-          dtSeconds: input.dtSeconds,
-          moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
-        },
+        input: inputFrame.input,
       },
     };
     const runtimeActionIntents = this.#drainRuntimeActionIntents(input.tick);
     const frame: BrowserFpsCommandFrame = {
       tick: input.tick,
+      input: inputFrame.input,
       runtimeCommand,
       runtimeActionIntents,
-      pointerLockIntents: [...this.#pointerLockIntents],
+      pointerLockIntents: inputFrame.pointerLockIntents,
       unsupportedIntents: [],
-      readout: readoutBeforeReset,
+      readout: inputFrame.readout,
     };
-    this.#pointerLockIntents.length = 0;
-    this.#mouseX = 0;
-    this.#mouseY = 0;
+    this.#resetDrainedFrameState();
     this.#primaryFireTriggered = false;
     this.#primaryFireReleased = false;
     return frame;
   }
 
   readout(): BrowserFpsInputReadout {
+    const shell = this.#shellReadout();
     return {
+      shell,
       pointerLocked: this.#pointerLocked,
       releaseRequestedByEscape: this.#releaseRequestedByEscape,
       pressedKeys: [...this.#keys].sort(),
@@ -240,6 +306,9 @@ export class BrowserFpsInputCollector {
 
   #drainRuntimeActionIntents(tick: number): readonly BrowserFpsRuntimeActionCommand[] {
     const intents: BrowserFpsRuntimeActionCommand[] = [];
+    if (!this.#acceptsInput() || this.#camera === null) {
+      return intents;
+    }
     if (this.#primaryFireTriggered) {
       intents.push({
         kind: 'runtime.propose_runtime_action_intent',
@@ -269,6 +338,66 @@ export class BrowserFpsInputCollector {
       });
     }
     return intents;
+  }
+
+  #movementInput(input: BrowserFpsDrainInput): BrowserFpsMovementInput {
+    if (!this.#acceptsInput()) {
+      return {
+        dtSeconds: input.dtSeconds,
+        moveForward: 0,
+        moveRight: 0,
+        moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
+        moveUp: 0,
+        pitchDeltaDegrees: 0,
+        yawDeltaDegrees: 0,
+      };
+    }
+    return {
+      dtSeconds: input.dtSeconds,
+      moveForward: directional(this.#keys.has('KeyW'), this.#keys.has('KeyS')),
+      moveRight: directional(this.#keys.has('KeyD'), this.#keys.has('KeyA')),
+      moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
+      moveUp: 0,
+      pitchDeltaDegrees: -this.#mouseY * this.#mouseSensitivityDegreesPerPixel,
+      yawDeltaDegrees: this.#mouseX * this.#mouseSensitivityDegreesPerPixel,
+    };
+  }
+
+  #buildInputFrame(input: BrowserFpsDrainInput): BrowserFpsInputFrame {
+    return {
+      tick: input.tick,
+      input: this.#movementInput(input),
+      pointerLockIntents: [...this.#pointerLockIntents],
+      readout: this.readout(),
+    };
+  }
+
+  #shellReadout(): BrowserFpsInputShellReadout {
+    const acceptsInput = this.#acceptsInput();
+    return {
+      acceptsInput,
+      blockedReason: acceptsInput ? null : this.#shellMode,
+      mode: this.#shellMode,
+    };
+  }
+
+  #acceptsInput(): boolean {
+    return this.#shellMode === 'active';
+  }
+
+  #clearTransientInput(): void {
+    this.#keys.clear();
+    this.#mouseX = 0;
+    this.#mouseY = 0;
+    this.#primaryFirePressed = false;
+    this.#primaryFireTriggered = false;
+    this.#primaryFireReleased = false;
+  }
+
+  #resetDrainedFrameState(): void {
+    this.#pointerLockIntents.length = 0;
+    this.#mouseX = 0;
+    this.#mouseY = 0;
   }
 }
 

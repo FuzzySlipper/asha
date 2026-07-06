@@ -4,6 +4,7 @@ export class BrowserFpsInputCollector {
     #mouseSensitivityDegreesPerPixel;
     #keys = new Set();
     #pointerLockIntents = [];
+    #shellMode;
     #pointerLocked;
     #releaseRequestedByEscape = false;
     #mouseX = 0;
@@ -18,10 +19,18 @@ export class BrowserFpsInputCollector {
         if (!Number.isFinite(options.mouseSensitivityDegreesPerPixel)) {
             throw new Error('mouseSensitivityDegreesPerPixel must be finite');
         }
-        this.#camera = options.camera;
+        this.#camera = options.camera ?? null;
+        this.#shellMode = options.shellState?.mode ?? 'active';
         this.#moveSpeedUnitsPerSecond = options.moveSpeedUnitsPerSecond;
         this.#mouseSensitivityDegreesPerPixel = options.mouseSensitivityDegreesPerPixel;
         this.#pointerLocked = options.pointerLocked ?? false;
+    }
+    setShellState(state) {
+        if (this.#shellMode !== state.mode) {
+            this.#shellMode = state.mode;
+            this.#clearTransientInput();
+        }
+        return this.readout();
     }
     setPointerLockActive(active) {
         this.#pointerLocked = active;
@@ -31,6 +40,9 @@ export class BrowserFpsInputCollector {
         return this.readout();
     }
     requestPointerLock() {
+        if (!this.#acceptsInput()) {
+            return [];
+        }
         const intent = { kind: 'request_pointer_lock', reason: 'programmatic' };
         this.#pointerLockIntents.push(intent);
         return [intent];
@@ -46,6 +58,9 @@ export class BrowserFpsInputCollector {
             return [];
         }
         event.preventDefault?.();
+        if (!this.#acceptsInput()) {
+            return [];
+        }
         if (key === 'Escape') {
             this.#releaseRequestedByEscape = true;
             if (!this.#pointerLocked) {
@@ -64,10 +79,13 @@ export class BrowserFpsInputCollector {
             return;
         }
         event.preventDefault?.();
+        if (!this.#acceptsInput()) {
+            return;
+        }
         this.#keys.delete(key);
     }
     handleMouseMove(event) {
-        if (!this.#pointerLocked) {
+        if (!this.#acceptsInput() || !this.#pointerLocked) {
             return;
         }
         if (!Number.isFinite(event.movementX) || !Number.isFinite(event.movementY)) {
@@ -79,6 +97,9 @@ export class BrowserFpsInputCollector {
     handlePointerDown(event) {
         event.preventDefault?.();
         if (event.button !== 0) {
+            return [];
+        }
+        if (!this.#acceptsInput()) {
             return [];
         }
         this.#primaryFirePressed = true;
@@ -95,53 +116,63 @@ export class BrowserFpsInputCollector {
             return;
         }
         event.preventDefault?.();
+        if (!this.#acceptsInput()) {
+            return;
+        }
         const wasPressed = this.#primaryFirePressed;
         this.#primaryFirePressed = false;
         if (wasPressed) {
             this.#primaryFireReleased = true;
         }
     }
+    reset() {
+        this.#keys.clear();
+        this.#pointerLockIntents.length = 0;
+        this.#releaseRequestedByEscape = false;
+        this.#clearTransientInput();
+        return this.readout();
+    }
+    drainInputFrame(input) {
+        validateDrainInput(input);
+        const frame = this.#buildInputFrame(input);
+        this.#resetDrainedFrameState();
+        this.#primaryFireTriggered = false;
+        this.#primaryFireReleased = false;
+        return frame;
+    }
     drainFrame(input) {
         validateDrainInput(input);
-        const moveForward = directional(this.#keys.has('KeyW'), this.#keys.has('KeyS'));
-        const moveRight = directional(this.#keys.has('KeyD'), this.#keys.has('KeyA'));
-        const mouseX = this.#mouseX;
-        const mouseY = this.#mouseY;
-        const readoutBeforeReset = this.readout();
+        if (this.#camera === null) {
+            throw new Error('camera is required to drain a RuntimeSession browser FPS command frame');
+        }
+        const inputFrame = this.#buildInputFrame(input);
         const runtimeCommand = {
             kind: 'runtime.apply_first_person_camera_input',
             envelope: {
                 camera: this.#camera,
                 tick: input.tick,
-                input: {
-                    moveForward,
-                    moveRight,
-                    moveUp: 0,
-                    yawDeltaDegrees: mouseX * this.#mouseSensitivityDegreesPerPixel,
-                    pitchDeltaDegrees: -mouseY * this.#mouseSensitivityDegreesPerPixel,
-                    dtSeconds: input.dtSeconds,
-                    moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
-                },
+                input: inputFrame.input,
             },
         };
         const runtimeActionIntents = this.#drainRuntimeActionIntents(input.tick);
         const frame = {
             tick: input.tick,
+            input: inputFrame.input,
             runtimeCommand,
             runtimeActionIntents,
-            pointerLockIntents: [...this.#pointerLockIntents],
+            pointerLockIntents: inputFrame.pointerLockIntents,
             unsupportedIntents: [],
-            readout: readoutBeforeReset,
+            readout: inputFrame.readout,
         };
-        this.#pointerLockIntents.length = 0;
-        this.#mouseX = 0;
-        this.#mouseY = 0;
+        this.#resetDrainedFrameState();
         this.#primaryFireTriggered = false;
         this.#primaryFireReleased = false;
         return frame;
     }
     readout() {
+        const shell = this.#shellReadout();
         return {
+            shell,
             pointerLocked: this.#pointerLocked,
             releaseRequestedByEscape: this.#releaseRequestedByEscape,
             pressedKeys: [...this.#keys].sort(),
@@ -154,6 +185,9 @@ export class BrowserFpsInputCollector {
     }
     #drainRuntimeActionIntents(tick) {
         const intents = [];
+        if (!this.#acceptsInput() || this.#camera === null) {
+            return intents;
+        }
         if (this.#primaryFireTriggered) {
             intents.push({
                 kind: 'runtime.propose_runtime_action_intent',
@@ -183,6 +217,60 @@ export class BrowserFpsInputCollector {
             });
         }
         return intents;
+    }
+    #movementInput(input) {
+        if (!this.#acceptsInput()) {
+            return {
+                dtSeconds: input.dtSeconds,
+                moveForward: 0,
+                moveRight: 0,
+                moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
+                moveUp: 0,
+                pitchDeltaDegrees: 0,
+                yawDeltaDegrees: 0,
+            };
+        }
+        return {
+            dtSeconds: input.dtSeconds,
+            moveForward: directional(this.#keys.has('KeyW'), this.#keys.has('KeyS')),
+            moveRight: directional(this.#keys.has('KeyD'), this.#keys.has('KeyA')),
+            moveSpeedUnitsPerSecond: this.#moveSpeedUnitsPerSecond,
+            moveUp: 0,
+            pitchDeltaDegrees: -this.#mouseY * this.#mouseSensitivityDegreesPerPixel,
+            yawDeltaDegrees: this.#mouseX * this.#mouseSensitivityDegreesPerPixel,
+        };
+    }
+    #buildInputFrame(input) {
+        return {
+            tick: input.tick,
+            input: this.#movementInput(input),
+            pointerLockIntents: [...this.#pointerLockIntents],
+            readout: this.readout(),
+        };
+    }
+    #shellReadout() {
+        const acceptsInput = this.#acceptsInput();
+        return {
+            acceptsInput,
+            blockedReason: acceptsInput ? null : this.#shellMode,
+            mode: this.#shellMode,
+        };
+    }
+    #acceptsInput() {
+        return this.#shellMode === 'active';
+    }
+    #clearTransientInput() {
+        this.#keys.clear();
+        this.#mouseX = 0;
+        this.#mouseY = 0;
+        this.#primaryFirePressed = false;
+        this.#primaryFireTriggered = false;
+        this.#primaryFireReleased = false;
+    }
+    #resetDrainedFrameState() {
+        this.#pointerLockIntents.length = 0;
+        this.#mouseX = 0;
+        this.#mouseY = 0;
     }
 }
 function fpsKeyCode(code) {

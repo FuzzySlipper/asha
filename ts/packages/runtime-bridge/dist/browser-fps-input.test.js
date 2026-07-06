@@ -30,6 +30,15 @@ void test('BrowserFpsInputCollector maps WASD and mouse deltas to a RuntimeSessi
     input.handleMouseMove({ movementX: 12, movementY: -4 });
     const frame = input.drainFrame({ tick: 1, dtSeconds: 1 / 60 });
     assert.equal(frame.runtimeCommand.kind, 'runtime.apply_first_person_camera_input');
+    assert.deepEqual(frame.input, {
+        moveForward: 1,
+        moveRight: 1,
+        moveUp: 0,
+        yawDeltaDegrees: 1.2000000000000002,
+        pitchDeltaDegrees: 0.4,
+        dtSeconds: 1 / 60,
+        moveSpeedUnitsPerSecond: 3,
+    });
     assert.deepEqual(frame.runtimeCommand.envelope.input, {
         moveForward: 1,
         moveRight: 1,
@@ -118,5 +127,78 @@ void test('BrowserFpsInputCollector maps primary fire to a typed runtime action 
     const emptyFrame = input.drainFrame({ tick: 6, dtSeconds: 0 });
     assert.deepEqual(emptyFrame.runtimeActionIntents, []);
     assert.deepEqual(emptyFrame.unsupportedIntents, []);
+});
+void test('BrowserFpsInputCollector drains runtime-neutral movement frames without a camera handle', () => {
+    const input = new BrowserFpsInputCollector({
+        moveSpeedUnitsPerSecond: 4,
+        mouseSensitivityDegreesPerPixel: 0.25,
+        pointerLocked: true,
+    });
+    input.handleKeyDown({ code: 'KeyW' });
+    input.handleMouseMove({ movementX: -6, movementY: 8 });
+    const frame = input.drainInputFrame({ tick: 7, dtSeconds: 0.25 });
+    assert.deepEqual(frame.input, {
+        dtSeconds: 0.25,
+        moveForward: 1,
+        moveRight: 0,
+        moveSpeedUnitsPerSecond: 4,
+        moveUp: 0,
+        pitchDeltaDegrees: -2,
+        yawDeltaDegrees: -1.5,
+    });
+    assert.deepEqual(frame.readout.shell, { acceptsInput: true, blockedReason: null, mode: 'active' });
+    assert.deepEqual(input.readout().pendingMouseDelta, [0, 0]);
+    assert.throws(() => input.drainFrame({ tick: 8, dtSeconds: 0 }), /camera is required to drain a RuntimeSession browser FPS command frame/);
+});
+void test('BrowserFpsInputCollector blocks movement, look, pointer lock, and fire while disabled or paused', () => {
+    const { camera } = initializedSession();
+    const input = new BrowserFpsInputCollector({
+        camera,
+        moveSpeedUnitsPerSecond: 3,
+        mouseSensitivityDegreesPerPixel: 0.1,
+        pointerLocked: true,
+        shellState: { mode: 'disabled' },
+    });
+    assert.deepEqual(input.handlePointerDown({ button: 0 }), []);
+    input.handleKeyDown({ code: 'KeyW' });
+    input.handleMouseMove({ movementX: 12, movementY: 12 });
+    const disabledFrame = input.drainFrame({ tick: 9, dtSeconds: 1 });
+    assert.deepEqual(disabledFrame.readout.shell, {
+        acceptsInput: false,
+        blockedReason: 'disabled',
+        mode: 'disabled',
+    });
+    assert.deepEqual(disabledFrame.runtimeCommand.envelope.input, {
+        dtSeconds: 1,
+        moveForward: 0,
+        moveRight: 0,
+        moveSpeedUnitsPerSecond: 3,
+        moveUp: 0,
+        pitchDeltaDegrees: 0,
+        yawDeltaDegrees: 0,
+    });
+    assert.deepEqual(disabledFrame.pointerLockIntents, []);
+    assert.deepEqual(disabledFrame.runtimeActionIntents, []);
+    input.setShellState({ mode: 'active' });
+    input.handleKeyDown({ code: 'KeyD' });
+    input.handleMouseMove({ movementX: 5, movementY: 0 });
+    input.setShellState({ mode: 'paused' });
+    input.handlePointerDown({ button: 0 });
+    const pausedFrame = input.drainFrame({ tick: 10, dtSeconds: 0.5 });
+    assert.deepEqual(pausedFrame.readout.shell, {
+        acceptsInput: false,
+        blockedReason: 'paused',
+        mode: 'paused',
+    });
+    assert.deepEqual(pausedFrame.runtimeCommand.envelope.input, {
+        dtSeconds: 0.5,
+        moveForward: 0,
+        moveRight: 0,
+        moveSpeedUnitsPerSecond: 3,
+        moveUp: 0,
+        pitchDeltaDegrees: 0,
+        yawDeltaDegrees: 0,
+    });
+    assert.deepEqual(pausedFrame.runtimeActionIntents, []);
 });
 //# sourceMappingURL=browser-fps-input.test.js.map

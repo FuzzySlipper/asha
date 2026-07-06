@@ -1,6 +1,7 @@
 # Browser FPS Input
 
-Status: task #4030 upstream input surface for future `asha-demo` controls.
+Status: task #4404 upstream browser FPS input surface for `asha-demo`,
+Studio, and renderer-host canvas wiring.
 
 Public import path:
 
@@ -33,10 +34,38 @@ Primary fire press/release is emitted as typed runtime action intent proposals:
 The envelope is accepted by `RuntimeSessionFacade.submitRuntimeActionIntent`;
 the reference RuntimeSession returns typed combat/fire/health readout evidence
 for primary-fire press intents.
+Surfaces that do not own a RuntimeSession camera handle, such as
+`@asha/renderer-host`, use the same collector through `drainInputFrame()`:
+
+```ts
+{
+  tick: number,
+  input: {
+    moveForward: number,
+    moveRight: number,
+    moveUp: number,
+    yawDeltaDegrees: number,
+    pitchDeltaDegrees: number,
+    dtSeconds: number,
+    moveSpeedUnitsPerSecond: number
+  }
+}
+```
+
+This runtime-neutral frame is the durable browser/standalone input lane.
+Renderer hosts may adapt DOM events into it and apply the resulting camera pose
+or forward it to a movement authority, but they should not keep separate WASD,
+mouse-look, or primary-fire state machines.
 The collector also emits typed shell intents:
 
 - `{ kind: 'request_pointer_lock', reason: 'primary_button' | 'programmatic' }`
 - `{ kind: 'release_pointer_lock', reason: 'escape_key' | 'programmatic' }`
+
+Shell state is explicit:
+
+- `active` accepts keyboard, pointer-lock, mouse-look, and primary-fire input.
+- `disabled` emits zero movement/look and no pointer/fire intents.
+- `paused` emits zero movement/look and no pointer/fire intents.
 
 Input mapping:
 
@@ -51,5 +80,6 @@ Non-claims:
 
 - No gameplay movement, collision, or physics.
 - No authority mutation from browser input.
-- No demo wiring yet.
 - Primary fire is a typed proposal/readout path, not local browser authority.
+- No gameplay movement, collision, or physics authority; Rust/runtime movement
+  surfaces still validate the submitted camera/action envelopes.

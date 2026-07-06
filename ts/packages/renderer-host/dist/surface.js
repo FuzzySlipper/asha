@@ -1,6 +1,7 @@
 // Backend-neutral browser render surface host.
 import { createGeneratedTunnelRoomFrame, RenderProjection, } from '@asha/render-projection';
 import { createAshaRendererBrowserSurfaceFrame as createBackendBrowserSurfaceFrame, mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface, } from '@asha/renderer-three/backend';
+import { BrowserFpsInputCollector } from '@asha/runtime-bridge';
 export const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = 'renderer-host.v0';
 const THREE_BACKEND_DIAGNOSTICS = {
     family: 'threejs',
@@ -120,13 +121,14 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
     const eyeHeight = options?.eyeHeight ?? 1.62;
     const initialPosition = options?.initialPosition ?? [0, eyeHeight, 8];
     const movementAuthority = options?.movementAuthority;
-    const pressedKeys = new Set();
+    const inputCollector = new BrowserFpsInputCollector({
+        moveSpeedUnitsPerSecond: moveSpeed,
+        mouseSensitivityDegreesPerPixel: radiansToDegrees(mouseSensitivity),
+        shellState: { mode: enabled ? 'active' : 'disabled' },
+    });
     let authorityBasis = null;
     let controlTick = 0;
-    let pendingPitchDeltaDegrees = 0;
-    let pendingYawDeltaDegrees = 0;
     let pitchRadians = degreesToRadians(options?.initialPitchDegrees ?? 0);
-    let pointerLocked = false;
     let position = [initialPosition[0], initialPosition[1], initialPosition[2]];
     let yawRadians = degreesToRadians(options?.initialYawDegrees ?? 0);
     let lastMovementState = {
@@ -158,11 +160,9 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
         yawDegrees: round2(radiansToDegrees(yawRadians)),
     });
     const resetCamera = () => {
-        pressedKeys.clear();
+        inputCollector.reset();
         authorityBasis = null;
         controlTick = 0;
-        pendingPitchDeltaDegrees = 0;
-        pendingYawDeltaDegrees = 0;
         pitchRadians = degreesToRadians(options?.initialPitchDegrees ?? 0);
         position = [initialPosition[0], initialPosition[1], initialPosition[2]];
         yawRadians = degreesToRadians(options?.initialYawDegrees ?? 0);
@@ -174,12 +174,14 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
         };
     };
     const onPointerLockChange = () => {
-        pointerLocked = ownerDocument.pointerLockElement === canvas;
+        const pointerLocked = ownerDocument.pointerLockElement === canvas;
+        inputCollector.setPointerLockActive(pointerLocked);
         if (!pointerLocked) {
-            pressedKeys.clear();
+            inputCollector.reset();
         }
     };
     const onPointerDown = (event) => {
+        inputCollector.handlePointerDown(event);
         if (event.button === 0) {
             requestLock(event);
         }
@@ -188,58 +190,49 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
         requestLock(event);
     };
     const onMouseMove = (event) => {
-        if (!pointerLocked) {
-            return;
-        }
-        const yawDeltaRadians = event.movementX * mouseSensitivity;
-        const pitchDeltaRadians = -event.movementY * mouseSensitivity;
-        yawRadians += yawDeltaRadians;
-        pitchRadians = clamp(pitchRadians + pitchDeltaRadians, degreesToRadians(-85), degreesToRadians(85));
-        authorityBasis = null;
-        pendingYawDeltaDegrees += radiansToDegrees(yawDeltaRadians);
-        pendingPitchDeltaDegrees += radiansToDegrees(pitchDeltaRadians);
+        inputCollector.handleMouseMove(event);
     };
     const onKeyDown = (event) => {
         if (event.key === 'Escape') {
+            inputCollector.handleKeyDown(event);
             ownerDocument.exitPointerLock();
-            pressedKeys.clear();
             return;
         }
-        if (!controlsHaveKeyboardFocus(canvas, pointerLocked) || !isFirstPersonMovementKey(event.code)) {
+        if (!controlsHaveKeyboardFocus(canvas, inputCollector.readout().pointerLocked)) {
             return;
         }
-        event.preventDefault();
-        pressedKeys.add(event.code);
+        inputCollector.handleKeyDown(event);
     };
     const onKeyUp = (event) => {
-        if (!isFirstPersonMovementKey(event.code)) {
-            return;
-        }
-        event.preventDefault();
-        pressedKeys.delete(event.code);
+        inputCollector.handleKeyUp(event);
     };
     const update = (deltaSeconds) => {
-        if (!enabled || !controlsHaveKeyboardFocus(canvas, pointerLocked)) {
+        if (!enabled || !controlsHaveKeyboardFocus(canvas, inputCollector.readout().pointerLocked)) {
             return;
         }
-        const forward = movementAxis(pressedKeys, 'KeyW', 'ArrowUp', 'KeyS', 'ArrowDown');
-        const strafe = movementAxis(pressedKeys, 'KeyD', 'ArrowRight', 'KeyA', 'ArrowLeft');
-        const hasLookDelta = pendingYawDeltaDegrees !== 0 || pendingPitchDeltaDegrees !== 0;
+        const frame = inputCollector.drainInputFrame({
+            dtSeconds: Math.max(0, deltaSeconds),
+            tick: controlTick + 1,
+        });
+        const input = frame.input;
+        const forward = input.moveForward;
+        const strafe = input.moveRight;
+        const hasLookDelta = input.yawDeltaDegrees !== 0 || input.pitchDeltaDegrees !== 0;
         if (forward === 0 && strafe === 0 && !hasLookDelta) {
             return;
         }
         if (movementAuthority !== undefined) {
             controlTick += 1;
             const authorityResult = movementAuthority({
-                dtSeconds: Math.max(0, deltaSeconds),
+                dtSeconds: input.dtSeconds,
                 moveForward: forward,
                 moveRight: strafe,
-                moveSpeedUnitsPerSecond: moveSpeed,
-                moveUp: 0,
-                pitchDeltaDegrees: pendingPitchDeltaDegrees,
+                moveSpeedUnitsPerSecond: input.moveSpeedUnitsPerSecond,
+                moveUp: input.moveUp,
+                pitchDeltaDegrees: input.pitchDeltaDegrees,
                 poseBefore: cameraPose(),
                 tick: controlTick,
-                yawDeltaDegrees: pendingYawDeltaDegrees,
+                yawDeltaDegrees: input.yawDeltaDegrees,
             });
             position = authorityResult.pose.position;
             yawRadians = degreesToRadians(authorityResult.pose.yawDegrees);
@@ -251,20 +244,19 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
                 collided: authorityResult.collided ?? false,
                 movementHash: authorityResult.movementHash ?? null,
             };
-            pendingPitchDeltaDegrees = 0;
-            pendingYawDeltaDegrees = 0;
             return;
         }
-        pendingPitchDeltaDegrees = 0;
-        pendingYawDeltaDegrees = 0;
-        if (deltaSeconds <= 0) {
+        yawRadians += degreesToRadians(input.yawDeltaDegrees);
+        pitchRadians = clamp(pitchRadians + degreesToRadians(input.pitchDeltaDegrees), degreesToRadians(-85), degreesToRadians(85));
+        authorityBasis = null;
+        if (input.dtSeconds <= 0) {
             return;
         }
         const movement = calculateCameraRelativeMovement(yawRadians, forward, strafe);
         if (movement === null) {
             return;
         }
-        const step = moveSpeed * deltaSeconds;
+        const step = input.moveSpeedUnitsPerSecond * input.dtSeconds;
         position = [position[0] + movement[0] * step, eyeHeight, position[2] + movement[2] * step];
         lastMovementState = {
             authority: 'free_camera',
@@ -300,7 +292,7 @@ function createAshaRendererSurfaceFirstPersonControls(canvas, options) {
         dispose,
         lockPointer: () => requestLock(),
         movementState: () => lastMovementState,
-        pointerLocked: () => pointerLocked,
+        pointerLocked: () => inputCollector.readout().pointerLocked,
         resetCamera,
         update,
     };
@@ -438,21 +430,6 @@ function calculateCameraRelativeMovement(yawRadians, forwardAxis, strafeAxis) {
 }
 function controlsHaveKeyboardFocus(canvas, pointerLocked) {
     return pointerLocked || canvas.ownerDocument.activeElement === canvas;
-}
-function isFirstPersonMovementKey(code) {
-    return (code === 'KeyW' ||
-        code === 'KeyA' ||
-        code === 'KeyS' ||
-        code === 'KeyD' ||
-        code === 'ArrowUp' ||
-        code === 'ArrowDown' ||
-        code === 'ArrowLeft' ||
-        code === 'ArrowRight');
-}
-function movementAxis(keys, positivePrimary, positiveSecondary, negativePrimary, negativeSecondary) {
-    const positive = keys.has(positivePrimary) || keys.has(positiveSecondary) ? 1 : 0;
-    const negative = keys.has(negativePrimary) || keys.has(negativeSecondary) ? 1 : 0;
-    return positive - negative;
 }
 function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
