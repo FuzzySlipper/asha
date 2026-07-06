@@ -16,9 +16,25 @@
 //!
 //! [`TickInput`] carries the proposed commands for one tick. [`TickOutcome`]
 //! records what was accepted, what was rejected, and how many events were
-//! applied. The phases are named explicitly here so that Phase 3 (policy host)
-//! and Phase 4 (replay) can attach at the right joints without restructuring
-//! the kernel.
+//! applied. The phases are named explicitly so policy, replay, snapshot, and
+//! telemetry layers can attach at the right joints without restructuring the
+//! kernel.
+//!
+//! # Snapshot/telemetry boundary
+//!
+//! `sim-kernel` does **not** compute state hashes, persist snapshot payloads, or
+//! emit telemetry events. The kernel owns the tick's decision summary only. The
+//! `Snapshot` phase marks the observation boundary after events have been
+//! applied:
+//!
+//! - `sim-runner` derives state hashes from `core-snapshot`;
+//! - `sim-runner` records replay checkpoints and `sim-replay` owns the artifact
+//!   shape/encoding;
+//! - telemetry remains a read-only projection layer downstream of the completed
+//!   tick.
+//!
+//! This keeps the kernel free of replay/storage/projection dependencies while
+//! making the handoff point explicit and testable.
 
 #![forbid(unsafe_code)]
 
@@ -41,8 +57,54 @@ pub enum TickPhase {
     AccumulateEvents,
     /// Apply each accepted batch to the store in order.
     ApplyEvents,
-    /// Compute state hash / emit telemetry (Phase 4/5 placeholder).
+    /// Observation boundary after mutation. See [`SnapshotPhaseContract`] for
+    /// the explicit ownership split: the kernel names this phase, while
+    /// `sim-runner`/`core-snapshot`/`sim-replay` produce hash and checkpoint data.
     Snapshot,
+}
+
+/// Ownership contract for [`TickPhase::Snapshot`].
+///
+/// This is deliberately data-only: it documents and pins the lane boundary
+/// without making `sim-kernel` depend on `core-snapshot`, `sim-replay`,
+/// telemetry protocols, render, or tooling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SnapshotPhaseContract {
+    /// Whether `TickOutcome` carries a state-hash field owned by this crate.
+    pub kernel_emits_state_hash: bool,
+    /// Whether `TickOutcome` carries a full snapshot payload owned by this crate.
+    pub kernel_emits_snapshot_payload: bool,
+    /// Crate/layer that computes deterministic state hashes after mutation.
+    pub state_hash_owner: &'static str,
+    /// Crate/layer that records replay checkpoint metadata.
+    pub replay_checkpoint_owner: &'static str,
+    /// Layer that may project observational telemetry from a completed tick.
+    pub telemetry_owner: &'static str,
+}
+
+impl SnapshotPhaseContract {
+    /// Current concrete boundary for the snapshot phase.
+    pub const CURRENT: SnapshotPhaseContract = SnapshotPhaseContract {
+        kernel_emits_state_hash: false,
+        kernel_emits_snapshot_payload: false,
+        state_hash_owner: "sim-runner via core-snapshot",
+        replay_checkpoint_owner: "sim-runner records, sim-replay encodes",
+        telemetry_owner: "downstream read-only telemetry projection",
+    };
+}
+
+impl TickPhase {
+    /// Returns the concrete snapshot ownership contract for the observation
+    /// phase. Other phases do not own snapshot/hash/telemetry payloads.
+    pub const fn snapshot_contract(self) -> Option<SnapshotPhaseContract> {
+        match self {
+            TickPhase::Snapshot => Some(SnapshotPhaseContract::CURRENT),
+            TickPhase::CollectInput
+            | TickPhase::Validate
+            | TickPhase::AccumulateEvents
+            | TickPhase::ApplyEvents => None,
+        }
+    }
 }
 
 // ── Tick I/O ──────────────────────────────────────────────────────────────────
@@ -129,5 +191,35 @@ mod tests {
         assert_ne!(TickPhase::Validate, TickPhase::AccumulateEvents);
         assert_ne!(TickPhase::AccumulateEvents, TickPhase::ApplyEvents);
         assert_ne!(TickPhase::ApplyEvents, TickPhase::Snapshot);
+    }
+
+    #[test]
+    fn snapshot_phase_contract_routes_payloads_outside_kernel() {
+        let contract = TickPhase::Snapshot
+            .snapshot_contract()
+            .expect("snapshot phase has contract");
+        assert!(!contract.kernel_emits_state_hash);
+        assert!(!contract.kernel_emits_snapshot_payload);
+        assert_eq!(contract.state_hash_owner, "sim-runner via core-snapshot");
+        assert_eq!(
+            contract.replay_checkpoint_owner,
+            "sim-runner records, sim-replay encodes"
+        );
+        assert_eq!(
+            contract.telemetry_owner,
+            "downstream read-only telemetry projection"
+        );
+    }
+
+    #[test]
+    fn non_snapshot_phases_do_not_claim_snapshot_payloads() {
+        for phase in [
+            TickPhase::CollectInput,
+            TickPhase::Validate,
+            TickPhase::AccumulateEvents,
+            TickPhase::ApplyEvents,
+        ] {
+            assert_eq!(phase.snapshot_contract(), None);
+        }
     }
 }
