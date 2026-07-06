@@ -471,7 +471,7 @@ may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge"
 lane = "ts-catalog"
 type = "lib"
 layer = "domain"
-implementation_status = "reserved"
+implementation_status = "active"
 may_import = ["@asha/contracts", "@asha/catalog-core"]
 may_not_import = ["@asha/renderer-three", "@asha/ui-dom", "@asha/runtime-bridge", "@asha/native-bridge", "@asha/wasm-replay-bridge", "@asha/electron-main"]
 
