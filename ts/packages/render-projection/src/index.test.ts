@@ -4,7 +4,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { entityId, renderHandle, type MeshPayloadDescriptor, type RenderDiff, type RenderFrameDiff, type RenderNode, type SpriteInstanceDescriptor, type StaticMeshAsset } from '@asha/contracts';
-import { RenderProjection, RenderProjectionError } from './index.js';
+import {
+  RenderProjection,
+  RenderProjectionError,
+  createGeneratedTunnelRoomFrame,
+  createGeneratedTunnelViewportFrame,
+  type GeneratedTunnelFrameReadout,
+} from './index.js';
 
 const repoRoot = resolve(import.meta.dirname, '../../../..');
 
@@ -14,6 +20,37 @@ function fixturePath(name: string): string {
 
 function goldenPath(name: string): string {
   return resolve(repoRoot, 'harness/goldens/render-projection', name);
+}
+
+function tinyGeneratedTunnelReadout(): GeneratedTunnelFrameReadout {
+  return {
+    generator: {
+      presetId: 'tiny-enclosed',
+      seed: 17,
+      generationHash: 'fnv1a64:0821a0c2aea17dff',
+      outputHash: 'a9b504096397f5b4',
+    },
+    volume: {
+      tunnelDims: [5, 4, 9],
+      solidVoxels: 178,
+    },
+    spawnMarkers: [
+      { id: 'player_start', kind: 'player', world: [1.5, 1.5, 1.5] },
+      { id: 'exit_hint', kind: 'exit', world: [3.5, 1.5, 7.5] },
+    ],
+    materials: [
+      { role: 'wall', material: 1 },
+      { role: 'floor', material: 2 },
+      { role: 'accent', material: 3 },
+    ],
+    renderProjection: {
+      hash: 'fnv1a64:21eb8696f6f3b5c4',
+    },
+    collisionProjection: {
+      hash: 'fnv1a64:78b242163cf67524',
+    },
+    replayHash: 'fnv1a64:0821a0c2aea17dff',
+  };
 }
 
 function cubeNode(label = 'cube'): RenderNode {
@@ -250,3 +287,101 @@ void test('retained projection fixture matches the committed before/after golden
   }
   assert.deepEqual(projection.snapshot(), after);
 });
+
+void test('generated tunnel room frame is renderer-neutral and structurally stable', () => {
+  const tunnel = tinyGeneratedTunnelReadout();
+  const viewportFrame = createGeneratedTunnelViewportFrame(tunnel);
+  const roomFrame = createGeneratedTunnelRoomFrame({
+    tunnel,
+    enemy: {
+      label: 'generated-tunnel-enemy',
+      position: [0, 1.1, -1.35],
+      scale: [0.7, 1.8, 0.7],
+    },
+  });
+  const signature = renderFrameSignature(roomFrame);
+
+  assert.equal(viewportFrame.ops.length, 18);
+  assert.equal(roomFrame.ops.length, 31);
+  assert.deepEqual(signature.labels, [
+    'generated-tunnel-floor',
+    'generated-tunnel-ceiling',
+    'generated-tunnel-wall-west',
+    'generated-tunnel-wall-east',
+    'generated-tunnel-entrance-cap',
+    'generated-tunnel-exit-cap',
+    'generated-tunnel-spawn-player_start',
+    'generated-tunnel-spawn-exit_hint',
+    'generated-tunnel-wall-rib-west-1',
+    'generated-tunnel-wall-rib-east-1',
+    'generated-tunnel-wall-rib-west-2',
+    'generated-tunnel-wall-rib-east-2',
+    'generated-tunnel-wall-rib-west-3',
+    'generated-tunnel-wall-rib-east-3',
+    'generated-tunnel-wall-rib-west-4',
+    'generated-tunnel-wall-rib-east-4',
+    'generated-tunnel-low-cover-west',
+    'generated-tunnel-low-cover-east',
+    'generated-tunnel-ceiling-crossbeam',
+    'generated-tunnel-enemy',
+    'generated-tunnel-centerline',
+  ]);
+  assert.equal(signature.hash, 'fnv1a64:cf70df6dccdf1758');
+});
+
+function renderFrameSignature(frame: RenderFrameDiff): {
+  readonly hash: string;
+  readonly labels: readonly string[];
+} {
+  const labels = frame.ops.flatMap((op) => {
+    if (op.op === 'create') {
+      return [op.node.metadata.label ?? ''];
+    }
+    if (op.op === 'createStaticMeshInstance') {
+      return [op.instance.metadata.label ?? ''];
+    }
+    return [];
+  });
+  return {
+    hash: stableHash({ opCount: frame.ops.length, labels }),
+    labels,
+  };
+}
+
+type StableHashPrimitive = string | number | boolean | null;
+type StableHashValue = StableHashPrimitive | readonly StableHashValue[] | StableHashRecord;
+interface StableHashRecord {
+  readonly [key: string]: StableHashValue | undefined;
+}
+
+function stableHash(value: StableHashValue): string {
+  return `fnv1a64:${fnv1a64(stableStringify(value))}`;
+}
+
+function stableStringify(value: StableHashValue | undefined): string {
+  if (value === undefined) {
+    return 'undefined';
+  }
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableStringify(entry)).join(',')}]`;
+  }
+  const record = value as StableHashRecord;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(',')}}`;
+}
+
+function fnv1a64(text: string): string {
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= BigInt(text.charCodeAt(index));
+    hash = (hash * prime) & mask;
+  }
+  return hash.toString(16).padStart(16, '0');
+}

@@ -1,3 +1,4 @@
+export * from './generated-tunnel-frame.js';
 import type { Material, MeshPayloadDescriptor, MeshPickHit, RenderDiff, RenderFrameDiff, RenderHandle, RenderLayer, RenderMaterialDescriptor, RenderMetadata, RenderNode, SpriteAtlasDescriptor, SpriteInstanceDescriptor, SpritePickHit, StaticMeshAsset, StaticMeshInstanceDescriptor, TextureDescriptor, Transform } from '@asha/contracts';
 /** Raised when a render diff cannot be applied to the retained projection. */
 export declare class RenderProjectionError extends Error {

@@ -5,6 +5,8 @@
 // touches raw runtime transports. Browser/Three/WebGPU bindings consume the
 // returned neutral instructions or inspect the retained snapshot.
 
+export * from './generated-tunnel-frame.js';
+
 import type {
   Material,
   MeshPayloadDescriptor,

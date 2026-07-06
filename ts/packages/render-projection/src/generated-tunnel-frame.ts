@@ -2,20 +2,51 @@ import {
   renderHandle,
   type CameraProjectionSnapshot,
   type CollisionAxis,
+  type Geometry,
   type MeshPayloadDescriptor,
+  type RenderDiff,
   type RenderFrameDiff,
   type RenderMaterialDescriptor,
+  type RenderNode,
   type StaticMeshAsset,
   type StaticMeshInstanceDescriptor,
   type Transform,
 } from '@asha/contracts';
-import type { GeneratedTunnelReadout } from '@asha/runtime-bridge';
 
 export const FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME = 'generated-tunnel-first-person-viewport';
 
 export type TunnelViewportVec3 = readonly [number, number, number];
 export type TunnelViewportColor = readonly [number, number, number, number];
 export type TunnelViewportMaterialRole = 'wall' | 'floor' | 'accent' | 'playerMarker' | 'exitMarker';
+
+export interface GeneratedTunnelFrameReadout {
+  readonly generator: {
+    readonly presetId: string;
+    readonly seed: number;
+    readonly generationHash: string;
+    readonly outputHash: string;
+  };
+  readonly volume: {
+    readonly tunnelDims: readonly [number, number, number];
+    readonly solidVoxels: number;
+  };
+  readonly spawnMarkers: readonly {
+    readonly id: string;
+    readonly kind: 'player' | 'exit' | string;
+    readonly world: TunnelViewportVec3;
+  }[];
+  readonly materials: readonly {
+    readonly role: string;
+    readonly material: string | number;
+  }[];
+  readonly renderProjection: {
+    readonly hash: string;
+  };
+  readonly collisionProjection: {
+    readonly hash: string;
+  };
+  readonly replayHash: string;
+}
 
 export interface TunnelViewportMaterialPalette {
   readonly wall: TunnelViewportColor;
@@ -34,17 +65,29 @@ export interface FirstPersonTunnelViewportCollisionDebug {
 }
 
 export interface FirstPersonTunnelViewportInput {
-  readonly tunnel: GeneratedTunnelReadout;
+  readonly tunnel: GeneratedTunnelFrameReadout;
   readonly camera: CameraProjectionSnapshot;
   readonly materials?: Partial<TunnelViewportMaterialPalette>;
   readonly collision?: FirstPersonTunnelViewportCollisionDebug | null;
 }
 
+export interface GeneratedTunnelRoomFrameTarget {
+  readonly label?: string;
+  readonly position: TunnelViewportVec3;
+  readonly scale?: TunnelViewportVec3;
+}
+
+export interface GeneratedTunnelRoomFrameInput {
+  readonly enemy?: GeneratedTunnelRoomFrameTarget | null;
+  readonly materials?: Partial<TunnelViewportMaterialPalette>;
+  readonly tunnel: GeneratedTunnelFrameReadout;
+}
+
 export interface FirstPersonTunnelViewportSummary {
   readonly kind: 'first_person_tunnel_viewport.v0';
   readonly fixture: typeof FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME;
-  readonly presetId: GeneratedTunnelReadout['generator']['presetId'];
-  readonly seed: GeneratedTunnelReadout['generator']['seed'];
+  readonly presetId: GeneratedTunnelFrameReadout['generator']['presetId'];
+  readonly seed: GeneratedTunnelFrameReadout['generator']['seed'];
   readonly camera: {
     readonly camera: CameraProjectionSnapshot['camera'];
     readonly tick: number;
@@ -58,7 +101,7 @@ export interface FirstPersonTunnelViewportSummary {
     };
   };
   readonly tunnel: {
-    readonly dims: GeneratedTunnelReadout['volume']['tunnelDims'];
+    readonly dims: GeneratedTunnelFrameReadout['volume']['tunnelDims'];
     readonly solidVoxels: number;
     readonly spawnMarkers: readonly string[];
     readonly materialRoles: readonly string[];
@@ -96,7 +139,7 @@ const DEFAULT_TUNNEL_VIEWPORT_MATERIALS: TunnelViewportMaterialPalette = {
 };
 
 export function createGeneratedTunnelViewportFrame(
-  tunnel: GeneratedTunnelReadout,
+  tunnel: GeneratedTunnelFrameReadout,
   materials: Partial<TunnelViewportMaterialPalette> = {},
 ): RenderFrameDiff {
   const palette: TunnelViewportMaterialPalette = {
@@ -167,8 +210,48 @@ export function createGeneratedTunnelViewportFrame(
   };
 }
 
+export function createGeneratedTunnelRoomFrame(input: GeneratedTunnelRoomFrameInput): RenderFrameDiff {
+  const base = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
+  const centeredBaseOps = base.ops.map((op) => offsetRenderOp(op, [-2.5, 0, -4.5]));
+  const enemy = input.enemy ?? {
+    label: 'generated-tunnel-enemy',
+    position: [0, 1.1, -1.35] as const,
+    scale: [0.7, 1.8, 0.7] as const,
+  };
+  return {
+    ops: [
+      ...centeredBaseOps,
+      ...generatedTunnelRoomDepthCueOps(),
+      {
+        op: 'create',
+        handle: renderHandle(4103901),
+        parent: null,
+        node: primitiveNode(
+          enemy.label ?? 'generated-tunnel-enemy',
+          'cube',
+          enemy.position,
+          enemy.scale ?? [0.7, 1.8, 0.7],
+          [0.92, 0.22, 0.18, 1],
+        ),
+      },
+      {
+        op: 'create',
+        handle: renderHandle(4103902),
+        parent: null,
+        node: primitiveNode(
+          'generated-tunnel-centerline',
+          'cube',
+          [0, 0.02, -0.4],
+          [0.28, 0.04, 4.8],
+          [0.94, 0.62, 0.2, 1],
+        ),
+      },
+    ],
+  };
+}
+
 export function summarizeFirstPersonTunnelViewport(input: {
-  readonly tunnel: GeneratedTunnelReadout;
+  readonly tunnel: GeneratedTunnelFrameReadout;
   readonly camera: CameraProjectionSnapshot;
   readonly frame: RenderFrameDiff;
   readonly structuralSnapshot?: string;
@@ -325,6 +408,135 @@ function transform(translation: TunnelViewportVec3, scale: TunnelViewportVec3): 
     translation,
     rotation: IDENTITY_ROTATION,
     scale,
+  };
+}
+
+function generatedTunnelRoomDepthCueOps(): RenderDiff[] {
+  const wallRibColor = [0.28, 0.32, 0.36, 1] as const;
+  const coverColor = [0.34, 0.38, 0.34, 1] as const;
+  const ceilingColor = [0.38, 0.42, 0.47, 1] as const;
+  const ribZ = [-3.55, -2.25, -0.95, 0.35] as const;
+  const ops: RenderDiff[] = [];
+  ribZ.forEach((z, index) => {
+    ops.push(
+      {
+        op: 'create',
+        handle: renderHandle(4103910 + index * 2),
+        parent: null,
+        node: primitiveNode(
+          `generated-tunnel-wall-rib-west-${index + 1}`,
+          'cube',
+          [-2.42, 1.45, z],
+          [0.18, 2.9, 0.18],
+          wallRibColor,
+        ),
+      },
+      {
+        op: 'create',
+        handle: renderHandle(4103911 + index * 2),
+        parent: null,
+        node: primitiveNode(
+          `generated-tunnel-wall-rib-east-${index + 1}`,
+          'cube',
+          [2.42, 1.45, z],
+          [0.18, 2.9, 0.18],
+          wallRibColor,
+        ),
+      },
+    );
+  });
+  return [
+    ...ops,
+    {
+      op: 'create',
+      handle: renderHandle(4103920),
+      parent: null,
+      node: primitiveNode(
+        'generated-tunnel-low-cover-west',
+        'cube',
+        [-1.25, 0.24, -1.65],
+        [0.72, 0.48, 0.7],
+        coverColor,
+      ),
+    },
+    {
+      op: 'create',
+      handle: renderHandle(4103921),
+      parent: null,
+      node: primitiveNode(
+        'generated-tunnel-low-cover-east',
+        'cube',
+        [1.25, 0.24, -3.05],
+        [0.72, 0.48, 0.7],
+        coverColor,
+      ),
+    },
+    {
+      op: 'create',
+      handle: renderHandle(4103922),
+      parent: null,
+      node: primitiveNode(
+        'generated-tunnel-ceiling-crossbeam',
+        'cube',
+        [0, 3.08, -2.55],
+        [4.75, 0.2, 0.24],
+        ceilingColor,
+      ),
+    },
+  ];
+}
+
+function offsetRenderOp(op: RenderDiff, offset: TunnelViewportVec3): RenderDiff {
+  if (op.op === 'createStaticMeshInstance') {
+    return {
+      ...op,
+      instance: {
+        ...op.instance,
+        transform: offsetTransform(op.instance.transform, offset),
+      },
+    };
+  }
+  if (op.op === 'create') {
+    return {
+      ...op,
+      node: {
+        ...op.node,
+        transform: offsetTransform(op.node.transform, offset),
+      },
+    };
+  }
+  return op;
+}
+
+function offsetTransform(input: Transform, offset: TunnelViewportVec3): Transform {
+  return {
+    ...input,
+    translation: [
+      input.translation[0] + offset[0],
+      input.translation[1] + offset[1],
+      input.translation[2] + offset[2],
+    ],
+  };
+}
+
+function primitiveNode(
+  label: string,
+  shape: Exclude<Geometry['shape'], 'line'>,
+  translation: TunnelViewportVec3,
+  scale: TunnelViewportVec3,
+  color: TunnelViewportColor,
+): RenderNode {
+  return {
+    geometry: { shape },
+    material: { color, wireframe: false },
+    transform: {
+      translation,
+      rotation: IDENTITY_ROTATION,
+      scale,
+    },
+    visible: true,
+    layer: 'scene',
+    metadata: { source: null, tags: [], label },
   };
 }
 

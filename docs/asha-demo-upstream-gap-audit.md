@@ -44,10 +44,11 @@ because ASHA does not yet expose the durable upstream surface.
    but provider contract validation, required RuntimeBridge operation checks,
    and loaded-session Rust authority rejection now live upstream.
 
-4. Generated room frame composition still sits behind the Three backend.
-   The generated-tunnel room helper emits renderer-neutral render diffs, but it
-   currently lives in `@asha/renderer-three/backend`. That data should move to a
-   renderer-neutral or Rust/runtime projection owner.
+4. Generated room frame composition has a renderer-neutral owner.
+   #4402 moved generated-tunnel viewport and room-frame construction to
+   `@asha/render-projection`. `@asha/renderer-host` consumes that neutral
+   `RenderFrameDiff`, and `@asha/renderer-three` no longer exports the
+   generated-tunnel builders from its package root or backend declarations.
 
 5. Enemy encounter ticking is still demo-scheduled.
    The demo owns `setInterval`, passes target/enemy positions, chooses

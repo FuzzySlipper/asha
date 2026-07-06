@@ -2,17 +2,16 @@
 
 import type { CameraBasis, RenderFrameDiff } from '@asha/contracts';
 import {
+  createGeneratedTunnelRoomFrame,
   RenderProjection,
+  type GeneratedTunnelFrameReadout,
   type RenderProjectionInstruction,
   type RenderProjectionSnapshot,
+  type TunnelViewportMaterialPalette,
 } from '@asha/render-projection';
 import {
   createAshaRendererBrowserSurfaceFrame as createBackendBrowserSurfaceFrame,
-  createAshaRendererGeneratedTunnelRoomSurfaceFrame as createBackendGeneratedTunnelRoomSurfaceFrame,
   mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface,
-} from '@asha/renderer-three/backend';
-import type {
-  AshaRendererGeneratedTunnelRoomSurfaceInput as BackendGeneratedTunnelRoomSurfaceInput,
 } from '@asha/renderer-three/backend';
 
 export const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = 'renderer-host.v0';
@@ -125,26 +124,9 @@ export interface AshaRendererGeneratedTunnelRoomTarget {
 
 export type AshaRendererSurfaceColor = readonly [number, number, number, number];
 
-export interface AshaRendererGeneratedTunnelMaterialPalette {
-  readonly accent: AshaRendererSurfaceColor;
-  readonly exitMarker: AshaRendererSurfaceColor;
-  readonly floor: AshaRendererSurfaceColor;
-  readonly playerMarker: AshaRendererSurfaceColor;
-  readonly wall: AshaRendererSurfaceColor;
-}
+export type AshaRendererGeneratedTunnelMaterialPalette = TunnelViewportMaterialPalette;
 
-export interface AshaRendererGeneratedTunnelReadout {
-  readonly volume: {
-    readonly tunnelDims: readonly [number, number, number];
-  };
-  readonly spawnMarkers: readonly AshaRendererGeneratedTunnelSpawnMarker[];
-}
-
-export interface AshaRendererGeneratedTunnelSpawnMarker {
-  readonly id: string;
-  readonly kind: 'player' | 'exit';
-  readonly world: AshaRendererSurfaceVec3;
-}
+export type AshaRendererGeneratedTunnelReadout = GeneratedTunnelFrameReadout;
 
 export interface AshaRendererGeneratedTunnelRoomSurfaceInput {
   readonly enemy?: AshaRendererGeneratedTunnelRoomTarget | null;
@@ -204,10 +186,10 @@ export function createAshaRendererDefaultSurfaceFrame(): RenderFrameDiff {
 export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(
   input: AshaRendererGeneratedTunnelRoomSurfaceInput,
 ): RenderFrameDiff {
-  return createBackendGeneratedTunnelRoomSurfaceFrame({
+  return createGeneratedTunnelRoomFrame({
     ...(input.enemy === undefined ? {} : { enemy: input.enemy }),
     ...(input.materials === undefined ? {} : { materials: input.materials }),
-    tunnel: input.tunnel as BackendGeneratedTunnelRoomSurfaceInput['tunnel'],
+    tunnel: input.tunnel,
   });
 }
 

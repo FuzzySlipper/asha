@@ -1,5 +1,5 @@
 import type { CameraBasis, RenderFrameDiff } from '@asha/contracts';
-import { type RenderProjectionInstruction, type RenderProjectionSnapshot } from '@asha/render-projection';
+import { type GeneratedTunnelFrameReadout, type RenderProjectionInstruction, type RenderProjectionSnapshot, type TunnelViewportMaterialPalette } from '@asha/render-projection';
 export declare const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = "renderer-host.v0";
 export type AshaRendererBackendFamily = 'threejs';
 export interface AshaRendererBackendDiagnostics {
@@ -90,24 +90,8 @@ export interface AshaRendererGeneratedTunnelRoomTarget {
     readonly scale?: AshaRendererSurfaceVec3;
 }
 export type AshaRendererSurfaceColor = readonly [number, number, number, number];
-export interface AshaRendererGeneratedTunnelMaterialPalette {
-    readonly accent: AshaRendererSurfaceColor;
-    readonly exitMarker: AshaRendererSurfaceColor;
-    readonly floor: AshaRendererSurfaceColor;
-    readonly playerMarker: AshaRendererSurfaceColor;
-    readonly wall: AshaRendererSurfaceColor;
-}
-export interface AshaRendererGeneratedTunnelReadout {
-    readonly volume: {
-        readonly tunnelDims: readonly [number, number, number];
-    };
-    readonly spawnMarkers: readonly AshaRendererGeneratedTunnelSpawnMarker[];
-}
-export interface AshaRendererGeneratedTunnelSpawnMarker {
-    readonly id: string;
-    readonly kind: 'player' | 'exit';
-    readonly world: AshaRendererSurfaceVec3;
-}
+export type AshaRendererGeneratedTunnelMaterialPalette = TunnelViewportMaterialPalette;
+export type AshaRendererGeneratedTunnelReadout = GeneratedTunnelFrameReadout;
 export interface AshaRendererGeneratedTunnelRoomSurfaceInput {
     readonly enemy?: AshaRendererGeneratedTunnelRoomTarget | null;
     readonly materials?: Partial<AshaRendererGeneratedTunnelMaterialPalette>;

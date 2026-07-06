@@ -6,8 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderHandle } from '@asha/contracts';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
-import { FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, summarizeFirstPersonTunnelViewport, } from './index.js';
-import { createAshaRendererBrowserSurfaceFrame, createAshaRendererGeneratedTunnelRoomSurfaceFrame, renderFirstPersonTunnelViewport, renderProjectedFrame, } from './backend.js';
+import { createGeneratedTunnelRoomFrame, FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME, summarizeFirstPersonTunnelViewport, } from '@asha/render-projection';
+import { createAshaRendererBrowserSurfaceFrame, renderFirstPersonTunnelViewport, renderProjectedFrame, } from './backend.js';
 function sessionInput() {
     return {
         sessionId: 'renderer-three.generated-tunnel.viewport',
@@ -101,11 +101,12 @@ void test('first-person tunnel viewport summary can carry optional collision deb
     assert.deepEqual(result.summary.debug.collision, collision);
     assert.equal(summaryOnly.scene.structuralHash, result.summary.scene.structuralHash);
 });
-void test('renderer-three package root exposes renderer-neutral tunnel helpers under browser conditions', () => {
+void test('render-projection package root exposes renderer-neutral tunnel helpers under browser conditions', () => {
     const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
     const proof = `
-    const surface = await import('@asha/renderer-three');
+    const surface = await import('@asha/render-projection');
     const required = [
+      'createGeneratedTunnelRoomFrame',
       'createGeneratedTunnelViewportFrame',
       'summarizeFirstPersonTunnelViewport'
     ];
@@ -129,6 +130,25 @@ void test('renderer-three package root exposes renderer-neutral tunnel helpers u
         stdio: 'pipe',
     });
 });
+void test('renderer-three package root no longer exports renderer-neutral generated tunnel frame builders', () => {
+    const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const proof = `
+    const surface = await import('@asha/renderer-three');
+    const leaked = [
+      'createGeneratedTunnelRoomFrame',
+      'createGeneratedTunnelViewportFrame',
+      'summarizeFirstPersonTunnelViewport',
+      'createAshaRendererGeneratedTunnelRoomSurfaceFrame'
+    ].filter((name) => name in surface);
+    if (leaked.length > 0) {
+      throw new Error(JSON.stringify({ leaked }));
+    }
+  `;
+    execFileSync(process.execPath, ['--conditions=browser', '--input-type=module', '--eval', proof], {
+        cwd: packageRoot,
+        stdio: 'pipe',
+    });
+});
 void test('browser surface frame is an ASHA render diff consumed by the retained renderer', () => {
     const frame = createAshaRendererBrowserSurfaceFrame();
     const result = renderProjectedFrame(frame);
@@ -145,6 +165,7 @@ void test('renderer-three backend declarations stay render-backend scoped', () =
     const declarationText = readFileSync(declarationPath, 'utf8');
     assert.match(declarationText, /mountAshaRendererBrowserSurface/);
     assert.match(declarationText, /pickCenterObject/);
+    assert.doesNotMatch(declarationText, /createAshaRendererGeneratedTunnelRoomSurfaceFrame/);
     assert.doesNotMatch(declarationText, /firePrimary/);
     assert.doesNotMatch(declarationText, /lockPointer/);
     assert.doesNotMatch(declarationText, /movementAuthority/);
@@ -154,7 +175,7 @@ void test('generated tunnel browser surface frame carries combat target metadata
     const session = createMockRuntimeSession();
     session.initialize(sessionInput());
     const tunnel = session.readGeneratedTunnelReadout({ presetId: 'tiny-enclosed', seed: 17 });
-    const frame = createAshaRendererGeneratedTunnelRoomSurfaceFrame({
+    const frame = createGeneratedTunnelRoomFrame({
         tunnel,
         enemy: {
             label: 'generated-tunnel-enemy',

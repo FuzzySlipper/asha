@@ -1,9 +1,36 @@
 import { type CameraProjectionSnapshot, type CollisionAxis, type RenderFrameDiff } from '@asha/contracts';
-import type { GeneratedTunnelReadout } from '@asha/runtime-bridge';
 export declare const FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME = "generated-tunnel-first-person-viewport";
 export type TunnelViewportVec3 = readonly [number, number, number];
 export type TunnelViewportColor = readonly [number, number, number, number];
 export type TunnelViewportMaterialRole = 'wall' | 'floor' | 'accent' | 'playerMarker' | 'exitMarker';
+export interface GeneratedTunnelFrameReadout {
+    readonly generator: {
+        readonly presetId: string;
+        readonly seed: number;
+        readonly generationHash: string;
+        readonly outputHash: string;
+    };
+    readonly volume: {
+        readonly tunnelDims: readonly [number, number, number];
+        readonly solidVoxels: number;
+    };
+    readonly spawnMarkers: readonly {
+        readonly id: string;
+        readonly kind: 'player' | 'exit' | string;
+        readonly world: TunnelViewportVec3;
+    }[];
+    readonly materials: readonly {
+        readonly role: string;
+        readonly material: string | number;
+    }[];
+    readonly renderProjection: {
+        readonly hash: string;
+    };
+    readonly collisionProjection: {
+        readonly hash: string;
+    };
+    readonly replayHash: string;
+}
 export interface TunnelViewportMaterialPalette {
     readonly wall: TunnelViewportColor;
     readonly floor: TunnelViewportColor;
@@ -19,16 +46,26 @@ export interface FirstPersonTunnelViewportCollisionDebug {
     readonly movementHash: string;
 }
 export interface FirstPersonTunnelViewportInput {
-    readonly tunnel: GeneratedTunnelReadout;
+    readonly tunnel: GeneratedTunnelFrameReadout;
     readonly camera: CameraProjectionSnapshot;
     readonly materials?: Partial<TunnelViewportMaterialPalette>;
     readonly collision?: FirstPersonTunnelViewportCollisionDebug | null;
 }
+export interface GeneratedTunnelRoomFrameTarget {
+    readonly label?: string;
+    readonly position: TunnelViewportVec3;
+    readonly scale?: TunnelViewportVec3;
+}
+export interface GeneratedTunnelRoomFrameInput {
+    readonly enemy?: GeneratedTunnelRoomFrameTarget | null;
+    readonly materials?: Partial<TunnelViewportMaterialPalette>;
+    readonly tunnel: GeneratedTunnelFrameReadout;
+}
 export interface FirstPersonTunnelViewportSummary {
     readonly kind: 'first_person_tunnel_viewport.v0';
     readonly fixture: typeof FIRST_PERSON_TUNNEL_VIEWPORT_FIXTURE_NAME;
-    readonly presetId: GeneratedTunnelReadout['generator']['presetId'];
-    readonly seed: GeneratedTunnelReadout['generator']['seed'];
+    readonly presetId: GeneratedTunnelFrameReadout['generator']['presetId'];
+    readonly seed: GeneratedTunnelFrameReadout['generator']['seed'];
     readonly camera: {
         readonly camera: CameraProjectionSnapshot['camera'];
         readonly tick: number;
@@ -42,7 +79,7 @@ export interface FirstPersonTunnelViewportSummary {
         };
     };
     readonly tunnel: {
-        readonly dims: GeneratedTunnelReadout['volume']['tunnelDims'];
+        readonly dims: GeneratedTunnelFrameReadout['volume']['tunnelDims'];
         readonly solidVoxels: number;
         readonly spawnMarkers: readonly string[];
         readonly materialRoles: readonly string[];
@@ -68,12 +105,13 @@ export interface FirstPersonTunnelViewportSummary {
         'not_pixel_golden'
     ];
 }
-export declare function createGeneratedTunnelViewportFrame(tunnel: GeneratedTunnelReadout, materials?: Partial<TunnelViewportMaterialPalette>): RenderFrameDiff;
+export declare function createGeneratedTunnelViewportFrame(tunnel: GeneratedTunnelFrameReadout, materials?: Partial<TunnelViewportMaterialPalette>): RenderFrameDiff;
+export declare function createGeneratedTunnelRoomFrame(input: GeneratedTunnelRoomFrameInput): RenderFrameDiff;
 export declare function summarizeFirstPersonTunnelViewport(input: {
-    readonly tunnel: GeneratedTunnelReadout;
+    readonly tunnel: GeneratedTunnelFrameReadout;
     readonly camera: CameraProjectionSnapshot;
     readonly frame: RenderFrameDiff;
     readonly structuralSnapshot?: string;
     readonly collision?: FirstPersonTunnelViewportCollisionDebug | null;
 }): FirstPersonTunnelViewportSummary;
-//# sourceMappingURL=tunnel-viewport.d.ts.map
+//# sourceMappingURL=generated-tunnel-frame.d.ts.map

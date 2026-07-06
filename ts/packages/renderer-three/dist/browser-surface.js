@@ -1,9 +1,8 @@
 // Browser/canvas surface built on the retained ASHA ThreeRenderer.
 import * as THREE from 'three';
-import { RenderProjection } from '@asha/render-projection';
+import { RenderProjection, createGeneratedTunnelViewportFrame, summarizeFirstPersonTunnelViewport, } from '@asha/render-projection';
 import { renderHandle } from '@asha/contracts';
 import { ThreeRenderer } from './three-renderer.js';
-import { createGeneratedTunnelViewportFrame, summarizeFirstPersonTunnelViewport, } from './tunnel-viewport.js';
 /**
  * Apply a render frame through the renderer-neutral projection and then the
  * retained Three.js renderer. This is the package-root bridge used by demo
@@ -201,105 +200,6 @@ export function createAshaRendererBrowserSurfaceFrame() {
                 parent: null,
                 node: primitiveNode(`asha-renderer-random-cube-${String(index + 1).padStart(2, '0')}`, 'cube', [cube.position[0], cube.size[1] / 2, cube.position[1]], cube.size, cube.color),
             })),
-        ],
-    };
-}
-export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input) {
-    const base = createGeneratedTunnelViewportFrame(input.tunnel, input.materials);
-    const centeredBaseOps = base.ops.map((op) => offsetRenderOp(op, [-2.5, 0, -4.5]));
-    const enemy = input.enemy ?? {
-        label: 'generated-tunnel-enemy',
-        position: [0, 1.1, -1.35],
-        scale: [0.7, 1.8, 0.7],
-    };
-    return {
-        ops: [
-            ...centeredBaseOps,
-            ...generatedTunnelRoomDepthCueOps(),
-            {
-                op: 'create',
-                handle: renderHandle(4103901),
-                parent: null,
-                node: primitiveNode(enemy.label ?? 'generated-tunnel-enemy', 'cube', enemy.position, enemy.scale ?? [0.7, 1.8, 0.7], [0.92, 0.22, 0.18, 1]),
-            },
-            {
-                op: 'create',
-                handle: renderHandle(4103902),
-                parent: null,
-                node: primitiveNode('generated-tunnel-centerline', 'cube', [0, 0.02, -0.4], [0.28, 0.04, 4.8], [0.94, 0.62, 0.2, 1]),
-            },
-        ],
-    };
-}
-function generatedTunnelRoomDepthCueOps() {
-    const wallRibColor = [0.28, 0.32, 0.36, 1];
-    const coverColor = [0.34, 0.38, 0.34, 1];
-    const ceilingColor = [0.38, 0.42, 0.47, 1];
-    const ribZ = [-3.55, -2.25, -0.95, 0.35];
-    const ops = [];
-    ribZ.forEach((z, index) => {
-        ops.push({
-            op: 'create',
-            handle: renderHandle(4103910 + index * 2),
-            parent: null,
-            node: primitiveNode(`generated-tunnel-wall-rib-west-${index + 1}`, 'cube', [-2.42, 1.45, z], [0.18, 2.9, 0.18], wallRibColor),
-        }, {
-            op: 'create',
-            handle: renderHandle(4103911 + index * 2),
-            parent: null,
-            node: primitiveNode(`generated-tunnel-wall-rib-east-${index + 1}`, 'cube', [2.42, 1.45, z], [0.18, 2.9, 0.18], wallRibColor),
-        });
-    });
-    return [
-        ...ops,
-        {
-            op: 'create',
-            handle: renderHandle(4103920),
-            parent: null,
-            node: primitiveNode('generated-tunnel-low-cover-west', 'cube', [-1.25, 0.24, -1.65], [0.72, 0.48, 0.7], coverColor),
-        },
-        {
-            op: 'create',
-            handle: renderHandle(4103921),
-            parent: null,
-            node: primitiveNode('generated-tunnel-low-cover-east', 'cube', [1.25, 0.24, -3.05], [0.72, 0.48, 0.7], coverColor),
-        },
-        {
-            op: 'create',
-            handle: renderHandle(4103922),
-            parent: null,
-            node: primitiveNode('generated-tunnel-ceiling-crossbeam', 'cube', [0, 3.08, -2.55], [4.75, 0.2, 0.24], ceilingColor),
-        },
-    ];
-}
-function offsetRenderOp(op, offset) {
-    if (op.op === 'createStaticMeshInstance') {
-        return {
-            ...op,
-            instance: {
-                ...op.instance,
-                transform: offsetTransform(op.instance.transform, offset),
-            },
-        };
-    }
-    if (op.op === 'create') {
-        return {
-            ...op,
-            node: {
-                ...op.node,
-                transform: offsetTransform(op.node.transform, offset),
-            },
-        };
-    }
-    return op;
-}
-function offsetTransform(transform, offset) {
-    return {
-        ...transform,
-        translation: [
-            transform.translation[0] + offset[0],
-            transform.translation[1] + offset[1],
-            transform.translation[2] + offset[2],
         ],
     };
 }

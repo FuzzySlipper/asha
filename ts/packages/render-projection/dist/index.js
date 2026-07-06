@@ -4,6 +4,7 @@
 // model. It owns no authority, imports no renderer implementation, and never
 // touches raw runtime transports. Browser/Three/WebGPU bindings consume the
 // returned neutral instructions or inspect the retained snapshot.
+export * from './generated-tunnel-frame.js';
 /** Raised when a render diff cannot be applied to the retained projection. */
 export class RenderProjectionError extends Error {
     constructor(message) {

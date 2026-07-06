@@ -1,6 +1,6 @@
 // Backend-neutral browser render surface host.
-import { RenderProjection, } from '@asha/render-projection';
-import { createAshaRendererBrowserSurfaceFrame as createBackendBrowserSurfaceFrame, createAshaRendererGeneratedTunnelRoomSurfaceFrame as createBackendGeneratedTunnelRoomSurfaceFrame, mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface, } from '@asha/renderer-three/backend';
+import { createGeneratedTunnelRoomFrame, RenderProjection, } from '@asha/render-projection';
+import { createAshaRendererBrowserSurfaceFrame as createBackendBrowserSurfaceFrame, mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface, } from '@asha/renderer-three/backend';
 export const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = 'renderer-host.v0';
 const THREE_BACKEND_DIAGNOSTICS = {
     family: 'threejs',
@@ -19,7 +19,7 @@ export function createAshaRendererDefaultSurfaceFrame() {
     return createBackendBrowserSurfaceFrame();
 }
 export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input) {
-    return createBackendGeneratedTunnelRoomSurfaceFrame({
+    return createGeneratedTunnelRoomFrame({
         ...(input.enemy === undefined ? {} : { enemy: input.enemy }),
         ...(input.materials === undefined ? {} : { materials: input.materials }),
         tunnel: input.tunnel,
