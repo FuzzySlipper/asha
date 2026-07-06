@@ -10,5 +10,5 @@ export interface MockRuntimeSessionOptions {
 }
 
 export function createMockRuntimeSession(options: MockRuntimeSessionOptions = {}): RuntimeSessionFacade {
-  return createRuntimeSessionFacade({ bridge: options.bridge ?? createMockRuntimeBridge() });
+  return createRuntimeSessionFacade({ bridge: options.bridge ?? createMockRuntimeBridge(), mode: 'reference' });
 }

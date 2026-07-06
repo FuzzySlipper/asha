@@ -120,7 +120,7 @@ export function lifecycleStatusReadout(input) {
         restart: {
             eligible: true,
             intentKind: 'runtime.restart_session_intent',
-            reason: 'always_resettable_reference_fixture',
+            reason: input.restartReason ?? 'always_resettable_reference_fixture',
         },
         events: input.state.terminalEvent === null ? [] : [input.state.terminalEvent],
         fixture: {

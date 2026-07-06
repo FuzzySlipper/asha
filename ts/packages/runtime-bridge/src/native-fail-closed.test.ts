@@ -205,7 +205,8 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         replayHash: HASH_C,
       };
     },
-    readFpsRuntimeSession: (_handle: number) => {
+    readFpsRuntimeSession: (handle: number) => {
+      void handle;
       calls.push('fpsRead');
       return {
         backend: 'reference_bridge_rust',

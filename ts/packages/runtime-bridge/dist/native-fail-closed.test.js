@@ -178,7 +178,8 @@ function fakeAddon(calls = []) {
                 replayHash: HASH_C,
             };
         },
-        readFpsRuntimeSession: (_handle) => {
+        readFpsRuntimeSession: (handle) => {
+            void handle;
             calls.push('fpsRead');
             return {
                 backend: 'reference_bridge_rust',

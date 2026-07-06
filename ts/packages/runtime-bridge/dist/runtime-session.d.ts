@@ -9,7 +9,7 @@ import { type NavPathQueryRequest, type NavPathReadout, type NavPathScenario, ty
 import type { RuntimeActionIntentEnvelope, RuntimeActionIntentRejection, RuntimeActionIntentStatus } from './runtime-action.js';
 import { type RuntimeSessionAutonomousPolicyCombatSummary, type RuntimeSessionAutonomousPolicyMovementSummary, type RuntimeSessionAutonomousPolicyProposalReceipt, type RuntimeSessionAutonomousPolicyProposalRejection } from './runtime-session-lifecycle.js';
 export type { RuntimeSessionAutonomousPolicyCombatSummary, RuntimeSessionAutonomousPolicyMovementSummary, RuntimeSessionAutonomousPolicyProposalReceipt, RuntimeSessionAutonomousPolicyProposalRejection, RuntimeSessionAutonomousPolicyProposalRejectionReason, RuntimeSessionAutonomousPolicyProposalStatus, } from './runtime-session-lifecycle.js';
-export type RuntimeSessionMode = 'reference';
+export type RuntimeSessionMode = 'reference' | 'rust';
 export interface RuntimeSessionProjectIdentity {
     readonly gameId: string;
     readonly workspaceId: string;
@@ -298,7 +298,7 @@ export interface RuntimeSessionLifecycleStatusReadout {
     readonly restart: {
         readonly eligible: boolean;
         readonly intentKind: 'runtime.restart_session_intent';
-        readonly reason: 'always_resettable_reference_fixture';
+        readonly reason: 'always_resettable_reference_fixture' | 'rust_epoch_restart';
     };
     readonly events: readonly RuntimeSessionLifecycleEventReadout[];
     readonly fixture: {
@@ -488,6 +488,7 @@ export interface RuntimeSessionFacade {
 }
 export interface RuntimeSessionFacadeOptions {
     readonly bridge: RuntimeBridge;
+    readonly mode?: RuntimeSessionMode;
 }
 export type RuntimeSessionHashPrimitive = string | number | boolean | null;
 export type RuntimeSessionHashValue = RuntimeSessionHashPrimitive | readonly RuntimeSessionHashValue[] | RuntimeSessionHashRecord;

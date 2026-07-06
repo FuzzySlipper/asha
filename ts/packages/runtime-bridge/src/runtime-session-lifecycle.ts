@@ -207,6 +207,7 @@ export function lifecycleStatusReadout(input: {
   readonly tick: number;
   readonly restartCount: number;
   readonly sessionHash: string;
+  readonly restartReason?: RuntimeSessionLifecycleStatusReadout['restart']['reason'];
 }): RuntimeSessionLifecycleStatusReadout {
   const outcome = lifecycleOutcome(input.state);
   const lifecycleHash = stableHash(lifecycleStateHashRecord(input.state));
@@ -231,7 +232,7 @@ export function lifecycleStatusReadout(input: {
     restart: {
       eligible: true,
       intentKind: 'runtime.restart_session_intent',
-      reason: 'always_resettable_reference_fixture',
+      reason: input.restartReason ?? 'always_resettable_reference_fixture',
     },
     events: input.state.terminalEvent === null ? [] : [input.state.terminalEvent],
     fixture: {

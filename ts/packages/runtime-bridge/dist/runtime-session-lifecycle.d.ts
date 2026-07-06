@@ -68,6 +68,7 @@ export declare function lifecycleStatusReadout(input: {
     readonly tick: number;
     readonly restartCount: number;
     readonly sessionHash: string;
+    readonly restartReason?: RuntimeSessionLifecycleStatusReadout['restart']['reason'];
 }): RuntimeSessionLifecycleStatusReadout;
 export declare function lifecycleStatusToEncounterLifecycle(status: RuntimeSessionLifecycleStatusReadout): EncounterLifecycleInput;
 export declare function validateLifecycleStatusRequest(request: RuntimeSessionLifecycleStatusRequest): void;

@@ -10,8 +10,12 @@ import { buildRuntimeSessionEnemyNavPath, ecrpActorPosition, ecrpEntityTransform
 import { buildEcrpProjectState, buildEcrpRuntimeReadout, defaultRuntimeSessionEcrpProjectLoadInput, lifecycleStateFromEcrpProject, validateEcrpProjectLoadInput, } from './runtime-session-ecrp.js';
 import { acceptedAutonomousMovementReceipt, applyCombatReadoutToLifecycleState, buildRuntimeSessionPrimaryFireReadout, combatReadoutTick, generatedTunnelEnemyDefeatedLifecycleState, generatedTunnelPlayerDefeatedLifecycleState, initialRuntimeSessionLifecycleState, lifecycleStatusReadout, lifecycleStatusToEncounterLifecycle, rejectedAutonomousPolicyProposalReceipt, runtimeActionReceiptToAutonomousReceipt, validateAutonomousPolicyProposal, validateAutonomousPolicyTickInput, validateGeneratedTunnelOperationRequest, validateGeneratedTunnelReadoutRequest, validateInitializeInput, validateLifecycleStatusRequest, validateRestartIntent, validateRuntimeActionIntentEnvelope, } from './runtime-session-lifecycle.js';
 import { compositionHashRecord, encounterStateHashRecord, identityHashRecord, lifecycleStateHashRecord, referenceRuntimeSessionNonClaims, renderFrameHashRecord, stableHash, } from './runtime-session-hash.js';
+import { RustBackedRuntimeSessionFacade } from './runtime-session-rust-facade.js';
 export function createRuntimeSessionFacade(options) {
-    return new ReferenceRuntimeSessionFacade(options.bridge);
+    if (options.mode === 'reference') {
+        return new ReferenceRuntimeSessionFacade(options.bridge);
+    }
+    return new RustBackedRuntimeSessionFacade(options.bridge);
 }
 class ReferenceRuntimeSessionFacade {
     #bridge;

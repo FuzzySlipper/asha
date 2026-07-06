@@ -131,6 +131,7 @@ import {
   renderFrameHashRecord,
   stableHash,
 } from './runtime-session-hash.js';
+import { RustBackedRuntimeSessionFacade } from './runtime-session-rust-facade.js';
 
 export type {
   RuntimeSessionAutonomousPolicyCombatSummary,
@@ -141,7 +142,7 @@ export type {
   RuntimeSessionAutonomousPolicyProposalStatus,
 } from './runtime-session-lifecycle.js';
 
-export type RuntimeSessionMode = 'reference';
+export type RuntimeSessionMode = 'reference' | 'rust';
 
 export interface RuntimeSessionProjectIdentity {
   readonly gameId: string;
@@ -521,7 +522,7 @@ export interface RuntimeSessionLifecycleStatusReadout {
   readonly restart: {
     readonly eligible: boolean;
     readonly intentKind: 'runtime.restart_session_intent';
-    readonly reason: 'always_resettable_reference_fixture';
+    readonly reason: 'always_resettable_reference_fixture' | 'rust_epoch_restart';
   };
   readonly events: readonly RuntimeSessionLifecycleEventReadout[];
   readonly fixture: {
@@ -738,6 +739,7 @@ export interface RuntimeSessionFacade {
 
 export interface RuntimeSessionFacadeOptions {
   readonly bridge: RuntimeBridge;
+  readonly mode?: RuntimeSessionMode;
 }
 
 export type RuntimeSessionHashPrimitive = string | number | boolean | null;
@@ -775,7 +777,10 @@ export interface RuntimeSessionEcrpProjectState {
 }
 
 export function createRuntimeSessionFacade(options: RuntimeSessionFacadeOptions): RuntimeSessionFacade {
-  return new ReferenceRuntimeSessionFacade(options.bridge);
+  if (options.mode === 'reference') {
+    return new ReferenceRuntimeSessionFacade(options.bridge);
+  }
+  return new RustBackedRuntimeSessionFacade(options.bridge);
 }
 
 class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
