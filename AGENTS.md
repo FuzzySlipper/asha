@@ -94,6 +94,7 @@ See `docs/design.md` for the full system design and `README.md` for current repo
 ./harness/ci/check-replays.sh
 ./harness/ci/check-render-goldens.sh
 ./harness/ci/check-bridge.sh
+./harness/ci/check-vocabulary.sh # ECRP term-gravity gate: bans *Component/*Archetype type names; gates legacy World* naming behind harness/vocab/legacy-term-allowlist.txt
 
 # Launchable voxel smoke / shell / perf
 cd ts
