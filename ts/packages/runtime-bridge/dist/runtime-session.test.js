@@ -184,7 +184,7 @@ function rustFpsSnapshot(input) {
         replayHash: input.replayHash,
     };
 }
-function rustRuntimeSessionBridgeDouble() {
+function rustRuntimeSessionBridgeDouble(options = {}) {
     const base = createMockRuntimeBridge();
     const calls = { load: [], fire: [], restart: [] };
     let player = 10;
@@ -201,6 +201,9 @@ function rustRuntimeSessionBridgeDouble() {
         get(target, property, receiver) {
             if (property === 'loadFpsRuntimeSession') {
                 return (request) => {
+                    if (request.projectBundle === options.rejectProjectBundle) {
+                        throw new RuntimeBridgeError('invalid_input', `authority rejected ${request.projectBundle}`);
+                    }
                     calls.load.push(request);
                     player = request.definitions.find((definition) => definition.role === 'player')?.entity ?? player;
                     enemy = request.definitions.find((definition) => definition.role === 'enemy')?.entity ?? enemy;
@@ -324,6 +327,11 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
     assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:custom-demo.scene');
     assert.equal(calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.entity, 202);
     assert.equal(calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.policyBinding?.policyId, 'policy.enemy.custom.v0');
+    const rustReadout = session.readEcrpRuntimeReadout();
+    assert.equal(rustReadout.authority.mode, 'rust');
+    assert.equal(rustReadout.authority.source, 'rust_bridge');
+    assert.equal(rustReadout.authority.surface, 'runtime_session.fps.reference.v0');
+    assert.equal(rustReadout.authority.readSets[0]?.owner, 'rule-lifecycle');
     const receipt = session.submitRuntimeActionIntent({
         kind: 'runtime_action_intent.v0',
         action: 'primary_fire',
@@ -363,6 +371,20 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
     assert.equal(staleRestart.rejection?.reason, 'session_hash_mismatch');
     assert.deepEqual(calls.restart, [{ expectedEpoch: 1 }]);
 });
+void test('Rust-backed ECRP load fails closed on authority rejection without replacing live readout', () => {
+    const { bridge, calls } = rustRuntimeSessionBridgeDouble({
+        rejectProjectBundle: 'custom-demo:custom-demo.scene',
+    });
+    const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
+    session.initialize(sessionInput());
+    const before = session.readEcrpRuntimeReadout();
+    assert.throws(() => session.loadEcrpProject(ecrpProjectLoadInput()), (error) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input');
+    const after = session.readEcrpRuntimeReadout();
+    assert.equal(after.project.gameId, before.project.gameId);
+    assert.equal(after.projectBundle.sceneId, before.projectBundle.sceneId);
+    assert.equal(after.authority.source, 'rust_bridge');
+    assert.equal(calls.load.length, 1);
+});
 void test('Rust-backed RuntimeSession fails closed for unwired live policy helpers', () => {
     const { bridge } = rustRuntimeSessionBridgeDouble();
     const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
@@ -394,6 +416,9 @@ void test('RuntimeSession exposes public ECRP entity and CapabilityState readout
     const initial = session.readEcrpRuntimeReadout();
     assert.equal(initial.kind, 'runtime_session.ecrp_readout.v0');
     assert.equal(initial.entityCount, 2);
+    assert.equal(initial.authority.mode, 'reference');
+    assert.equal(initial.authority.source, 'reference_fixture');
+    assert.equal(initial.authority.readSets[0]?.owner, 'reference-runtime-session');
     assert.ok(initial.nonClaims.includes('not_raw_state_store'));
     assert.ok(initial.nonClaims.includes('not_demo_local_authority'));
     const player = initial.entities.find((entity) => entity.definitionStableId === 'actor/demo-player');

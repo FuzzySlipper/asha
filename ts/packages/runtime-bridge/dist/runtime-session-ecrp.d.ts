@@ -11,5 +11,6 @@ export declare function buildEcrpRuntimeReadout(input: {
     readonly sequenceId: number;
     readonly tick: number;
     readonly sessionHash: string;
+    readonly authority?: RuntimeSessionEcrpReadout['authority'];
 }): RuntimeSessionEcrpReadout;
 //# sourceMappingURL=runtime-session-ecrp.d.ts.map

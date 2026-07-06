@@ -148,6 +148,16 @@ export interface RuntimeSessionEcrpReadout {
     readonly sequenceId: number;
     readonly tick: number;
     readonly sessionHash: string;
+    readonly authority: {
+        readonly mode: RuntimeSessionMode;
+        readonly source: 'reference_fixture' | 'rust_bridge';
+        readonly surface: string;
+        readonly readSets: readonly {
+            readonly viewKind: string;
+            readonly owner: string;
+            readonly readSet: readonly string[];
+        }[];
+    };
     readonly project: RuntimeSessionProjectIdentity;
     readonly projectBundle: WorldLoadRequest;
     readonly entities: readonly RuntimeSessionEcrpEntityReadout[];

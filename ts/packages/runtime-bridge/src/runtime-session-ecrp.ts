@@ -447,6 +447,7 @@ export function buildEcrpRuntimeReadout(input: {
   readonly sequenceId: number;
   readonly tick: number;
   readonly sessionHash: string;
+  readonly authority?: RuntimeSessionEcrpReadout['authority'];
 }): RuntimeSessionEcrpReadout {
   const projectState =
     input.projectState ?? buildEcrpProjectState(defaultRuntimeSessionEcrpProjectLoadInput({
@@ -480,6 +481,16 @@ export function buildEcrpRuntimeReadout(input: {
     sequenceId: input.sequenceId,
     tick: input.tick,
     sessionHash: input.sessionHash,
+    authority: input.authority ?? {
+      mode: 'reference',
+      source: 'reference_fixture',
+      surface: 'runtime_session.ecrp.reference_fixture.v0',
+      readSets: [{
+        viewKind: 'runtime_session.ecrp.reference_fixture_readout.v0',
+        owner: 'reference-runtime-session',
+        readSet: ['reference.entities', 'reference.lifecycle', 'reference.capability_projection'],
+      }],
+    },
     project: input.identity.project,
     projectBundle: input.identity.projectBundle,
     entities,

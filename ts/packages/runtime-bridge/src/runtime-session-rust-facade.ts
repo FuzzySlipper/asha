@@ -444,6 +444,12 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
       sequenceId: this.#sequenceId,
       tick: this.#tick,
       sessionHash: this.#sessionHash(),
+      authority: {
+        mode: 'rust',
+        source: 'rust_bridge',
+        surface: snapshot.authoritySurface,
+        readSets: snapshot.readSets,
+      },
     });
   }
 
