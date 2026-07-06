@@ -1,5 +1,5 @@
-import type { CatalogEntry, MaterialProjection, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, ScreenPointToPickRayRequest, StaticMeshAsset, VoxelCommand, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
-export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'workspace.open_game_manifest' | 'workspace.validate_game_manifest' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'scene.load_asset' | 'scene.read_object_snapshot' | 'scene.apply_object_command' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'entity.set_name' | 'transform.translate_entity' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
+import type { CatalogEntry, MaterialProjection, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, ScreenPointToPickRayRequest, StaticMeshAsset, VoxelCommand, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelCoord, VoxelSelectionSnapshot } from '@asha/contracts';
+export type StudioCommandId = 'session.list_scenarios' | 'session.start' | 'session.load_scenario' | 'workspace.open_game_manifest' | 'workspace.validate_game_manifest' | 'inspection.session_status' | 'inspection.world_summary' | 'inspection.editor_state' | 'inspection.material' | 'inspection.model' | 'preview.model_material' | 'voxel_conversion.plan' | 'voxel_conversion.preview' | 'voxel_conversion.apply' | 'voxel_conversion.export_evidence' | 'scene.load_asset' | 'scene.read_object_snapshot' | 'scene.apply_object_command' | 'selection.voxel_from_screen_point' | 'selection.set_active_entity' | 'entity.set_name' | 'transform.translate_entity' | 'inspection.voxel' | 'preview.voxel_brush' | 'authority.voxel.apply_brush' | 'inspection.last_command_result' | 'render.capture_before_after' | 'export.agent_readout';
 export type CommandCategory = 'session' | 'inspection' | 'selection' | 'preview' | 'scene' | 'entity' | 'authority_edit' | 'render_evidence' | 'diagnostics' | 'export' | 'workspace';
 export type OperationClass = 'read_only' | 'editor_local' | 'authority_mutating' | 'render_evidence' | 'diagnostic_export' | 'workspace_io';
 export type AshaLane = 'contract-steward' | 'ts-command-registry' | 'ts-shell' | 'ts-tools' | 'rust-bridge' | 'rust-render' | 'rust-rule' | 'rust-service';
@@ -36,8 +36,30 @@ export type ContractRef = {
 } | {
     readonly package: '@asha/contracts';
     readonly exportName: 'SceneObjectCommandResult';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionPlanRequest';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionPlan';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionPreviewRequest';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionPreview';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionApplyRequest';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionReceipt';
+} | {
+    readonly package: '@asha/contracts';
+    readonly exportName: 'VoxelConversionEvidenceRef';
 };
 export type RuntimeBridgeOperationRef = 'initialize_engine' | 'pick_voxel' | 'select_voxel' | 'submit_commands' | 'read_voxel_mesh_evidence' | 'read_render_diffs' | 'read_model_material_preview' | 'read_scene_object_snapshot' | 'apply_scene_object_command' | 'load_world_bundle' | 'save_current_world' | 'get_composition_status';
+export type RuntimeSessionFacadeMethodRef = 'planVoxelConversion' | 'previewVoxelConversion' | 'applyVoxelConversion' | 'exportVoxelConversionEvidence';
 export type SchemaScalarKind = 'string' | 'number' | 'boolean' | 'integer' | 'state_hash' | 'artifact_ref' | 'null';
 export type SchemaShape = {
     readonly kind: 'empty';
@@ -128,7 +150,7 @@ export type IdempotencyPosture = {
     readonly kind: 'non_idempotent';
     readonly reason: string;
 };
-export type StudioArtifactType = 'command_manifest' | 'scenario_manifest' | 'session_status' | 'world_summary' | 'editor_state' | 'selection_snapshot' | 'voxel_inspection' | 'voxel_preview' | 'model_metadata' | 'material_metadata' | 'render_diff_preview' | 'game_workspace' | 'command_result' | 'render_before_after' | 'agent_readout';
+export type StudioArtifactType = 'command_manifest' | 'scenario_manifest' | 'session_status' | 'world_summary' | 'editor_state' | 'selection_snapshot' | 'voxel_inspection' | 'voxel_preview' | 'model_metadata' | 'material_metadata' | 'voxel_conversion_plan' | 'voxel_conversion_preview' | 'voxel_conversion_receipt' | 'voxel_conversion_evidence' | 'render_diff_preview' | 'game_workspace' | 'command_result' | 'render_before_after' | 'agent_readout';
 export interface ArtifactDeclaration {
     readonly type: StudioArtifactType;
     readonly required: boolean;
@@ -146,6 +168,9 @@ export type RuntimeRequirement = {
 } | {
     readonly kind: 'runtime_bridge_operation';
     readonly operation: RuntimeBridgeOperationRef;
+} | {
+    readonly kind: 'runtime_session_facade_method';
+    readonly method: RuntimeSessionFacadeMethodRef;
 } | {
     readonly kind: 'editor_store';
 } | {
@@ -279,6 +304,34 @@ export interface ModelMaterialPreviewOutput {
     readonly previewDiff: RenderFrameDiff;
     readonly rendererClassification: 'reference_preview' | 'runtime_readback';
     readonly diagnostics: readonly string[];
+}
+export interface VoxelConversionPlanCommandInput {
+    readonly sessionId: string;
+    readonly request: VoxelConversionPlanRequest;
+}
+export interface VoxelConversionPlanCommandOutput {
+    readonly plan: VoxelConversionPlan;
+}
+export interface VoxelConversionPreviewCommandInput {
+    readonly sessionId: string;
+    readonly request: VoxelConversionPreviewRequest;
+}
+export interface VoxelConversionPreviewCommandOutput {
+    readonly preview: VoxelConversionPreview;
+}
+export interface VoxelConversionApplyCommandInput {
+    readonly sessionId: string;
+    readonly request: VoxelConversionApplyRequest;
+}
+export interface VoxelConversionApplyCommandOutput {
+    readonly receipt: VoxelConversionReceipt;
+}
+export interface VoxelConversionEvidenceExportInput {
+    readonly sessionId: string;
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
+}
+export interface VoxelConversionEvidenceExportOutput {
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
 }
 export interface LoadSceneAssetPlacement {
     readonly translation: readonly number[];

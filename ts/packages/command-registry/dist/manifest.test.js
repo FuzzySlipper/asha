@@ -15,6 +15,10 @@ const REQUIRED_IDS = [
     'inspection.material',
     'inspection.model',
     'preview.model_material',
+    'voxel_conversion.plan',
+    'voxel_conversion.preview',
+    'voxel_conversion.apply',
+    'voxel_conversion.export_evidence',
     'scene.load_asset',
     'scene.read_object_snapshot',
     'scene.apply_object_command',
@@ -121,6 +125,39 @@ void test('model/material commands use public contract DTOs and runtime readback
     assert.deepEqual(preview.outputContractRefs.map((ref) => ref.exportName), ['RenderFrameDiff']);
     assert.ok(preview.artifacts.some((artifact) => artifact.type === 'render_diff_preview'));
     assert.ok(preview.runtimeRequirements.some((requirement) => requirement.kind === 'runtime_bridge_operation' && requirement.operation === 'read_model_material_preview'));
+});
+void test('voxel conversion commands are public metadata over RuntimeSessionFacade methods only', () => {
+    const plan = requireKnownCommand('voxel_conversion.plan', COMMAND_MANIFEST);
+    assert.equal(plan.operationClass, 'read_only');
+    assert.deepEqual(plan.inputContractRefs.map((ref) => ref.exportName), ['VoxelConversionPlanRequest']);
+    assert.deepEqual(plan.outputContractRefs.map((ref) => ref.exportName), ['VoxelConversionPlan']);
+    assert.deepEqual(plan.runtimeRequirements, [{ kind: 'runtime_session_facade_method', method: 'planVoxelConversion' }]);
+    assert.ok(plan.artifacts.some((artifact) => artifact.type === 'voxel_conversion_plan'));
+    const preview = requireKnownCommand('voxel_conversion.preview', COMMAND_MANIFEST);
+    assert.equal(preview.operationClass, 'read_only');
+    assert.deepEqual(preview.inputContractRefs.map((ref) => ref.exportName), ['VoxelConversionPreviewRequest']);
+    assert.deepEqual(preview.outputContractRefs.map((ref) => ref.exportName), ['VoxelConversionPreview']);
+    assert.deepEqual(preview.runtimeRequirements, [{ kind: 'runtime_session_facade_method', method: 'previewVoxelConversion' }]);
+    assert.ok(preview.artifacts.some((artifact) => artifact.type === 'voxel_conversion_preview'));
+    const apply = requireKnownCommand('voxel_conversion.apply', COMMAND_MANIFEST);
+    assert.equal(apply.operationClass, 'authority_mutating');
+    assert.equal(apply.agentExposure.kind, 'authority_mutating');
+    assert.deepEqual(apply.inputContractRefs.map((ref) => ref.exportName), ['VoxelConversionApplyRequest']);
+    assert.deepEqual(apply.outputContractRefs.map((ref) => ref.exportName), ['VoxelConversionReceipt']);
+    assert.deepEqual(apply.runtimeRequirements, [{ kind: 'runtime_session_facade_method', method: 'applyVoxelConversion' }]);
+    assert.equal(apply.retry, 'safe_to_retry_if_state_hash_unchanged');
+    const exportEvidence = requireKnownCommand('voxel_conversion.export_evidence', COMMAND_MANIFEST);
+    assert.equal(exportEvidence.operationClass, 'diagnostic_export');
+    assert.equal(exportEvidence.agentExposure.kind, 'diagnostic_export');
+    assert.deepEqual(exportEvidence.inputContractRefs.map((ref) => ref.exportName), ['VoxelConversionEvidenceRef']);
+    assert.deepEqual(exportEvidence.outputContractRefs.map((ref) => ref.exportName), ['VoxelConversionEvidenceRef']);
+    assert.deepEqual(exportEvidence.runtimeRequirements, [
+        { kind: 'runtime_session_facade_method', method: 'exportVoxelConversionEvidence' },
+        { kind: 'artifact_writer' },
+    ]);
+    for (const command of [plan, preview, apply, exportEvidence]) {
+        assert.equal(JSON.stringify(command.runtimeRequirements).includes('runtime_bridge_operation'), false, command.id);
+    }
 });
 void test('scene load command places a catalog asset through editor-local render-diff evidence', () => {
     const load = requireKnownCommand('scene.load_asset', COMMAND_MANIFEST);

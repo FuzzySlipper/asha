@@ -1,4 +1,4 @@
-import type { CameraHandle, CatalogEntry, FlatSceneDocument, MaterialProjection, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, StaticMeshAsset } from '@asha/contracts';
+import type { CameraHandle, CatalogEntry, FlatSceneDocument, MaterialProjection, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, StaticMeshAsset, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt } from '@asha/contracts';
 import type {
   AgentExposure,
   ApplySceneObjectCommandInput,
@@ -27,6 +27,7 @@ import type {
   ModelMaterialPreviewInput,
   ModelMaterialPreviewOutput,
   RuntimeBridgeOperationRef,
+  RuntimeSessionFacadeMethodRef,
   RuntimeRequirement,
   ScenarioIdInput,
   ScenarioListOutput,
@@ -49,6 +50,14 @@ import type {
   StudioCommandManifest,
   VoxelBrushPreviewInput,
   VoxelBrushPreviewOutput,
+  VoxelConversionApplyCommandInput,
+  VoxelConversionApplyCommandOutput,
+  VoxelConversionEvidenceExportInput,
+  VoxelConversionEvidenceExportOutput,
+  VoxelConversionPlanCommandInput,
+  VoxelConversionPlanCommandOutput,
+  VoxelConversionPreviewCommandInput,
+  VoxelConversionPreviewCommandOutput,
   VoxelInspectionInput,
   VoxelInspectionOutput,
   VoxelSelectionOutput,
@@ -69,7 +78,7 @@ const objectShape = (fields: readonly SchemaField[]): NonNullableSchemaShape => 
 const objectSchema = (name: string, fields: readonly SchemaField[]): SchemaRef => ({ name, version: 1, shape: objectShape(fields) });
 const arrayOf = (items: NonNullableSchemaShape, minItems?: number): NonNullableSchemaShape => ({ kind: 'array', items, ...(minItems === undefined ? {} : { minItems }) });
 const literal = (values: readonly string[]): NonNullableSchemaShape => ({ kind: 'literal', values });
-const contract = (exportName: 'ScreenPointToPickRayRequest' | 'VoxelCoord' | 'VoxelSelectionSnapshot' | 'VoxelCommand' | 'CatalogEntry' | 'MaterialProjection' | 'StaticMeshAsset' | 'RenderFrameDiff' | 'SceneObjectSnapshot' | 'SceneObjectCommandRequest' | 'SceneObjectCommandResult'): NonNullableSchemaShape => ({ kind: 'contract', ref: { package: '@asha/contracts', exportName } });
+const contract = (exportName: 'ScreenPointToPickRayRequest' | 'VoxelCoord' | 'VoxelSelectionSnapshot' | 'VoxelCommand' | 'CatalogEntry' | 'MaterialProjection' | 'StaticMeshAsset' | 'RenderFrameDiff' | 'SceneObjectSnapshot' | 'SceneObjectCommandRequest' | 'SceneObjectCommandResult' | 'VoxelConversionPlanRequest' | 'VoxelConversionPlan' | 'VoxelConversionPreviewRequest' | 'VoxelConversionPreview' | 'VoxelConversionApplyRequest' | 'VoxelConversionReceipt' | 'VoxelConversionEvidenceRef'): NonNullableSchemaShape => ({ kind: 'contract', ref: { package: '@asha/contracts', exportName } });
 
 const EMPTY_INPUT: SchemaRef = { name: 'EmptyInput', version: 1, shape: { kind: 'empty' } };
 const EMPTY_OUTPUT = objectSchema('EmptyOutput', [field('kind', literal(['ok']), 'Acknowledgement literal.')]);
@@ -81,6 +90,7 @@ const CATALOG_ENTRY_SCHEMA = contract('CatalogEntry');
 const MATERIAL_PROJECTION_SCHEMA = contract('MaterialProjection');
 const STATIC_MESH_ASSET_SCHEMA = contract('StaticMeshAsset');
 const RENDER_FRAME_DIFF_SCHEMA = contract('RenderFrameDiff');
+const VOXEL_CONVERSION_EVIDENCE_SCHEMA = contract('VoxelConversionEvidenceRef');
 
 const COMPAT: CompatibilityRequirement = {
   contracts: 'contracts.v0',
@@ -105,6 +115,10 @@ function artifact(type: ArtifactDeclaration['type'], summary: string, required =
 
 function runtime(operation: RuntimeBridgeOperationRef): RuntimeRequirement {
   return { kind: 'runtime_bridge_operation', operation };
+}
+
+function runtimeSession(method: RuntimeSessionFacadeMethodRef): RuntimeRequirement {
+  return { kind: 'runtime_session_facade_method', method };
 }
 
 function summarizeShape(shape: SchemaShape): string {
@@ -275,6 +289,34 @@ const modelMaterialPreviewOutput = objectSchema('ModelMaterialPreviewOutput', [
   field('previewDiff', RENDER_FRAME_DIFF_SCHEMA, 'Generated public retained-mode render diff preview evidence.'),
   field('rendererClassification', literal(['reference_preview', 'runtime_readback']), 'Whether evidence is reference preview or runtime readback.'),
   field('diagnostics', arrayOf(stringShape), 'Typed diagnostic strings for unavailable/degraded support.'),
+]);
+const voxelConversionPlanInput = objectSchema('VoxelConversionPlanCommandInput', [
+  SESSION_ID_FIELD,
+  field('request', contract('VoxelConversionPlanRequest'), 'Generated public voxel-conversion plan request.'),
+]);
+const voxelConversionPlanOutput = objectSchema('VoxelConversionPlanCommandOutput', [
+  field('plan', contract('VoxelConversionPlan'), 'Generated public voxel-conversion plan with diagnostics and evidence refs.'),
+]);
+const voxelConversionPreviewInput = objectSchema('VoxelConversionPreviewCommandInput', [
+  SESSION_ID_FIELD,
+  field('request', contract('VoxelConversionPreviewRequest'), 'Generated public voxel-conversion preview request.'),
+]);
+const voxelConversionPreviewOutput = objectSchema('VoxelConversionPreviewCommandOutput', [
+  field('preview', contract('VoxelConversionPreview'), 'Generated public voxel-conversion preview with sampled output and evidence refs.'),
+]);
+const voxelConversionApplyInput = objectSchema('VoxelConversionApplyCommandInput', [
+  SESSION_ID_FIELD,
+  field('request', contract('VoxelConversionApplyRequest'), 'Generated public voxel-conversion apply request.'),
+]);
+const voxelConversionApplyOutput = objectSchema('VoxelConversionApplyCommandOutput', [
+  field('receipt', contract('VoxelConversionReceipt'), 'Generated public voxel-conversion apply receipt with diagnostics and evidence refs.'),
+]);
+const voxelConversionEvidenceExportInput = objectSchema('VoxelConversionEvidenceExportInput', [
+  SESSION_ID_FIELD,
+  field('evidence', arrayOf(VOXEL_CONVERSION_EVIDENCE_SCHEMA), 'Generated public voxel-conversion evidence refs selected for export.'),
+]);
+const voxelConversionEvidenceExportOutput = objectSchema('VoxelConversionEvidenceExportOutput', [
+  field('evidence', arrayOf(VOXEL_CONVERSION_EVIDENCE_SCHEMA), 'Generated public voxel-conversion evidence refs accepted for export.'),
 ]);
 const loadSceneAssetInput = objectSchema('LoadSceneAssetInput', [
   SESSION_ID_FIELD,
@@ -516,6 +558,84 @@ const selectionExample = {
   selectionHash: 'selection-hash',
 } as const;
 
+const voxelConversionPlanRequestExample: VoxelConversionPlanRequest = {
+  source: {
+    assetId: 'mesh.preview-cube',
+    assetKind: 'mesh',
+    assetVersion: 1,
+    sourceHash: 'sha256-source-mesh',
+    meshPrimitive: null,
+  },
+  target: {
+    grid: 0,
+    volumeAssetId: 'voxel.generated.preview-cube',
+    origin: { x: 0, y: 0, z: 0 },
+  },
+  settings: {
+    mode: 'surface',
+    fitPolicy: 'contain',
+    originPolicy: 'target_min',
+    resolution: [8, 8, 8],
+    voxelSize: 0.25,
+    maxOutputVoxels: 512,
+    transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    materialMap: {
+      entries: [{ sourceMaterialSlot: 0, sourceMaterialId: 'material.copper', voxelMaterial: 3 }],
+      defaultVoxelMaterial: 3,
+    },
+  },
+};
+const voxelConversionEvidenceExample: VoxelConversionEvidenceRef = {
+  kind: 'plan',
+  uri: 'asha://voxel-conversion/plan/plan-preview-cube',
+  contentHash: 'sha256-plan',
+};
+const voxelConversionPlanExample: VoxelConversionPlan = {
+  planId: 'plan-preview-cube',
+  source: voxelConversionPlanRequestExample.source,
+  target: voxelConversionPlanRequestExample.target,
+  settings: voxelConversionPlanRequestExample.settings,
+  authorityVersion: 'svc-voxel-conversion.v0',
+  expectedSourceHash: 'sha256-source-mesh',
+  settingsHash: 'sha256-settings',
+  estimatedOutputVoxels: 24,
+  estimatedBounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 7, y: 7, z: 7 } },
+  diagnostics: [
+    {
+      code: 'operation_unimplemented',
+      severity: 'info',
+      reference: 'runtime-session.voxel-conversion',
+      message: 'Native voxel conversion backend may fail closed until wired.',
+    },
+  ],
+  evidence: [voxelConversionEvidenceExample],
+};
+const voxelConversionPreviewRequestExample: VoxelConversionPreviewRequest = {
+  planId: voxelConversionPlanExample.planId,
+  expectedPlanHash: 'sha256-plan',
+};
+const voxelConversionPreviewExample: VoxelConversionPreview = {
+  planId: voxelConversionPlanExample.planId,
+  outputHash: 'sha256-preview-output',
+  outputVoxelCount: 2,
+  outputBounds: voxelConversionPlanExample.estimatedBounds,
+  sampleVoxels: [
+    { coord: { x: 0, y: 0, z: 0 }, material: 3 },
+    { coord: { x: 1, y: 0, z: 0 }, material: 3 },
+  ],
+  diagnostics: [],
+  evidence: [{ kind: 'preview', uri: 'asha://voxel-conversion/preview/plan-preview-cube', contentHash: 'sha256-preview' }],
+};
+const voxelConversionReceiptExample: VoxelConversionReceipt = {
+  planId: voxelConversionPlanExample.planId,
+  applied: true,
+  outputHash: 'sha256-applied-output',
+  outputVoxelCount: 24,
+  outputBounds: voxelConversionPlanExample.estimatedBounds,
+  diagnostics: [],
+  evidence: [{ kind: 'apply_receipt', uri: 'asha://voxel-conversion/apply/plan-preview-cube', contentHash: 'sha256-apply' }],
+};
+
 export const COMMAND_MANIFEST = [
   base<EmptyInput, ScenarioListOutput>({
     id: 'session.list_scenarios', label: 'List Studio Scenarios', summary: 'List named public scenarios available to a studio session.', category: 'session', menuPath: ['Session', 'List Scenarios'], keywords: ['scenario', 'list'],
@@ -560,6 +680,22 @@ export const COMMAND_MANIFEST = [
   base<ModelMaterialPreviewInput, ModelMaterialPreviewOutput>({
     id: 'preview.model_material', label: 'Preview Model / Material', summary: 'Preview a static mesh with catalog material projection as retained-mode render-diff evidence without authority mutation.', category: 'preview', menuPath: ['Preview', 'Model / Material'], keywords: ['preview', 'model', 'material', 'render diff'],
     inputSchema: modelMaterialPreviewInput, outputSchema: modelMaterialPreviewOutput, operationClass: 'editor_local', stateImpact: { authority: 'read', editor: 'mutate', render: 'capture', workspace: 'none' }, runtimeRequirements: [runtime('read_model_material_preview'), { kind: 'editor_store' }, { kind: 'render_surface' }], artifacts: [artifact('model_metadata', 'Static mesh preview metadata.'), artifact('material_metadata', 'Material projection metadata.'), artifact('render_diff_preview', 'Retained-mode render diff preview evidence.')], typedInputExample: { sessionId: 'session-1', modelAsset: meshAssetExample, materialId: 'material.copper' }, typedOutputExample: { previewDiff: modelMaterialPreviewDiffExample, rendererClassification: 'reference_preview', diagnostics: [] }, panel: 'viewport', dialog: 'simple_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'StaticMeshAsset' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'RenderFrameDiff' }], agentExposure: { kind: 'editor_local' }, undo: { kind: 'editor_local', inverseData: ['previous model/material preview snapshot'] }, idempotency: { kind: 'conditional', condition: 'Same model asset, material id, and catalog versions produce the same preview diff.' }, knownLimitations: ['Preview evidence is render-diff/readback metadata only; screenshots, hardware GPU, and performance evidence are out of scope.'],
+  }),
+  base<VoxelConversionPlanCommandInput, VoxelConversionPlanCommandOutput>({
+    id: 'voxel_conversion.plan', label: 'Plan Voxel Conversion', summary: 'Request a deterministic Rust-owned voxel conversion plan for a supported static mesh source.', category: 'preview', menuPath: ['Voxel Conversion', 'Plan'], keywords: ['voxel', 'conversion', 'plan', 'mesh'],
+    inputSchema: voxelConversionPlanInput, outputSchema: voxelConversionPlanOutput, operationClass: 'read_only', stateImpact: readAuthority, runtimeRequirements: [runtimeSession('planVoxelConversion')], artifacts: [artifact('voxel_conversion_plan', 'Plan id, hashes, output estimate, diagnostics, and evidence refs.')], typedInputExample: { sessionId: 'session-1', request: voxelConversionPlanRequestExample }, typedOutputExample: { plan: voxelConversionPlanExample }, panel: 'inspector', dialog: 'advanced_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionPlanRequest' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionPlan' }], retry: 'safe_to_retry_if_state_hash_unchanged', idempotency: { kind: 'conditional', condition: 'Safe when source hash, settings hash, and target authority snapshot are unchanged.' }, knownLimitations: ['RuntimeSessionFacade may fail closed with operation_unimplemented until voxel conversion backend wiring lands.'],
+  }),
+  base<VoxelConversionPreviewCommandInput, VoxelConversionPreviewCommandOutput>({
+    id: 'voxel_conversion.preview', label: 'Preview Voxel Conversion', summary: 'Preview bounded conversion output from a previously planned voxel conversion without mutating authority.', category: 'preview', menuPath: ['Voxel Conversion', 'Preview'], keywords: ['voxel', 'conversion', 'preview', 'sample'],
+    inputSchema: voxelConversionPreviewInput, outputSchema: voxelConversionPreviewOutput, operationClass: 'read_only', stateImpact: readAuthority, runtimeRequirements: [runtimeSession('previewVoxelConversion')], artifacts: [artifact('voxel_conversion_preview', 'Output hash, sampled voxels, bounds, diagnostics, and evidence refs.')], typedInputExample: { sessionId: 'session-1', request: voxelConversionPreviewRequestExample }, typedOutputExample: { preview: voxelConversionPreviewExample }, panel: 'viewport', dialog: 'simple_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionPreviewRequest' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionPreview' }], retry: 'safe_to_retry_if_state_hash_unchanged', idempotency: { kind: 'conditional', condition: 'Safe when plan id and expected plan hash still match authority state.' }, knownLimitations: ['Preview is Rust/runtime readback metadata; Studio must not voxelize meshes locally or use renderer buffers as authority.'],
+  }),
+  base<VoxelConversionApplyCommandInput, VoxelConversionApplyCommandOutput>({
+    id: 'voxel_conversion.apply', label: 'Apply Voxel Conversion', summary: 'Apply a planned voxel conversion through RuntimeSession authority with receipt and replay-oriented hashes.', category: 'authority_edit', menuPath: ['Voxel Conversion', 'Apply'], keywords: ['voxel', 'conversion', 'apply', 'authority'],
+    inputSchema: voxelConversionApplyInput, outputSchema: voxelConversionApplyOutput, operationClass: 'authority_mutating', stateImpact: mutateAuthority, runtimeRequirements: [runtimeSession('applyVoxelConversion')], artifacts: [artifact('voxel_conversion_receipt', 'Apply receipt with accepted output hash/count, diagnostics, and evidence refs.')], typedInputExample: { sessionId: 'session-1', request: { planId: voxelConversionPlanExample.planId, expectedPlanHash: 'sha256-plan', expectedPreviewHash: voxelConversionPreviewExample.outputHash } }, typedOutputExample: { receipt: voxelConversionReceiptExample }, panel: 'timeline', dialog: 'advanced_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionApplyRequest' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionReceipt' }], agentExposure: { kind: 'authority_mutating', requiresPreview: true, batchable: false }, undo: { kind: 'not_undoable', reason: 'Conversion apply must be reversed by an explicit future authority command or snapshot restore, not registry-local metadata.' }, retry: 'safe_to_retry_if_state_hash_unchanged', idempotency: { kind: 'conditional', condition: 'Safe only when expected plan/preview hashes still match and the conversion has not already committed.' }, knownLimitations: ['RuntimeSessionFacade may fail closed with operation_unimplemented until voxel conversion backend wiring lands.'],
+  }),
+  base<VoxelConversionEvidenceExportInput, VoxelConversionEvidenceExportOutput>({
+    id: 'voxel_conversion.export_evidence', label: 'Export Voxel Conversion Evidence', summary: 'Export selected voxel conversion evidence refs for Studio timeline and review packets.', category: 'export', menuPath: ['Voxel Conversion', 'Export Evidence'], keywords: ['voxel', 'conversion', 'evidence', 'export'],
+    inputSchema: voxelConversionEvidenceExportInput, outputSchema: voxelConversionEvidenceExportOutput, operationClass: 'diagnostic_export', stateImpact: { authority: 'read', editor: 'read', render: 'none', workspace: 'write' }, runtimeRequirements: [runtimeSession('exportVoxelConversionEvidence'), { kind: 'artifact_writer' }], artifacts: [artifact('voxel_conversion_evidence', 'Exported conversion evidence refs and content hashes.')], typedInputExample: { sessionId: 'session-1', evidence: [voxelConversionEvidenceExample] }, typedOutputExample: { evidence: [voxelConversionEvidenceExample] }, panel: 'export', dialog: 'simple_form', inputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionEvidenceRef' }], outputContractRefs: [{ package: '@asha/contracts', exportName: 'VoxelConversionEvidenceRef' }], agentExposure: { kind: 'diagnostic_export' }, retry: 'safe_to_retry', idempotency: { kind: 'idempotent', keyFields: ['sessionId', 'evidence'] }, knownLimitations: ['Evidence export only records authority-produced refs; it must not synthesize conversion success or inspect private renderer/native buffers.'],
   }),
   base<LoadSceneAssetInput, LoadSceneAssetOutput>({
     id: 'scene.load_asset', label: 'Load Asset Into Scene', summary: 'Load a catalog asset into the active scene as a placed renderable using public retained-mode render-diff evidence without authority mutation.', category: 'scene', menuPath: ['Scene', 'Load Asset'], keywords: ['scene', 'load', 'asset', 'place', 'render diff'],

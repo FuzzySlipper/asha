@@ -225,6 +225,10 @@ Consumer behavior:
 - Consumers do not treat command-registry examples as authority, runtime, or renderer truth.
 - The registry describes typed command metadata and evidence posture; execution and authority validation stay in the runtime/Rust surfaces.
 
+Additive notes under `command-registry.v0`:
+
+- #4285 adds Studio command metadata for `voxel_conversion.plan`, `voxel_conversion.preview`, `voxel_conversion.apply`, and `voxel_conversion.export_evidence`. These entries use generated voxel-conversion DTO contract refs, declare RuntimeSessionFacade method requirements rather than raw bridge operations, and expose plan/preview/receipt/evidence artifact posture for Studio UI/timeline projection. They do not execute conversion, smuggle native calls, claim renderer authority, or replace the Rust/runtime fail-closed behavior from #4284. The compatibility marker remains `command-registry.v0` because the change is additive.
+
 ## Devtools protocol compatibility log
 
 ### `devtools-protocol.v0` — unstable attach/readout protocol

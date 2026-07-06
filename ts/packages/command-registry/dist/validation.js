@@ -87,6 +87,9 @@ function isNumberTuple3(value) {
 function isNumberTuple4(value) {
     return Array.isArray(value) && value.length === 4 && value.every(isFiniteNumber);
 }
+function isNumberTuple16(value) {
+    return Array.isArray(value) && value.length === 16 && value.every(isFiniteNumber);
+}
 function isLiteral(value, allowed) {
     return typeof value === 'string' && allowed.includes(value);
 }
@@ -361,6 +364,161 @@ function isSceneObjectCommandResult(value) {
         && (value.outcome === null || isSceneObjectCommandOutcome(value.outcome))
         && (value.rejection === null || isSceneObjectCommandRejection(value.rejection));
 }
+function isVoxelConversionSourceRef(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['assetId', 'assetKind', 'assetVersion', 'sourceHash', 'meshPrimitive'])
+        && isString(value.assetId)
+        && isString(value.assetKind)
+        && isInteger(value.assetVersion)
+        && isString(value.sourceHash)
+        && (value.meshPrimitive === null || isString(value.meshPrimitive));
+}
+function isVoxelConversionTargetRef(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['grid', 'volumeAssetId', 'origin'])
+        && isInteger(value.grid)
+        && (value.volumeAssetId === null || isString(value.volumeAssetId))
+        && isVoxelCoord(value.origin);
+}
+function isVoxelConversionBounds(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['min', 'max'])
+        && isVoxelCoord(value.min)
+        && isVoxelCoord(value.max);
+}
+function isVoxelConversionMaterialMapEntry(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['sourceMaterialSlot', 'sourceMaterialId', 'voxelMaterial'])
+        && isInteger(value.sourceMaterialSlot)
+        && (value.sourceMaterialId === null || isString(value.sourceMaterialId))
+        && isInteger(value.voxelMaterial);
+}
+function isVoxelConversionMaterialMap(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['entries', 'defaultVoxelMaterial'])
+        && Array.isArray(value.entries)
+        && value.entries.every(isVoxelConversionMaterialMapEntry)
+        && (value.defaultVoxelMaterial === null || isInteger(value.defaultVoxelMaterial));
+}
+function isVoxelConversionSettings(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['mode', 'fitPolicy', 'originPolicy', 'resolution', 'voxelSize', 'maxOutputVoxels', 'transform', 'materialMap'])
+        && isLiteral(value.mode, ['surface', 'solid'])
+        && isLiteral(value.fitPolicy, ['contain', 'cover', 'stretch'])
+        && isLiteral(value.originPolicy, ['source_origin', 'target_min', 'centered'])
+        && isNumberTuple3(value.resolution)
+        && isFiniteNumber(value.voxelSize)
+        && isInteger(value.maxOutputVoxels)
+        && isNumberTuple16(value.transform)
+        && isVoxelConversionMaterialMap(value.materialMap);
+}
+function isVoxelConversionPlanRequest(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['source', 'target', 'settings'])
+        && isVoxelConversionSourceRef(value.source)
+        && isVoxelConversionTargetRef(value.target)
+        && isVoxelConversionSettings(value.settings);
+}
+function isVoxelConversionDiagnostic(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['code', 'severity', 'reference', 'message'])
+        && isLiteral(value.code, [
+            'voxel_conversion_unavailable',
+            'operation_unimplemented',
+            'unsupported_source_asset',
+            'source_hash_mismatch',
+            'invalid_material_map',
+            'output_limit_exceeded',
+            'non_manifold_or_ambiguous_solid',
+            'stale_authority_snapshot',
+            'conversion_replay_mismatch',
+        ])
+        && isLiteral(value.severity, ['info', 'warning', 'error', 'fatal'])
+        && isString(value.reference)
+        && isString(value.message);
+}
+function isVoxelConversionEvidenceRef(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['kind', 'uri', 'contentHash'])
+        && isLiteral(value.kind, ['plan', 'preview', 'apply_receipt', 'diagnostics', 'source_snapshot', 'output_snapshot'])
+        && isString(value.uri)
+        && isString(value.contentHash);
+}
+function isVoxelConversionPlan(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, [
+            'planId',
+            'source',
+            'target',
+            'settings',
+            'authorityVersion',
+            'expectedSourceHash',
+            'settingsHash',
+            'estimatedOutputVoxels',
+            'estimatedBounds',
+            'diagnostics',
+            'evidence',
+        ])
+        && isString(value.planId)
+        && isVoxelConversionSourceRef(value.source)
+        && isVoxelConversionTargetRef(value.target)
+        && isVoxelConversionSettings(value.settings)
+        && isString(value.authorityVersion)
+        && isString(value.expectedSourceHash)
+        && isString(value.settingsHash)
+        && isInteger(value.estimatedOutputVoxels)
+        && (value.estimatedBounds === null || isVoxelConversionBounds(value.estimatedBounds))
+        && Array.isArray(value.diagnostics)
+        && value.diagnostics.every(isVoxelConversionDiagnostic)
+        && Array.isArray(value.evidence)
+        && value.evidence.every(isVoxelConversionEvidenceRef);
+}
+function isVoxelConversionPreviewRequest(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['planId', 'expectedPlanHash'])
+        && isString(value.planId)
+        && isString(value.expectedPlanHash);
+}
+function isVoxelConversionPreviewVoxel(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['coord', 'material'])
+        && isVoxelCoord(value.coord)
+        && isInteger(value.material);
+}
+function isVoxelConversionPreview(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['planId', 'outputHash', 'outputVoxelCount', 'outputBounds', 'sampleVoxels', 'diagnostics', 'evidence'])
+        && isString(value.planId)
+        && isString(value.outputHash)
+        && isInteger(value.outputVoxelCount)
+        && (value.outputBounds === null || isVoxelConversionBounds(value.outputBounds))
+        && Array.isArray(value.sampleVoxels)
+        && value.sampleVoxels.every(isVoxelConversionPreviewVoxel)
+        && Array.isArray(value.diagnostics)
+        && value.diagnostics.every(isVoxelConversionDiagnostic)
+        && Array.isArray(value.evidence)
+        && value.evidence.every(isVoxelConversionEvidenceRef);
+}
+function isVoxelConversionApplyRequest(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['planId', 'expectedPlanHash', 'expectedPreviewHash'])
+        && isString(value.planId)
+        && isString(value.expectedPlanHash)
+        && (value.expectedPreviewHash === null || isString(value.expectedPreviewHash));
+}
+function isVoxelConversionReceipt(value) {
+    return isPlainObject(value)
+        && hasExactKeys(value, ['planId', 'applied', 'outputHash', 'outputVoxelCount', 'outputBounds', 'diagnostics', 'evidence'])
+        && isString(value.planId)
+        && typeof value.applied === 'boolean'
+        && (value.outputHash === null || isString(value.outputHash))
+        && isInteger(value.outputVoxelCount)
+        && (value.outputBounds === null || isVoxelConversionBounds(value.outputBounds))
+        && Array.isArray(value.diagnostics)
+        && value.diagnostics.every(isVoxelConversionDiagnostic)
+        && Array.isArray(value.evidence)
+        && value.evidence.every(isVoxelConversionEvidenceRef);
+}
 function validateContractValue(value, exportName) {
     switch (exportName) {
         case 'ScreenPointToPickRayRequest':
@@ -385,6 +543,20 @@ function validateContractValue(value, exportName) {
             return isSceneObjectCommandRequest(value);
         case 'SceneObjectCommandResult':
             return isSceneObjectCommandResult(value);
+        case 'VoxelConversionPlanRequest':
+            return isVoxelConversionPlanRequest(value);
+        case 'VoxelConversionPlan':
+            return isVoxelConversionPlan(value);
+        case 'VoxelConversionPreviewRequest':
+            return isVoxelConversionPreviewRequest(value);
+        case 'VoxelConversionPreview':
+            return isVoxelConversionPreview(value);
+        case 'VoxelConversionApplyRequest':
+            return isVoxelConversionApplyRequest(value);
+        case 'VoxelConversionReceipt':
+            return isVoxelConversionReceipt(value);
+        case 'VoxelConversionEvidenceRef':
+            return isVoxelConversionEvidenceRef(value);
         default:
             return false;
     }
@@ -454,7 +626,7 @@ export function validateCommandDefinition(definition) {
             issues.push({ commandId, field, message: 'missing required command metadata' });
         }
     }
-    if (definition.id !== undefined && !/^[a-z]+(\.[a-z0-9_]+)+$/.test(definition.id)) {
+    if (definition.id !== undefined && !/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/.test(definition.id)) {
         issues.push({ commandId, field: 'id', message: 'command id must be stable dotted lowercase' });
     }
     if (definition.version !== undefined && (!Number.isInteger(definition.version) || definition.version < 1)) {
