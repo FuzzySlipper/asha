@@ -399,7 +399,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/tools/snapshot-diff"]
 lane = "rust-tools"
-may_depend_on = ["core-snapshot", "core-state"]
+may_depend_on = ["core-snapshot", "core-state", "sim-replay"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/tools/protocol-dump"]
