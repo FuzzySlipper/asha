@@ -527,6 +527,26 @@ class ReferenceRuntimeSessionFacade {
             sessionHashAfter: this.#sessionHash(),
         };
     }
+    planVoxelConversion(_request) {
+        void _request;
+        this.#requireInitialized('planVoxelConversion');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion authority is not wired into the reference RuntimeSession');
+    }
+    previewVoxelConversion(_request) {
+        void _request;
+        this.#requireInitialized('previewVoxelConversion');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion preview is not wired into the reference RuntimeSession');
+    }
+    applyVoxelConversion(_request) {
+        void _request;
+        this.#requireInitialized('applyVoxelConversion');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion apply is not wired into the reference RuntimeSession');
+    }
+    exportVoxelConversionEvidence(_evidence) {
+        void _evidence;
+        this.#requireInitialized('exportVoxelConversionEvidence');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion evidence export is not wired into the reference RuntimeSession');
+    }
     readEcrpRuntimeReadout() {
         const identity = this.#requireInitialized('readEcrpRuntimeReadout');
         return buildEcrpRuntimeReadout({

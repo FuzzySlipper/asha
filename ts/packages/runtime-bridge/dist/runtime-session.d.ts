@@ -1,4 +1,4 @@
-import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff } from '@asha/contracts';
+import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt } from '@asha/contracts';
 import { type CompositionStatus, type EngineHandle, type FrameCursor, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
 import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import { type CombatReadoutScenario, type CombatRuntimeReadout } from './combat-readout.js';
@@ -493,6 +493,10 @@ export interface RuntimeSessionFacade {
     queryNavPath(request?: NavPathQueryRequest): NavPathReadout;
     readNavPolicyView(): NavPolicyViewReadout;
     requestGeneratedTunnelOperation(request: GeneratedTunnelOperationRequest): RuntimeSessionGeneratedTunnelOperationReceipt;
+    planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
+    previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
+    applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
+    exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
     readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
     readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
     readProjection(): RuntimeSessionProjectionSummary;

@@ -39,6 +39,13 @@ export type RuntimeBridgeErrorKind =
   | 'unknown_handle'
   | 'buffer_expired'
   | 'native_unavailable'
+  | 'voxel_conversion_unavailable'
+  | 'unsupported_source_asset'
+  | 'source_hash_mismatch'
+  | 'invalid_material_map'
+  | 'output_limit_exceeded'
+  | 'stale_authority_snapshot'
+  | 'conversion_replay_mismatch'
   // A stable operation exists on the facade but has no native implementation
   // wired yet. The native bridge throws this instead of silently falling back to
   // mock/reference behaviour — the seam is explicit and fail-closed.

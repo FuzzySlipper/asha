@@ -1,4 +1,4 @@
-import type { CameraCreateRequest, CameraProjectionRequest, CollisionConstrainedCameraInputEnvelope, CommandBatch, FirstPersonCameraInputEnvelope } from '@asha/contracts';
+import type { CameraCreateRequest, CameraProjectionRequest, CollisionConstrainedCameraInputEnvelope, CommandBatch, FirstPersonCameraInputEnvelope, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt } from '@asha/contracts';
 import { type RuntimeBridge } from './bridge.js';
 import type { CombatRuntimeReadout } from './combat-readout.js';
 import type { CombatFeedbackProjection } from './combat-feedback.js';
@@ -30,6 +30,10 @@ export declare class RustBackedRuntimeSessionFacade implements RuntimeSessionFac
     queryNavPath(_request?: NavPathQueryRequest): NavPathReadout;
     readNavPolicyView(): NavPolicyViewReadout;
     requestGeneratedTunnelOperation(_request: GeneratedTunnelOperationRequest): RuntimeSessionGeneratedTunnelOperationReceipt;
+    planVoxelConversion(_request: VoxelConversionPlanRequest): VoxelConversionPlan;
+    previewVoxelConversion(_request: VoxelConversionPreviewRequest): VoxelConversionPreview;
+    applyVoxelConversion(_request: VoxelConversionApplyRequest): VoxelConversionReceipt;
+    exportVoxelConversionEvidence(_evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
     readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
     readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
     readProjection(): RuntimeSessionProjectionSummary;

@@ -1,6 +1,8 @@
 {
   "maxSourceLines": 1600,
-  "fileLineExemptions": {},
+  "fileLineExemptions": {
+    "ts/packages/runtime-bridge/src/runtime-session.ts": "RuntimeSessionFacade remains the consolidated public runtime boundary while additive generated-contract methods land; split focused capability modules when the facade decomposition task is scheduled."
+  },
   "rootBarrelExemptions": {
     "ts/packages/app/src/index.ts": "Application composition root still owns shell wiring; split when app shell state is broken into focused modules.",
     "ts/packages/catalog-core/src/index.ts": "Catalog DTOs and validators are still consolidated until catalog schema modules are split.",

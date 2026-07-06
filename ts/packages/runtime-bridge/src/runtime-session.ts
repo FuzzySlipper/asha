@@ -12,6 +12,13 @@ import {
   type CommandResult,
   type FirstPersonCameraInputEnvelope,
   type RenderFrameDiff,
+  type VoxelConversionApplyRequest,
+  type VoxelConversionEvidenceRef,
+  type VoxelConversionPlan,
+  type VoxelConversionPlanRequest,
+  type VoxelConversionPreview,
+  type VoxelConversionPreviewRequest,
+  type VoxelConversionReceipt,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
@@ -745,6 +752,10 @@ export interface RuntimeSessionFacade {
   requestGeneratedTunnelOperation(
     request: GeneratedTunnelOperationRequest,
   ): RuntimeSessionGeneratedTunnelOperationReceipt;
+  planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
+  previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
+  applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
+  exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
   readProjection(): RuntimeSessionProjectionSummary;
@@ -1366,6 +1377,32 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
       sessionHashBefore: before,
       sessionHashAfter: this.#sessionHash(),
     };
+  }
+
+  planVoxelConversion(_request: VoxelConversionPlanRequest): VoxelConversionPlan {
+    void _request;
+    this.#requireInitialized('planVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion authority is not wired into the reference RuntimeSession');
+  }
+
+  previewVoxelConversion(_request: VoxelConversionPreviewRequest): VoxelConversionPreview {
+    void _request;
+    this.#requireInitialized('previewVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion preview is not wired into the reference RuntimeSession');
+  }
+
+  applyVoxelConversion(_request: VoxelConversionApplyRequest): VoxelConversionReceipt {
+    void _request;
+    this.#requireInitialized('applyVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion apply is not wired into the reference RuntimeSession');
+  }
+
+  exportVoxelConversionEvidence(
+    _evidence: readonly VoxelConversionEvidenceRef[],
+  ): readonly VoxelConversionEvidenceRef[] {
+    void _evidence;
+    this.#requireInitialized('exportVoxelConversionEvidence');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion evidence export is not wired into the reference RuntimeSession');
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

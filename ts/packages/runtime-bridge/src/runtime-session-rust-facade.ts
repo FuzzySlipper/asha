@@ -4,6 +4,13 @@ import type {
   CollisionConstrainedCameraInputEnvelope,
   CommandBatch,
   FirstPersonCameraInputEnvelope,
+  VoxelConversionApplyRequest,
+  VoxelConversionEvidenceRef,
+  VoxelConversionPlan,
+  VoxelConversionPlanRequest,
+  VoxelConversionPreview,
+  VoxelConversionPreviewRequest,
+  VoxelConversionReceipt,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
@@ -684,6 +691,32 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     void _request;
     this.#requireInitialized('requestGeneratedTunnelOperation');
     throw new RuntimeBridgeError('operation_unimplemented', 'Rust-backed generated tunnel operation authority is not wired yet');
+  }
+
+  planVoxelConversion(_request: VoxelConversionPlanRequest): VoxelConversionPlan {
+    void _request;
+    this.#requireInitialized('planVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Rust-backed voxel conversion planning is not wired through the native bridge yet');
+  }
+
+  previewVoxelConversion(_request: VoxelConversionPreviewRequest): VoxelConversionPreview {
+    void _request;
+    this.#requireInitialized('previewVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Rust-backed voxel conversion preview is not wired through the native bridge yet');
+  }
+
+  applyVoxelConversion(_request: VoxelConversionApplyRequest): VoxelConversionReceipt {
+    void _request;
+    this.#requireInitialized('applyVoxelConversion');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Rust-backed voxel conversion apply is not wired through the native bridge yet');
+  }
+
+  exportVoxelConversionEvidence(
+    _evidence: readonly VoxelConversionEvidenceRef[],
+  ): readonly VoxelConversionEvidenceRef[] {
+    void _evidence;
+    this.#requireInitialized('exportVoxelConversionEvidence');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Rust-backed voxel conversion evidence export is not wired through the native bridge yet');
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

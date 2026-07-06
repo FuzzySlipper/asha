@@ -5,7 +5,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { cameraHandle } from '@asha/contracts';
-import type { CameraCreateRequest, CollisionConstrainedCameraInputEnvelope, VoxelCommand } from '@asha/contracts';
+import type {
+  CameraCreateRequest,
+  CollisionConstrainedCameraInputEnvelope,
+  VoxelCommand,
+} from '@asha/contracts';
 import {
   RuntimeBridgeError,
   createRuntimeSessionFacade,

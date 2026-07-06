@@ -12,7 +12,7 @@ export type ReplaySessionHandle = number & {
     readonly __brand: 'ReplaySessionHandle';
 };
 export declare const frameCursor: (frame: number) => FrameCursor;
-export type RuntimeBridgeErrorKind = 'not_initialized' | 'invalid_input' | 'unknown_handle' | 'buffer_expired' | 'native_unavailable' | 'operation_unimplemented' | 'internal';
+export type RuntimeBridgeErrorKind = 'not_initialized' | 'invalid_input' | 'unknown_handle' | 'buffer_expired' | 'native_unavailable' | 'voxel_conversion_unavailable' | 'unsupported_source_asset' | 'source_hash_mismatch' | 'invalid_material_map' | 'output_limit_exceeded' | 'stale_authority_snapshot' | 'conversion_replay_mismatch' | 'operation_unimplemented' | 'internal';
 /** Typed, classified error for every facade operation. No JSON error blobs. */
 export declare class RuntimeBridgeError extends Error {
     readonly kind: RuntimeBridgeErrorKind;
