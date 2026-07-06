@@ -63,6 +63,11 @@ consumers to maintain parallel demo authority:
   gating, and missing-backend diagnostics. Replay history before the most recent
   restart/request-restart record is excluded from `shotsFired`/`actionTick`, so
   reset UI does not accidentally count historical command records.
+- `readRuntimeSessionPlayableEncounterTick(session, request)`: derives the
+  generated-tunnel enemy actor from ECRP state, applies pause/terminal/missing
+  actor gates, advances one autonomous policy tick through RuntimeSession, and
+  returns movement/combat/lifecycle summaries. Browser shells still own the
+  schedule/timer and pass the current RuntimeSession camera handle/position.
 
 Lifecycle fixture hashes in the current reference slice:
 

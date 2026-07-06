@@ -50,11 +50,12 @@ because ASHA does not yet expose the durable upstream surface.
    `RenderFrameDiff`, and `@asha/renderer-three` no longer exports the
    generated-tunnel builders from its package root or backend declarations.
 
-5. Enemy encounter ticking is still demo-scheduled.
-   The demo owns `setInterval`, passes target/enemy positions, chooses
-   line-of-sight/range inputs, and gates terminal/paused states before calling
-   autonomous policy. RuntimeSession should expose a cohesive encounter tick
-   receipt that derives state from the loaded session.
+5. Enemy encounter ticking has an upstream tick readout.
+   #4403 added `readRuntimeSessionPlayableEncounterTick()` at the
+   `@asha/runtime-bridge` package root. The browser shell still owns
+   `setInterval`, but enemy actor lookup, pause/terminal/missing gates,
+   generated-tunnel combat defaults, autonomous policy advancement, and
+   movement/combat/lifecycle summaries now come from RuntimeSession readouts.
 
 6. Browser FPS input ownership is transitional.
    #4388 moved controls out of the Three backend, but renderer-host now owns DOM

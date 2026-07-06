@@ -9,6 +9,7 @@ import type { CameraCreateRequest, CollisionConstrainedCameraInputEnvelope, Voxe
 import {
   RuntimeBridgeError,
   createRuntimeSessionFacade,
+  readRuntimeSessionPlayableEncounterTick,
   readRuntimeSessionPlayableLoopState,
   type EnemyDirectNavMovementRequest,
   type FpsEncounterDirectorSnapshot,
@@ -1045,6 +1046,91 @@ void test('RuntimeSession playable-loop state reports shell pause, player defeat
   assert.equal(defeated.health.player.dead, true);
   assert.equal(defeated.commands.canFire, false);
   assert.deepEqual(defeated.commands.blockedReasons, ['player_dead']);
+});
+
+void test('RuntimeSession playable encounter tick derives enemy state and advances policy/combat', () => {
+  const session = createMockRuntimeSession();
+  session.initialize(sessionInput());
+  const readout = readRuntimeSessionPlayableEncounterTick(session, {
+    targetCamera: cameraHandle(2),
+    targetPosition: [0, 1.1, -2.0],
+    tick: 7,
+  });
+
+  assert.equal(readout.kind, 'runtime_session.playable_encounter_tick.v0');
+  assert.equal(readout.status, 'advanced');
+  assert.equal(readout.blockedReason, null);
+  assert.equal(readout.tick, 7);
+  assert.equal(readout.enemy.stableId, 'actor/generated-tunnel-enemy');
+  assert.equal(readout.enemy.entity, 20);
+  assert.deepEqual(readout.enemy.position, [0, 1.1, -3.5]);
+  assert.equal(readout.player.camera, cameraHandle(2));
+  assert.equal(readout.autonomousPolicy?.kind, 'runtime_session.autonomous_policy_tick.v0');
+  assert.equal(readout.combatSummary?.status, 'accepted');
+  assert.equal(readout.combatSummary?.outcome?.kind, 'hit');
+  assert.equal(readout.lifecycleAfter?.player.health.current, 90);
+  assert.ok(readout.nonClaims.includes('not_shell_scheduler'));
+});
+
+void test('RuntimeSession playable encounter tick supports movement-only and fail-closed gates', () => {
+  const session = createMockRuntimeSession();
+  session.initialize(sessionInput());
+  const movementOnly = readRuntimeSessionPlayableEncounterTick(session, {
+    targetCamera: cameraHandle(3),
+    targetPosition: [0, 1.62, 1.25],
+    combat: {
+      lineOfSight: 'blocked',
+      primaryFireRangeUnits: 2.4,
+    },
+  });
+  assert.equal(movementOnly.status, 'advanced');
+  assert.equal(movementOnly.movementSummary?.status, 'accepted');
+  assert.equal(movementOnly.combatSummary, null);
+
+  const paused = readRuntimeSessionPlayableEncounterTick(session, {
+    targetCamera: cameraHandle(3),
+    shell: { paused: true },
+  });
+  assert.equal(paused.status, 'blocked');
+  assert.equal(paused.blockedReason, 'paused');
+  assert.equal(paused.autonomousPolicy, null);
+
+  const missingEnemy = readRuntimeSessionPlayableEncounterTick(session, {
+    targetCamera: cameraHandle(3),
+    enemyStableId: 'actor/missing-enemy',
+  });
+  assert.equal(missingEnemy.status, 'blocked');
+  assert.equal(missingEnemy.blockedReason, 'missing_enemy');
+
+  const missingBackend = readRuntimeSessionPlayableEncounterTick(null, {
+    targetCamera: cameraHandle(3),
+  });
+  assert.equal(missingBackend.status, 'blocked');
+  assert.equal(missingBackend.blockedReason, 'missing_backend');
+});
+
+void test('RuntimeSession playable encounter tick no-ops after terminal enemy defeat', () => {
+  const session = createMockRuntimeSession();
+  session.initialize(sessionInput());
+  session.loadEcrpProject(ecrpProjectLoadInput());
+  session.submitRuntimeActionIntent({
+    kind: 'runtime_action_intent.v0',
+    action: 'primary_fire',
+    phase: 'pressed',
+    camera: cameraHandle(4),
+    tick: 1,
+    source: 'programmatic',
+    pressed: true,
+  });
+
+  const blocked = readRuntimeSessionPlayableEncounterTick(session, {
+    targetCamera: cameraHandle(4),
+    targetPosition: [0, 1.62, 1.25],
+  });
+  assert.equal(blocked.status, 'blocked');
+  assert.equal(blocked.blockedReason, 'enemy_dead');
+  assert.equal(blocked.autonomousPolicy, null);
+  assert.equal(blocked.lifecycleBefore?.enemy.dead, true);
 });
 
 void test('RuntimeSession rejects invalid ECRP ProjectBundle content without replacing live state', () => {
