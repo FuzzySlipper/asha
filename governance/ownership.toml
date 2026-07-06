@@ -294,7 +294,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]
 lane = "rust-rule"
-implementation_status = "reserved"
+implementation_status = "active"
 may_depend_on = ["core-ids", "core-error", "core-state", "core-events", "core-commands"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 

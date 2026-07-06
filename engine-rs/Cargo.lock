@@ -580,6 +580,13 @@ dependencies = [
 [[package]]
 name = "rule-process"
 version = "0.1.0"
+dependencies = [
+ "core-commands",
+ "core-error",
+ "core-events",
+ "core-ids",
+ "core-state",
+]
 
 [[package]]
 name = "rule-relationship"
