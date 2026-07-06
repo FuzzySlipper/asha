@@ -140,6 +140,7 @@ export interface FpsGameplayPresetReadout {
     'not_arbitrary_json_catalog',
     'not_editor_ui',
   ];
+  readonly authorityBoundary: FpsGameplayPresetAuthorityBoundary;
 }
 
 export interface FpsGameplayPresetValidationReport {
@@ -159,6 +160,48 @@ export interface FpsGameplayPresetCatalogReadout {
     readonly defaultPresetHash: string;
   };
   readonly consumerOwnership: FpsGameplayOwnership;
+  readonly authorityBoundary: FpsGameplayPresetAuthorityBoundary;
+}
+
+export interface FpsGameplayPresetAuthorityBoundary {
+  readonly catalogCoreRole: 'descriptive_config';
+  readonly shapeValidation: {
+    readonly owner: '@asha/catalog-core';
+    readonly scope: 'dto_shape_and_consumer_tuning_ranges_only';
+    readonly authorizesRuntime: false;
+  };
+  readonly runtimeValidation: {
+    readonly owner: 'rust_runtime_session_authority';
+    readonly surfaces: readonly [
+      'RuntimeSessionFacade.loadEcrpProject',
+      'RuntimeSessionFacade.applyCollisionConstrainedCameraInput',
+      'RuntimeSessionFacade.submitRuntimeActionIntent',
+      'RuntimeSessionFacade.runAutonomousPolicyTick',
+      'RuntimeSessionFacade.requestEncounterTransition',
+      'RuntimeSessionFacade.requestSessionRestart',
+    ];
+    readonly ownerDocs: readonly [
+      'docs/entity-definition-schema.md',
+      'docs/ecrp-capability-rule-ownership.md',
+      'docs/runtime-session-facade.md',
+    ];
+  };
+  readonly semanticOwners: {
+    readonly bootstrap: 'svc-entity-authoring';
+    readonly lifecycle: 'rule-lifecycle';
+    readonly collision: 'svc-collision';
+    readonly combat: 'svc-combat';
+    readonly nav: 'svc-pathfinding';
+    readonly generation: 'svc-levelgen';
+  };
+  readonly nonClaims: readonly [
+    'not_runtime_acceptance_authority',
+    'not_capability_mutation_authority',
+    'not_combat_damage_authority',
+    'not_collision_resolution_authority',
+    'not_policy_execution_authority',
+    'not_procedural_generation_authority',
+  ];
 }
 
 export type FpsEcrpObjectModelKind = 'fps_ecrp_object_model.v0';
@@ -321,6 +364,47 @@ const DEFAULT_OWNERSHIP: FpsGameplayOwnership = {
     'combatDamageApplication',
     'policyExecution',
     'proceduralGeneration',
+  ],
+};
+
+const FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY: FpsGameplayPresetAuthorityBoundary = {
+  catalogCoreRole: 'descriptive_config',
+  shapeValidation: {
+    owner: '@asha/catalog-core',
+    scope: 'dto_shape_and_consumer_tuning_ranges_only',
+    authorizesRuntime: false,
+  },
+  runtimeValidation: {
+    owner: 'rust_runtime_session_authority',
+    surfaces: [
+      'RuntimeSessionFacade.loadEcrpProject',
+      'RuntimeSessionFacade.applyCollisionConstrainedCameraInput',
+      'RuntimeSessionFacade.submitRuntimeActionIntent',
+      'RuntimeSessionFacade.runAutonomousPolicyTick',
+      'RuntimeSessionFacade.requestEncounterTransition',
+      'RuntimeSessionFacade.requestSessionRestart',
+    ],
+    ownerDocs: [
+      'docs/entity-definition-schema.md',
+      'docs/ecrp-capability-rule-ownership.md',
+      'docs/runtime-session-facade.md',
+    ],
+  },
+  semanticOwners: {
+    bootstrap: 'svc-entity-authoring',
+    lifecycle: 'rule-lifecycle',
+    collision: 'svc-collision',
+    combat: 'svc-combat',
+    nav: 'svc-pathfinding',
+    generation: 'svc-levelgen',
+  },
+  nonClaims: [
+    'not_runtime_acceptance_authority',
+    'not_capability_mutation_authority',
+    'not_combat_damage_authority',
+    'not_collision_resolution_authority',
+    'not_policy_execution_authority',
+    'not_procedural_generation_authority',
   ],
 };
 
@@ -586,6 +670,7 @@ export function readFpsGameplayPresetCatalog(): FpsGameplayPresetCatalogReadout 
       defaultPresetHash: defaultPreset.hashes.presetHash,
     },
     consumerOwnership: DEFAULT_OWNERSHIP,
+    authorityBoundary: FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY,
   };
 }
 
@@ -684,6 +769,7 @@ function buildFpsGameplayPresetReadout(preset: FpsGameplayPreset): FpsGameplayPr
       'not_arbitrary_json_catalog',
       'not_editor_ui',
     ],
+    authorityBoundary: FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY,
   };
 }
 

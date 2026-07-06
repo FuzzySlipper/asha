@@ -16,6 +16,46 @@ const DEFAULT_OWNERSHIP = {
         'proceduralGeneration',
     ],
 };
+const FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY = {
+    catalogCoreRole: 'descriptive_config',
+    shapeValidation: {
+        owner: '@asha/catalog-core',
+        scope: 'dto_shape_and_consumer_tuning_ranges_only',
+        authorizesRuntime: false,
+    },
+    runtimeValidation: {
+        owner: 'rust_runtime_session_authority',
+        surfaces: [
+            'RuntimeSessionFacade.loadEcrpProject',
+            'RuntimeSessionFacade.applyCollisionConstrainedCameraInput',
+            'RuntimeSessionFacade.submitRuntimeActionIntent',
+            'RuntimeSessionFacade.runAutonomousPolicyTick',
+            'RuntimeSessionFacade.requestEncounterTransition',
+            'RuntimeSessionFacade.requestSessionRestart',
+        ],
+        ownerDocs: [
+            'docs/entity-definition-schema.md',
+            'docs/ecrp-capability-rule-ownership.md',
+            'docs/runtime-session-facade.md',
+        ],
+    },
+    semanticOwners: {
+        bootstrap: 'svc-entity-authoring',
+        lifecycle: 'rule-lifecycle',
+        collision: 'svc-collision',
+        combat: 'svc-combat',
+        nav: 'svc-pathfinding',
+        generation: 'svc-levelgen',
+    },
+    nonClaims: [
+        'not_runtime_acceptance_authority',
+        'not_capability_mutation_authority',
+        'not_combat_damage_authority',
+        'not_collision_resolution_authority',
+        'not_policy_execution_authority',
+        'not_procedural_generation_authority',
+    ],
+};
 export const GENERATED_TUNNEL_DEFAULT_FPS_PRESET = {
     kind: 'fps_gameplay_preset.v0',
     presetId: 'asha.generated_tunnel.default_fps.v0',
@@ -269,6 +309,7 @@ export function readFpsGameplayPresetCatalog() {
             defaultPresetHash: defaultPreset.hashes.presetHash,
         },
         consumerOwnership: DEFAULT_OWNERSHIP,
+        authorityBoundary: FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY,
     };
 }
 export function readFpsEcrpObjectModel() {
@@ -357,6 +398,7 @@ function buildFpsGameplayPresetReadout(preset) {
             'not_arbitrary_json_catalog',
             'not_editor_ui',
         ],
+        authorityBoundary: FPS_GAMEPLAY_PRESET_AUTHORITY_BOUNDARY,
     };
 }
 function validateRoot(preset, diagnostics) {

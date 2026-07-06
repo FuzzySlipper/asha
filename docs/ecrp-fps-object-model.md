@@ -7,6 +7,14 @@ the generated-tunnel FPS loop to the current ECRP runtime surface. The readout i
 catalog/projection metadata only. It does not own runtime authority and does not
 introduce a framework ECS.
 
+`readDefaultFpsGameplayPreset()` and `readFpsGameplayPresetCatalog()` also expose
+an `authorityBoundary` block. That block is deliberately part of the public
+readout: TypeScript catalog validation checks DTO shape and consumer tuning
+ranges, but it does not authorize runtime behavior. Runtime acceptance, capability
+mutation, collision resolution, combat damage, policy execution, procedural
+generation, encounter transition, and restart remain Rust RuntimeSession
+authority concerns.
+
 ## Surface
 
 The readout kind is:

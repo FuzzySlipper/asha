@@ -267,7 +267,12 @@ Additive notes under this unstable status:
   `fnv1a64:51431466746a3fc4`. Demo constants should migrate by replacing local
   movement/look/fire/enemy/encounter/generator constants with reads from
   `readDefaultFpsGameplayPreset()` or `readFpsGameplayPresetCatalog()` while
-  continuing to submit runtime commands through `@asha/runtime-bridge`.
+  continuing to submit runtime commands through `@asha/runtime-bridge`. The
+  preset and catalog readouts now include `authorityBoundary`, which explicitly
+  labels `@asha/catalog-core` validation as DTO shape / consumer tuning range
+  validation only. Runtime acceptance remains owned by Rust RuntimeSession
+  authority surfaces such as `loadEcrpProject`, collision input, primary-fire
+  action intents, policy ticks, encounter transitions, and restart.
 
 ## Render projection compatibility log
 

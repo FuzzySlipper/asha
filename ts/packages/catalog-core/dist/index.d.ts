@@ -115,6 +115,7 @@ export interface FpsGameplayPresetReadout {
         'not_arbitrary_json_catalog',
         'not_editor_ui'
     ];
+    readonly authorityBoundary: FpsGameplayPresetAuthorityBoundary;
 }
 export interface FpsGameplayPresetValidationReport {
     readonly kind: 'fps_gameplay_preset_validation.v0';
@@ -132,6 +133,47 @@ export interface FpsGameplayPresetCatalogReadout {
         readonly defaultPresetHash: string;
     };
     readonly consumerOwnership: FpsGameplayOwnership;
+    readonly authorityBoundary: FpsGameplayPresetAuthorityBoundary;
+}
+export interface FpsGameplayPresetAuthorityBoundary {
+    readonly catalogCoreRole: 'descriptive_config';
+    readonly shapeValidation: {
+        readonly owner: '@asha/catalog-core';
+        readonly scope: 'dto_shape_and_consumer_tuning_ranges_only';
+        readonly authorizesRuntime: false;
+    };
+    readonly runtimeValidation: {
+        readonly owner: 'rust_runtime_session_authority';
+        readonly surfaces: readonly [
+            'RuntimeSessionFacade.loadEcrpProject',
+            'RuntimeSessionFacade.applyCollisionConstrainedCameraInput',
+            'RuntimeSessionFacade.submitRuntimeActionIntent',
+            'RuntimeSessionFacade.runAutonomousPolicyTick',
+            'RuntimeSessionFacade.requestEncounterTransition',
+            'RuntimeSessionFacade.requestSessionRestart'
+        ];
+        readonly ownerDocs: readonly [
+            'docs/entity-definition-schema.md',
+            'docs/ecrp-capability-rule-ownership.md',
+            'docs/runtime-session-facade.md'
+        ];
+    };
+    readonly semanticOwners: {
+        readonly bootstrap: 'svc-entity-authoring';
+        readonly lifecycle: 'rule-lifecycle';
+        readonly collision: 'svc-collision';
+        readonly combat: 'svc-combat';
+        readonly nav: 'svc-pathfinding';
+        readonly generation: 'svc-levelgen';
+    };
+    readonly nonClaims: readonly [
+        'not_runtime_acceptance_authority',
+        'not_capability_mutation_authority',
+        'not_combat_damage_authority',
+        'not_collision_resolution_authority',
+        'not_policy_execution_authority',
+        'not_procedural_generation_authority'
+    ];
 }
 export type FpsEcrpObjectModelKind = 'fps_ecrp_object_model.v0';
 export type FpsEcrpRuntimeRole = 'player' | 'enemy';

@@ -122,6 +122,34 @@ void test('FPS gameplay preset catalog readout lists consumer ownership and stab
   assert.equal(catalog.hashes.defaultPresetHash, 'fnv1a64:c5a07d62670d6616');
 });
 
+void test('FPS gameplay preset validation is descriptive and cannot authorize runtime behavior', () => {
+  const report = validateFpsGameplayPreset(GENERATED_TUNNEL_DEFAULT_FPS_PRESET);
+  assert.equal(report.valid, true);
+  assert.ok(report.readout);
+
+  const boundary = report.readout.authorityBoundary;
+  assert.equal(boundary.catalogCoreRole, 'descriptive_config');
+  assert.equal(boundary.shapeValidation.owner, '@asha/catalog-core');
+  assert.equal(boundary.shapeValidation.scope, 'dto_shape_and_consumer_tuning_ranges_only');
+  assert.equal(boundary.shapeValidation.authorizesRuntime, false);
+  assert.equal(boundary.runtimeValidation.owner, 'rust_runtime_session_authority');
+  assert.ok(boundary.runtimeValidation.surfaces.includes('RuntimeSessionFacade.loadEcrpProject'));
+  assert.ok(boundary.runtimeValidation.surfaces.includes('RuntimeSessionFacade.submitRuntimeActionIntent'));
+  assert.equal(boundary.semanticOwners.bootstrap, 'svc-entity-authoring');
+  assert.equal(boundary.semanticOwners.combat, 'svc-combat');
+  assert.equal(boundary.semanticOwners.collision, 'svc-collision');
+  assert.ok(boundary.nonClaims.includes('not_runtime_acceptance_authority'));
+  assert.ok(boundary.nonClaims.includes('not_combat_damage_authority'));
+
+  const catalog = readFpsGameplayPresetCatalog();
+  assert.equal(catalog.authorityBoundary.shapeValidation.authorizesRuntime, false);
+  assert.deepEqual(catalog.authorityBoundary.runtimeValidation.ownerDocs, [
+    'docs/entity-definition-schema.md',
+    'docs/ecrp-capability-rule-ownership.md',
+    'docs/runtime-session-facade.md',
+  ]);
+});
+
 void test('FPS ECRP object model maps playable roles to public RuntimeSession surfaces', () => {
   const readout = readFpsEcrpObjectModel();
   const player = findFpsEcrpObjectModelEntry('player');
