@@ -27,6 +27,7 @@ interface VoxelConversionStudioProofFixture {
   readonly publicImports: readonly string[];
   readonly commandIds: readonly string[];
   readonly rustAuthorityGolden: string;
+  readonly rustAuthorityFixture: string;
   readonly planRequest: VoxelConversionPlanRequest;
   readonly plan: VoxelConversionPlan;
   readonly previewRequest: VoxelConversionPreviewRequest;
@@ -37,11 +38,28 @@ interface VoxelConversionStudioProofFixture {
   readonly evidenceExport: readonly VoxelConversionEvidenceRef[];
 }
 
+interface VoxelConversionAuthorityProofFixture {
+  readonly schemaVersion: 1;
+  readonly authorityVersion: string;
+  readonly sourceAssetId: string;
+  readonly planRequest: VoxelConversionPlanRequest;
+  readonly plan: VoxelConversionPlan;
+  readonly previewRequest: VoxelConversionPreviewRequest;
+  readonly preview: VoxelConversionPreview;
+  readonly applyRequest: VoxelConversionApplyRequest;
+  readonly receipt: VoxelConversionReceipt;
+  readonly evidenceExport: readonly VoxelConversionEvidenceRef[];
+}
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const fixturePath = resolve(repoRoot, 'harness/fixtures/voxel-conversion/studio-consumer-proof.json');
 
+function readJson<T>(path: string): T {
+  return JSON.parse(readFileSync(path, 'utf8')) as T;
+}
+
 function readFixture(): VoxelConversionStudioProofFixture {
-  return JSON.parse(readFileSync(fixturePath, 'utf8')) as VoxelConversionStudioProofFixture;
+  return readJson<VoxelConversionStudioProofFixture>(fixturePath);
 }
 
 function sessionInput() {
@@ -93,13 +111,42 @@ void test('voxel conversion consumer proof uses public roots and deterministic f
   const preview: VoxelConversionPreview = fixture.preview;
   const receipt: VoxelConversionReceipt = fixture.receipt;
   const evidence: readonly VoxelConversionEvidenceRef[] = fixture.evidenceExport;
+  const authorityFixture = readJson<VoxelConversionAuthorityProofFixture>(
+    resolve(repoRoot, fixture.rustAuthorityFixture),
+  );
+
+  assert.deepEqual(
+    {
+      planRequest: fixture.planRequest,
+      plan: fixture.plan,
+      previewRequest: fixture.previewRequest,
+      preview: fixture.preview,
+      applyRequest: fixture.applyRequest,
+      receipt: fixture.receipt,
+      evidenceExport: fixture.evidenceExport,
+    },
+    {
+      planRequest: authorityFixture.planRequest,
+      plan: authorityFixture.plan,
+      previewRequest: authorityFixture.previewRequest,
+      preview: authorityFixture.preview,
+      applyRequest: authorityFixture.applyRequest,
+      receipt: authorityFixture.receipt,
+      evidenceExport: authorityFixture.evidenceExport,
+    },
+  );
 
   assert.equal(planRequest.source.assetKind, 'mesh');
-  assert.equal(plan.authorityVersion, 'svc-voxel-conversion.v0');
+  assert.equal(plan.authorityVersion, authorityFixture.authorityVersion);
+  assert.equal(planRequest.source.assetId, authorityFixture.sourceAssetId);
   assert.equal(plan.estimatedOutputVoxels, 4);
-  assert.deepEqual(preview.sampleVoxels.map((voxel) => voxel.material).sort(), [3, 5]);
+  assert.deepEqual([...new Set(preview.sampleVoxels.map((voxel) => voxel.material))].sort(), [3, 5]);
   assert.equal(receipt.applied, true);
   assert.deepEqual(evidence.map((ref) => ref.kind), ['plan', 'preview', 'apply_receipt']);
+  assert.match(plan.planId, /^fnv1a64:/);
+  assert.match(plan.settingsHash, /^fnv1a64:/);
+  assert.equal(fixture.previewRequest.expectedPlanHash, authorityFixture.previewRequest.expectedPlanHash);
+  assert.equal(fixture.applyRequest.expectedPreviewHash, authorityFixture.preview.outputHash);
 
   const diagnosticCodes = fixture.diagnosticCases.map((diagnostic) => diagnostic.code);
   assert.deepEqual(diagnosticCodes, [

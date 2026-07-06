@@ -22,7 +22,8 @@ use protocol_diagnostics::DiagnosticSeverity;
 use protocol_voxel_conversion::{
     VoxelConversionApplyRequest, VoxelConversionBounds, VoxelConversionDiagnostic,
     VoxelConversionDiagnosticCode, VoxelConversionEvidenceKind, VoxelConversionEvidenceRef,
-    VoxelConversionMode, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview,
+    VoxelConversionFitPolicy, VoxelConversionMode, VoxelConversionOriginPolicy,
+    VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview,
     VoxelConversionPreviewRequest, VoxelConversionPreviewVoxel, VoxelConversionReceipt,
     VoxelConversionSourceRef, VoxelConversionTargetRef,
 };
@@ -400,6 +401,7 @@ fn solid_voxels(
     request: &VoxelConversionPlanRequest,
     source: &StaticMeshSource,
 ) -> Vec<ConvertedVoxel> {
+    let mapper = CoordMapper::new(request, source);
     let material_map = material_lookup(request);
     let material = source
         .triangles
@@ -412,17 +414,24 @@ fn solid_voxels(
                 .default_voxel_material
                 .unwrap_or(1)
         });
-    let [rx, ry, rz] = request.settings.resolution;
-    let mut voxels = Vec::with_capacity((rx as usize) * (ry as usize) * (rz as usize));
-    for z in 0..rz {
-        for y in 0..ry {
-            for x in 0..rx {
+
+    let mapped_positions: Vec<_> = source
+        .positions
+        .iter()
+        .map(|position| mapper.map(*position))
+        .collect();
+    let Some(bounds) = bounds_for_coords(&mapped_positions) else {
+        return Vec::new();
+    };
+    let volume = ((bounds.max.x - bounds.min.x + 1) as usize)
+        * ((bounds.max.y - bounds.min.y + 1) as usize)
+        * ((bounds.max.z - bounds.min.z + 1) as usize);
+    let mut voxels = Vec::with_capacity(volume);
+    for z in bounds.min.z..=bounds.max.z {
+        for y in bounds.min.y..=bounds.max.y {
+            for x in bounds.min.x..=bounds.max.x {
                 voxels.push(ConvertedVoxel {
-                    coord: protocol_voxel_conversion::VoxelConversionCoord {
-                        x: request.target.origin.x + x as i64,
-                        y: request.target.origin.y + y as i64,
-                        z: request.target.origin.z + z as i64,
-                    },
+                    coord: protocol_voxel_conversion::VoxelConversionCoord { x, y, z },
                     value: VoxelValue::solid_raw(material),
                 });
             }
@@ -474,16 +483,23 @@ fn is_closed_manifold(source: &StaticMeshSource) -> bool {
 }
 
 fn bounds_for(voxels: &[ConvertedVoxel]) -> Option<VoxelConversionBounds> {
-    let first = voxels.first()?.coord;
+    let coords = voxels.iter().map(|voxel| voxel.coord).collect::<Vec<_>>();
+    bounds_for_coords(&coords)
+}
+
+fn bounds_for_coords(
+    coords: &[protocol_voxel_conversion::VoxelConversionCoord],
+) -> Option<VoxelConversionBounds> {
+    let first = *coords.first()?;
     let mut min = first;
     let mut max = first;
-    for voxel in voxels.iter().skip(1) {
-        min.x = min.x.min(voxel.coord.x);
-        min.y = min.y.min(voxel.coord.y);
-        min.z = min.z.min(voxel.coord.z);
-        max.x = max.x.max(voxel.coord.x);
-        max.y = max.y.max(voxel.coord.y);
-        max.z = max.z.max(voxel.coord.z);
+    for coord in coords.iter().skip(1) {
+        min.x = min.x.min(coord.x);
+        min.y = min.y.min(coord.y);
+        min.z = min.z.min(coord.z);
+        max.x = max.x.max(coord.x);
+        max.y = max.y.max(coord.y);
+        max.z = max.z.max(coord.z);
     }
     Some(VoxelConversionBounds { min, max })
 }
@@ -576,9 +592,13 @@ fn coord_key(coord: protocol_voxel_conversion::VoxelConversionCoord) -> (i64, i6
 
 struct CoordMapper {
     min: [f32; 3],
-    span: [f32; 3],
     target: VoxelConversionTargetRef,
     resolution: [u32; 3],
+    voxel_size: f32,
+    scale: [f32; 3],
+    offset_voxels: [f32; 3],
+    origin_policy: VoxelConversionOriginPolicy,
+    transform: [f32; 16],
 }
 
 impl CoordMapper {
@@ -586,30 +606,52 @@ impl CoordMapper {
         let mut min = [f32::INFINITY; 3];
         let mut max = [f32::NEG_INFINITY; 3];
         for position in &source.positions {
+            let transformed = transform_position(request.settings.transform, *position);
             for axis in 0..3 {
-                min[axis] = min[axis].min(position[axis]);
-                max[axis] = max[axis].max(position[axis]);
+                min[axis] = min[axis].min(transformed[axis]);
+                max[axis] = max[axis].max(transformed[axis]);
             }
         }
         let span = [
-            (max[0] - min[0]).max(f32::EPSILON),
-            (max[1] - min[1]).max(f32::EPSILON),
-            (max[2] - min[2]).max(f32::EPSILON),
+            (max[0] - min[0]).max(0.0),
+            (max[1] - min[1]).max(0.0),
+            (max[2] - min[2]).max(0.0),
         ];
+        let target_span =
+            target_span_world(request.settings.resolution, request.settings.voxel_size);
+        let scale = fit_scale(request.settings.fit_policy, span, target_span);
+        let offset_voxels = origin_offset_voxels(
+            request.settings.origin_policy,
+            span,
+            target_span,
+            scale,
+            request.settings.voxel_size,
+        );
         Self {
             min,
-            span,
             target: request.target.clone(),
             resolution: request.settings.resolution,
+            voxel_size: request.settings.voxel_size,
+            scale,
+            offset_voxels,
+            origin_policy: request.settings.origin_policy,
+            transform: request.settings.transform,
         }
     }
 
     fn map(&self, position: [f32; 3]) -> protocol_voxel_conversion::VoxelConversionCoord {
+        let transformed = transform_position(self.transform, position);
         let mut out = [0i64; 3];
         for axis in 0..3 {
-            let normalized = ((position[axis] - self.min[axis]) / self.span[axis]).clamp(0.0, 1.0);
+            let anchored = match self.origin_policy {
+                VoxelConversionOriginPolicy::SourceOrigin => transformed[axis] * self.scale[axis],
+                VoxelConversionOriginPolicy::TargetMin | VoxelConversionOriginPolicy::Centered => {
+                    (transformed[axis] - self.min[axis]) * self.scale[axis]
+                }
+            };
             let max_index = self.resolution[axis].saturating_sub(1) as f32;
-            out[axis] = (normalized * max_index).round() as i64;
+            let local = (anchored / self.voxel_size) + self.offset_voxels[axis];
+            out[axis] = local.round().clamp(0.0, max_index) as i64;
         }
         protocol_voxel_conversion::VoxelConversionCoord {
             x: self.target.origin.x + out[0],
@@ -617,6 +659,97 @@ impl CoordMapper {
             z: self.target.origin.z + out[2],
         }
     }
+}
+
+fn transform_position(transform: [f32; 16], position: [f32; 3]) -> [f32; 3] {
+    let [x, y, z] = position;
+    [
+        transform[0] * x + transform[4] * y + transform[8] * z + transform[12],
+        transform[1] * x + transform[5] * y + transform[9] * z + transform[13],
+        transform[2] * x + transform[6] * y + transform[10] * z + transform[14],
+    ]
+}
+
+fn target_span_world(resolution: [u32; 3], voxel_size: f32) -> [f32; 3] {
+    [
+        resolution[0].saturating_sub(1) as f32 * voxel_size,
+        resolution[1].saturating_sub(1) as f32 * voxel_size,
+        resolution[2].saturating_sub(1) as f32 * voxel_size,
+    ]
+}
+
+fn fit_scale(
+    fit_policy: VoxelConversionFitPolicy,
+    source_span: [f32; 3],
+    target_span: [f32; 3],
+) -> [f32; 3] {
+    let axis_ratios = [
+        axis_fit_ratio(source_span[0], target_span[0]),
+        axis_fit_ratio(source_span[1], target_span[1]),
+        axis_fit_ratio(source_span[2], target_span[2]),
+    ];
+    match fit_policy {
+        VoxelConversionFitPolicy::Stretch => [
+            axis_ratios[0].unwrap_or(1.0),
+            axis_ratios[1].unwrap_or(1.0),
+            axis_ratios[2].unwrap_or(1.0),
+        ],
+        VoxelConversionFitPolicy::Contain => {
+            let scale = uniform_fit_scale(axis_ratios, UniformFit::Contain);
+            [scale, scale, scale]
+        }
+        VoxelConversionFitPolicy::Cover => {
+            let scale = uniform_fit_scale(axis_ratios, UniformFit::Cover);
+            [scale, scale, scale]
+        }
+    }
+}
+
+fn axis_fit_ratio(source_span: f32, target_span: f32) -> Option<f32> {
+    if source_span > f32::EPSILON {
+        Some(target_span / source_span)
+    } else {
+        None
+    }
+}
+
+enum UniformFit {
+    Contain,
+    Cover,
+}
+
+fn uniform_fit_scale(axis_ratios: [Option<f32>; 3], fit: UniformFit) -> f32 {
+    let mut ratios = axis_ratios.into_iter().flatten();
+    let Some(first) = ratios.next() else {
+        return 1.0;
+    };
+    ratios.fold(first, |acc, ratio| match fit {
+        UniformFit::Contain => acc.min(ratio),
+        UniformFit::Cover => acc.max(ratio),
+    })
+}
+
+fn origin_offset_voxels(
+    origin_policy: VoxelConversionOriginPolicy,
+    source_span: [f32; 3],
+    target_span: [f32; 3],
+    scale: [f32; 3],
+    voxel_size: f32,
+) -> [f32; 3] {
+    match origin_policy {
+        VoxelConversionOriginPolicy::SourceOrigin | VoxelConversionOriginPolicy::TargetMin => {
+            [0.0, 0.0, 0.0]
+        }
+        VoxelConversionOriginPolicy::Centered => [
+            centered_axis_offset(source_span[0], target_span[0], scale[0], voxel_size),
+            centered_axis_offset(source_span[1], target_span[1], scale[1], voxel_size),
+            centered_axis_offset(source_span[2], target_span[2], scale[2], voxel_size),
+        ],
+    }
+}
+
+fn centered_axis_offset(source_span: f32, target_span: f32, scale: f32, voxel_size: f32) -> f32 {
+    ((target_span - source_span * scale) / 2.0).max(0.0) / voxel_size
 }
 
 fn stable_hash(parts: &[&str]) -> String {
@@ -639,10 +772,17 @@ mod tests {
         VoxelConversionCoord, VoxelConversionFitPolicy, VoxelConversionMaterialMap,
         VoxelConversionMaterialMapEntry, VoxelConversionOriginPolicy, VoxelConversionSettings,
     };
+    use serde_json::json;
 
     fn identity() -> [f32; 16] {
         [
             1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+        ]
+    }
+
+    fn translation(x: f32, y: f32, z: f32) -> [f32; 16] {
+        [
+            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, x, y, z, 1.0,
         ]
     }
 
@@ -670,6 +810,29 @@ mod tests {
                 },
             ],
         }
+    }
+
+    fn rectangular_quad_source() -> StaticMeshSource {
+        let mut source = quad_source();
+        source.asset_id = "mesh/rect".to_string();
+        source.source_hash = "sha256:rect".to_string();
+        source.positions = vec![
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ];
+        source
+    }
+
+    fn shallow_box_source() -> StaticMeshSource {
+        let mut source = cube_source();
+        source.asset_id = "mesh/shallow-box".to_string();
+        source.source_hash = "sha256:shallow-box".to_string();
+        for position in &mut source.positions {
+            position[2] *= 0.5;
+        }
+        source
     }
 
     fn cube_source() -> StaticMeshSource {
@@ -804,6 +967,82 @@ mod tests {
     }
 
     #[test]
+    fn surface_conversion_applies_transform_with_source_origin_anchor() {
+        let source = quad_source();
+        let mut request = request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16);
+        request.settings.origin_policy = VoxelConversionOriginPolicy::SourceOrigin;
+        request.settings.transform = translation(0.25, 0.0, 0.0);
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.plan.diagnostics.is_empty());
+        assert_eq!(bounds_label(planned.plan.estimated_bounds), "1,0,0..3,3,0");
+        assert_ne!(
+            planned.plan.settings_hash,
+            plan_conversion(
+                &request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16),
+                &source
+            )
+            .plan
+            .settings_hash
+        );
+    }
+
+    #[test]
+    fn surface_conversion_fit_policy_changes_mapped_coordinates() {
+        let source = rectangular_quad_source();
+        let contain = request_for(&source, VoxelConversionMode::Surface, [5, 5, 1], 16);
+        let mut stretch = contain.clone();
+        stretch.settings.fit_policy = VoxelConversionFitPolicy::Stretch;
+
+        let contain_plan = plan_conversion(&contain, &source);
+        let stretch_plan = plan_conversion(&stretch, &source);
+
+        assert!(contain_plan.plan.diagnostics.is_empty());
+        assert!(stretch_plan.plan.diagnostics.is_empty());
+        assert_eq!(
+            bounds_label(contain_plan.plan.estimated_bounds),
+            "0,0,0..4,2,0"
+        );
+        assert_eq!(
+            bounds_label(stretch_plan.plan.estimated_bounds),
+            "0,0,0..4,4,0"
+        );
+        assert_ne!(
+            contain_plan.plan.settings_hash,
+            stretch_plan.plan.settings_hash
+        );
+        assert_ne!(
+            contain_plan.output.as_ref().unwrap().output_hash,
+            stretch_plan.output.as_ref().unwrap().output_hash
+        );
+    }
+
+    #[test]
+    fn centered_origin_places_contained_output_inside_target_bounds() {
+        let source = rectangular_quad_source();
+        let mut request = request_for(&source, VoxelConversionMode::Surface, [5, 5, 1], 16);
+        request.settings.origin_policy = VoxelConversionOriginPolicy::Centered;
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.plan.diagnostics.is_empty());
+        assert_eq!(bounds_label(planned.plan.estimated_bounds), "0,1,0..4,3,0");
+    }
+
+    #[test]
+    fn solid_conversion_fills_mapped_source_bounds_not_entire_resolution() {
+        let source = shallow_box_source();
+        let request = request_for(&source, VoxelConversionMode::Solid, [4, 4, 4], 64);
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.plan.diagnostics.is_empty());
+        assert_eq!(planned.plan.estimated_output_voxels, 48);
+        assert_eq!(bounds_label(planned.plan.estimated_bounds), "0,0,0..3,3,2");
+    }
+
+    #[test]
     fn invalid_material_map_fails_closed_without_output() {
         let source = quad_source();
         let mut request = request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16);
@@ -889,6 +1128,21 @@ mod tests {
         );
     }
 
+    #[test]
+    fn committed_studio_consumer_proof_matches_rust_authority_output() {
+        let generated = studio_consumer_proof_authority_json();
+        if std::env::var_os("ASHA_DUMP_VOXEL_CONVERSION_PROOF").is_some() {
+            println!("{generated}");
+        }
+        assert_eq!(
+            generated.trim(),
+            include_str!(
+                "../../../../../harness/goldens/voxel-conversion/studio-consumer-proof-authority.golden.json"
+            )
+            .trim()
+        );
+    }
+
     fn conversion_golden_summary() -> String {
         let quad = quad_source();
         let quad_plan = plan_conversion(
@@ -928,6 +1182,43 @@ mod tests {
             oversized.plan.diagnostics[0].code.as_str(),
             stale.plan.diagnostics[0].code.as_str(),
         )
+    }
+
+    fn studio_consumer_proof_authority_json() -> String {
+        let source = quad_source();
+        let plan_request = request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16);
+        let planned = plan_conversion(&plan_request, &source);
+        let plan_hash = plan_hash(&planned.plan);
+        let preview_request = VoxelConversionPreviewRequest {
+            plan_id: planned.plan.plan_id.clone(),
+            expected_plan_hash: plan_hash.clone(),
+        };
+        let preview = preview_conversion(&preview_request, &planned);
+        let apply_request = VoxelConversionApplyRequest {
+            plan_id: planned.plan.plan_id.clone(),
+            expected_plan_hash: plan_hash,
+            expected_preview_hash: Some(preview.output_hash.clone()),
+        };
+        let receipt = apply_conversion(&apply_request, &planned);
+        let evidence_export = [
+            planned.plan.evidence.clone(),
+            preview.evidence.clone(),
+            receipt.evidence.clone(),
+        ]
+        .concat();
+        let payload = json!({
+            "schemaVersion": 1,
+            "authorityVersion": AUTHORITY_VERSION,
+            "sourceAssetId": source.asset_id,
+            "planRequest": plan_request,
+            "plan": planned.plan,
+            "previewRequest": preview_request,
+            "preview": preview,
+            "applyRequest": apply_request,
+            "receipt": receipt,
+            "evidenceExport": evidence_export
+        });
+        format!("{}\n", serde_json::to_string_pretty(&payload).unwrap())
     }
 
     fn bounds_label(bounds: Option<VoxelConversionBounds>) -> String {

@@ -1,82 +1,27 @@
 {
-  "schemaVersion": 1,
-  "publicImports": [
-    "@asha/contracts",
-    "@asha/runtime-bridge",
-    "@asha/runtime-bridge/reference",
-    "@asha/command-registry"
-  ],
-  "commandIds": [
-    "voxel_conversion.plan",
-    "voxel_conversion.preview",
-    "voxel_conversion.apply",
-    "voxel_conversion.export_evidence"
-  ],
-  "rustAuthorityGolden": "harness/goldens/voxel-conversion/conversion-summary.golden",
-  "rustAuthorityFixture": "harness/goldens/voxel-conversion/studio-consumer-proof-authority.golden.json",
-  "planRequest": {
-    "settings": {
-      "fitPolicy": "contain",
-      "materialMap": {
-        "defaultVoxelMaterial": null,
-        "entries": [
-          {
-            "sourceMaterialId": "mat/a",
-            "sourceMaterialSlot": 0,
-            "voxelMaterial": 3
-          },
-          {
-            "sourceMaterialId": "mat/b",
-            "sourceMaterialSlot": 1,
-            "voxelMaterial": 5
-          }
-        ]
-      },
-      "maxOutputVoxels": 16,
-      "mode": "surface",
-      "originPolicy": "target_min",
-      "resolution": [
-        4,
-        4,
-        1
-      ],
-      "transform": [
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "voxelSize": 1.0
-    },
-    "source": {
-      "assetId": "mesh/quad",
-      "assetKind": "mesh",
-      "assetVersion": 1,
-      "meshPrimitive": null,
-      "sourceHash": "sha256:quad"
-    },
-    "target": {
-      "grid": 7,
-      "origin": {
-        "x": 0,
-        "y": 0,
-        "z": 0
-      },
-      "volumeAssetId": "voxel/generated"
-    }
+  "applyRequest": {
+    "expectedPlanHash": "fnv1a64:d6599862cf46e3b7",
+    "expectedPreviewHash": "fnv1a64:e58802398ddc8ca0",
+    "planId": "fnv1a64:19b47aaa598c9130"
   },
+  "authorityVersion": "svc-voxel-conversion.v0",
+  "evidenceExport": [
+    {
+      "contentHash": "fnv1a64:6450cdbc8ea04c48",
+      "kind": "plan",
+      "uri": "asha://voxel-conversion/plan/fnv1a64:19b47aaa598c9130"
+    },
+    {
+      "contentHash": "fnv1a64:e58802398ddc8ca0",
+      "kind": "preview",
+      "uri": "asha://voxel-conversion/preview/fnv1a64:19b47aaa598c9130"
+    },
+    {
+      "contentHash": "fnv1a64:492ec26c8f11c655",
+      "kind": "apply_receipt",
+      "uri": "asha://voxel-conversion/apply/fnv1a64:19b47aaa598c9130"
+    }
+  ],
   "plan": {
     "authorityVersion": "svc-voxel-conversion.v0",
     "diagnostics": [],
@@ -165,9 +110,68 @@
       "volumeAssetId": "voxel/generated"
     }
   },
-  "previewRequest": {
-    "expectedPlanHash": "fnv1a64:d6599862cf46e3b7",
-    "planId": "fnv1a64:19b47aaa598c9130"
+  "planRequest": {
+    "settings": {
+      "fitPolicy": "contain",
+      "materialMap": {
+        "defaultVoxelMaterial": null,
+        "entries": [
+          {
+            "sourceMaterialId": "mat/a",
+            "sourceMaterialSlot": 0,
+            "voxelMaterial": 3
+          },
+          {
+            "sourceMaterialId": "mat/b",
+            "sourceMaterialSlot": 1,
+            "voxelMaterial": 5
+          }
+        ]
+      },
+      "maxOutputVoxels": 16,
+      "mode": "surface",
+      "originPolicy": "target_min",
+      "resolution": [
+        4,
+        4,
+        1
+      ],
+      "transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "voxelSize": 1.0
+    },
+    "source": {
+      "assetId": "mesh/quad",
+      "assetKind": "mesh",
+      "assetVersion": 1,
+      "meshPrimitive": null,
+      "sourceHash": "sha256:quad"
+    },
+    "target": {
+      "grid": 7,
+      "origin": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "volumeAssetId": "voxel/generated"
+    }
   },
   "preview": {
     "diagnostics": [],
@@ -228,9 +232,8 @@
       }
     ]
   },
-  "applyRequest": {
+  "previewRequest": {
     "expectedPlanHash": "fnv1a64:d6599862cf46e3b7",
-    "expectedPreviewHash": "fnv1a64:e58802398ddc8ca0",
     "planId": "fnv1a64:19b47aaa598c9130"
   },
   "receipt": {
@@ -259,65 +262,6 @@
     "outputVoxelCount": 4,
     "planId": "fnv1a64:19b47aaa598c9130"
   },
-  "diagnosticCases": [
-    {
-      "caseId": "unsupported-source",
-      "code": "unsupported_source_asset",
-      "severity": "error",
-      "reference": "source",
-      "message": "source reference does not match a supported loaded static mesh asset"
-    },
-    {
-      "caseId": "invalid-material-map",
-      "code": "invalid_material_map",
-      "severity": "error",
-      "reference": "materialMap",
-      "message": "every source material slot must have a voxel material mapping"
-    },
-    {
-      "caseId": "oversized-output",
-      "code": "output_limit_exceeded",
-      "severity": "error",
-      "reference": "settings.maxOutputVoxels",
-      "message": "conversion output exceeds the requested maxOutputVoxels"
-    },
-    {
-      "caseId": "stale-source",
-      "code": "source_hash_mismatch",
-      "severity": "error",
-      "reference": "source",
-      "message": "source hash does not match the loaded static mesh authority snapshot"
-    },
-    {
-      "caseId": "stale-authority",
-      "code": "stale_authority_snapshot",
-      "severity": "error",
-      "reference": "plan",
-      "message": "preview request did not match the current authority plan hash"
-    },
-    {
-      "caseId": "replay-mismatch",
-      "code": "conversion_replay_mismatch",
-      "severity": "error",
-      "reference": "preview",
-      "message": "apply request expected a different preview output hash"
-    }
-  ],
-  "evidenceExport": [
-    {
-      "contentHash": "fnv1a64:6450cdbc8ea04c48",
-      "kind": "plan",
-      "uri": "asha://voxel-conversion/plan/fnv1a64:19b47aaa598c9130"
-    },
-    {
-      "contentHash": "fnv1a64:e58802398ddc8ca0",
-      "kind": "preview",
-      "uri": "asha://voxel-conversion/preview/fnv1a64:19b47aaa598c9130"
-    },
-    {
-      "contentHash": "fnv1a64:492ec26c8f11c655",
-      "kind": "apply_receipt",
-      "uri": "asha://voxel-conversion/apply/fnv1a64:19b47aaa598c9130"
-    }
-  ]
+  "schemaVersion": 1,
+  "sourceAssetId": "mesh/quad"
 }
