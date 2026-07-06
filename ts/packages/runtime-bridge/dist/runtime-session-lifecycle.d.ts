@@ -14,6 +14,14 @@ export declare function buildRuntimeSessionPrimaryFireReadout(input: {
     readonly source: RuntimeActionIntentEnvelope['source'];
     readonly tick: number;
 }): CombatRuntimeReadout;
+export declare function applyCombatReadoutToLifecycleState(input: {
+    readonly state: RuntimeSessionLifecycleState;
+    readonly readout: CombatRuntimeReadout;
+    readonly tick: number;
+}): {
+    readonly state: RuntimeSessionLifecycleState;
+    readonly recordLifecycleDeath: boolean;
+};
 export declare function lifecycleEvent(kind: RuntimeSessionLifecycleEventKind, entity: number, tick: number, reason: RuntimeSessionLifecycleEventReadout['reason']): RuntimeSessionLifecycleEventReadout;
 export declare function lifecycleStatusReadout(input: {
     readonly scenario: RuntimeSessionLifecycleScenario;

@@ -7,6 +7,7 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
+core-math   = { path = "../../foundation/core-math" }
 core-space  = { path = "../../foundation/core-space" }
 svc-spatial = { path = "../svc-spatial" }
 

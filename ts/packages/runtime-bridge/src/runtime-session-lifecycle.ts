@@ -95,6 +95,48 @@ export function buildRuntimeSessionPrimaryFireReadout(input: {
   return buildRustFpsAuthorityPrimaryFireReadout(input);
 }
 
+export function applyCombatReadoutToLifecycleState(input: {
+  readonly state: RuntimeSessionLifecycleState;
+  readonly readout: CombatRuntimeReadout;
+  readonly tick: number;
+}): {
+  readonly state: RuntimeSessionLifecycleState;
+  readonly recordLifecycleDeath: boolean;
+} {
+  const playerHealth = input.readout.health.find((health) => health.entity === input.state.player.entity);
+  const enemyHealth = input.readout.health.find((health) => health.entity === input.state.enemy.entity);
+  if (playerHealth === undefined && enemyHealth === undefined) {
+    return {
+      state: input.state,
+      recordLifecycleDeath: false,
+    };
+  }
+  const player =
+    playerHealth === undefined
+      ? input.state.player
+      : lifecycleHealth(input.state.player.entity, playerHealth.current, input.state.player.max, playerHealth.dead);
+  const enemy =
+    enemyHealth === undefined
+      ? input.state.enemy
+      : lifecycleHealth(input.state.enemy.entity, enemyHealth.current, input.state.enemy.max, enemyHealth.dead);
+  const terminalEvent =
+    input.state.terminalEvent ??
+    (enemy.dead && !input.state.enemy.dead
+      ? lifecycleEvent('runtime_lifecycle.enemy_defeated.v0', enemy.entity, input.tick, 'combat_health_zero')
+      : player.dead && !input.state.player.dead
+        ? lifecycleEvent('runtime_lifecycle.player_defeated.v0', player.entity, input.tick, 'combat_health_zero')
+        : null);
+  return {
+    state: {
+      player,
+      enemy,
+      terminalEvent,
+      revision: input.state.revision + 1,
+    },
+    recordLifecycleDeath: terminalEvent !== null && input.state.terminalEvent === null,
+  };
+}
+
 export function lifecycleEvent(
   kind: RuntimeSessionLifecycleEventKind,
   entity: number,

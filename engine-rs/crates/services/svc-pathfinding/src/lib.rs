@@ -10,6 +10,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use core_math::Vec3;
 use core_space::{VoxelCoord, VoxelGridSpec};
 use svc_spatial::VoxelWorld;
 
@@ -98,6 +99,44 @@ pub enum NavError {
     InvalidQueryBudget,
     StartNotWalkable { start: VoxelCoord },
     GoalNotWalkable { goal: VoxelCoord },
+}
+
+/// A bounded live-position path request for an authority caller.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DirectNavMovementRequest {
+    pub from: Vec3,
+    pub target: Vec3,
+    pub max_step_units: f32,
+}
+
+/// Deterministic direct-navigation movement proposal.
+///
+/// This readout is owned by `svc-pathfinding`; applying it to a runtime
+/// transform remains a state/rule responsibility.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DirectNavMovementReadout {
+    pub from: Vec3,
+    pub target: Vec3,
+    pub next_waypoint: Vec3,
+    pub distance_units: f32,
+    pub reached: bool,
+    pub path_hash: u64,
+}
+
+/// Why a direct-nav movement request was rejected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DirectNavMovementError {
+    NonFinitePosition,
+    InvalidStep,
+}
+
+impl DirectNavMovementError {
+    pub const fn label(self) -> &'static str {
+        match self {
+            DirectNavMovementError::NonFinitePosition => "nonFinitePosition",
+            DirectNavMovementError::InvalidStep => "invalidStep",
+        }
+    }
 }
 
 impl NavError {
@@ -225,6 +264,44 @@ pub fn find_path(
     })
 }
 
+/// Propose one deterministic, bounded waypoint toward a live target position.
+///
+/// This is intentionally small: it is not a full pathfinding replacement, nor
+/// does it mutate authority. It gives RuntimeSession/native bridge callers a
+/// Rust-owned service readout for simple enemy approach behavior while fuller
+/// voxel-derived path following remains on [`find_path`].
+pub fn propose_direct_nav_movement(
+    request: DirectNavMovementRequest,
+) -> Result<DirectNavMovementReadout, DirectNavMovementError> {
+    if !vec3_is_finite(request.from) || !vec3_is_finite(request.target) {
+        return Err(DirectNavMovementError::NonFinitePosition);
+    }
+    if !request.max_step_units.is_finite() || request.max_step_units <= 0.0 {
+        return Err(DirectNavMovementError::InvalidStep);
+    }
+
+    let delta = request.target - request.from;
+    let distance = delta.length();
+    let reached = distance <= request.max_step_units;
+    let next_waypoint = if distance <= f32::EPSILON || reached {
+        request.target
+    } else {
+        request.from + (delta * (request.max_step_units / distance))
+    };
+    let readout = DirectNavMovementReadout {
+        from: round_vec3(request.from),
+        target: round_vec3(request.target),
+        next_waypoint: round_vec3(next_waypoint),
+        distance_units: round_f32(distance),
+        reached,
+        path_hash: 0,
+    };
+    Ok(DirectNavMovementReadout {
+        path_hash: hash_direct_nav_movement(&readout),
+        ..readout
+    })
+}
+
 fn nav_neighbors(coord: VoxelCoord) -> [VoxelCoord; 4] {
     [
         VoxelCoord::new(coord.x + 1, coord.y, coord.z),
@@ -318,6 +395,38 @@ fn feed_u64(h: &mut u64, value: u64) {
     }
 }
 
+fn hash_direct_nav_movement(readout: &DirectNavMovementReadout) -> u64 {
+    let mut h = fnv_offset();
+    feed_vec3_bits(&mut h, readout.from);
+    feed_vec3_bits(&mut h, readout.target);
+    feed_vec3_bits(&mut h, readout.next_waypoint);
+    feed_f32_bits(&mut h, readout.distance_units);
+    feed_byte(&mut h, u8::from(readout.reached));
+    h
+}
+
+fn feed_vec3_bits(h: &mut u64, value: Vec3) {
+    feed_f32_bits(h, value.x);
+    feed_f32_bits(h, value.y);
+    feed_f32_bits(h, value.z);
+}
+
+fn feed_f32_bits(h: &mut u64, value: f32) {
+    feed_u64(h, value.to_bits() as u64);
+}
+
+fn vec3_is_finite(value: Vec3) -> bool {
+    value.x.is_finite() && value.y.is_finite() && value.z.is_finite()
+}
+
+fn round_vec3(value: Vec3) -> Vec3 {
+    Vec3::new(round_f32(value.x), round_f32(value.y), round_f32(value.z))
+}
+
+fn round_f32(value: f32) -> f32 {
+    (value * 1000.0).round() / 1000.0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -397,6 +506,43 @@ mod tests {
         assert_eq!(
             describe_nav_path(&projection, &readout),
             include_str!("../../../../../harness/fixtures/nav/generated-tunnel-path.snapshot.txt")
+        );
+    }
+
+    #[test]
+    fn direct_nav_movement_proposes_bounded_next_waypoint() {
+        let readout = propose_direct_nav_movement(DirectNavMovementRequest {
+            from: Vec3::new(0.0, 0.5, -2.6),
+            target: Vec3::new(0.0, 1.62, 1.25),
+            max_step_units: 0.35,
+        })
+        .expect("direct nav movement");
+
+        assert_eq!(readout.from, Vec3::new(0.0, 0.5, -2.6));
+        assert_eq!(readout.target, Vec3::new(0.0, 1.62, 1.25));
+        assert_eq!(readout.next_waypoint, Vec3::new(0.0, 0.598, -2.264));
+        assert_eq!(readout.distance_units, 4.01);
+        assert!(!readout.reached);
+        assert_eq!(readout.path_hash, 0x69ed_74d6_9292_2db7);
+    }
+
+    #[test]
+    fn direct_nav_movement_rejects_invalid_inputs() {
+        assert_eq!(
+            propose_direct_nav_movement(DirectNavMovementRequest {
+                from: Vec3::new(f32::NAN, 0.0, 0.0),
+                target: Vec3::ZERO,
+                max_step_units: 0.35,
+            }),
+            Err(DirectNavMovementError::NonFinitePosition)
+        );
+        assert_eq!(
+            propose_direct_nav_movement(DirectNavMovementRequest {
+                from: Vec3::ZERO,
+                target: Vec3::ONE,
+                max_step_units: 0.0,
+            }),
+            Err(DirectNavMovementError::InvalidStep)
         );
     }
 }

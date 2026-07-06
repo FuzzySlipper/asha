@@ -6,8 +6,9 @@ import { TINY_GENERATED_TUNNEL_READOUT, } from './generated-tunnel.js';
 import { createGeneratedTunnelEnemyPolicyFixture, validateEnemyPolicySource, } from './enemy-policy.js';
 import { buildEncounterDirectorReadout, buildEncounterTransitionReceipt, initialEncounterDirectorState, transitionEncounterDirectorState, validateEncounterDirectorReadoutRequest, validateEncounterTransitionRequest, } from './encounter-director.js';
 import { GENERATED_TUNNEL_NAV_POLICY_VIEW, GENERATED_TUNNEL_NAV_PROJECTION, GENERATED_TUNNEL_NO_PATH, GENERATED_TUNNEL_REACHABLE_PATH, } from './nav-readout.js';
+import { buildRuntimeSessionEnemyNavPath, ecrpActorPosition, runtimeTransformHashRecord, transformForAutonomousMovementProposal, } from './runtime-session-enemy-authority.js';
 import { buildEcrpProjectState, buildEcrpRuntimeReadout, defaultRuntimeSessionEcrpProjectLoadInput, lifecycleStateFromEcrpProject, validateEcrpProjectLoadInput, } from './runtime-session-ecrp.js';
-import { acceptedAutonomousMovementReceipt, buildRuntimeSessionPrimaryFireReadout, combatReadoutTick, generatedTunnelEnemyDefeatedLifecycleState, generatedTunnelPlayerDefeatedLifecycleState, initialRuntimeSessionLifecycleState, lifecycleEvent, lifecycleHealth, lifecycleStatusReadout, lifecycleStatusToEncounterLifecycle, rejectedAutonomousPolicyProposalReceipt, runtimeActionReceiptToAutonomousReceipt, validateAutonomousPolicyProposal, validateAutonomousPolicyTickInput, validateGeneratedTunnelOperationRequest, validateGeneratedTunnelReadoutRequest, validateInitializeInput, validateLifecycleStatusRequest, validateRestartIntent, validateRuntimeActionIntentEnvelope, } from './runtime-session-lifecycle.js';
+import { acceptedAutonomousMovementReceipt, applyCombatReadoutToLifecycleState, buildRuntimeSessionPrimaryFireReadout, combatReadoutTick, generatedTunnelEnemyDefeatedLifecycleState, generatedTunnelPlayerDefeatedLifecycleState, initialRuntimeSessionLifecycleState, lifecycleStatusReadout, lifecycleStatusToEncounterLifecycle, rejectedAutonomousPolicyProposalReceipt, runtimeActionReceiptToAutonomousReceipt, validateAutonomousPolicyProposal, validateAutonomousPolicyTickInput, validateGeneratedTunnelOperationRequest, validateGeneratedTunnelReadoutRequest, validateInitializeInput, validateLifecycleStatusRequest, validateRestartIntent, validateRuntimeActionIntentEnvelope, } from './runtime-session-lifecycle.js';
 import { compositionHashRecord, encounterStateHashRecord, identityHashRecord, lifecycleStateHashRecord, referenceRuntimeSessionNonClaims, renderFrameHashRecord, stableHash, } from './runtime-session-hash.js';
 export function createRuntimeSessionFacade(options) {
     return new ReferenceRuntimeSessionFacade(options.bridge);
@@ -213,12 +214,25 @@ class ReferenceRuntimeSessionFacade {
         const sessionHashBefore = this.#sessionHash();
         const step = this.tick(input.tick === undefined ? {} : { tick: input.tick });
         const usesLivePolicyPositions = input.enemy?.position !== undefined || input.target?.position !== undefined;
-        const enemyPolicyPosition = input.enemy?.position ?? this.#ecrpActorPosition('enemy') ?? undefined;
-        const targetPolicyPosition = input.target?.position ?? this.#ecrpActorPosition('player') ?? undefined;
-        const navPath = this.#queryAutonomousPolicyNavPath({
+        const enemyPolicyPosition = input.enemy?.position ??
+            ecrpActorPosition({
+                projectState: this.#ecrpProjectState,
+                runtimeTransforms: this.#runtimeTransforms,
+                role: 'enemy',
+            }) ??
+            undefined;
+        const targetPolicyPosition = input.target?.position ??
+            ecrpActorPosition({
+                projectState: this.#ecrpProjectState,
+                runtimeTransforms: this.#runtimeTransforms,
+                role: 'player',
+            }) ??
+            undefined;
+        const navPath = buildRuntimeSessionEnemyNavPath({
             ...(input.navScenario === undefined ? {} : { scenario: input.navScenario }),
             ...(!usesLivePolicyPositions || enemyPolicyPosition === undefined ? {} : { enemyPosition: enemyPolicyPosition }),
             ...(!usesLivePolicyPositions || targetPolicyPosition === undefined ? {} : { targetPosition: targetPolicyPosition }),
+            queryFixturePath: (scenario) => this.queryNavPath(scenario === undefined ? {} : { scenario }),
         });
         const navPolicyView = {
             ...this.readNavPolicyView(),
@@ -608,68 +622,26 @@ class ReferenceRuntimeSessionFacade {
             resetHash: statusAfter.fixture.resetHash,
         };
     }
-    #queryAutonomousPolicyNavPath(input) {
-        if (input.scenario !== undefined || input.enemyPosition === undefined || input.targetPosition === undefined) {
-            return this.queryNavPath({ scenario: input.scenario ?? 'generated_tunnel_reachable' });
-        }
-        return buildStraightLineNavPath(input.enemyPosition, input.targetPosition);
-    }
     #applyAutonomousMovementProposal(proposal) {
-        const enemy = this.#ecrpProjectState?.entities.find((entity) => entity.role === 'enemy');
-        if (enemy === undefined || proposal.nextWaypoint === null || this.#lifecycleState.enemy.dead) {
+        const movement = transformForAutonomousMovementProposal({
+            projectState: this.#ecrpProjectState,
+            proposal,
+            runtimeTransforms: this.#runtimeTransforms,
+            enemyDead: this.#lifecycleState.enemy.dead,
+        });
+        if (movement === null) {
             return;
         }
-        const current = this.#ecrpRuntimeTransformForEntity(enemy);
-        this.#runtimeTransforms.set(enemy.entity, {
-            position: proposal.nextWaypoint,
-            yawDegrees: current?.yawDegrees ?? 0,
-            pitchDegrees: current?.pitchDegrees ?? 0,
-        });
-    }
-    #ecrpActorPosition(role) {
-        const entity = this.#ecrpProjectState?.entities.find((candidate) => candidate.role === role);
-        return entity === undefined ? null : this.#ecrpRuntimeTransformForEntity(entity)?.position ?? null;
-    }
-    #ecrpRuntimeTransformForEntity(entity) {
-        const runtimeTransform = this.#runtimeTransforms.get(entity.entity);
-        if (runtimeTransform !== undefined) {
-            return runtimeTransform;
-        }
-        const definitionTransform = entity.definition.capabilities.find((capability) => capability.kind === 'transform');
-        if (definitionTransform?.kind !== 'transform') {
-            return null;
-        }
-        return {
-            position: definitionTransform.initial.position,
-            yawDegrees: definitionTransform.initial.yawDegrees,
-            pitchDegrees: definitionTransform.initial.pitchDegrees,
-        };
+        this.#runtimeTransforms.set(movement.entity, movement.transform);
     }
     #applyCombatLifecycleReadout(readout, tick) {
-        const playerHealth = readout.health.find((health) => health.entity === this.#lifecycleState.player.entity);
-        const enemyHealth = readout.health.find((health) => health.entity === this.#lifecycleState.enemy.entity);
-        if (playerHealth === undefined && enemyHealth === undefined) {
-            return;
-        }
-        const player = playerHealth === undefined
-            ? this.#lifecycleState.player
-            : lifecycleHealth(this.#lifecycleState.player.entity, playerHealth.current, this.#lifecycleState.player.max, playerHealth.dead);
-        const enemy = enemyHealth === undefined
-            ? this.#lifecycleState.enemy
-            : lifecycleHealth(this.#lifecycleState.enemy.entity, enemyHealth.current, this.#lifecycleState.enemy.max, enemyHealth.dead);
-        const terminalEvent = this.#lifecycleState.terminalEvent ??
-            (enemy.dead && !this.#lifecycleState.enemy.dead
-                ? lifecycleEvent('runtime_lifecycle.enemy_defeated.v0', enemy.entity, tick, 'combat_health_zero')
-                : player.dead && !this.#lifecycleState.player.dead
-                    ? lifecycleEvent('runtime_lifecycle.player_defeated.v0', player.entity, tick, 'combat_health_zero')
-                    : null);
-        this.#lifecycleState = {
-            player,
-            enemy,
-            terminalEvent,
-            revision: this.#lifecycleState.revision + 1,
-        };
-        if (terminalEvent !== null) {
+        const applied = applyCombatReadoutToLifecycleState({
+            state: this.#lifecycleState,
+            readout,
+            tick,
+        });
+        this.#lifecycleState = applied.state;
+        if (applied.recordLifecycleDeath) {
             this.#record('lifecycleDeath');
         }
     }
@@ -730,67 +702,6 @@ class ReferenceRuntimeSessionFacade {
             composition: this.#identity === null ? null : compositionHashRecord(this.#bridge.getCompositionStatus()),
         });
     }
-}
-function buildStraightLineNavPath(start, goal) {
-    const path = buildStraightLineNavWaypoints(start, goal, 0.35);
-    const query = {
-        start: { kind: 'voxel', coord: start },
-        goal: { kind: 'voxel', coord: goal },
-        maxVisited: 128,
-    };
-    const pathRecord = {
-        scenario: 'generated_tunnel_reachable',
-        projection: GENERATED_TUNNEL_NAV_PROJECTION.projectionHash,
-        query,
-        path,
-    };
-    return {
-        scenario: 'generated_tunnel_reachable',
-        projection: GENERATED_TUNNEL_NAV_PROJECTION,
-        query,
-        outcome: 'reached',
-        rejectionReason: null,
-        visited: path.length,
-        path,
-        pathHash: stableHash(pathRecord),
-    };
-}
-function buildStraightLineNavWaypoints(start, goal, maxStepUnits) {
-    const dx = goal[0] - start[0];
-    const dy = goal[1] - start[1];
-    const dz = goal[2] - start[2];
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    if (distance <= maxStepUnits) {
-        return [roundVec3(start), roundVec3(goal)];
-    }
-    const steps = Math.max(1, Math.ceil(distance / maxStepUnits));
-    const path = [];
-    for (let index = 0; index <= steps; index += 1) {
-        const ratio = index / steps;
-        path.push(roundVec3([
-            start[0] + dx * ratio,
-            start[1] + dy * ratio,
-            start[2] + dz * ratio,
-        ]));
-    }
-    return path;
-}
-function roundVec3(value) {
-    return [
-        Number(value[0].toFixed(3)),
-        Number(value[1].toFixed(3)),
-        Number(value[2].toFixed(3)),
-    ];
-}
-function runtimeTransformHashRecord(transforms) {
-    return [...transforms.entries()]
-        .sort(([left], [right]) => left - right)
-        .map(([entity, transform]) => ({
-        entity,
-        position: transform.position,
-        yawDegrees: transform.yawDegrees,
-        pitchDegrees: transform.pitchDegrees,
-    }));
 }
 function validateNavPathQueryRequest(request) {
     if (request.scenario !== undefined &&

@@ -874,6 +874,7 @@ dependencies = [
 name = "svc-pathfinding"
 version = "0.1.0"
 dependencies = [
+ "core-math",
  "core-space",
  "svc-levelgen",
  "svc-spatial",

@@ -175,10 +175,12 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
     });
     assert.equal(autonomousTick.kind, 'runtime_session.autonomous_policy_tick.v0');
     assert.equal(autonomousTick.nav.pathHash, reachable.pathHash);
-    assert.equal(autonomousTick.proposalSummary.acceptedProposalCount, 1);
-    assert.equal(autonomousTick.proposalSummary.unsupportedProposalCount, 1);
+    assert.equal(autonomousTick.proposalSummary.acceptedProposalCount, 2);
+    assert.equal(autonomousTick.proposalSummary.unsupportedProposalCount, 0);
     assert.equal(autonomousTick.commandSummary.acceptedRuntimeActionCount, 1);
-    assert.equal(autonomousTick.movementSummary?.reason, 'movement_authority_not_wired');
+    assert.equal(autonomousTick.movementSummary?.status, 'accepted');
+    assert.equal(autonomousTick.movementSummary?.reason, null);
+    assert.deepEqual(autonomousTick.movementSummary?.nextWaypoint, [2, 1, 7]);
     assert.match(autonomousTick.combatSummary?.healthHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
     assert.equal(autonomousTick.replay.lastRecordKind, 'runAutonomousPolicyTick');
     assert.ok(autonomousTick.tickHash.startsWith('fnv1a64:'));
@@ -187,7 +189,7 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
     assert.equal(lifecycle.outcome.kind, 'won');
     assert.equal(lifecycle.enemy.dead, true);
     assert.equal(lifecycle.enemy.health.current, 0);
-    assert.equal(lifecycle.hashes.lifecycleHash, 'fnv1a64:5fbf190733451da1');
+    assert.equal(lifecycle.hashes.lifecycleHash, 'fnv1a64:4e2c4a31628ec264');
     const playerLossFixture = session.readLifecycleStatus({ scenario: 'generated_tunnel_player_defeated' });
     assert.equal(playerLossFixture.outcome.kind, 'lost');
     assert.equal(playerLossFixture.player.dead, true);
@@ -210,7 +212,7 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
         menuOpen: true,
     });
     assert.equal(hud.kind, 'hud_projection.v0');
-    assert.equal(hud.health.label, 'Health 100/100');
+    assert.equal(hud.health.label, 'Health 90/100');
     assert.equal(hud.status.some((status) => status.id === 'combat-feedback'), true);
     const restartIntent = hudControlToIntent('hud-restart');
     assert.deepEqual(restartIntent, { kind: 'runtime.restart_session_intent', source: 'hud_menu' });
