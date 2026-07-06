@@ -109,6 +109,14 @@ export interface AshaRendererSurfaceTargetProjection {
   readonly visible: boolean;
 }
 
+export interface AshaRendererSurfaceRenderTargetIdentity {
+  readonly kind: 'runtime_session.ecrp_render_target.v0';
+  readonly renderLabel: string;
+  readonly position: AshaRendererSurfaceVec3;
+  readonly scale: AshaRendererSurfaceVec3 | null;
+  readonly visible: boolean;
+}
+
 export interface AshaRendererGeneratedTunnelRoomTarget {
   readonly label?: string;
   readonly position: AshaRendererSurfaceVec3;
@@ -161,6 +169,10 @@ export interface AshaRendererSurface {
   readonly lockPointer: () => void;
   readonly movementState: () => AshaRendererSurfaceMovementState;
   readonly pointerLocked: () => boolean;
+  readonly projectRenderTargetProjection: (
+    target: AshaRendererSurfaceRenderTargetIdentity,
+    options?: { readonly lastEvent?: string },
+  ) => void;
   readonly projectTargetProjection: (projection: AshaRendererSurfaceTargetProjection) => void;
   readonly reset: () => void;
   readonly snapshot: () => string;
@@ -197,6 +209,19 @@ export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(
     ...(input.materials === undefined ? {} : { materials: input.materials }),
     tunnel: input.tunnel as BackendGeneratedTunnelRoomSurfaceInput['tunnel'],
   });
+}
+
+export function surfaceTargetProjectionFromRenderTarget(
+  target: AshaRendererSurfaceRenderTargetIdentity,
+  options: { readonly lastEvent?: string } = {},
+): AshaRendererSurfaceTargetProjection & { readonly label: string } {
+  return {
+    label: target.renderLabel,
+    ...(options.lastEvent === undefined ? {} : { lastEvent: options.lastEvent }),
+    position: target.position,
+    ...(target.scale === null ? {} : { scale: target.scale }),
+    visible: target.visible,
+  };
 }
 
 export function mountAshaRendererSurface(
@@ -280,6 +305,11 @@ export function mountAshaRendererSurface(
     lockPointer: () => controls.lockPointer(),
     movementState: () => controls.movementState(),
     pointerLocked: () => controls.pointerLocked(),
+    projectRenderTargetProjection: (target, targetProjectionOptions) =>
+      interactions.projectRenderTargetProjection(
+        surfaceTargetProjectionFromRenderTarget(target, targetProjectionOptions),
+        (projectionUpdate) => backendSurface.projectObjectProjection(projectionUpdate),
+      ),
     projectTargetProjection: (targetProjection) =>
       interactions.projectTargetProjection(targetProjection, (projectionUpdate) =>
         backendSurface.projectObjectProjection(projectionUpdate),
@@ -552,6 +582,10 @@ interface AshaRendererSurfaceInteractionController {
     projection: AshaRendererSurfaceTargetProjection,
     projectObject: (projection: AshaRendererSurfaceBackendObjectProjection) => void,
   ) => void;
+  readonly projectRenderTargetProjection: (
+    projection: AshaRendererSurfaceTargetProjection & { readonly label: string },
+    projectObject: (projection: AshaRendererSurfaceBackendObjectProjection) => void,
+  ) => void;
   readonly reset: (projectObject: (projection: AshaRendererSurfaceBackendObjectProjection) => void) => void;
   readonly state: () => AshaRendererSurfaceInteractionState;
 }
@@ -641,8 +675,27 @@ function createAshaRendererSurfaceInteractionController(
     }
   };
 
+  const projectRenderTargetProjection = (
+    projection: AshaRendererSurfaceTargetProjection & { readonly label: string },
+    projectObject: (projection: AshaRendererSurfaceBackendObjectProjection) => void,
+  ): void => {
+    lastEvent = projection.lastEvent ?? lastEvent;
+    const target = targets.find((candidate) => candidate.label === projection.label);
+    if (target === undefined) {
+      return;
+    }
+    target.health = projection.visible ? target.maxHealth : 0;
+    projectObject({
+      label: target.label,
+      ...(projection.position === undefined ? {} : { position: projection.position }),
+      ...(projection.scale === undefined ? {} : { scale: projection.scale }),
+      visible: projection.visible,
+    });
+  };
+
   return {
     firePrimary,
+    projectRenderTargetProjection,
     projectTargetProjection,
     reset,
     state,

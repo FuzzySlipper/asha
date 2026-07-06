@@ -25,6 +25,15 @@ export function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input) {
         tunnel: input.tunnel,
     });
 }
+export function surfaceTargetProjectionFromRenderTarget(target, options = {}) {
+    return {
+        label: target.renderLabel,
+        ...(options.lastEvent === undefined ? {} : { lastEvent: options.lastEvent }),
+        position: target.position,
+        ...(target.scale === null ? {} : { scale: target.scale }),
+        visible: target.visible,
+    };
+}
 export function mountAshaRendererSurface(canvas, options = {}) {
     const frame = options.frame ?? createAshaRendererDefaultSurfaceFrame();
     const projection = new RenderProjection();
@@ -89,6 +98,7 @@ export function mountAshaRendererSurface(canvas, options = {}) {
         lockPointer: () => controls.lockPointer(),
         movementState: () => controls.movementState(),
         pointerLocked: () => controls.pointerLocked(),
+        projectRenderTargetProjection: (target, targetProjectionOptions) => interactions.projectRenderTargetProjection(surfaceTargetProjectionFromRenderTarget(target, targetProjectionOptions), (projectionUpdate) => backendSurface.projectObjectProjection(projectionUpdate)),
         projectTargetProjection: (targetProjection) => interactions.projectTargetProjection(targetProjection, (projectionUpdate) => backendSurface.projectObjectProjection(projectionUpdate)),
         reset,
         snapshot: () => backendSurface.snapshot(),
@@ -360,8 +370,23 @@ function createAshaRendererSurfaceInteractionController(frame) {
             });
         }
     };
+    const projectRenderTargetProjection = (projection, projectObject) => {
+        lastEvent = projection.lastEvent ?? lastEvent;
+        const target = targets.find((candidate) => candidate.label === projection.label);
+        if (target === undefined) {
+            return;
+        }
+        target.health = projection.visible ? target.maxHealth : 0;
+        projectObject({
+            label: target.label,
+            ...(projection.position === undefined ? {} : { position: projection.position }),
+            ...(projection.scale === undefined ? {} : { scale: projection.scale }),
+            visible: projection.visible,
+        });
+    };
     return {
         firePrimary,
+        projectRenderTargetProjection,
         projectTargetProjection,
         reset,
         state,

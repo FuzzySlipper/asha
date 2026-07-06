@@ -1,5 +1,6 @@
 import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff } from '@asha/contracts';
 import { type CompositionStatus, type EngineHandle, type FrameCursor, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
+import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import { type CombatReadoutScenario, type CombatRuntimeReadout } from './combat-readout.js';
 import { type CombatFeedbackProjection } from './combat-feedback.js';
 import { type GeneratedTunnelOperationReceipt, type GeneratedTunnelOperationRequest, type GeneratedTunnelReadout, type GeneratedTunnelReadoutRequest } from './generated-tunnel.js';
@@ -109,6 +110,7 @@ export type RuntimeSessionEcrpCapabilityState = {
     readonly kind: 'renderProjection';
     readonly visible: boolean;
     readonly projection: 'first_person_camera' | 'target_cube' | 'spawn_marker';
+    readonly target: RuntimeSessionEcrpRenderTargetIdentity;
     readonly stateHash: string;
 } | {
     readonly kind: 'policyBinding';
@@ -129,6 +131,7 @@ export interface RuntimeSessionEcrpEntityEventReadout {
     readonly tick: number;
     readonly eventHash: string;
 }
+export type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 export interface RuntimeSessionEcrpEntityReadout {
     readonly entity: number;
     readonly lifecycle: 'active' | 'tombstoned';

@@ -32,6 +32,8 @@ It includes:
 - ASHA Game Project identity and current ProjectBundle compatibility request;
 - live Entity summaries;
 - attached typed CapabilityState summaries;
+- renderProjection target identity metadata for binding runtime Entities to
+  renderer-neutral visual targets;
 - EntityDefinition/source traces;
 - recent entity events;
 - deterministic entity/capability/event hashes;
@@ -77,6 +79,14 @@ and replay hash agree with the ECRP readout. The older generated-tunnel fixture
 remains available through `readCombatReadout()` for committed
 golden/compatibility evidence, but it is no longer the source of truth for
 loaded-project primary-fire receipts.
+
+Each `renderProjection` CapabilityState now carries a
+`runtime_session.ecrp_render_target.v0` target object. The target binds runtime
+Entity id, EntityDefinition stable id, source path, inferred runtime role,
+projection kind, render label, current transform, optional visual scale, and a
+deterministic target hash. `renderHandle` is `null` until a concrete render-frame
+owner assigns retained renderer handles; consumers should use `renderLabel` and
+target identity rather than hard-coded demo label guesses.
 
 ## Non-Claims
 

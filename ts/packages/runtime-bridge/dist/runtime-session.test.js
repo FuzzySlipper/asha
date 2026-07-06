@@ -664,8 +664,32 @@ void test('RuntimeSession exposes public ECRP entity and CapabilityState readout
     assert.ok(enemy.capabilityKinds.includes('health'));
     assert.ok(enemy.capabilityKinds.includes('policyBinding'));
     const initialEnemyHealth = enemy.capabilities.find((capability) => capability.kind === 'health');
+    const initialEnemyRender = enemy.capabilities.find((capability) => capability.kind === 'renderProjection');
     assert.equal(initialEnemyHealth?.kind, 'health');
     assert.equal(initialEnemyHealth?.dead, false);
+    assert.equal(initialEnemyRender?.kind, 'renderProjection');
+    assert.deepEqual(initialEnemyRender?.target, {
+        kind: 'runtime_session.ecrp_render_target.v0',
+        targetId: 'ecrp:20:actor/generated-tunnel-enemy',
+        entity: 20,
+        definitionStableId: 'actor/generated-tunnel-enemy',
+        displayName: 'Generated Tunnel Enemy',
+        source: {
+            projectBundle: 'asha-demo',
+            relativePath: 'catalogs/actors/generated-tunnel-enemy.entity.json',
+        },
+        role: 'enemy',
+        projection: 'target_cube',
+        renderLabel: 'actor/generated-tunnel-enemy',
+        renderHandle: null,
+        visible: true,
+        position: [0, 1.1, -3.5],
+        yawDegrees: 180,
+        pitchDegrees: 0,
+        scale: [1.4, 3.6, 1.4],
+        targetHash: initialEnemyRender?.target.targetHash,
+    });
+    assert.match(initialEnemyRender?.target.targetHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
     assert.equal(enemy.recentEvents.length, 1);
     assert.equal(enemy.recentEvents[0]?.kind, 'runtime_session.bootstrap_entity.v0');
     const receipt = session.submitRuntimeActionIntent({
@@ -691,6 +715,8 @@ void test('RuntimeSession exposes public ECRP entity and CapabilityState readout
     assert.equal(defeatedHealth?.current, 0);
     assert.equal(defeatedRender?.kind, 'renderProjection');
     assert.equal(defeatedRender?.visible, false);
+    assert.equal(defeatedRender?.target.visible, false);
+    assert.equal(defeatedRender?.target.renderLabel, 'actor/generated-tunnel-enemy');
     assert.ok(defeatedEnemy?.recentEvents.some((event) => event.kind === 'runtime_lifecycle.enemy_defeated.v0'));
     assert.notEqual(afterFire.hashes.capabilityStateHash, initial.hashes.capabilityStateHash);
     assert.notEqual(afterFire.hashes.eventReadoutHash, initial.hashes.eventReadoutHash);
@@ -721,6 +747,30 @@ void test('RuntimeSession loads ECRP ProjectBundle content into live readouts', 
     assert.equal(enemyHealth?.current, 55);
     assert.equal(enemyHealth?.max, 55);
     assert.equal(enemyHealth?.dead, false);
+    const enemyRender = enemy?.capabilities.find((capability) => capability.kind === 'renderProjection');
+    assert.equal(enemyRender?.kind, 'renderProjection');
+    assert.deepEqual(enemyRender?.target, {
+        kind: 'runtime_session.ecrp_render_target.v0',
+        targetId: 'ecrp:202:actor/custom-enemy',
+        entity: 202,
+        definitionStableId: 'actor/custom-enemy',
+        displayName: 'Custom Enemy',
+        source: {
+            projectBundle: 'custom-demo',
+            relativePath: 'catalogs/actors/custom-enemy.entity.json',
+        },
+        role: 'enemy',
+        projection: 'target_cube',
+        renderLabel: 'actor/custom-enemy',
+        renderHandle: null,
+        visible: true,
+        position: [4, 1.2, -6],
+        yawDegrees: 180,
+        pitchDegrees: 0,
+        scale: [1.6, 2, 1.6],
+        targetHash: enemyRender?.target.targetHash,
+    });
+    assert.match(enemyRender?.target.targetHash ?? '', /^fnv1a64:[0-9a-f]{16}$/);
     const receipt = session.submitRuntimeActionIntent({
         kind: 'runtime_action_intent.v0',
         action: 'primary_fire',

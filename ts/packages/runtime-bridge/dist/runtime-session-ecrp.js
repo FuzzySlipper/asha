@@ -345,7 +345,7 @@ function ecrpCapabilityForDefinition(entity, capability, lifecycleState, runtime
         case 'weaponMount':
             return ecrpWeaponMount(capability.weaponId);
         case 'renderProjection':
-            return ecrpRenderProjection(renderVisibleForEntity(entity, capability, lifecycleState), capability.projection);
+            return ecrpRenderProjection(entity, capability, renderVisibleForEntity(entity, capability, lifecycleState), runtimeTransforms);
         case 'policyBinding':
             return ecrpPolicyBinding(capability.policyId);
         case 'spawnMarker':
@@ -506,9 +506,68 @@ function ecrpWeaponMount(weaponId) {
     const state = { kind: 'weaponMount', weaponId };
     return { ...state, stateHash: stableHash(state) };
 }
-function ecrpRenderProjection(visible, projection) {
-    const state = { kind: 'renderProjection', visible, projection };
-    return { ...state, stateHash: stableHash(state) };
+function ecrpRenderProjection(entity, capability, visible, runtimeTransforms) {
+    const target = ecrpRenderTargetIdentity(entity, capability, visible, runtimeTransforms);
+    const state = { kind: 'renderProjection', visible, projection: capability.projection, target };
+    return {
+        ...state,
+        stateHash: stableHash({
+            kind: state.kind,
+            visible: state.visible,
+            projection: state.projection,
+            targetHash: target.targetHash,
+        }),
+    };
+}
+function ecrpRenderTargetIdentity(entity, capability, visible, runtimeTransforms) {
+    const transform = readRuntimeTransformForEntity(entity, runtimeTransforms);
+    const scale = renderTargetScaleForEntity(entity);
+    const targetWithoutHash = {
+        kind: 'runtime_session.ecrp_render_target.v0',
+        targetId: `ecrp:${entity.entity}:${entity.definition.stableId}`,
+        entity: entity.entity,
+        definitionStableId: entity.definition.stableId,
+        displayName: entity.definition.displayName,
+        source: {
+            projectBundle: entity.definition.source.projectBundle,
+            relativePath: entity.definition.source.relativePath,
+        },
+        role: entity.role,
+        projection: capability.projection,
+        renderLabel: entity.definition.stableId,
+        renderHandle: null,
+        visible,
+        position: transform.position,
+        yawDegrees: transform.yawDegrees,
+        pitchDegrees: transform.pitchDegrees,
+        scale,
+    };
+    return {
+        ...targetWithoutHash,
+        targetHash: stableHash(targetWithoutHash),
+    };
+}
+function readRuntimeTransformForEntity(entity, runtimeTransforms) {
+    const runtimeTransform = runtimeTransforms.get(entity.entity);
+    if (runtimeTransform !== undefined) {
+        return runtimeTransform;
+    }
+    const transform = entity.definition.capabilities.find((capability) => capability.kind === 'transform');
+    if (transform?.kind === 'transform') {
+        return transform.initial;
+    }
+    return { position: [0, 0, 0], yawDegrees: 0, pitchDegrees: 0 };
+}
+function renderTargetScaleForEntity(entity) {
+    const collisionBody = entity.definition.capabilities.find((capability) => capability.kind === 'collisionBody');
+    if (collisionBody?.kind !== 'collisionBody') {
+        return null;
+    }
+    return [
+        collisionBody.halfExtents[0] * 2,
+        collisionBody.halfExtents[1] * 2,
+        collisionBody.halfExtents[2] * 2,
+    ];
 }
 function ecrpPolicyBinding(policyId) {
     const state = { kind: 'policyBinding', policyId };

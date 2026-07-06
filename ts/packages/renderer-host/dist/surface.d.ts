@@ -77,6 +77,13 @@ export interface AshaRendererSurfaceTargetProjection {
     readonly scale?: AshaRendererSurfaceVec3;
     readonly visible: boolean;
 }
+export interface AshaRendererSurfaceRenderTargetIdentity {
+    readonly kind: 'runtime_session.ecrp_render_target.v0';
+    readonly renderLabel: string;
+    readonly position: AshaRendererSurfaceVec3;
+    readonly scale: AshaRendererSurfaceVec3 | null;
+    readonly visible: boolean;
+}
 export interface AshaRendererGeneratedTunnelRoomTarget {
     readonly label?: string;
     readonly position: AshaRendererSurfaceVec3;
@@ -122,6 +129,9 @@ export interface AshaRendererSurface {
     readonly lockPointer: () => void;
     readonly movementState: () => AshaRendererSurfaceMovementState;
     readonly pointerLocked: () => boolean;
+    readonly projectRenderTargetProjection: (target: AshaRendererSurfaceRenderTargetIdentity, options?: {
+        readonly lastEvent?: string;
+    }) => void;
     readonly projectTargetProjection: (projection: AshaRendererSurfaceTargetProjection) => void;
     readonly reset: () => void;
     readonly snapshot: () => string;
@@ -133,5 +143,10 @@ export interface AshaRendererSurface {
 export declare function createAshaRendererSurfaceProjection(frame: RenderFrameDiff): AshaRendererSurfaceProjectionReceipt;
 export declare function createAshaRendererDefaultSurfaceFrame(): RenderFrameDiff;
 export declare function createAshaRendererGeneratedTunnelRoomSurfaceFrame(input: AshaRendererGeneratedTunnelRoomSurfaceInput): RenderFrameDiff;
+export declare function surfaceTargetProjectionFromRenderTarget(target: AshaRendererSurfaceRenderTargetIdentity, options?: {
+    readonly lastEvent?: string;
+}): AshaRendererSurfaceTargetProjection & {
+    readonly label: string;
+};
 export declare function mountAshaRendererSurface(canvas: HTMLCanvasElement, options?: AshaRendererSurfaceOptions): AshaRendererSurface;
 //# sourceMappingURL=surface.d.ts.map

@@ -24,6 +24,7 @@ import {
   type StepResult,
   type WorldLoadRequest,
 } from './bridge.js';
+import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import {
   GENERATED_TUNNEL_FIRE_HIT_READOUT,
   GENERATED_TUNNEL_FIRE_MISS_READOUT,
@@ -290,6 +291,7 @@ export type RuntimeSessionEcrpCapabilityState =
       readonly kind: 'renderProjection';
       readonly visible: boolean;
       readonly projection: 'first_person_camera' | 'target_cube' | 'spawn_marker';
+      readonly target: RuntimeSessionEcrpRenderTargetIdentity;
       readonly stateHash: string;
     }
   | {
@@ -314,6 +316,8 @@ export interface RuntimeSessionEcrpEntityEventReadout {
   readonly tick: number;
   readonly eventHash: string;
 }
+
+export type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 
 export interface RuntimeSessionEcrpEntityReadout {
   readonly entity: number;
