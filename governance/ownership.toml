@@ -409,7 +409,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/tools/state-inspector"]
 lane = "rust-tools"
-may_depend_on = ["core-state", "core-snapshot"]
+may_depend_on = ["core-state", "core-snapshot", "core-entity"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/tools/fixture-maker"]
