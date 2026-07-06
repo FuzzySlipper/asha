@@ -5,3 +5,8 @@ edition.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+core-error  = { path = "../../foundation/core-error" }
+core-events = { path = "../../state/core-events" }
+core-ids    = { path = "../../foundation/core-ids" }

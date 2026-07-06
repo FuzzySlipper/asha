@@ -607,6 +607,11 @@ dependencies = [
 [[package]]
 name = "rule-state-machine"
 version = "0.1.0"
+dependencies = [
+ "core-error",
+ "core-events",
+ "core-ids",
+]
 
 [[package]]
 name = "rule-voxel-edit"
