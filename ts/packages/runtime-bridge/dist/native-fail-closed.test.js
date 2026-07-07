@@ -417,6 +417,7 @@ function fakeAddon(calls = []) {
             });
         },
         readGameRuleRuntimeReadout: (_handle) => {
+            void _handle;
             calls.push('gameRuleReadout');
             return JSON.stringify({
                 backend: 'reference_bridge_rust',

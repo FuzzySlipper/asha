@@ -26,7 +26,6 @@ import type {
   GameExtensionReplayEvidence,
   GameRuleCatalog,
   GameRuleResolutionReceipt,
-  GameRuleResolutionRequest,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
 import { MANIFEST_OPERATIONS } from './generated/operations.js';

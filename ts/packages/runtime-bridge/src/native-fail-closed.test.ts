@@ -477,6 +477,7 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       });
     },
     readGameRuleRuntimeReadout: (_handle: number) => {
+      void _handle;
       calls.push('gameRuleReadout');
       return JSON.stringify({
         backend: 'reference_bridge_rust',
