@@ -146,6 +146,10 @@ function nativeVec3(value: readonly [number, number, number], field: string): { 
   return { x: value[0], y: value[1], z: value[2] };
 }
 
+function nativeOptionalObject<T extends object>(value: T | null): T | undefined {
+  return value === null ? undefined : value;
+}
+
 function bridgeVec3(
   value: { readonly x: number; readonly y: number; readonly z: number },
   field: string,
@@ -275,12 +279,28 @@ function nativeFpsLoadRequest(request: FpsRuntimeSessionLoadRequest) {
       u32(definition.weapon.cooldownTicksAfterFire, `definitions[${index}].weapon.cooldownTicksAfterFire`);
     }
     return {
-      ...definition,
-      transform,
-      bounds,
+      entity: definition.entity,
+      stableId: definition.stableId,
+      displayName: definition.displayName,
+      sourcePath: definition.sourcePath,
+      role: definition.role,
+      transform: nativeOptionalObject(transform),
+      bounds: nativeOptionalObject(bounds),
       tags: [...definition.tags],
+      renderVisible: definition.renderVisible,
+      staticCollider: definition.staticCollider,
+      health: nativeOptionalObject(definition.health),
+      weapon: definition.weapon === null
+        ? undefined
+        : {
+            weaponId: definition.weapon.weaponId,
+            damage: definition.weapon.damage,
+            rangeUnits: definition.weapon.rangeUnits,
+            ammo: definition.weapon.ammo,
+            cooldownTicksAfterFire: definition.weapon.cooldownTicksAfterFire,
+          },
       policyBinding: definition.policyBinding === null
-        ? null
+        ? undefined
         : {
             ...definition.policyBinding,
             allowedIntents: [...definition.policyBinding.allowedIntents],

@@ -85,6 +85,9 @@ function nativeVec3(value, field) {
     }
     return { x: value[0], y: value[1], z: value[2] };
 }
+function nativeOptionalObject(value) {
+    return value === null ? undefined : value;
+}
 function bridgeVec3(value, field) {
     if (!Number.isFinite(value.x) || !Number.isFinite(value.y) || !Number.isFinite(value.z)) {
         throw new RuntimeBridgeError('internal', `native ${field} was not a finite vec3`);
@@ -204,12 +207,28 @@ function nativeFpsLoadRequest(request) {
             u32(definition.weapon.cooldownTicksAfterFire, `definitions[${index}].weapon.cooldownTicksAfterFire`);
         }
         return {
-            ...definition,
-            transform,
-            bounds,
+            entity: definition.entity,
+            stableId: definition.stableId,
+            displayName: definition.displayName,
+            sourcePath: definition.sourcePath,
+            role: definition.role,
+            transform: nativeOptionalObject(transform),
+            bounds: nativeOptionalObject(bounds),
             tags: [...definition.tags],
+            renderVisible: definition.renderVisible,
+            staticCollider: definition.staticCollider,
+            health: nativeOptionalObject(definition.health),
+            weapon: definition.weapon === null
+                ? undefined
+                : {
+                    weaponId: definition.weapon.weaponId,
+                    damage: definition.weapon.damage,
+                    rangeUnits: definition.weapon.rangeUnits,
+                    ammo: definition.weapon.ammo,
+                    cooldownTicksAfterFire: definition.weapon.cooldownTicksAfterFire,
+                },
             policyBinding: definition.policyBinding === null
-                ? null
+                ? undefined
                 : {
                     ...definition.policyBinding,
                     allowedIntents: [...definition.policyBinding.allowedIntents],

@@ -51,13 +51,13 @@ interface NativeFpsStoredEntityDefinition {
     readonly sourcePath: string;
     readonly tags: readonly string[];
     readonly role: string;
-    readonly transform: NativeFpsTransformCapability | null;
-    readonly bounds: NativeFpsBoundsCapability | null;
+    readonly transform: NativeFpsTransformCapability | undefined;
+    readonly bounds: NativeFpsBoundsCapability | undefined;
     readonly renderVisible: boolean | null;
     readonly staticCollider: boolean | null;
-    readonly health: NativeFpsHealth | null;
-    readonly weapon: NativeFpsWeaponMount | null;
-    readonly policyBinding: NativeFpsPolicyBinding | null;
+    readonly health: NativeFpsHealth | undefined;
+    readonly weapon: NativeFpsWeaponMount | undefined;
+    readonly policyBinding: NativeFpsPolicyBinding | undefined;
 }
 interface NativeFpsRuntimeSessionSnapshot {
     readonly backend: string;

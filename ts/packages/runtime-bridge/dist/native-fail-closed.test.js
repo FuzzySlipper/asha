@@ -198,6 +198,10 @@ function fakeAddon(calls = []) {
         },
         loadFpsRuntimeSession: (_handle, projectBundle, definitions) => {
             calls.push(`fpsLoad:${projectBundle}:${definitions.length}`);
+            const player = definitions[0];
+            const enemy = definitions[1];
+            const playerTransform = player['transform'];
+            calls.push(`fpsNativeShape:${player['policyBinding'] === undefined}:${enemy['weapon'] === undefined}:${playerTransform?.translation?.x ?? 'missing'}`);
             return {
                 backend: 'reference_bridge_rust',
                 authoritySurface: 'runtime_session.fps.authority.v0',
@@ -602,6 +606,7 @@ void test('native conformance sequence routes through the addon without mock fal
         'step:6',
         'enemyMove:777:0,0.5,-2.6:0,1.62,1.25:0.35',
         'fpsLoad:custom-demo:2',
+        'fpsNativeShape:true:true:0',
         'fpsFire:9:2.5,1.5,1.5:0,0,1',
         'fpsRead',
         'fpsRestart:1',
