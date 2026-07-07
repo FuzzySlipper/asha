@@ -225,6 +225,7 @@ Check the relevant package scripts before adding new commands; this workspace in
 | `docs/ecrp-fps-object-model.md` | Public FPS object-model map from generated-tunnel roles to ECRP capabilities and runtime surfaces |
 | `docs/ecrp-capability-rule-ownership.md` | ECRP rule-owner matrix and current FPS RuntimeSession authority slice |
 | `docs/runtime-session-facade.md` | Current `RuntimeSessionFacade` methods, non-claims, and reference/native boundary |
+| `docs/game-agent-code-organization.md` | Game consumer repo structure: `app.ts` entrypoint-only, TS source, ports/adapters, feature modules |
 | `docs/nav-pathfinding-substrate.md` | Read-only voxel navigation projection and deterministic path query evidence |
 | `docs/policy-authoring.md` | Policy package authoring and testing |
 | `docs/voxel-coordinates.md` | Voxel/grid/chunk coordinate conventions |
