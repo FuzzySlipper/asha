@@ -34,6 +34,8 @@ Major durable surfaces include:
 - Launchable voxel tooling and FPS/ECRP demo substrate docs describe committed surfaces and known non-claims; active work is tracked in Den, not as README phases.
 
 For the full architecture, start with `docs/design.md` and live Den guidance (`get_agent_guidance(project_id="asha")`).
+For multi-repo checkout, consumer setup, and deployment-viable repo roles, see
+`docs/repo-family-deployment.md`.
 
 ---
 
@@ -217,6 +219,7 @@ Check the relevant package scripts before adding new commands; this workspace in
 | `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
 | `docs/design.md` | Canonical repository architecture, layer model, dependency direction, and design principles |
 | `docs/architecture-overview.md` | Short orientation pointer to the canonical architecture and governance docs |
+| `docs/repo-family-deployment.md` | ASHA repo family clone layout, consumer roles, and setup/check commands |
 | `governance/architecture.md` | Governance-specific TS metadata axes and boundary notes |
 | `docs/runtime-bridge-boundary.md` | Runtime bridge facade and transport boundary |
 | `docs/contract-governance.md` | Protocol/codegen change process |
