@@ -3,6 +3,7 @@
   "fileLineExemptions": {
     "engine-rs/crates/bridge/runtime-bridge-api/src/reference/mod.rs": "ReferenceBridge is the consolidated conformance implementation for stable RuntimeBridge operations, including the #4517 game-rule invocation harness; split operation families into focused reference modules in the next bridge-shape cleanup before raising this further.",
     "engine-rs/crates/protocol/protocol-codegen/src/model.rs": "Protocol-codegen still owns the hand-maintained Rust-to-TS IR registry while the R3-4 completeness/derive follow-up is pending; split generated-contract families or derive the IR before removing this exemption.",
-    "engine-rs/crates/protocol/protocol-render/src/lib.rs": "Protocol-render is an older consolidated border DTO crate; split render material, texture, sprite, mesh, and diff shape families during the next protocol-surface module pass."
+    "engine-rs/crates/protocol/protocol-render/src/lib.rs": "Protocol-render is an older consolidated border DTO crate; split render material, texture, sprite, mesh, and diff shape families during the next protocol-surface module pass.",
+    "engine-rs/crates/services/svc-voxel-conversion/src/lib.rs": "Voxel conversion service currently keeps registration, planning, preview, apply, diagnostics, quotas, and model-info evidence in one authority file after the native coverage hardening slices; split conversion topology, rasterization, guardrail, and readout modules in the next service-shape cleanup."
   }
 }

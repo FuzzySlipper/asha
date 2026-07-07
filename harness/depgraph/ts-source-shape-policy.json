@@ -2,7 +2,7 @@
   "maxSourceLines": 1600,
   "fileLineExemptions": {
     "ts/packages/runtime-bridge/src/runtime-session.ts": {
-      "maxLines": 1676,
+      "maxLines": 1800,
       "justification": "RuntimeSessionFacade remains the consolidated public runtime boundary while additive generated-contract and game-extension methods land; split focused capability modules when the facade decomposition task is scheduled."
     }
   },
@@ -28,7 +28,7 @@
       "justification": "Electron host package has one small host-capability implementation surface."
     },
     "ts/packages/native-bridge/src/index.ts": {
-      "maxLines": 326,
+      "maxLines": 360,
       "justification": "Native bridge package root is the transport loader boundary; additive native RuntimeBridge exports are kept here until generated transport glue replaces the hand-written loader."
     },
     "ts/packages/policy-core/src/index.ts": {
