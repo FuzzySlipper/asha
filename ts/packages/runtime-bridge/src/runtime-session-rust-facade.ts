@@ -1028,7 +1028,7 @@ function fpsLoadRequestFromEcrpProject(input: RuntimeSessionEcrpProjectLoadInput
   return {
     projectBundle: `${input.projectBundle.project.gameId}:${input.sceneDocument.sceneId}`,
     definitions,
-    gameRuleModules: [],
+    gameRuleModules: input.gameRuleModules ?? [],
   };
 }
 

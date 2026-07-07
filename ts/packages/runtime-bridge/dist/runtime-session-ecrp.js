@@ -141,6 +141,7 @@ export function validateEcrpProjectLoadInput(input) {
             detail: 'at least one EntityDefinition is required',
         });
     }
+    validateGameRuleModuleManifests(input.gameRuleModules, diagnostics);
     const definitions = new Map();
     input.entityDefinitions?.forEach((definition, index) => {
         if (definition.kind !== 'EntityDefinition' || definition.stableId.trim().length === 0) {
@@ -216,6 +217,101 @@ export function validateEcrpProjectLoadInput(input) {
         }
     }
     return diagnostics;
+}
+function validateGameRuleModuleManifests(value, diagnostics) {
+    if (value === undefined) {
+        return;
+    }
+    if (!Array.isArray(value)) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path: 'gameRuleModules',
+            detail: 'gameRuleModules must be an array of generated GameRuleModuleManifest declarations',
+        });
+        return;
+    }
+    value.forEach((manifest, index) => validateGameRuleModuleManifest(manifest, `gameRuleModules.${index}`, diagnostics));
+}
+function validateGameRuleModuleManifest(manifest, path, diagnostics) {
+    if (!isRecord(manifest)) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail: 'GameRuleModuleManifest must be an object',
+        });
+        return;
+    }
+    validateGameRuleModuleRef(manifest['moduleRef'], `${path}.moduleRef`, diagnostics);
+    validateGameRuleHookDeclarations(manifest['declaredHooks'], `${path}.declaredHooks`, diagnostics);
+    validateStringArray(manifest['deterministicRequirements'], `${path}.deterministicRequirements`, diagnostics);
+    validateNonEmptyString(manifest['sourceHash'], `${path}.sourceHash`, 'sourceHash is required', diagnostics);
+}
+function validateGameRuleModuleRef(value, path, diagnostics) {
+    if (!isRecord(value)) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail: 'moduleRef must be an object',
+        });
+        return;
+    }
+    validateNonEmptyString(value['moduleId'], `${path}.moduleId`, 'moduleRef.moduleId is required', diagnostics);
+    validateNonEmptyString(value['version'], `${path}.version`, 'moduleRef.version is required', diagnostics);
+    validateNonEmptyString(value['contractHash'], `${path}.contractHash`, 'moduleRef.contractHash is required', diagnostics);
+}
+function validateGameRuleHookDeclarations(value, path, diagnostics) {
+    if (!Array.isArray(value) || value.length === 0) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail: 'declaredHooks must include at least one generated hook declaration',
+        });
+        return;
+    }
+    value.forEach((hook, index) => validateGameRuleHookDeclaration(hook, `${path}.${index}`, diagnostics));
+}
+function validateGameRuleHookDeclaration(value, path, diagnostics) {
+    if (!isRecord(value)) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail: 'GameRuleHookDeclaration must be an object',
+        });
+        return;
+    }
+    validateNonEmptyString(value['hookId'], `${path}.hookId`, 'hookId is required', diagnostics);
+    const hookKind = value['kind'];
+    if (hookKind !== 'weaponEffect' && hookKind !== 'interactionEffect' && hookKind !== 'spawnCondition') {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path: `${path}.kind`,
+            detail: 'hook kind must be weaponEffect, interactionEffect, or spawnCondition',
+        });
+    }
+    validateNonEmptyString(value['inputContract'], `${path}.inputContract`, 'inputContract is required', diagnostics);
+    validateNonEmptyString(value['outputContract'], `${path}.outputContract`, 'outputContract is required', diagnostics);
+    validateStringArray(value['requiredCapabilities'], `${path}.requiredCapabilities`, diagnostics);
+}
+function validateNonEmptyString(value, path, detail, diagnostics) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail,
+        });
+    }
+}
+function validateStringArray(value, path, diagnostics) {
+    if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string' || entry.trim().length === 0)) {
+        diagnostics.push({
+            code: 'invalidGameRuleModuleManifest',
+            path,
+            detail: `${path} must be an array of non-empty strings`,
+        });
+    }
+}
+function isRecord(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 function validateEcrpCapabilities(definition, path, diagnostics) {
     const capabilityKinds = new Set();

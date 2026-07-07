@@ -23,6 +23,7 @@ import {
   type VoxelConversionSourceRegistrationRequest,
   type VoxelModelInfoReadout,
   type VoxelModelInfoRequest,
+  type GameRuleModuleManifest,
   type GameExtensionHookReceipt,
   type GameExtensionReplayEvidence,
   type GameRuleCatalog,
@@ -393,6 +394,7 @@ export type RuntimeSessionEcrpProjectDiagnosticCode =
   | 'duplicateEntityDefinition'
   | 'duplicatePlacement'
   | 'emptyEntityDefinitionList'
+  | 'invalidGameRuleModuleManifest'
   | 'invalidCapability'
   | 'missingCapability'
   | 'missingEntityDefinition'
@@ -487,6 +489,7 @@ export interface RuntimeSessionEcrpProjectLoadInput {
   };
   readonly entityDefinitions: readonly RuntimeSessionEcrpEntityDefinition[];
   readonly sceneDocument: RuntimeSessionEcrpSceneDocument;
+  readonly gameRuleModules?: readonly GameRuleModuleManifest[];
 }
 
 export interface RuntimeSessionEcrpProjectLoadReceipt {

@@ -54,6 +54,12 @@ Additional unstable package statuses:
 - `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing only. It is not the long-term public renderer contract; human-facing demos should use `@asha/renderer-host` for browser mounting and `@asha/render-projection` for renderer-neutral retained semantics.
 - `@asha/ui-dom` is an unstable render-agnostic UI projection/control descriptor package. It can expose root-level HUD/menu projection helpers, but it does not execute runtime commands or own DOM framework state.
 - Browser/standalone FPS input ownership lives in `@asha/runtime-bridge` through `BrowserFpsInputCollector`. Demos, Studio, and renderer-host canvas wiring may adapt DOM events into this collector and consume either `drainInputFrame()` for runtime-neutral movement/look state or `drainFrame()` for typed RuntimeSession camera/action proposals. Consumers must not replace this with demo-local WASD/mouse-look globals, renderer-three imports, bare Three.js controls, raw runtime transports, or generated internals.
+- RuntimeSession ECRP loads may declare generated `GameRuleModuleManifest[]`
+  values through `loadEcrpProject(input.gameRuleModules)`. Rust-backed
+  sessions validate the declaration shape, forward compatible manifests to the
+  FPS RuntimeSession authority load, and fail closed before bridge mutation when
+  declarations are malformed. Consumers must not install game-rule modules
+  through demo-local registries, private native transports, or raw JSON tunnels.
 
 Internal packages, including `@asha/native-bridge`, `@asha/wasm-replay-bridge`, `@asha/app`, `@asha/electron-main`, internal policy packages, `@asha/catalog-examples`, and `@asha/smoke`, are not downstream public surfaces.
 

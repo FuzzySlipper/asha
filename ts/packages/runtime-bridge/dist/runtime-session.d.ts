@@ -1,4 +1,4 @@
-import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt, type VoxelConversionSourceRegistration, type VoxelConversionSourceRegistrationRequest, type VoxelModelInfoReadout, type VoxelModelInfoRequest, type GameExtensionHookReceipt, type GameExtensionReplayEvidence, type GameRuleCatalog, type GameRuleResolutionReceipt, type GameRuleResolutionRequest, type WeaponEffectHookRequest } from '@asha/contracts';
+import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt, type VoxelConversionSourceRegistration, type VoxelConversionSourceRegistrationRequest, type VoxelModelInfoReadout, type VoxelModelInfoRequest, type GameRuleModuleManifest, type GameExtensionHookReceipt, type GameExtensionReplayEvidence, type GameRuleCatalog, type GameRuleResolutionReceipt, type GameRuleResolutionRequest, type WeaponEffectHookRequest } from '@asha/contracts';
 import { type CompositionStatus, type EngineHandle, type FrameCursor, type FpsPrimaryFireRequest, type FpsPrimaryFireResult, type GameRuleCatalogValidationReceipt, type GameRuleRuntimeReadout, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
 import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import { type CombatReadoutScenario, type CombatRuntimeReadout } from './combat-readout.js';
@@ -176,7 +176,7 @@ export interface RuntimeSessionEcrpReadout {
         'not_demo_local_authority'
     ];
 }
-export type RuntimeSessionEcrpProjectDiagnosticCode = 'duplicateEntityDefinition' | 'duplicatePlacement' | 'emptyEntityDefinitionList' | 'invalidCapability' | 'missingCapability' | 'missingEntityDefinition' | 'missingPlacement' | 'missingProjectBundle' | 'unknownEntityDefinition';
+export type RuntimeSessionEcrpProjectDiagnosticCode = 'duplicateEntityDefinition' | 'duplicatePlacement' | 'emptyEntityDefinitionList' | 'invalidGameRuleModuleManifest' | 'invalidCapability' | 'missingCapability' | 'missingEntityDefinition' | 'missingPlacement' | 'missingProjectBundle' | 'unknownEntityDefinition';
 export interface RuntimeSessionEcrpProjectDiagnostic {
     readonly code: RuntimeSessionEcrpProjectDiagnosticCode;
     readonly path: string;
@@ -250,6 +250,7 @@ export interface RuntimeSessionEcrpProjectLoadInput {
     };
     readonly entityDefinitions: readonly RuntimeSessionEcrpEntityDefinition[];
     readonly sceneDocument: RuntimeSessionEcrpSceneDocument;
+    readonly gameRuleModules?: readonly GameRuleModuleManifest[];
 }
 export interface RuntimeSessionEcrpProjectLoadReceipt {
     readonly kind: 'runtime_session.ecrp_project_load_receipt.v0';

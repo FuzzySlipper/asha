@@ -43,7 +43,7 @@ Rust-capable bridge and `mode: 'rust'`; reference fixtures use
 `RuntimeSessionFacade` exposes:
 
 - `initialize(input)`: validates semantic session/project input, initializes the bridge, and loads a ProjectBundle-shaped request.
-- `loadEcrpProject(input)`: validates and loads ProjectBundle-shaped ECRP content (`ProjectBundle`, `EntityDefinition[]`, and `SceneDocument` placements). Rust-backed sessions route bootstrap through the bridge authority surface and return Rust provenance/read sets; reference sessions keep fixture/project-state compatibility. Rejected loads mutate nothing.
+- `loadEcrpProject(input)`: validates and loads ProjectBundle-shaped ECRP content (`ProjectBundle`, `EntityDefinition[]`, `SceneDocument` placements, and optional generated `GameRuleModuleManifest[]` declarations). Rust-backed sessions route bootstrap through the bridge authority surface, forward compatible game-rule module manifests to the FPS RuntimeSession load request, and return Rust provenance/read sets; reference sessions keep fixture/project-state compatibility. Malformed declarations and rejected loads mutate nothing.
 - `submitCommands(batch)`: submits generated `CommandBatch` values only.
 - `tick(input?)`: advances deterministic runtime ticks through the bridge.
 - `createCamera(request)`: creates a typed bridge-owned camera.

@@ -786,7 +786,7 @@ function fpsLoadRequestFromEcrpProject(input) {
     return {
         projectBundle: `${input.projectBundle.project.gameId}:${input.sceneDocument.sceneId}`,
         definitions,
-        gameRuleModules: [],
+        gameRuleModules: input.gameRuleModules ?? [],
     };
 }
 function fpsStoredEntityDefinition(entity) {
