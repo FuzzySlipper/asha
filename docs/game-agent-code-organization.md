@@ -6,6 +6,11 @@ This document describes how agents should organize TypeScript code for a game
 that uses ASHA. It is intentionally stricter than a small demo needs, because
 the demo is also a pattern for future game repos.
 
+For downstream games that need compiled game-specific Rust authority, see
+`docs/game-rust-authority-extension-model.md`. This TypeScript guide still
+applies: game TS describes content, input, and projection; compiled Rust and ASHA
+RuntimeSession authority decide accepted state changes.
+
 ## Hard Rules
 
 1. `app.ts` is an entry point only.
