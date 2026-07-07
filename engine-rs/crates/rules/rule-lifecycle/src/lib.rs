@@ -394,6 +394,16 @@ impl FpsRuntimeSessionState {
         ray: Ray,
         tick: u64,
     ) -> Result<FpsPrimaryFireReceipt, FpsRuntimeError> {
+        self.apply_primary_fire_with_damage_delta(projection, ray, tick, 0)
+    }
+
+    pub fn apply_primary_fire_with_damage_delta(
+        &mut self,
+        projection: &CollisionProjection,
+        ray: Ray,
+        tick: u64,
+        damage_delta: i64,
+    ) -> Result<FpsPrimaryFireReceipt, FpsRuntimeError> {
         let shooter = self.role_entity(FpsRuntimeRole::Player)?;
         let target = self.role_entity(FpsRuntimeRole::Enemy)?;
         let shooter_definition = self
@@ -404,6 +414,12 @@ impl FpsRuntimeSessionState {
             .weapon
             .as_ref()
             .ok_or(FpsRuntimeError::MissingPlayerWeapon { entity: shooter })?;
+        let adjusted_damage = i64::from(weapon.damage).saturating_add(damage_delta);
+        if adjusted_damage <= 0 || adjusted_damage > i64::from(u32::MAX) {
+            return Err(FpsRuntimeError::CombatRejected(
+                CombatRejectionReason::InvalidDamage,
+            ));
+        }
         let target_before = self.combat.health(target);
         let combat_target = self.combat_target(target)?;
         let combat = apply_fire_intent(
@@ -414,7 +430,7 @@ impl FpsRuntimeSessionState {
                 shooter,
                 ray,
                 max_distance: weapon.range_units as f64,
-                damage: weapon.damage,
+                damage: adjusted_damage as u32,
                 fire_control: FireControlState::ready(
                     weapon.ammo,
                     weapon.cooldown_ticks_after_fire,
@@ -1114,6 +1130,35 @@ mod tests {
         assert!(!receipt.combat.events.iter().any(
             |event| matches!(event, CombatEvent::EntityDefeated { target } if *target == enemy)
         ));
+    }
+
+    #[test]
+    fn primary_fire_damage_delta_uses_combat_authority() {
+        let projection = tunnel_projection();
+        let mut input = custom_load_input();
+        input.definitions[0]
+            .weapon
+            .as_mut()
+            .expect("player weapon")
+            .damage = 25;
+        let mut session = load_fps_project_bundle(input).expect("load session");
+        let enemy = EntityId::new(777);
+
+        let receipt = session
+            .apply_primary_fire_with_damage_delta(
+                &projection,
+                Ray::new(WorldPos::new(2.5, 1.5, 1.5), WorldVec::new(0.0, 0.0, 1.0)),
+                13,
+                5,
+            )
+            .expect("primary fire hit with extension modifier");
+
+        assert_eq!(receipt.target, Some(enemy));
+        assert_eq!(receipt.target_health_before, Some(HealthState::new(75, 75)));
+        assert_eq!(receipt.target_health_after, Some(HealthState::new(45, 75)));
+        assert_eq!(session.health(enemy), Some(HealthState::new(45, 75)));
+        assert_eq!(session.lifecycle_status, FpsLifecycleStatus::Active);
+        assert_ne!(receipt.replay_hash, 0);
     }
 
     #[test]

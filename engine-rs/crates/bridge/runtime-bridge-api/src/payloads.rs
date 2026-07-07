@@ -354,6 +354,7 @@ pub struct FpsBridgeStoredEntityDefinition {
 pub struct FpsRuntimeSessionLoadRequest {
     pub project_bundle: String,
     pub definitions: Vec<FpsBridgeStoredEntityDefinition>,
+    pub game_rule_modules: Vec<GameRuleModuleManifest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -440,6 +441,19 @@ pub struct FpsPrimaryFireResult {
     pub entity_hash: u64,
     pub health_hash: u64,
     pub replay_hash: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GameExtensionWeaponEffectInvocationRequest {
+    pub hook: WeaponEffectHookRequest,
+    pub primary_fire: FpsPrimaryFireRequest,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GameExtensionWeaponEffectInvocationResult {
+    pub hook_receipt: GameExtensionHookReceipt,
+    pub replay_evidence: GameExtensionReplayEvidence,
+    pub primary_fire: Option<FpsPrimaryFireResult>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

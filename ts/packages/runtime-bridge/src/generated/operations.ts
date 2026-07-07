@@ -29,6 +29,7 @@ export const MANIFEST_OPERATIONS: readonly BridgeOperation[] = [
   { manifestName: 'load_fps_runtime_session', facadeMethod: 'loadFpsRuntimeSession', surface: 'stable' },
   { manifestName: 'read_fps_runtime_session', facadeMethod: 'readFpsRuntimeSession', surface: 'stable' },
   { manifestName: 'apply_fps_primary_fire', facadeMethod: 'applyFpsPrimaryFire', surface: 'stable' },
+  { manifestName: 'invoke_game_extension_weapon_effect', facadeMethod: 'invokeGameExtensionWeaponEffect', surface: 'stable' },
   { manifestName: 'restart_fps_runtime_session', facadeMethod: 'restartFpsRuntimeSession', surface: 'stable' },
   { manifestName: 'read_fps_encounter_director', facadeMethod: 'readFpsEncounterDirector', surface: 'stable' },
   { manifestName: 'apply_fps_encounter_transition', facadeMethod: 'applyFpsEncounterTransition', surface: 'stable' },

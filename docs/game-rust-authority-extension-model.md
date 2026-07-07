@@ -142,23 +142,38 @@ modules:
   name module refs, hooks, proposals, receipts, and replay evidence without
   demo-local schemas or private generated-file imports.
 
-This slice is intentionally not a dynamic plugin system and not a RuntimeSession
-loader. It opens the stable compiled boundary and generated contract vocabulary
-that later invocation work can consume.
+Task #4517 adds the first RuntimeSession invocation slice:
 
-## Required Upstream Extension Points
+- `runtime-bridge-api` loads declared game-rule module manifests alongside the
+  FPS RuntimeSession load request and fails closed when a requested module or
+  hook is missing or incompatible.
+- `invoke_game_extension_weapon_effect` invokes a declared Rust
+  `GameRuleModule`, validates the returned generated `damageModifier` proposal,
+  and applies accepted output through `rule-lifecycle` plus `svc-combat`
+  authority. TypeScript does not supply behavior callbacks.
+- Replay evidence records module id/version/contract hash, hook id, input hash,
+  proposal hash, validation status, accepted combat event hashes, and rejection
+  hashes.
+- `@asha/runtime-bridge` exposes `invokeGameExtensionWeaponEffect` and
+  `RuntimeSessionFacade.submitGameExtensionWeaponEffect` through package-root
+  types. Native providers must expose the bounded operation or fail closed.
 
-ASHA does not yet expose the full game-owned authority boundary. The remaining
-upstream surfaces are:
+This slice is intentionally not a dynamic plugin system. It proves the compiled
+rule-module invocation path with a narrow reference module and leaves downstream
+game-owned compiled modules to the demo/consumer follow-up.
 
-- RuntimeSession loading/compatibility checks for rule-module declarations in
-  ProjectBundle or an adjacent ASHA game manifest;
-- RuntimeSession invocation hooks for at least one narrow behavior, initially a
-  weapon-effect or interaction rule;
-- replay/golden tests proving module id/version/hash, proposal, validation, and
-  accepted event hashes are captured;
-- TypeScript package-root types that let game TS reference rule ids and submit
-  typed intents without importing private generated files.
+## Remaining Extension Points
+
+ASHA still needs follow-up work before downstream games have the full boundary:
+
+- Move the current bridge-level FPS RuntimeSession envelopes into generated
+  `protocol_runtime` contracts instead of the existing explicit transitional
+  bridge DTO allowlist.
+- Add a downstream compiled-module linking/loading lane for real game crates
+  beyond the in-engine reference module used by #4517.
+- Broaden hook contexts beyond the first weapon-effect damage modifier.
+- Add replay/golden fixtures that cover downstream compiled modules once the
+  demo-owned Rust crate exists.
 
 ## Minimal `asha-demo` Candidate Slice
 
@@ -174,6 +189,6 @@ The smallest useful proving slice is a game-owned Rust weapon effect:
 - Demo TS only submits `primary_fire` and projects the resulting RuntimeSession
   receipt/HUD readout.
 
-Until those upstream extension points exist, `asha-demo` Rust should stay in the
-content/tooling lane: manifest preflight, package metadata checks, or build
-validation. It should not become an alternate combat/collision/lifecycle stack.
+`asha-demo` can now prove the first compiled-rule slice by declaring a module
+manifest and calling the public RuntimeSession invocation surface. It should
+still not become an alternate combat/collision/lifecycle stack.

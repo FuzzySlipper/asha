@@ -1,5 +1,5 @@
-import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt } from '@asha/contracts';
-import { type CompositionStatus, type EngineHandle, type FrameCursor, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
+import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt, type GameExtensionHookReceipt, type GameExtensionReplayEvidence, type WeaponEffectHookRequest } from '@asha/contracts';
+import { type CompositionStatus, type EngineHandle, type FrameCursor, type FpsPrimaryFireRequest, type FpsPrimaryFireResult, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
 import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import { type CombatReadoutScenario, type CombatRuntimeReadout } from './combat-readout.js';
 import { type CombatFeedbackProjection } from './combat-feedback.js';
@@ -67,7 +67,7 @@ export interface RuntimeSessionProjectionSummary {
 }
 export interface RuntimeSessionReplayRecord {
     readonly sequenceId: number;
-    readonly kind: 'initialize' | 'submitCommands' | 'tick' | 'createCamera' | 'applyFirstPersonCameraInput' | 'applyCollisionConstrainedCameraInput' | 'loadEcrpProject' | 'submitRuntimeActionIntent' | 'lifecycleDeath' | 'runAutonomousPolicyTick' | 'requestGeneratedTunnelOperation' | 'requestEncounterTransition' | 'requestSessionRestart' | 'restart';
+    readonly kind: 'initialize' | 'submitCommands' | 'tick' | 'createCamera' | 'applyFirstPersonCameraInput' | 'applyCollisionConstrainedCameraInput' | 'loadEcrpProject' | 'submitRuntimeActionIntent' | 'submitGameExtensionWeaponEffect' | 'lifecycleDeath' | 'runAutonomousPolicyTick' | 'requestGeneratedTunnelOperation' | 'requestEncounterTransition' | 'requestSessionRestart' | 'restart';
     readonly recordHash: string;
 }
 export interface RuntimeSessionTelemetrySummary {
@@ -472,6 +472,18 @@ export interface RuntimeSessionGeneratedTunnelOperationReceipt extends Generated
     readonly sessionHashBefore: string;
     readonly sessionHashAfter: string;
 }
+export interface RuntimeSessionGameExtensionWeaponEffectReceipt {
+    readonly sequenceId: number;
+    readonly request: {
+        readonly hook: WeaponEffectHookRequest;
+        readonly primaryFire: FpsPrimaryFireRequest;
+    };
+    readonly hookReceipt: GameExtensionHookReceipt;
+    readonly replayEvidence: GameExtensionReplayEvidence;
+    readonly primaryFire: FpsPrimaryFireResult | null;
+    readonly sessionHashBefore: string;
+    readonly sessionHashAfter: string;
+}
 export interface RuntimeSessionFacade {
     initialize(input: RuntimeSessionInitializeInput): RuntimeSessionStateSummary;
     loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt;
@@ -481,6 +493,7 @@ export interface RuntimeSessionFacade {
     applyFirstPersonCameraInput(envelope: FirstPersonCameraInputEnvelope): RuntimeSessionCameraInputReceipt;
     applyCollisionConstrainedCameraInput(envelope: CollisionConstrainedCameraInputEnvelope): RuntimeSessionCameraCollisionInputReceipt;
     submitRuntimeActionIntent(envelope: RuntimeActionIntentEnvelope): RuntimeSessionActionIntentReceipt;
+    submitGameExtensionWeaponEffect(hook: WeaponEffectHookRequest, primaryFire: FpsPrimaryFireRequest): RuntimeSessionGameExtensionWeaponEffectReceipt;
     runAutonomousPolicyTick(input: RuntimeSessionAutonomousPolicyTickInput): RuntimeSessionAutonomousPolicyTickReadout;
     readLifecycleStatus(request?: RuntimeSessionLifecycleStatusRequest): RuntimeSessionLifecycleStatusReadout;
     requestSessionRestart(intent: RuntimeSessionRestartIntent): RuntimeSessionLifecycleRestartReceipt;

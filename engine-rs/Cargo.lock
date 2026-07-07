@@ -708,6 +708,7 @@ dependencies = [
  "core-math",
  "core-space",
  "core-voxel",
+ "game-rule-extension",
  "protocol-diagnostics",
  "protocol-entity-authoring",
  "protocol-render",

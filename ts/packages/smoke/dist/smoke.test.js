@@ -149,6 +149,7 @@ function bridgeWith(overrides) {
         loadFpsRuntimeSession: base.loadFpsRuntimeSession.bind(base),
         readFpsRuntimeSession: base.readFpsRuntimeSession.bind(base),
         applyFpsPrimaryFire: base.applyFpsPrimaryFire.bind(base),
+        invokeGameExtensionWeaponEffect: base.invokeGameExtensionWeaponEffect.bind(base),
         restartFpsRuntimeSession: base.restartFpsRuntimeSession.bind(base),
         readFpsEncounterDirector: base.readFpsEncounterDirector.bind(base),
         applyFpsEncounterTransition: base.applyFpsEncounterTransition.bind(base),

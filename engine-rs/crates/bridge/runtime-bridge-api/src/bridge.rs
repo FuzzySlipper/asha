@@ -79,6 +79,12 @@ pub trait RuntimeBridge {
         &mut self,
         request: FpsPrimaryFireRequest,
     ) -> BridgeResult<FpsPrimaryFireResult>;
+    /// Invoke a declared game-owned Rust weapon-effect hook, validate its
+    /// bounded proposal, and apply accepted output through FPS combat authority.
+    fn invoke_game_extension_weapon_effect(
+        &mut self,
+        request: GameExtensionWeaponEffectInvocationRequest,
+    ) -> BridgeResult<GameExtensionWeaponEffectInvocationResult>;
     /// Restart the FPS/ECRP session by replaying the validated stored bundle into
     /// a fresh authority session, guarded by the caller's current epoch.
     fn restart_fps_runtime_session(

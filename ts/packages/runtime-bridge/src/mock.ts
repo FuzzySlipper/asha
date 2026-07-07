@@ -36,6 +36,8 @@ import type {
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
+  GameExtensionHookReceipt,
+  GameExtensionReplayEvidence,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
@@ -54,6 +56,8 @@ import {
   type FpsEncounterTransitionResult,
   type FpsPrimaryFireRequest,
   type FpsPrimaryFireResult,
+  type GameExtensionWeaponEffectInvocationRequest,
+  type GameExtensionWeaponEffectInvocationResult,
   type FpsRuntimeSessionLoadRequest,
   type FpsRuntimeSessionRestartRequest,
   type FpsRuntimeSessionSnapshot,
@@ -732,6 +736,59 @@ export class MockRuntimeBridge implements RuntimeBridge {
       healthHash,
       replayHash,
     };
+  }
+
+  invokeGameExtensionWeaponEffect(
+    request: GameExtensionWeaponEffectInvocationRequest,
+  ): GameExtensionWeaponEffectInvocationResult {
+    if (this.#fpsSnapshot === null || this.#fpsSeed === null) {
+      throw new RuntimeBridgeError('not_initialized', 'invokeGameExtensionWeaponEffect before loadFpsRuntimeSession');
+    }
+    const declared = this.#fpsSeed.gameRuleModules.find(
+      (manifest) => manifest.moduleRef.moduleId === request.hook.moduleRef.moduleId,
+    );
+    if (declared === undefined || JSON.stringify(declared.moduleRef) !== JSON.stringify(request.hook.moduleRef)) {
+      throw new RuntimeBridgeError('invalid_input', 'game rule module is not declared by the loaded RuntimeSession');
+    }
+    const hookReceipt: GameExtensionHookReceipt = {
+      moduleRef: request.hook.moduleRef,
+      hookId: request.hook.hookId,
+      requestId: request.hook.requestId,
+      status: 'proposed',
+      inputHash: request.hook.inputHash,
+      proposal: request.hook.target === null
+        ? { kind: 'noop', proposalId: `${request.hook.requestId}.noop`, proposalHash: 'fnv1a64:mock-noop' }
+        : {
+            kind: 'damageModifier',
+            proposalId: `${request.hook.requestId}.damage_bonus`,
+            target: request.hook.target,
+            channelId: 'combat.primary_fire.damage',
+            amountDelta: 5,
+            tags: ['reference-mock-module'],
+            proposalHash: `fnv1a64:${fnv1a64(JSON.stringify(request.hook))}`,
+          },
+      diagnostics: [],
+      trace: [{
+        step: 1,
+        code: 'mock.module.proposed_damage_modifier',
+        message: 'mock bridge returned a typed extension proposal',
+        refs: [request.hook.moduleRef.moduleId],
+      }],
+      proposalHash: `fnv1a64:${fnv1a64(`${request.hook.inputHash}|proposal`)}`,
+    };
+    const primaryFire = this.applyFpsPrimaryFire(request.primaryFire);
+    const replayEvidence: GameExtensionReplayEvidence = {
+      moduleRef: request.hook.moduleRef,
+      hookId: request.hook.hookId,
+      requestId: request.hook.requestId,
+      inputHash: request.hook.inputHash,
+      proposalHash: hookReceipt.proposalHash,
+      validationStatus: 'accepted',
+      eventHashes: [primaryFire.replayHash],
+      rejectionHashes: [],
+      replayHash: `fnv1a64:${fnv1a64(`${hookReceipt.proposalHash}|${primaryFire.replayHash}`)}`,
+    };
+    return { hookReceipt, replayEvidence, primaryFire };
   }
 
   restartFpsRuntimeSession(request: FpsRuntimeSessionRestartRequest): FpsRuntimeSessionSnapshot {

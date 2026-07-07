@@ -211,6 +211,22 @@ class ReferenceRuntimeSessionFacade {
             sessionHashAfter: this.#sessionHash(),
         };
     }
+    submitGameExtensionWeaponEffect(hook, primaryFire) {
+        this.#requireInitialized('submitGameExtensionWeaponEffect');
+        const before = this.#sessionHash();
+        const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+        this.#sequenceId += 1;
+        this.#record('submitGameExtensionWeaponEffect');
+        return {
+            sequenceId: this.#sequenceId,
+            request: { hook, primaryFire },
+            hookReceipt: result.hookReceipt,
+            replayEvidence: result.replayEvidence,
+            primaryFire: result.primaryFire,
+            sessionHashBefore: before,
+            sessionHashAfter: this.#sessionHash(),
+        };
+    }
     runAutonomousPolicyTick(input) {
         this.#requireInitialized('runAutonomousPolicyTick');
         validateAutonomousPolicyTickInput(input);

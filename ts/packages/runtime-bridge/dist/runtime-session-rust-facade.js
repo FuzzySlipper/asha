@@ -209,6 +209,23 @@ export class RustBackedRuntimeSessionFacade {
             sessionHashAfter: this.#sessionHash(),
         };
     }
+    submitGameExtensionWeaponEffect(hook, primaryFire) {
+        this.#requireInitialized('submitGameExtensionWeaponEffect');
+        const before = this.#sessionHash();
+        const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+        this.#snapshot = this.#bridge.readFpsRuntimeSession();
+        this.#sequenceId += 1;
+        this.#record('submitGameExtensionWeaponEffect', result.replayEvidence.replayHash);
+        return {
+            sequenceId: this.#sequenceId,
+            request: { hook, primaryFire },
+            hookReceipt: result.hookReceipt,
+            replayEvidence: result.replayEvidence,
+            primaryFire: result.primaryFire,
+            sessionHashBefore: before,
+            sessionHashAfter: this.#sessionHash(),
+        };
+    }
     runAutonomousPolicyTick(input) {
         this.#requireInitialized('runAutonomousPolicyTick');
         validateAutonomousPolicyTickInput(input);
@@ -728,6 +745,7 @@ function fpsLoadRequestFromEcrpProject(input) {
     return {
         projectBundle: `${input.projectBundle.project.gameId}:${input.sceneDocument.sceneId}`,
         definitions,
+        gameRuleModules: [],
     };
 }
 function fpsStoredEntityDefinition(entity) {

@@ -22,6 +22,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'loadFpsRuntimeSession',
     'readFpsRuntimeSession',
     'applyFpsPrimaryFire',
+    'invokeGameExtensionWeaponEffect',
     'restartFpsRuntimeSession',
     'readFpsEncounterDirector',
     'applyFpsEncounterTransition',

@@ -15,6 +15,7 @@ import type {
   VoxelConversionPreviewRequest,
   VoxelConversionSourceRegistrationRequest,
 } from '@asha/contracts';
+import { entityId } from '@asha/contracts';
 import type { NativeAddon } from '@asha/native-bridge';
 import {
   MANIFEST_OPERATIONS,
@@ -87,6 +88,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
   'load_fps_runtime_session',
   'read_fps_runtime_session',
   'apply_fps_primary_fire',
+  'invoke_game_extension_weapon_effect',
   'restart_fps_runtime_session',
   'read_fps_encounter_director',
   'apply_fps_encounter_transition',
@@ -201,6 +203,7 @@ function fpsLoadRequest() {
         },
       },
     ],
+    gameRuleModules: [],
   };
 }
 
@@ -246,8 +249,9 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         projectionChanged: true,
       };
     },
-    loadFpsRuntimeSession: (_handle: number, projectBundle: string, definitions: readonly unknown[]) => {
-      calls.push(`fpsLoad:${projectBundle}:${definitions.length}`);
+    loadFpsRuntimeSession: (_handle: number, projectBundle: string, definitions: readonly unknown[], gameRuleModulesJson: string) => {
+      const gameRuleModules = parseJsonFixture<unknown[]>(gameRuleModulesJson);
+      calls.push(`fpsLoad:${projectBundle}:${definitions.length}:${gameRuleModules.length}`);
       const player = definitions[0] as Record<string, unknown>;
       const enemy = definitions[1] as Record<string, unknown>;
       const playerTransform = player['transform'] as { readonly translation?: { readonly x?: number } } | undefined;
@@ -320,6 +324,71 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         entityHash: HASH_A,
         healthHash: HASH_B,
         replayHash: HASH_C,
+      };
+    },
+    invokeGameExtensionWeaponEffect: (
+      _handle: number,
+      hookJson: string,
+      tick: number,
+      origin: { readonly x: number; readonly y: number; readonly z: number },
+      direction: { readonly x: number; readonly y: number; readonly z: number },
+    ) => {
+      calls.push(`gameExtension:${tick}:${origin.x},${origin.y},${origin.z}:${direction.x},${direction.y},${direction.z}`);
+      const hook = parseJsonFixture<{
+        readonly moduleRef: { readonly moduleId: string; readonly version: string; readonly contractHash: string };
+        readonly hookId: string;
+        readonly requestId: string;
+        readonly inputHash: string;
+        readonly target: number | null;
+      }>(hookJson);
+      return {
+        hookReceiptJson: JSON.stringify({
+          moduleRef: hook.moduleRef,
+          hookId: hook.hookId,
+          requestId: hook.requestId,
+          status: 'proposed',
+          inputHash: hook.inputHash,
+          proposal: hook.target === null
+            ? null
+            : {
+                kind: 'damageModifier',
+                proposalId: `${hook.requestId}.native`,
+                target: hook.target,
+                channelId: 'combat.primary_fire.damage',
+                amountDelta: 5,
+                tags: ['native-fixture'],
+                proposalHash: HASH_A,
+              },
+          diagnostics: [],
+          trace: [],
+          proposalHash: HASH_A,
+        }),
+        replayEvidenceJson: JSON.stringify({
+          moduleRef: hook.moduleRef,
+          hookId: hook.hookId,
+          requestId: hook.requestId,
+          inputHash: hook.inputHash,
+          proposalHash: HASH_A,
+          validationStatus: 'accepted',
+          eventHashes: [HASH_C],
+          rejectionHashes: [],
+          replayHash: HASH_B,
+        }),
+        primaryFire: {
+          backend: 'reference_bridge_rust',
+          authoritySurface: 'runtime_session.fps.primary_fire.v0',
+          mutationOwner: 'rule-lifecycle + svc-combat',
+          workspaceTrace: ['accepted extension'],
+          shooter: 101,
+          target: 777,
+          targetHealthBefore: { current: 75, max: 75 },
+          targetHealthAfter: { current: 0, max: 75 },
+          lifecycleStatus: { state: 'enemy_defeated', entity: 777, tick },
+          targetRenderVisible: false,
+          entityHash: HASH_A,
+          healthHash: HASH_B,
+          replayHash: HASH_C,
+        },
       };
     },
     restartFpsRuntimeSession: (_handle: number, expectedEpoch: number) => {
@@ -512,6 +581,25 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
   ['loadFpsRuntimeSession', (b) => b.loadFpsRuntimeSession(fpsLoadRequest())],
   ['readFpsRuntimeSession', (b) => b.readFpsRuntimeSession()],
   ['applyFpsPrimaryFire', (b) => b.applyFpsPrimaryFire({ tick: 9, origin: [2.5, 1.5, 1.5], direction: [0, 0, 1] })],
+  ['invokeGameExtensionWeaponEffect', (b) => b.invokeGameExtensionWeaponEffect({
+    hook: {
+      moduleRef: {
+        moduleId: 'asha.reference.primary_fire_damage_modifier',
+        version: '0.1.0',
+        contractHash: 'sha256:asha-reference-primary-fire-damage-modifier-v0',
+      },
+      hookId: 'weapon.primary.damage_modifier',
+      requestId: 'request.native-fixture',
+      tick: 9,
+      source: entityId(101),
+      target: entityId(777),
+      baseDamage: 75,
+      rangeMillimeters: 16000,
+      tags: ['primary-fire'],
+      inputHash: HASH_A,
+    },
+    primaryFire: { tick: 9, origin: [2.5, 1.5, 1.5], direction: [0, 0, 1] },
+  })],
   ['restartFpsRuntimeSession', (b) => b.restartFpsRuntimeSession({ expectedEpoch: 1 })],
   ['readFpsEncounterDirector', (b) => b.readFpsEncounterDirector({
     outcomeKind: 'in_progress',
@@ -702,7 +790,7 @@ void test('native conformance sequence routes through the addon without mock fal
     'submit:[{"op":"setVoxel","grid":1,"coord":{"x":0,"y":0,"z":0},"value":{"kind":"solid","material":1}}]',
     'step:6',
     'enemyMove:777:0,0.5,-2.6:0,1.62,1.25:0.35',
-    'fpsLoad:custom-demo:2',
+    'fpsLoad:custom-demo:2:0',
     'fpsNativeShape:true:true:0',
     'fpsFire:9:2.5,1.5,1.5:0,0,1',
     'fpsRead',

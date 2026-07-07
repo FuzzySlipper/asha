@@ -26,6 +26,7 @@ impl RuntimeBridge for ReferenceBridge {
         self.fps_session = None;
         self.fps_seed = None;
         self.fps_epoch = 0;
+        self.game_rule_modules.clear();
         self.voxel_conversion_sources = Self::seeded_voxel_conversion_sources()?;
         self.voxel_conversion_targets = Self::seeded_voxel_conversion_targets();
         self.voxel_conversion_plan = None;
@@ -461,11 +462,13 @@ impl RuntimeBridge for ReferenceBridge {
     ) -> BridgeResult<FpsRuntimeSessionSnapshot> {
         self.require_initialized("load_fps_runtime_session")?;
         let input = Self::convert_fps_load_request(&request)?;
+        let game_rule_modules = Self::verify_game_rule_modules(&request.game_rule_modules)?;
         let loaded = load_fps_project_bundle(input).map_err(Self::fps_runtime_error)?;
         // Commit only after the full authority bootstrap succeeds.
         self.fps_session = Some(loaded);
         self.fps_seed = Some(request);
         self.fps_epoch = self.fps_epoch.saturating_add(1);
+        self.game_rule_modules = game_rule_modules;
         Self::fps_snapshot(
             self.fps_session.as_ref().expect("just committed"),
             self.fps_epoch,
@@ -498,6 +501,83 @@ impl RuntimeBridge for ReferenceBridge {
             .apply_primary_fire(&projection, ray, request.tick)
             .map_err(Self::fps_runtime_error)?;
         Ok(Self::primary_fire_result(receipt))
+    }
+
+    fn invoke_game_extension_weapon_effect(
+        &mut self,
+        request: GameExtensionWeaponEffectInvocationRequest,
+    ) -> BridgeResult<GameExtensionWeaponEffectInvocationResult> {
+        self.require_initialized("invoke_game_extension_weapon_effect")?;
+        Self::validate_loaded_game_rule_module(&self.game_rule_modules, &request.hook)?;
+        let module = ReferenceDamageModifierModule::new(request.hook.module_ref.clone());
+        let proposal = match module.evaluate_weapon_effect(&request.hook) {
+            Ok(proposal) => proposal,
+            Err(diagnostic) => {
+                let hook_receipt = rejected_receipt(&request.hook, diagnostic);
+                let replay_evidence =
+                    Self::extension_replay_evidence(&hook_receipt, "rejectedByModule", Vec::new());
+                return Ok(GameExtensionWeaponEffectInvocationResult {
+                    hook_receipt,
+                    replay_evidence,
+                    primary_fire: None,
+                });
+            }
+        };
+        let hook_receipt = proposed_receipt(
+            &request.hook,
+            proposal,
+            vec![GameExtensionTraceEntry {
+                step: 1,
+                code: "module.proposed_damage_modifier".to_string(),
+                message: "reference Rust game rule module returned a typed damage modifier"
+                    .to_string(),
+                refs: vec![request.hook.module_ref.module_id.clone()],
+            }],
+        );
+        let damage_delta = match Self::validated_damage_modifier_delta(&request.hook, &hook_receipt)
+        {
+            Ok(delta) => delta,
+            Err(diagnostic) => {
+                let mut rejected = hook_receipt;
+                rejected.status = GameExtensionReceiptStatus::RejectedByModule;
+                rejected.diagnostics.push(diagnostic);
+                let replay_evidence =
+                    Self::extension_replay_evidence(&rejected, "invalidProposal", Vec::new());
+                return Ok(GameExtensionWeaponEffectInvocationResult {
+                    hook_receipt: rejected,
+                    replay_evidence,
+                    primary_fire: None,
+                });
+            }
+        };
+        let ray = Self::ray_from_primary_fire(request.primary_fire)?;
+        let world = self.voxel.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "invoke_game_extension_weapon_effect called before initialize_engine",
+            )
+        })?;
+        let projection = CollisionProjection::build(world);
+        let receipt = self
+            .fps_session_mut("invoke_game_extension_weapon_effect")?
+            .apply_primary_fire_with_damage_delta(
+                &projection,
+                ray,
+                request.primary_fire.tick,
+                damage_delta,
+            )
+            .map_err(Self::fps_runtime_error)?;
+        let primary_fire = Self::primary_fire_result(receipt);
+        let replay_evidence = Self::extension_replay_evidence(
+            &hook_receipt,
+            "accepted",
+            vec![format!("fnv1a64:{:016x}", primary_fire.replay_hash)],
+        );
+        Ok(GameExtensionWeaponEffectInvocationResult {
+            hook_receipt,
+            replay_evidence,
+            primary_fire: Some(primary_fire),
+        })
     }
 
     fn restart_fps_runtime_session(

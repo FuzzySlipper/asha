@@ -113,6 +113,11 @@ interface NativeFpsPrimaryFireResult {
     readonly healthHash: string;
     readonly replayHash: string;
 }
+interface NativeGameExtensionWeaponEffectInvocationResult {
+    readonly hookReceiptJson: string;
+    readonly replayEvidenceJson: string;
+    readonly primaryFire: NativeFpsPrimaryFireResult | null;
+}
 interface NativeFpsEncounterLifecycleInput {
     readonly outcomeKind: 'in_progress' | 'won' | 'lost';
     readonly terminal: boolean;
@@ -170,9 +175,10 @@ export interface NativeAddon {
     submitCommands(handle: number, commandsJson: string): CommandResult;
     stepSimulation(handle: number, tick: number): number;
     applyEnemyDirectNavMovement(handle: number, entity: number, seedPosition: NativeVec3, target: NativeVec3, maxStepUnits: number): NativeEnemyDirectNavMovementResult;
-    loadFpsRuntimeSession(handle: number, projectBundle: string, definitions: readonly NativeFpsStoredEntityDefinition[]): NativeFpsRuntimeSessionSnapshot;
+    loadFpsRuntimeSession(handle: number, projectBundle: string, definitions: readonly NativeFpsStoredEntityDefinition[], gameRuleModulesJson: string): NativeFpsRuntimeSessionSnapshot;
     readFpsRuntimeSession(handle: number): NativeFpsRuntimeSessionSnapshot;
     applyFpsPrimaryFire(handle: number, tick: number, origin: NativeVec3, direction: NativeVec3): NativeFpsPrimaryFireResult;
+    invokeGameExtensionWeaponEffect(handle: number, hookJson: string, tick: number, origin: NativeVec3, direction: NativeVec3): NativeGameExtensionWeaponEffectInvocationResult;
     restartFpsRuntimeSession(handle: number, expectedEpoch: number): NativeFpsRuntimeSessionSnapshot;
     readFpsEncounterDirector(handle: number, lifecycle: NativeFpsEncounterLifecycleInput): NativeFpsEncounterDirectorSnapshot;
     applyFpsEncounterTransition(handle: number, request: NativeFpsEncounterTransitionRequest): NativeFpsEncounterTransitionResult;
@@ -199,7 +205,7 @@ export type { VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConv
 export declare class NativeAddonUnavailable extends Error {
     constructor(message: string);
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence"];
 /**
  * Attempt to load the compiled addon. Returns a typed handle or throws a
  * classified {@link NativeAddonUnavailable} — never a raw module-resolution error,

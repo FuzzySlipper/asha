@@ -19,6 +19,9 @@ import {
   type VoxelConversionPreview,
   type VoxelConversionPreviewRequest,
   type VoxelConversionReceipt,
+  type GameExtensionHookReceipt,
+  type GameExtensionReplayEvidence,
+  type WeaponEffectHookRequest,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
@@ -27,6 +30,8 @@ import {
   type EnemyDirectNavMovementResult,
   type EngineHandle,
   type FrameCursor,
+  type FpsPrimaryFireRequest,
+  type FpsPrimaryFireResult,
   type RuntimeBridge,
   type StepResult,
   type WorldLoadRequest,
@@ -232,6 +237,7 @@ export interface RuntimeSessionReplayRecord {
     | 'applyCollisionConstrainedCameraInput'
     | 'loadEcrpProject'
     | 'submitRuntimeActionIntent'
+    | 'submitGameExtensionWeaponEffect'
     | 'lifecycleDeath'
     | 'runAutonomousPolicyTick'
     | 'requestGeneratedTunnelOperation'
@@ -723,6 +729,19 @@ export interface RuntimeSessionGeneratedTunnelOperationReceipt extends Generated
   readonly sessionHashAfter: string;
 }
 
+export interface RuntimeSessionGameExtensionWeaponEffectReceipt {
+  readonly sequenceId: number;
+  readonly request: {
+    readonly hook: WeaponEffectHookRequest;
+    readonly primaryFire: FpsPrimaryFireRequest;
+  };
+  readonly hookReceipt: GameExtensionHookReceipt;
+  readonly replayEvidence: GameExtensionReplayEvidence;
+  readonly primaryFire: FpsPrimaryFireResult | null;
+  readonly sessionHashBefore: string;
+  readonly sessionHashAfter: string;
+}
+
 export interface RuntimeSessionFacade {
   initialize(input: RuntimeSessionInitializeInput): RuntimeSessionStateSummary;
   loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt;
@@ -734,6 +753,10 @@ export interface RuntimeSessionFacade {
     envelope: CollisionConstrainedCameraInputEnvelope,
   ): RuntimeSessionCameraCollisionInputReceipt;
   submitRuntimeActionIntent(envelope: RuntimeActionIntentEnvelope): RuntimeSessionActionIntentReceipt;
+  submitGameExtensionWeaponEffect(
+    hook: WeaponEffectHookRequest,
+    primaryFire: FpsPrimaryFireRequest,
+  ): RuntimeSessionGameExtensionWeaponEffectReceipt;
   runAutonomousPolicyTick(input: RuntimeSessionAutonomousPolicyTickInput): RuntimeSessionAutonomousPolicyTickReadout;
   readLifecycleStatus(request?: RuntimeSessionLifecycleStatusRequest): RuntimeSessionLifecycleStatusReadout;
   requestSessionRestart(intent: RuntimeSessionRestartIntent): RuntimeSessionLifecycleRestartReceipt;
@@ -1013,6 +1036,26 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
             detail: 'Only primary_fire press/release is wired in the #4051 reference combat slice.',
           },
       combatReadout,
+      sessionHashBefore: before,
+      sessionHashAfter: this.#sessionHash(),
+    };
+  }
+
+  submitGameExtensionWeaponEffect(
+    hook: WeaponEffectHookRequest,
+    primaryFire: FpsPrimaryFireRequest,
+  ): RuntimeSessionGameExtensionWeaponEffectReceipt {
+    this.#requireInitialized('submitGameExtensionWeaponEffect');
+    const before = this.#sessionHash();
+    const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+    this.#sequenceId += 1;
+    this.#record('submitGameExtensionWeaponEffect');
+    return {
+      sequenceId: this.#sequenceId,
+      request: { hook, primaryFire },
+      hookReceipt: result.hookReceipt,
+      replayEvidence: result.replayEvidence,
+      primaryFire: result.primaryFire,
       sessionHashBefore: before,
       sessionHashAfter: this.#sessionHash(),
     };

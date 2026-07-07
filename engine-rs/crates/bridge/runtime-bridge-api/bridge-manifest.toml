@@ -144,6 +144,14 @@ errors = "RuntimeBridgeError"
 summary = "Submit a primary-fire intent through Rust svc-combat plus rule-lifecycle authority; returns health/lifecycle/render/replay evidence."
 
 [[operation]]
+name = "invoke_game_extension_weapon_effect"
+surface = "stable"
+input = "protocol_runtime::GameExtensionWeaponEffectInvocationRequest"
+output = "protocol_runtime::GameExtensionWeaponEffectInvocationResult"
+errors = "RuntimeBridgeError"
+summary = "Invoke a declared game-owned Rust weapon-effect hook, validate its generated proposal, and apply accepted output through FPS combat authority with replay evidence."
+
+[[operation]]
 name = "restart_fps_runtime_session"
 surface = "stable"
 input = "protocol_runtime::FpsRuntimeSessionRestartRequest"

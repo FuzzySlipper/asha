@@ -20,6 +20,7 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
   'loadFpsRuntimeSession',
   'readFpsRuntimeSession',
   'applyFpsPrimaryFire',
+  'invokeGameExtensionWeaponEffect',
   'restartFpsRuntimeSession',
   'applyEnemyDirectNavMovement',
   'planVoxelConversion',

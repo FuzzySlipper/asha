@@ -32,6 +32,16 @@ pub(crate) use core_space::{
     ChunkCoord, ChunkDims, Direction6, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,
 };
 pub(crate) use core_voxel::{MaterialCatalog, VoxelMaterialId, VoxelValue};
+pub(crate) use game_rule_extension::{
+    proposed_receipt, rejected_receipt, unsupported_hook_diagnostic, GameExtensionDiagnostic,
+    GameRuleExtensionResult, GameRuleModule,
+};
+pub use game_rule_extension::{
+    GameExtensionDiagnosticCode, GameExtensionHookKind, GameExtensionHookReceipt,
+    GameExtensionProposal, GameExtensionReceiptStatus, GameExtensionReplayEvidence,
+    GameExtensionTraceEntry, GameRuleHookDeclaration, GameRuleModuleManifest, GameRuleModuleRef,
+    WeaponEffectHookRequest,
+};
 pub(crate) use protocol_diagnostics::DiagnosticSeverity;
 pub(crate) use protocol_entity_authoring::{
     AuthoringTransform, EntityDefinition, EntityDefinitionCapability, EntityDefinitionSourceTrace,

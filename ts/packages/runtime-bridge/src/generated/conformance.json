@@ -123,6 +123,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "invoke_game_extension_weapon_effect",
+      "facadeMethod": "invokeGameExtensionWeaponEffect",
+      "surface": "stable",
+      "input": "protocol_runtime::GameExtensionWeaponEffectInvocationRequest",
+      "output": "protocol_runtime::GameExtensionWeaponEffectInvocationResult",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "restart_fps_runtime_session",
       "facadeMethod": "restartFpsRuntimeSession",
       "surface": "stable",

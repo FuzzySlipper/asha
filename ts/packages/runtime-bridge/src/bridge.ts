@@ -8,6 +8,9 @@ import type {
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,
+  GameExtensionHookReceipt,
+  GameExtensionReplayEvidence,
+  GameRuleModuleManifest,
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   PickRay,
@@ -27,6 +30,7 @@ import type {
   VoxelConversionReceipt,
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
+  WeaponEffectHookRequest,
 } from '@asha/contracts';
 
 // ── Opaque handle types ───────────────────────────────────────────────────────
@@ -174,6 +178,7 @@ export interface FpsStoredEntityDefinition {
 export interface FpsRuntimeSessionLoadRequest {
   readonly projectBundle: string;
   readonly definitions: readonly FpsStoredEntityDefinition[];
+  readonly gameRuleModules: readonly GameRuleModuleManifest[];
 }
 export interface FpsRuntimeSessionRestartRequest {
   readonly expectedEpoch: number;
@@ -235,6 +240,15 @@ export interface FpsPrimaryFireResult {
   readonly entityHash: string;
   readonly healthHash: string;
   readonly replayHash: string;
+}
+export interface GameExtensionWeaponEffectInvocationRequest {
+  readonly hook: WeaponEffectHookRequest;
+  readonly primaryFire: FpsPrimaryFireRequest;
+}
+export interface GameExtensionWeaponEffectInvocationResult {
+  readonly hookReceipt: GameExtensionHookReceipt;
+  readonly replayEvidence: GameExtensionReplayEvidence;
+  readonly primaryFire: FpsPrimaryFireResult | null;
 }
 export type FpsEncounterStatus = 'pending' | 'active' | 'cleared' | 'failed';
 export type FpsEncounterLastTransition = 'initialized' | 'activated' | 'cleared' | 'failed' | 'reset';
@@ -379,6 +393,9 @@ export interface RuntimeBridge {
   loadFpsRuntimeSession(request: FpsRuntimeSessionLoadRequest): FpsRuntimeSessionSnapshot;
   readFpsRuntimeSession(): FpsRuntimeSessionSnapshot;
   applyFpsPrimaryFire(request: FpsPrimaryFireRequest): FpsPrimaryFireResult;
+  invokeGameExtensionWeaponEffect(
+    request: GameExtensionWeaponEffectInvocationRequest,
+  ): GameExtensionWeaponEffectInvocationResult;
   restartFpsRuntimeSession(request: FpsRuntimeSessionRestartRequest): FpsRuntimeSessionSnapshot;
   readFpsEncounterDirector(lifecycle: FpsEncounterLifecycleInput): FpsEncounterDirectorSnapshot;
   applyFpsEncounterTransition(request: FpsEncounterTransitionRequest): FpsEncounterTransitionResult;

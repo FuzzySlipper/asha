@@ -40,6 +40,8 @@ KNOWN_TRANSITIONAL_PROTOCOL_REFS = {
     "protocol_runtime::FpsRuntimeSessionLoadRequest",
     "protocol_runtime::FpsRuntimeSessionRestartRequest",
     "protocol_runtime::FpsRuntimeSessionSnapshot",
+    "protocol_runtime::GameExtensionWeaponEffectInvocationRequest",
+    "protocol_runtime::GameExtensionWeaponEffectInvocationResult",
     "protocol_runtime::StepInputEnvelope",
     "protocol_runtime::StepResult",
     "protocol_render::RenderFrameDiffDescriptor",

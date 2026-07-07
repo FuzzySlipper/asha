@@ -42,5 +42,6 @@ rule-voxel-edit = { path = "../../rules/rule-voxel-edit" }
 # FPS/ECRP RuntimeSession authority substrate. The bridge exposes typed verbs;
 # rule-lifecycle owns ProjectBundle bootstrap, combat/lifecycle, and replay hashes.
 protocol-entity-authoring = { path = "../../protocol/protocol-entity-authoring" }
+game-rule-extension = { path = "../../rules/game-rule-extension" }
 rule-lifecycle = { path = "../../rules/rule-lifecycle" }
 svc-combat = { path = "../../services/svc-combat" }

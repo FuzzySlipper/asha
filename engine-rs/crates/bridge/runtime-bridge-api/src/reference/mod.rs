@@ -33,6 +33,7 @@ pub struct ReferenceBridge {
     fps_session: Option<FpsRuntimeSessionState>,
     fps_seed: Option<FpsRuntimeSessionLoadRequest>,
     fps_epoch: u64,
+    game_rule_modules: BTreeMap<String, GameRuleModuleManifest>,
     /// Last planned voxel conversion. This is bridge-owned authority state used
     /// by preview/apply hash guards; callers cannot provide their own output.
     voxel_conversion_sources: BTreeMap<String, StaticMeshSource>,
@@ -43,11 +44,104 @@ pub struct ReferenceBridge {
 
 /// The bundle schema / protocol versions this reference bridge understands.
 const REFERENCE_SUPPORTED_VERSION: u32 = 1;
+const REFERENCE_GAME_RULE_MODULE_ID: &str = "asha.reference.primary_fire_damage_modifier";
+const REFERENCE_GAME_RULE_MODULE_VERSION: &str = "0.1.0";
+const REFERENCE_GAME_RULE_CONTRACT_HASH: &str =
+    "sha256:asha-reference-primary-fire-damage-modifier-v0";
+const REFERENCE_GAME_RULE_HOOK_ID: &str = "weapon.primary.damage_modifier";
 
 #[derive(Debug, Clone, PartialEq)]
 struct VoxelConversionTargetAuthority {
     spec: VoxelGridSpec,
     volume_asset_id: Option<String>,
+}
+
+struct ReferenceDamageModifierModule {
+    manifest: GameRuleModuleManifest,
+}
+
+impl ReferenceDamageModifierModule {
+    fn new(module_ref: GameRuleModuleRef) -> Self {
+        Self {
+            manifest: reference_game_rule_manifest(module_ref),
+        }
+    }
+}
+
+impl GameRuleModule for ReferenceDamageModifierModule {
+    fn manifest(&self) -> &GameRuleModuleManifest {
+        &self.manifest
+    }
+
+    fn evaluate_weapon_effect(
+        &self,
+        request: &WeaponEffectHookRequest,
+    ) -> GameRuleExtensionResult<GameExtensionProposal> {
+        if request.hook_id != REFERENCE_GAME_RULE_HOOK_ID {
+            return Err(unsupported_hook_diagnostic(
+                &request.hook_id,
+                "reference game rule module only implements primary-fire damage modifier",
+            ));
+        }
+        let Some(target) = request.target else {
+            return Ok(GameExtensionProposal::Reject {
+                proposal_id: format!("{}.reject_no_target", request.request_id),
+                code: GameExtensionDiagnosticCode::InvalidProposal,
+                message: "weapon effect requires a target entity".to_string(),
+                proposal_hash: "fnv1a64:no-target".to_string(),
+            });
+        };
+        Ok(GameExtensionProposal::DamageModifier {
+            proposal_id: format!("{}.damage_bonus", request.request_id),
+            target,
+            channel_id: "combat.primary_fire.damage".to_string(),
+            amount_delta: 5,
+            tags: vec!["reference-rust-module".to_string()],
+            proposal_hash: format!(
+                "fnv1a64:{}",
+                ReferenceBridge::fnv1a64(&format!(
+                    "{}|{}|{}|{}",
+                    request.request_id,
+                    target.raw(),
+                    request.base_damage,
+                    request.input_hash
+                ))
+            ),
+        })
+    }
+}
+
+fn reference_game_rule_module_ref() -> GameRuleModuleRef {
+    GameRuleModuleRef {
+        module_id: REFERENCE_GAME_RULE_MODULE_ID.to_string(),
+        version: REFERENCE_GAME_RULE_MODULE_VERSION.to_string(),
+        contract_hash: REFERENCE_GAME_RULE_CONTRACT_HASH.to_string(),
+    }
+}
+
+fn reference_game_rule_manifest(module_ref: GameRuleModuleRef) -> GameRuleModuleManifest {
+    GameRuleModuleManifest {
+        module_ref,
+        declared_hooks: vec![GameRuleHookDeclaration {
+            hook_id: REFERENCE_GAME_RULE_HOOK_ID.to_string(),
+            kind: GameExtensionHookKind::WeaponEffect,
+            input_contract: "WeaponEffectHookRequest.v0".to_string(),
+            output_contract: "GameExtensionProposal.v0".to_string(),
+            required_capabilities: vec!["health".to_string(), "weaponMount".to_string()],
+        }],
+        deterministic_requirements: vec![
+            "no-wall-clock".to_string(),
+            "no-ambient-random".to_string(),
+            "no-filesystem".to_string(),
+            "no-network".to_string(),
+            "no-ts-callback".to_string(),
+        ],
+        source_hash: "sha256:asha-reference-primary-fire-module-source".to_string(),
+    }
+}
+
+fn reference_game_rule_declared_manifest() -> GameRuleModuleManifest {
+    reference_game_rule_manifest(reference_game_rule_module_ref())
 }
 
 impl ReferenceBridge {
@@ -761,6 +855,193 @@ impl ReferenceBridge {
             project_bundle: request.project_bundle.clone(),
             definitions,
         })
+    }
+
+    fn verify_game_rule_modules(
+        manifests: &[GameRuleModuleManifest],
+    ) -> BridgeResult<BTreeMap<String, GameRuleModuleManifest>> {
+        let mut loaded = BTreeMap::new();
+        for manifest in manifests {
+            Self::verify_reference_game_rule_manifest(manifest)?;
+            if loaded
+                .insert(manifest.module_ref.module_id.clone(), manifest.clone())
+                .is_some()
+            {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    format!(
+                        "duplicate game rule module declaration '{}'",
+                        manifest.module_ref.module_id
+                    ),
+                ));
+            }
+        }
+        Ok(loaded)
+    }
+
+    fn verify_reference_game_rule_manifest(manifest: &GameRuleModuleManifest) -> BridgeResult<()> {
+        let expected = reference_game_rule_declared_manifest();
+        if manifest.module_ref != expected.module_ref {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "declared game rule module '{}' is missing or incompatible",
+                    manifest.module_ref.module_id
+                ),
+            ));
+        }
+        if manifest.declared_hooks != expected.declared_hooks {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "declared game rule module hook surface is incompatible",
+            ));
+        }
+        for required in &expected.deterministic_requirements {
+            if !manifest.deterministic_requirements.contains(required) {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    format!(
+                        "declared game rule module is missing deterministic requirement '{required}'"
+                    ),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_loaded_game_rule_module(
+        loaded: &BTreeMap<String, GameRuleModuleManifest>,
+        request: &WeaponEffectHookRequest,
+    ) -> BridgeResult<()> {
+        let manifest = loaded.get(&request.module_ref.module_id).ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "game rule module '{}' is not declared by the loaded RuntimeSession",
+                    request.module_ref.module_id
+                ),
+            )
+        })?;
+        if manifest.module_ref != request.module_ref {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "game rule module ref does not match the loaded RuntimeSession declaration",
+            ));
+        }
+        if !manifest.declared_hooks.iter().any(|hook| {
+            hook.hook_id == request.hook_id && hook.kind == GameExtensionHookKind::WeaponEffect
+        }) {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "game rule module '{}' does not declare weapon-effect hook '{}'",
+                    request.module_ref.module_id, request.hook_id
+                ),
+            ));
+        }
+        Ok(())
+    }
+
+    fn game_extension_diagnostic(
+        code: GameExtensionDiagnosticCode,
+        path: impl Into<String>,
+        message: impl Into<String>,
+    ) -> GameExtensionDiagnostic {
+        GameExtensionDiagnostic {
+            code,
+            severity: DiagnosticSeverity::Error,
+            path: path.into(),
+            message: message.into(),
+        }
+    }
+
+    fn validated_damage_modifier_delta(
+        request: &WeaponEffectHookRequest,
+        receipt: &GameExtensionHookReceipt,
+    ) -> Result<i64, GameExtensionDiagnostic> {
+        let Some(GameExtensionProposal::DamageModifier {
+            target,
+            channel_id,
+            amount_delta,
+            proposal_hash,
+            ..
+        }) = &receipt.proposal
+        else {
+            return Err(Self::game_extension_diagnostic(
+                GameExtensionDiagnosticCode::InvalidProposal,
+                "proposal.kind",
+                "weapon-effect hook must return a damageModifier proposal",
+            ));
+        };
+        if Some(*target) != request.target {
+            return Err(Self::game_extension_diagnostic(
+                GameExtensionDiagnosticCode::InvalidProposal,
+                "proposal.target",
+                "damageModifier target must match the hook target",
+            ));
+        }
+        if channel_id != "combat.primary_fire.damage" {
+            return Err(Self::game_extension_diagnostic(
+                GameExtensionDiagnosticCode::InvalidProposal,
+                "proposal.channelId",
+                "damageModifier channel must be combat.primary_fire.damage",
+            ));
+        }
+        if !proposal_hash.starts_with("fnv1a64:") {
+            return Err(Self::game_extension_diagnostic(
+                GameExtensionDiagnosticCode::InvalidProposal,
+                "proposal.proposalHash",
+                "damageModifier proposal hash must be deterministic",
+            ));
+        }
+        Ok(*amount_delta)
+    }
+
+    fn extension_replay_evidence(
+        receipt: &GameExtensionHookReceipt,
+        validation_status: impl Into<String>,
+        event_hashes: Vec<String>,
+    ) -> GameExtensionReplayEvidence {
+        let validation_status = validation_status.into();
+        let rejection_hashes = receipt
+            .diagnostics
+            .iter()
+            .map(|diagnostic| {
+                format!(
+                    "fnv1a64:{}",
+                    Self::fnv1a64(&format!(
+                        "{}|{}|{}",
+                        diagnostic.code.as_str(),
+                        diagnostic.path,
+                        diagnostic.message
+                    ))
+                )
+            })
+            .collect::<Vec<_>>();
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{}|{}|{}|{:?}|{:?}",
+                receipt.module_ref.module_id,
+                receipt.hook_id,
+                receipt.request_id,
+                receipt.input_hash,
+                validation_status,
+                event_hashes,
+                rejection_hashes
+            ))
+        );
+        GameExtensionReplayEvidence {
+            module_ref: receipt.module_ref.clone(),
+            hook_id: receipt.hook_id.clone(),
+            request_id: receipt.request_id.clone(),
+            input_hash: receipt.input_hash.clone(),
+            proposal_hash: receipt.proposal_hash.clone(),
+            validation_status,
+            event_hashes,
+            rejection_hashes,
+            replay_hash,
+        }
     }
 
     fn fps_lifecycle_status(status: FpsLifecycleStatus) -> FpsBridgeLifecycleStatus {

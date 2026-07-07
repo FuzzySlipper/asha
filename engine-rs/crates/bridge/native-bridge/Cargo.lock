@@ -178,6 +178,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
+name = "game-rule-extension"
+version = "0.1.0"
+dependencies = [
+ "protocol-diagnostics",
+ "protocol-game-extension",
+]
+
+[[package]]
 name = "glam"
 version = "0.33.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -446,6 +454,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-game-extension"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "protocol-diagnostics",
+ "serde",
+]
+
+[[package]]
 name = "protocol-render"
 version = "0.1.0"
 dependencies = [
@@ -560,6 +577,7 @@ dependencies = [
  "core-math",
  "core-space",
  "core-voxel",
+ "game-rule-extension",
  "protocol-diagnostics",
  "protocol-entity-authoring",
  "protocol-render",

@@ -20,6 +20,8 @@ import type {
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
+  GameExtensionHookReceipt,
+  GameExtensionReplayEvidence,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
 import { MANIFEST_OPERATIONS } from './generated/operations.js';
@@ -37,6 +39,8 @@ import {
   type FpsEncounterLifecycleInput,
   type FpsEncounterTransitionRequest,
   type FpsEncounterTransitionResult,
+  type GameExtensionWeaponEffectInvocationRequest,
+  type GameExtensionWeaponEffectInvocationResult,
   type FpsLifecycleStatus,
   type FpsPrimaryFireRequest,
   type FpsPrimaryFireResult,
@@ -84,6 +88,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'load_fps_runtime_session',
   'read_fps_runtime_session',
   'apply_fps_primary_fire',
+  'invoke_game_extension_weapon_effect',
   'restart_fps_runtime_session',
   'read_fps_encounter_director',
   'apply_fps_encounter_transition',
@@ -404,7 +409,12 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('loadFpsRuntimeSession');
     const nativeRequest = nativeFpsLoadRequest(request);
     const result = callNative(() =>
-      this.#addon.loadFpsRuntimeSession(handle, nativeRequest.projectBundle, nativeRequest.definitions) as FpsRuntimeSessionSnapshot,
+      this.#addon.loadFpsRuntimeSession(
+        handle,
+        nativeRequest.projectBundle,
+        nativeRequest.definitions,
+        JSON.stringify(request.gameRuleModules),
+      ) as FpsRuntimeSessionSnapshot,
     );
     return normalizeFpsSnapshot(result);
   }
@@ -430,6 +440,45 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       entityHash: hashString(result.entityHash, 'entityHash'),
       healthHash: hashString(result.healthHash, 'healthHash'),
       replayHash: hashString(result.replayHash, 'replayHash'),
+    };
+  }
+
+  invokeGameExtensionWeaponEffect(
+    request: GameExtensionWeaponEffectInvocationRequest,
+  ): GameExtensionWeaponEffectInvocationResult {
+    const handle = this.#requireHandle('invokeGameExtensionWeaponEffect');
+    const tick = nonNegativeSafeInteger(request.primaryFire.tick, 'primaryFire.tick');
+    const origin = nativeVec3(request.primaryFire.origin, 'primaryFire.origin');
+    const direction = nativeVec3(request.primaryFire.direction, 'primaryFire.direction');
+    const result = callNative(() =>
+      this.#addon.invokeGameExtensionWeaponEffect(
+        handle,
+        JSON.stringify(request.hook),
+        tick,
+        origin,
+        direction,
+      ),
+    ) as {
+      readonly hookReceiptJson: string;
+      readonly replayEvidenceJson: string;
+      readonly primaryFire?: FpsPrimaryFireResult | null;
+    };
+    return {
+      hookReceipt: parseNativeJson<GameExtensionHookReceipt>(result.hookReceiptJson, 'game extension hook receipt'),
+      replayEvidence: parseNativeJson<GameExtensionReplayEvidence>(
+        result.replayEvidenceJson,
+        'game extension replay evidence',
+      ),
+      primaryFire: result.primaryFire === undefined || result.primaryFire === null
+        ? null
+        : {
+            ...result.primaryFire,
+            backend: fpsBackend(result.primaryFire.backend),
+            lifecycleStatus: fpsLifecycleStatus(result.primaryFire.lifecycleStatus),
+            entityHash: hashString(result.primaryFire.entityHash, 'entityHash'),
+            healthHash: hashString(result.primaryFire.healthHash, 'healthHash'),
+            replayHash: hashString(result.primaryFire.replayHash, 'replayHash'),
+          },
     };
   }
 

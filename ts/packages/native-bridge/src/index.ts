@@ -127,6 +127,12 @@ interface NativeFpsPrimaryFireResult {
   readonly replayHash: string;
 }
 
+interface NativeGameExtensionWeaponEffectInvocationResult {
+  readonly hookReceiptJson: string;
+  readonly replayEvidenceJson: string;
+  readonly primaryFire: NativeFpsPrimaryFireResult | null;
+}
+
 interface NativeFpsEncounterLifecycleInput {
   readonly outcomeKind: 'in_progress' | 'won' | 'lost';
   readonly terminal: boolean;
@@ -204,6 +210,7 @@ export interface NativeAddon {
     handle: number,
     projectBundle: string,
     definitions: readonly NativeFpsStoredEntityDefinition[],
+    gameRuleModulesJson: string,
   ): NativeFpsRuntimeSessionSnapshot;
   readFpsRuntimeSession(handle: number): NativeFpsRuntimeSessionSnapshot;
   applyFpsPrimaryFire(
@@ -212,6 +219,13 @@ export interface NativeAddon {
     origin: NativeVec3,
     direction: NativeVec3,
   ): NativeFpsPrimaryFireResult;
+  invokeGameExtensionWeaponEffect(
+    handle: number,
+    hookJson: string,
+    tick: number,
+    origin: NativeVec3,
+    direction: NativeVec3,
+  ): NativeGameExtensionWeaponEffectInvocationResult;
   restartFpsRuntimeSession(handle: number, expectedEpoch: number): NativeFpsRuntimeSessionSnapshot;
   readFpsEncounterDirector(
     handle: number,
@@ -269,6 +283,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'loadFpsRuntimeSession',
   'readFpsRuntimeSession',
   'applyFpsPrimaryFire',
+  'invokeGameExtensionWeaponEffect',
   'restartFpsRuntimeSession',
   'readFpsEncounterDirector',
   'applyFpsEncounterTransition',

@@ -11,6 +11,7 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  WeaponEffectHookRequest,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
@@ -21,6 +22,7 @@ import {
   type FpsEncounterStateReadout,
   type FpsEncounterTransitionResult,
   type EngineHandle,
+  type FpsPrimaryFireRequest,
   type FpsPrimaryFireResult,
   type FpsRuntimeSessionLoadRequest,
   type FpsRuntimeSessionSnapshot,
@@ -119,6 +121,7 @@ import type {
   RuntimeSessionEcrpTransformState,
   RuntimeSessionFacade,
   RuntimeSessionGeneratedTunnelOperationReceipt,
+  RuntimeSessionGameExtensionWeaponEffectReceipt,
   RuntimeSessionIdentity,
   RuntimeSessionInitializeInput,
   RuntimeSessionLifecycleHealthReadout,
@@ -352,6 +355,27 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
       status: 'accepted',
       rejection: null,
       combatReadout: combatReadoutFromFpsPrimaryFire(fire, envelope.tick),
+      sessionHashBefore: before,
+      sessionHashAfter: this.#sessionHash(),
+    };
+  }
+
+  submitGameExtensionWeaponEffect(
+    hook: WeaponEffectHookRequest,
+    primaryFire: FpsPrimaryFireRequest,
+  ): RuntimeSessionGameExtensionWeaponEffectReceipt {
+    this.#requireInitialized('submitGameExtensionWeaponEffect');
+    const before = this.#sessionHash();
+    const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+    this.#snapshot = this.#bridge.readFpsRuntimeSession();
+    this.#sequenceId += 1;
+    this.#record('submitGameExtensionWeaponEffect', result.replayEvidence.replayHash);
+    return {
+      sequenceId: this.#sequenceId,
+      request: { hook, primaryFire },
+      hookReceipt: result.hookReceipt,
+      replayEvidence: result.replayEvidence,
+      primaryFire: result.primaryFire,
       sessionHashBefore: before,
       sessionHashAfter: this.#sessionHash(),
     };
@@ -944,6 +968,7 @@ function fpsLoadRequestFromEcrpProject(input: RuntimeSessionEcrpProjectLoadInput
   return {
     projectBundle: `${input.projectBundle.project.gameId}:${input.sceneDocument.sceneId}`,
     definitions,
+    gameRuleModules: [],
   };
 }
 

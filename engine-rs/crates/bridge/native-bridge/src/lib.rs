@@ -21,15 +21,17 @@ use runtime_bridge_api::{
     FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding, FpsBridgeRole,
     FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability, FpsBridgeWeaponMount,
     FpsEncounterDirectorSnapshot, FpsEncounterLifecycleInput, FpsEncounterStateReadout,
-    FpsEncounterTransitionRequest, FpsEncounterTransitionResult, FpsPrimaryFireRequest,
-    FpsPrimaryFireResult, FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
-    FpsRuntimeSessionSnapshot, ReferenceBridge, RuntimeBridge, RuntimeBridgeError,
+    FpsEncounterTransitionRequest, FpsEncounterTransitionResult,
+    GameExtensionWeaponEffectInvocationRequest, GameExtensionWeaponEffectInvocationResult,
+    GameRuleModuleManifest,
+    FpsPrimaryFireRequest, FpsPrimaryFireResult, FpsRuntimeSessionLoadRequest,
+    FpsRuntimeSessionRestartRequest, FpsRuntimeSessionSnapshot, ReferenceBridge, RuntimeBridge, RuntimeBridgeError,
     RuntimeBridgeErrorKind, StepInputEnvelope, VoxelConversionApplyRequest,
     VoxelConversionEvidenceRef, VoxelConversionPlanRequest, VoxelConversionPreviewRequest,
     VoxelConversionSourceRegistrationRequest,
-    WorldLoadRequest,
+    WeaponEffectHookRequest, WorldLoadRequest,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default)]
 struct NativeSessions {
@@ -363,6 +365,13 @@ pub struct NativeFpsPrimaryFireResult {
     pub entity_hash: String,
     pub health_hash: String,
     pub replay_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeGameExtensionWeaponEffectInvocationResult {
+    pub hook_receipt_json: String,
+    pub replay_evidence_json: String,
+    pub primary_fire: Option<NativeFpsPrimaryFireResult>,
 }
 
 #[napi(object)]
@@ -805,11 +814,40 @@ fn parse_voxel_conversion_evidence(
     })
 }
 
+fn parse_game_rule_module_manifests(
+    manifests_json: &str,
+) -> napi::Result<Vec<GameRuleModuleManifest>> {
+    serde_json::from_str(manifests_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid game rule module manifest JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_weapon_effect_hook_request(request_json: &str) -> napi::Result<WeaponEffectHookRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid weapon-effect hook request JSON: {err}"),
+        ))
+    })
+}
+
 fn voxel_conversion_json<T: serde::Serialize>(value: &T) -> napi::Result<String> {
     serde_json::to_string(value).map_err(|err| {
         to_napi(RuntimeBridgeError::new(
             RuntimeBridgeErrorKind::Internal,
             format!("failed to serialize voxel conversion DTO: {err}"),
+        ))
+    })
+}
+
+fn game_extension_json<T: Serialize>(value: &T) -> napi::Result<String> {
+    serde_json::to_string(value).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::Internal,
+            format!("failed to serialize game extension DTO: {err}"),
         ))
     })
 }
@@ -920,13 +958,16 @@ pub fn load_fps_runtime_session(
     handle: i64,
     project_bundle: String,
     definitions: Vec<NativeFpsStoredEntityDefinition>,
+    game_rule_modules_json: String,
 ) -> napi::Result<NativeFpsRuntimeSessionSnapshot> {
     let definitions = bridge_fps_definitions(definitions)?;
+    let game_rule_modules = parse_game_rule_module_manifests(&game_rule_modules_json)?;
     with_bridge(handle, |bridge| {
         bridge
             .load_fps_runtime_session(FpsRuntimeSessionLoadRequest {
                 project_bundle,
                 definitions,
+                game_rule_modules,
             })
             .map(NativeFpsRuntimeSessionSnapshot::from)
             .map_err(to_napi)
@@ -970,6 +1011,45 @@ pub fn apply_fps_primary_fire(
             })
             .map(NativeFpsPrimaryFireResult::from)
             .map_err(to_napi)
+    })
+}
+
+#[napi]
+pub fn invoke_game_extension_weapon_effect(
+    handle: i64,
+    hook_json: String,
+    tick: i64,
+    origin: NativeVec3,
+    direction: NativeVec3,
+) -> napi::Result<NativeGameExtensionWeaponEffectInvocationResult> {
+    let hook = parse_weapon_effect_hook_request(&hook_json)?;
+    let tick = u64_input(tick, "tick")?;
+    let origin = origin.to_vec3("origin")?;
+    let direction = direction.to_vec3("direction")?;
+    with_bridge(handle, |bridge| {
+        let result = bridge
+            .invoke_game_extension_weapon_effect(GameExtensionWeaponEffectInvocationRequest {
+                hook,
+                primary_fire: FpsPrimaryFireRequest {
+                    tick,
+                    origin: [
+                        f64::from(origin.x),
+                        f64::from(origin.y),
+                        f64::from(origin.z),
+                    ],
+                    direction: [
+                        f64::from(direction.x),
+                        f64::from(direction.y),
+                        f64::from(direction.z),
+                    ],
+                },
+            })
+            .map_err(to_napi)?;
+        Ok(NativeGameExtensionWeaponEffectInvocationResult {
+            hook_receipt_json: game_extension_json(&result.hook_receipt)?,
+            replay_evidence_json: game_extension_json(&result.replay_evidence)?,
+            primary_fire: result.primary_fire.map(NativeFpsPrimaryFireResult::from),
+        })
     })
 }
 
@@ -1111,6 +1191,7 @@ mod tests {
         "exportVoxelConversionEvidence",
         "getCompositionStatus",
         "initializeEngine",
+        "invokeGameExtensionWeaponEffect",
         "loadWorldBundle",
         "loadFpsRuntimeSession",
         "planVoxelConversion",
@@ -1136,6 +1217,7 @@ mod tests {
                 "exportVoxelConversionEvidence",
                 "getCompositionStatus",
                 "initializeEngine",
+                "invokeGameExtensionWeaponEffect",
                 "loadWorldBundle",
                 "loadFpsRuntimeSession",
                 "planVoxelConversion",
@@ -1298,9 +1380,13 @@ mod tests {
         assert_eq!(moved.path_hash, "fnv1a64:69ed74d692922db7");
         assert!(moved.transform_hash.starts_with("fnv1a64:"));
 
-        let fps_loaded =
-            load_fps_runtime_session(handle, "custom-demo".into(), native_fps_definitions(75))
-                .expect("fps runtime session loads");
+        let fps_loaded = load_fps_runtime_session(
+            handle,
+            "custom-demo".into(),
+            native_fps_definitions(75),
+            "[]".into(),
+        )
+        .expect("fps runtime session loads");
         assert_eq!(fps_loaded.backend, "reference_bridge_rust");
         assert_eq!(fps_loaded.player_entity, 101);
         assert_eq!(fps_loaded.enemy_entity, 777);
