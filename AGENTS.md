@@ -15,19 +15,20 @@
 - If Den is unreachable, stop and tell the user which Den tool or command failed and what you were about to do. Do not reconstruct Den state from local files.
 - Use the project-local notes below only as bootstrap context for connecting to Den and working in this repository.
 
-# ASHA Local Bootstrap
+# ASHA Engine Local Bootstrap
 
-Project-specific live guidance lives in Den at `[doc: asha/design]`.
+Live project guidance lives in Den. Use project ID `asha` for Den tasks, messages, documents, librarian queries, and guidance lookups.
 
-Use project ID `asha` for Den tasks, messages, documents, librarian queries, and guidance lookups.
+When creating or updating Den tasks for this repository, tag them with `asha-engine` plus any lane/system tags.
 
 ## Source-of-truth posture
 
 This local file is bootstrap context for agents entering the repository. It is not the current planning queue.
 
-- **Den** owns current task state, implementation queues, durable planning docs, and known limitations.
+- **Den** owns current task state, implementation queues, durable planning docs, review packets, and known limitations.
 - **Repo docs** describe architecture and committed implementation surfaces.
 - **The code/tests** are the implementation truth when they conflict with old planning prose.
+- Resolve live Den guidance with `get_agent_guidance(project_id="asha")` before substantial work.
 - The old prototype phase list is historical only; do not infer active work from it.
 
 ## Architecture Soul
@@ -40,11 +41,11 @@ This local file is bootstrap context for agents entering the repository. It is n
 - Every crate/package is an **agent assignment cell** with machine-checkable dependency rules.
 - Protocols are **generated** from Rust; hand-editing generated files is forbidden.
 
-See `docs/design.md` for the full system design and `README.md` for current repo orientation.
+See `docs/design.md`, `docs/agent-code-atlas.md` when present, and `README.md` for current repo orientation.
 
 ## Repository Structure
 
-```
+```text
 /asha-engine          # repo name in design, maps to /home/dev/asha-engine
   /governance           # lane docs, ADRs, reviewer prompts, ownership config
   /harness              # CI, lints, depgraph checkers, goldens, fixtures, smoke/perf output
@@ -55,7 +56,7 @@ See `docs/design.md` for the full system design and `README.md` for current repo
       /protocol         # protocol schemas + protocol-codegen
       /sim              # sim-kernel, validator, applier, replay, runner
       /services         # rng, spatial, collision, physics, pathfinding, serialization, volume, mesh, policy-view
-      /rules            # lifecycle, process, scheduler, relationship, state-machine, voxel-edit, world-bundle
+      /rules            # lifecycle, process, scheduler, relationship, state-machine, voxel-edit, world-bundle/legacy migration lanes
       /render           # render-bridge, render-debug
       /bridge           # runtime-bridge-api manifest; native-bridge napi addon is built explicitly
       /wasm             # wasm-api replay/golden surface
@@ -87,7 +88,7 @@ See `docs/design.md` for the full system design and `README.md` for current repo
 ./harness/ci/check-all.sh
 
 # Focused gates
-./harness/ci/check-rust.sh
+./harness/ci/check-rust.sh      # cargo fmt --check, cargo check, cargo clippy --workspace -- -D warnings, cargo test
 ./harness/ci/check-ts.sh
 ./harness/ci/check-depgraph.sh
 ./harness/ci/check-contracts.sh
@@ -95,6 +96,10 @@ See `docs/design.md` for the full system design and `README.md` for current repo
 ./harness/ci/check-render-goldens.sh
 ./harness/ci/check-bridge.sh
 ./harness/ci/check-vocabulary.sh # ECRP term-gravity gate: bans *Component/*Archetype type names; gates legacy World* naming behind harness/vocab/legacy-term-allowlist.txt
+
+# Rust lane quick checks when a full Rust gate is too broad
+(cd engine-rs && cargo clippy --workspace -- -D warnings)
+(cd engine-rs && cargo clippy -p <crate-name> --all-targets -- -D warnings)
 
 # Launchable voxel smoke / shell / perf
 cd ts
@@ -105,12 +110,13 @@ ASHA_PERF_HOST=<stable-host-label> pnpm --filter @asha/smoke dev:asha-perf
 
 See `docs/launchable-voxel.md` and `docs/perf-baseline.md` for command details, output paths, and known limitations.
 
-Current consumer-facing RuntimeSession docs live in:
+Current consumer-facing RuntimeSession/ECRP docs include:
 
 - `docs/runtime-session-facade.md` — current `RuntimeSessionFacade` API and non-claims.
 - `docs/ecrp-runtime-session-readout.md` — ProjectBundle-shaped ECRP load/readout behavior.
 - `docs/ecrp-fps-object-model.md` — FPS object-model capability map for the generated-tunnel loop.
 - `docs/ecrp-capability-rule-ownership.md` — rule-owner matrix and current FPS RuntimeSession authority slice.
+- Den guidance `asha/ecrp-vocabulary-taxonomy` — accepted ECRP naming and stored/runtime/projection taxonomy.
 
 ## Agent Lane Quick Reference
 
