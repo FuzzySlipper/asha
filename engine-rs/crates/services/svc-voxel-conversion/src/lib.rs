@@ -858,6 +858,45 @@ mod tests {
         source
     }
 
+    fn tessellated_plane_source(size: u32) -> StaticMeshSource {
+        let mut positions = Vec::new();
+        for y in 0..=size {
+            for x in 0..=size {
+                positions.push([x as f32, y as f32, 0.0]);
+            }
+        }
+
+        let row = size + 1;
+        let mut triangles = Vec::new();
+        for y in 0..size {
+            for x in 0..size {
+                let a = y * row + x;
+                let b = a + 1;
+                let c = a + row;
+                let d = c + 1;
+                let source_material_slot = (x + y) % 2;
+                triangles.push(MeshTriangle {
+                    indices: [a, b, d],
+                    source_material_slot,
+                });
+                triangles.push(MeshTriangle {
+                    indices: [a, d, c],
+                    source_material_slot,
+                });
+            }
+        }
+
+        StaticMeshSource {
+            asset_id: format!("mesh/tessellated-plane-{size}"),
+            asset_kind: "mesh".to_string(),
+            asset_version: 1,
+            source_hash: format!("sha256:tessellated-plane-{size}"),
+            mesh_primitive: None,
+            positions,
+            triangles,
+        }
+    }
+
     fn cube_source() -> StaticMeshSource {
         let positions = vec![
             [0.0, 0.0, 0.0],
@@ -991,6 +1030,30 @@ mod tests {
     }
 
     #[test]
+    fn larger_tessellated_surface_fixture_has_stable_summary() {
+        let source = tessellated_plane_source(4);
+        let request = request_for(&source, VoxelConversionMode::Surface, [5, 5, 1], 32);
+
+        let planned = plan_conversion(&request, &source);
+        let preview = preview_conversion(
+            &VoxelConversionPreviewRequest {
+                plan_id: planned.plan.plan_id.clone(),
+                expected_plan_hash: planned.plan.plan_hash.clone(),
+            },
+            &planned,
+        );
+
+        assert!(planned.plan.diagnostics.is_empty());
+        assert_eq!(source.positions.len(), 25);
+        assert_eq!(source.triangles.len(), 32);
+        assert_eq!(planned.plan.estimated_output_voxels, 25);
+        assert_eq!(bounds_label(planned.plan.estimated_bounds), "0,0,0..4,4,0");
+        assert_eq!(preview.output_voxel_count, 25);
+        assert_eq!(preview.output_hash, "fnv1a64:17b13dfeb6844321");
+        assert_eq!(material_label(&preview.sample_voxels), "3,5");
+    }
+
+    #[test]
     fn surface_conversion_applies_transform_with_source_origin_anchor() {
         let source = quad_source();
         let mut request = request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16);
@@ -1097,6 +1160,21 @@ mod tests {
         let request = request_for(&source, VoxelConversionMode::Solid, [2, 2, 2], 7);
         let planned = plan_conversion(&request, &source);
         assert!(planned.output.is_none());
+        assert_eq!(
+            planned.plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::OutputLimitExceeded
+        );
+    }
+
+    #[test]
+    fn larger_tessellated_surface_over_budget_rejects_without_output() {
+        let source = tessellated_plane_source(4);
+        let request = request_for(&source, VoxelConversionMode::Surface, [5, 5, 1], 24);
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.output.is_none());
+        assert_eq!(planned.plan.estimated_output_voxels, 0);
         assert_eq!(
             planned.plan.diagnostics[0].code,
             VoxelConversionDiagnosticCode::OutputLimitExceeded

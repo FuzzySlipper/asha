@@ -323,6 +323,49 @@ fn studio_registered_source_request() -> VoxelConversionSourceRegistrationReques
     }
 }
 
+fn larger_registered_grid_source_request() -> VoxelConversionSourceRegistrationRequest {
+    let mut positions = Vec::new();
+    for y in 0..3 {
+        for x in 0..3 {
+            positions.push([x as f32, y as f32, 0.0]);
+        }
+    }
+
+    let mut triangles = Vec::new();
+    for y in 0..2 {
+        for x in 0..2 {
+            let a = y * 3 + x;
+            let b = a + 1;
+            let c = a + 3;
+            let d = c + 1;
+            triangles.push(protocol_voxel_conversion::VoxelConversionSourceTriangle {
+                indices: [a, b, d],
+                source_material_slot: 0,
+            });
+            triangles.push(protocol_voxel_conversion::VoxelConversionSourceTriangle {
+                indices: [a, d, c],
+                source_material_slot: 0,
+            });
+        }
+    }
+
+    VoxelConversionSourceRegistrationRequest {
+        source: protocol_voxel_conversion::VoxelConversionSourceRef {
+            asset_id: "mesh/registered-grid-3x3".to_string(),
+            asset_kind: "mesh".to_string(),
+            asset_version: 1,
+            source_hash: "sha256:registered-grid-3x3".to_string(),
+            mesh_primitive: Some("default".to_string()),
+        },
+        positions,
+        triangles,
+        material_slots: vec![VoxelConversionSourceMaterialSlot {
+            source_material_slot: 0,
+            source_material_id: Some("material/grid-stone".to_string()),
+        }],
+    }
+}
+
 fn registered_source_plan_request(
     registration: &VoxelConversionSourceRegistrationRequest,
 ) -> VoxelConversionPlanRequest {
@@ -333,6 +376,23 @@ fn registered_source_plan_request(
             source_material_slot: 4,
             source_material_id: Some("material/studio-copper".to_string()),
             voxel_material: 9,
+        }];
+    request.settings.material_map.default_voxel_material = None;
+    request
+}
+
+fn larger_registered_grid_plan_request(
+    registration: &VoxelConversionSourceRegistrationRequest,
+) -> VoxelConversionPlanRequest {
+    let mut request = project_voxel_conversion_request(7);
+    request.source = registration.source.clone();
+    request.settings.resolution = [3, 3, 1];
+    request.settings.max_output_voxels = 16;
+    request.settings.material_map.entries =
+        vec![protocol_voxel_conversion::VoxelConversionMaterialMapEntry {
+            source_material_slot: 0,
+            source_material_id: Some("material/grid-stone".to_string()),
+            voxel_material: 3,
         }];
     request.settings.material_map.default_voxel_material = None;
     request
@@ -910,6 +970,74 @@ fn voxel_conversion_registers_studio_static_mesh_source_before_plan() {
         plan.settings.material_map.entries[0].source_material_slot,
         4
     );
+}
+
+#[test]
+fn voxel_conversion_larger_registered_source_applies_and_reports_model_info() {
+    let mut bridge = init_bridge();
+    let registration_request = larger_registered_grid_source_request();
+    let registration = bridge
+        .register_voxel_conversion_source(registration_request.clone())
+        .unwrap();
+    assert!(registration.registered);
+    assert_eq!(registration_request.positions.len(), 9);
+    assert_eq!(registration_request.triangles.len(), 8);
+
+    let plan = bridge
+        .plan_voxel_conversion(larger_registered_grid_plan_request(&registration_request))
+        .unwrap();
+    assert!(plan.diagnostics.is_empty());
+    assert_eq!(plan.estimated_output_voxels, 9);
+    assert_eq!(plan.estimated_bounds.unwrap().max.x, 2);
+    assert_eq!(plan.estimated_bounds.unwrap().max.y, 2);
+
+    let preview = bridge
+        .preview_voxel_conversion(VoxelConversionPreviewRequest {
+            plan_id: plan.plan_id.clone(),
+            expected_plan_hash: svc_voxel_conversion::plan_hash(&plan),
+        })
+        .unwrap();
+    assert!(preview.diagnostics.is_empty());
+    assert_eq!(preview.output_voxel_count, 9);
+
+    let receipt = bridge
+        .apply_voxel_conversion(VoxelConversionApplyRequest {
+            plan_id: plan.plan_id.clone(),
+            expected_plan_hash: svc_voxel_conversion::plan_hash(&plan),
+            expected_preview_hash: Some(preview.output_hash),
+        })
+        .unwrap();
+    assert!(receipt.applied);
+    assert_eq!(receipt.output_voxel_count, 9);
+
+    let model_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(model_info.resident);
+    assert_eq!(model_info.voxel_count, 9);
+    assert_eq!(
+        model_info.material_counts,
+        vec![VoxelModelMaterialCount {
+            material: 3,
+            voxel_count: 9
+        }]
+    );
+    assert_eq!(
+        model_info.source.unwrap().asset_id,
+        "mesh/registered-grid-3x3"
+    );
+    assert_eq!(
+        model_info.latest_plan_id.as_deref(),
+        Some(plan.plan_id.as_str())
+    );
+    assert!(model_info.latest_output_hash.is_some());
+    assert!(model_info.session_hash.starts_with("fnv1a64:"));
+    assert!(model_info.replay_hash.starts_with("fnv1a64:"));
+    assert!(model_info.diagnostics.is_empty());
 }
 
 #[test]
