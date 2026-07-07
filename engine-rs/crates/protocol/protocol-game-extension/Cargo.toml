@@ -1,0 +1,18 @@
+[package]
+name = "protocol-game-extension"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+# Border-only crate for downstream game-owned Rust rule module declarations,
+# deterministic hook requests, typed proposals, receipts, and replay evidence.
+# Runtime invocation and authority validation live in RuntimeSession/rule lanes.
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+protocol-diagnostics = { path = "../protocol-diagnostics" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

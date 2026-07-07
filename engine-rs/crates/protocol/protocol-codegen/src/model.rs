@@ -1619,6 +1619,185 @@ pub fn game_rules_module() -> Module {
     }
 }
 
+// ── gameExtension.ts — downstream Rust rule module extension DTOs ────────────
+//
+// Mirrors the border-only `protocol-game-extension` crate. RuntimeSession
+// invocation and authority validation live in later runtime/rule tasks; this
+// generated surface carries manifests, deterministic hook requests, typed
+// proposals, receipts, diagnostics, and replay evidence.
+
+pub fn game_extension_module() -> Module {
+    let imports = vec![
+        import("./ids.js", &["EntityId"]),
+        import("./diagnostics.js", &["DiagnosticSeverity"]),
+    ];
+
+    let items = vec![
+        string_enum(
+            "Stable extension hook kinds a game-owned Rust module may declare.",
+            "GameExtensionHookKind",
+            protocol_game_extension::GAME_EXTENSION_HOOK_KINDS,
+        ),
+        string_enum(
+            "Stable proposal kinds returned by game-owned Rust modules.",
+            "GameExtensionProposalKind",
+            protocol_game_extension::GAME_EXTENSION_PROPOSAL_KINDS,
+        ),
+        string_enum(
+            "Status of a game-owned Rust hook receipt before RuntimeSession validation.",
+            "GameExtensionReceiptStatus",
+            protocol_game_extension::GAME_EXTENSION_RECEIPT_STATUSES,
+        ),
+        string_enum(
+            "Stable diagnostic code for game-owned Rust extension manifests and hook output.",
+            "GameExtensionDiagnosticCode",
+            protocol_game_extension::GAME_EXTENSION_DIAGNOSTIC_CODES,
+        ),
+        iface(
+            "Compiled game rule module identity and compatibility evidence.",
+            "GameRuleModuleRef",
+            vec![
+                f("moduleId", string()),
+                f("version", string()),
+                f("contractHash", string()),
+            ],
+        ),
+        iface(
+            "One deterministic hook declared by a compiled game rule module.",
+            "GameRuleHookDeclaration",
+            vec![
+                f("hookId", string()),
+                f("kind", r("GameExtensionHookKind")),
+                f("inputContract", string()),
+                f("outputContract", string()),
+                f("requiredCapabilities", TsType::array(string())),
+            ],
+        ),
+        iface(
+            "Manifest compiled with a downstream game-owned Rust rule module.",
+            "GameRuleModuleManifest",
+            vec![
+                f("moduleRef", r("GameRuleModuleRef")),
+                f("declaredHooks", TsType::array(r("GameRuleHookDeclaration"))),
+                f("deterministicRequirements", TsType::array(string())),
+                f("sourceHash", string()),
+            ],
+        ),
+        iface(
+            "One classified extension manifest or proposal diagnostic.",
+            "GameExtensionDiagnostic",
+            vec![
+                f("code", r("GameExtensionDiagnosticCode")),
+                f("severity", r("DiagnosticSeverity")),
+                f("path", string()),
+                f("message", string()),
+            ],
+        ),
+        iface(
+            "Deterministic weapon-effect hook input supplied by ASHA RuntimeSession.",
+            "WeaponEffectHookRequest",
+            vec![
+                f("moduleRef", r("GameRuleModuleRef")),
+                f("hookId", string()),
+                f("requestId", string()),
+                f("tick", num()),
+                f("source", r("EntityId")),
+                f("target", TsType::nullable(r("EntityId"))),
+                f("baseDamage", num()),
+                f("rangeMillimeters", num()),
+                f("tags", TsType::array(string())),
+                f("inputHash", string()),
+            ],
+        ),
+        union(
+            "Typed pending proposal returned by a game-owned Rust rule module.",
+            "GameExtensionProposal",
+            "kind",
+            vec![
+                v(
+                    "damageModifier",
+                    vec![
+                        f("proposalId", string()),
+                        f("target", r("EntityId")),
+                        f("channelId", string()),
+                        f("amountDelta", num()),
+                        f("tags", TsType::array(string())),
+                        f("proposalHash", string()),
+                    ],
+                ),
+                v(
+                    "effectBundle",
+                    vec![
+                        f("proposalId", string()),
+                        f("bundleId", string()),
+                        f("tags", TsType::array(string())),
+                        f("proposalHash", string()),
+                    ],
+                ),
+                v(
+                    "reject",
+                    vec![
+                        f("proposalId", string()),
+                        f("code", r("GameExtensionDiagnosticCode")),
+                        f("message", string()),
+                        f("proposalHash", string()),
+                    ],
+                ),
+                v(
+                    "noop",
+                    vec![f("proposalId", string()), f("proposalHash", string())],
+                ),
+            ],
+        ),
+        iface(
+            "One deterministic trace entry emitted by a game-owned Rust hook.",
+            "GameExtensionTraceEntry",
+            vec![
+                f("step", num()),
+                f("code", string()),
+                f("message", string()),
+                f("refs", TsType::array(string())),
+            ],
+        ),
+        iface(
+            "Hook receipt before RuntimeSession validates/applies any proposal.",
+            "GameExtensionHookReceipt",
+            vec![
+                f("moduleRef", r("GameRuleModuleRef")),
+                f("hookId", string()),
+                f("requestId", string()),
+                f("status", r("GameExtensionReceiptStatus")),
+                f("inputHash", string()),
+                f("proposal", TsType::nullable(r("GameExtensionProposal"))),
+                f("diagnostics", TsType::array(r("GameExtensionDiagnostic"))),
+                f("trace", TsType::array(r("GameExtensionTraceEntry"))),
+                f("proposalHash", string()),
+            ],
+        ),
+        iface(
+            "Replay evidence tying a hook invocation to validation and authority output hashes.",
+            "GameExtensionReplayEvidence",
+            vec![
+                f("moduleRef", r("GameRuleModuleRef")),
+                f("hookId", string()),
+                f("requestId", string()),
+                f("inputHash", string()),
+                f("proposalHash", string()),
+                f("validationStatus", string()),
+                f("eventHashes", TsType::array(string())),
+                f("rejectionHashes", TsType::array(string())),
+                f("replayHash", string()),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "gameExtension",
+        imports,
+        items,
+    }
+}
+
 // ── diagnostics.ts — scene/asset/bundle/render diagnostic reports ─────────────
 //
 // Mirrors `protocol-diagnostics`. The string-enum members are sourced directly
@@ -3080,6 +3259,9 @@ pub fn index_module() -> Module {
                 from: "./gameRules.js".to_string(),
             },
             Item::ReExport {
+                from: "./gameExtension.js".to_string(),
+            },
+            Item::ReExport {
                 from: "./scene.js".to_string(),
             },
             Item::ReExport {
@@ -3117,6 +3299,7 @@ pub fn all_modules() -> Vec<Module> {
         voxel_module(),
         voxel_conversion_module(),
         game_rules_module(),
+        game_extension_module(),
         scene_module(),
         world_bundle_module(),
         assets_module(),

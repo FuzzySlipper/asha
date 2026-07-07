@@ -124,15 +124,33 @@ The following paths are hard failures:
 - dynamic JavaScript callbacks in the authority path;
 - reference/mock RuntimeSession helpers used as live/product authority.
 
+## Implemented Extension Boundary Slice
+
+Task #4516 adds the first upstream boundary cells for game-owned Rust rule
+modules:
+
+- `engine-rs/crates/protocol/protocol-game-extension` defines schema-only Rust
+  DTOs for rule module manifests, hook declarations, deterministic weapon-effect
+  hook requests, typed proposals, hook receipts, diagnostics, and replay
+  evidence.
+- `engine-rs/crates/rules/game-rule-extension` defines the public Rust
+  `GameRuleModule` trait/API that downstream game crates can compile against.
+  The default hook path fails closed with a typed diagnostic, and helper
+  receipts explicitly remain pending proposals rather than authority mutations.
+- `ts/packages/contracts/src/generated/gameExtension.ts` is generated from the
+  Rust protocol source and re-exported from `@asha/contracts`, so TypeScript can
+  name module refs, hooks, proposals, receipts, and replay evidence without
+  demo-local schemas or private generated-file imports.
+
+This slice is intentionally not a dynamic plugin system and not a RuntimeSession
+loader. It opens the stable compiled boundary and generated contract vocabulary
+that later invocation work can consume.
+
 ## Required Upstream Extension Points
 
-ASHA does not yet expose the full game-owned authority boundary. The missing
+ASHA does not yet expose the full game-owned authority boundary. The remaining
 upstream surfaces are:
 
-- a Rust public extension crate defining the minimal rule-module trait/API and
-  deterministic hook contexts;
-- generated protocol schemas for game rule module manifests, hook requests,
-  proposals, receipts, and replay evidence;
 - RuntimeSession loading/compatibility checks for rule-module declarations in
   ProjectBundle or an adjacent ASHA game manifest;
 - RuntimeSession invocation hooks for at least one narrow behavior, initially a

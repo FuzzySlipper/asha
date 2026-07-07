@@ -133,6 +133,8 @@ mod tests {
     use serde_json::{json, Value};
     use std::collections::{BTreeMap, BTreeSet};
 
+    #[path = "game_extension_tests.rs"]
+    mod game_extension_tests;
     #[path = "game_rules_tests.rs"]
     mod game_rules_tests;
 
@@ -158,6 +160,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/voxel.ts"),
                 format!("{OUTPUT_DIR}/voxelConversion.ts"),
                 format!("{OUTPUT_DIR}/gameRules.ts"),
+                format!("{OUTPUT_DIR}/gameExtension.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
                 format!("{OUTPUT_DIR}/worldBundle.ts"),
                 format!("{OUTPUT_DIR}/assets.ts"),
@@ -337,6 +340,18 @@ mod tests {
             interface_coverage_key("gameRules", "GameRuleModifierState"),
             interface_coverage_key("gameRules", "GameRuleResolutionRequest"),
             interface_coverage_key("gameRules", "GameRuleResolutionReceipt"),
+            interface_coverage_key("gameExtension", "GameRuleModuleRef"),
+            interface_coverage_key("gameExtension", "GameRuleHookDeclaration"),
+            interface_coverage_key("gameExtension", "GameRuleModuleManifest"),
+            interface_coverage_key("gameExtension", "GameExtensionDiagnostic"),
+            interface_coverage_key("gameExtension", "WeaponEffectHookRequest"),
+            variant_coverage_key("gameExtension", "GameExtensionProposal", "damageModifier"),
+            variant_coverage_key("gameExtension", "GameExtensionProposal", "effectBundle"),
+            variant_coverage_key("gameExtension", "GameExtensionProposal", "reject"),
+            variant_coverage_key("gameExtension", "GameExtensionProposal", "noop"),
+            interface_coverage_key("gameExtension", "GameExtensionTraceEntry"),
+            interface_coverage_key("gameExtension", "GameExtensionHookReceipt"),
+            interface_coverage_key("gameExtension", "GameExtensionReplayEvidence"),
         ]
         .into_iter()
         .collect()

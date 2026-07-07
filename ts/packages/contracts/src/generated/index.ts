@@ -20,6 +20,8 @@ export * from './voxelConversion.js';
 
 export * from './gameRules.js';
 
+export * from './gameExtension.js';
+
 export * from './scene.js';
 
 export * from './worldBundle.js';

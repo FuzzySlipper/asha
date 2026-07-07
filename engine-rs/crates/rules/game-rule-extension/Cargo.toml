@@ -1,0 +1,17 @@
+[package]
+name = "game-rule-extension"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+# Public Rust API for downstream game-owned rule modules. This crate defines
+# deterministic hook traits and typed proposals only; RuntimeSession validates
+# and applies any returned proposal in upstream authority lanes.
+[dependencies]
+protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
+
+[dev-dependencies]
+core-ids = { path = "../../foundation/core-ids" }

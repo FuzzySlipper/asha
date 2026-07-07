@@ -179,9 +179,14 @@ lane = "contract-steward"
 may_depend_on = ["core-ids", "protocol-diagnostics"]
 may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "render-bridge", "wasm-api"]
 
+[crate."engine-rs/crates/protocol/protocol-game-extension"]
+lane = "contract-steward"
+may_depend_on = ["core-ids", "protocol-diagnostics"]
+may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "runtime-bridge-api", "render-bridge", "wasm-api"]
+
 [crate."engine-rs/crates/protocol/protocol-codegen"]
 lane = "contract-steward"
-may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-game-rules", "protocol-view"]
+may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-game-rules", "protocol-game-extension", "protocol-view"]
 
 [crate."engine-rs/crates/services/svc-game-rules"]
 lane = "rust-service"
@@ -192,6 +197,11 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "runtime-br
 lane = "rust-rule"
 may_depend_on = ["core-ids", "core-time", "core-game-rules", "svc-game-rules"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api", "runtime-bridge-api"]
+
+[crate."engine-rs/crates/rules/game-rule-extension"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "protocol-game-extension", "protocol-diagnostics"]
+may_not_depend_on = ["core-state", "core-entity", "svc-combat", "runtime-bridge-api", "protocol-render", "render-bridge", "wasm-api"]
 
 # ─── Rust: Sim ───────────────────────────────────────────────────────────────
 

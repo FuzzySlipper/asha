@@ -1,0 +1,96 @@
+import type { EntityId } from './ids.js';
+import type { DiagnosticSeverity } from './diagnostics.js';
+export type GameExtensionHookKind = 'weaponEffect' | 'interactionEffect' | 'spawnCondition';
+export type GameExtensionProposalKind = 'damageModifier' | 'effectBundle' | 'reject' | 'noop';
+export type GameExtensionReceiptStatus = 'proposed' | 'rejectedByModule' | 'unsupportedHook';
+export type GameExtensionDiagnosticCode = 'unsupportedHook' | 'incompatibleContract' | 'invalidModuleManifest' | 'nondeterministicInput' | 'invalidProposal';
+export interface GameRuleModuleRef {
+    readonly moduleId: string;
+    readonly version: string;
+    readonly contractHash: string;
+}
+export interface GameRuleHookDeclaration {
+    readonly hookId: string;
+    readonly kind: GameExtensionHookKind;
+    readonly inputContract: string;
+    readonly outputContract: string;
+    readonly requiredCapabilities: readonly string[];
+}
+export interface GameRuleModuleManifest {
+    readonly moduleRef: GameRuleModuleRef;
+    readonly declaredHooks: readonly GameRuleHookDeclaration[];
+    readonly deterministicRequirements: readonly string[];
+    readonly sourceHash: string;
+}
+export interface GameExtensionDiagnostic {
+    readonly code: GameExtensionDiagnosticCode;
+    readonly severity: DiagnosticSeverity;
+    readonly path: string;
+    readonly message: string;
+}
+export interface WeaponEffectHookRequest {
+    readonly moduleRef: GameRuleModuleRef;
+    readonly hookId: string;
+    readonly requestId: string;
+    readonly tick: number;
+    readonly source: EntityId;
+    readonly target: EntityId | null;
+    readonly baseDamage: number;
+    readonly rangeMillimeters: number;
+    readonly tags: readonly string[];
+    readonly inputHash: string;
+}
+export type GameExtensionProposal = {
+    readonly kind: 'damageModifier';
+    readonly proposalId: string;
+    readonly target: EntityId;
+    readonly channelId: string;
+    readonly amountDelta: number;
+    readonly tags: readonly string[];
+    readonly proposalHash: string;
+} | {
+    readonly kind: 'effectBundle';
+    readonly proposalId: string;
+    readonly bundleId: string;
+    readonly tags: readonly string[];
+    readonly proposalHash: string;
+} | {
+    readonly kind: 'reject';
+    readonly proposalId: string;
+    readonly code: GameExtensionDiagnosticCode;
+    readonly message: string;
+    readonly proposalHash: string;
+} | {
+    readonly kind: 'noop';
+    readonly proposalId: string;
+    readonly proposalHash: string;
+};
+export interface GameExtensionTraceEntry {
+    readonly step: number;
+    readonly code: string;
+    readonly message: string;
+    readonly refs: readonly string[];
+}
+export interface GameExtensionHookReceipt {
+    readonly moduleRef: GameRuleModuleRef;
+    readonly hookId: string;
+    readonly requestId: string;
+    readonly status: GameExtensionReceiptStatus;
+    readonly inputHash: string;
+    readonly proposal: GameExtensionProposal | null;
+    readonly diagnostics: readonly GameExtensionDiagnostic[];
+    readonly trace: readonly GameExtensionTraceEntry[];
+    readonly proposalHash: string;
+}
+export interface GameExtensionReplayEvidence {
+    readonly moduleRef: GameRuleModuleRef;
+    readonly hookId: string;
+    readonly requestId: string;
+    readonly inputHash: string;
+    readonly proposalHash: string;
+    readonly validationStatus: string;
+    readonly eventHashes: readonly string[];
+    readonly rejectionHashes: readonly string[];
+    readonly replayHash: string;
+}
+//# sourceMappingURL=gameExtension.d.ts.map
