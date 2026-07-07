@@ -27,10 +27,6 @@
       "maxLines": 102,
       "justification": "Electron host package has one small host-capability implementation surface."
     },
-    "ts/packages/game-workspace/src/index.ts": {
-      "maxLines": 1035,
-      "justification": "Game-workspace manifest, asset, and authoring helpers remain consolidated until a manifest/assets/authoring split lands."
-    },
     "ts/packages/native-bridge/src/index.ts": {
       "maxLines": 311,
       "justification": "Native bridge package root is the transport loader boundary and intentionally tiny."
