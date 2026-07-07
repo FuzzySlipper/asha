@@ -92,7 +92,19 @@ function nativeVec3(value, field) {
     return { x: value[0], y: value[1], z: value[2] };
 }
 function nativeOptionalObject(value) {
-    return value === null ? undefined : value;
+    return value == null ? undefined : value;
+}
+function requiredString(value, field) {
+    if (typeof value !== 'string' || value.trim().length === 0) {
+        throw new RuntimeBridgeError('invalid_input', `${field} must be a non-empty string`);
+    }
+    return value;
+}
+function requiredStringArray(value, field) {
+    if (!Array.isArray(value)) {
+        throw new RuntimeBridgeError('invalid_input', `${field} must be an array of non-empty strings`);
+    }
+    return value.map((entry, index) => requiredString(entry, `${field}[${index}]`));
 }
 function bridgeVec3(value, field) {
     if (!Number.isFinite(value.x) || !Number.isFinite(value.y) || !Number.isFinite(value.z)) {
@@ -182,49 +194,64 @@ function nativeFpsLoadRequest(request) {
     const definitions = request.definitions.map((definition, index) => {
         nonNegativeSafeInteger(definition.entity, `definitions[${index}].entity`);
         fpsRole(definition.role);
-        const transform = definition.transform === null
+        const stableId = requiredString(definition.stableId, `definitions[${index}].stableId`);
+        const displayName = requiredString(definition.displayName, `definitions[${index}].displayName`);
+        const sourcePath = requiredString(definition.sourcePath, `definitions[${index}].sourcePath`);
+        const tags = requiredStringArray(definition.tags, `definitions[${index}].tags`);
+        const transform = definition.transform == null
             ? null
             : {
                 translation: nativeVec3(definition.transform.translation, `definitions[${index}].transform.translation`),
                 rotation: definition.transform.rotation,
                 scale: nativeVec3(definition.transform.scale, `definitions[${index}].transform.scale`),
             };
-        if (definition.transform !== null) {
+        if (definition.transform != null) {
             if (definition.transform.rotation.length !== 4 || definition.transform.rotation.some((value) => !Number.isFinite(value))) {
                 throw new RuntimeBridgeError('invalid_input', `definitions[${index}].transform.rotation must be a finite quat`);
             }
         }
-        const bounds = definition.bounds === null
+        const bounds = definition.bounds == null
             ? null
             : {
                 min: nativeVec3(definition.bounds.min, `definitions[${index}].bounds.min`),
                 max: nativeVec3(definition.bounds.max, `definitions[${index}].bounds.max`),
             };
-        if (definition.bounds !== null) {
+        if (definition.bounds != null) {
         }
-        if (definition.health !== null) {
+        if (definition.health != null) {
             u32(definition.health.current, `definitions[${index}].health.current`);
             u32(definition.health.max, `definitions[${index}].health.max`);
         }
-        if (definition.weapon !== null) {
+        if (definition.weapon != null) {
+            requiredString(definition.weapon.weaponId, `definitions[${index}].weapon.weaponId`);
             u32(definition.weapon.damage, `definitions[${index}].weapon.damage`);
             u32(definition.weapon.rangeUnits, `definitions[${index}].weapon.rangeUnits`);
             u32(definition.weapon.ammo, `definitions[${index}].weapon.ammo`);
             u32(definition.weapon.cooldownTicksAfterFire, `definitions[${index}].weapon.cooldownTicksAfterFire`);
         }
+        const policyBinding = definition.policyBinding == null
+            ? undefined
+            : {
+                bindingId: requiredString(definition.policyBinding.bindingId, `definitions[${index}].policyBinding.bindingId`),
+                policyId: requiredString(definition.policyBinding.policyId, `definitions[${index}].policyBinding.policyId`),
+                viewKind: requiredString(definition.policyBinding.viewKind, `definitions[${index}].policyBinding.viewKind`),
+                viewVersion: requiredString(definition.policyBinding.viewVersion, `definitions[${index}].policyBinding.viewVersion`),
+                allowedIntents: requiredStringArray(definition.policyBinding.allowedIntents, `definitions[${index}].policyBinding.allowedIntents`),
+                runtimeMoment: requiredString(definition.policyBinding.runtimeMoment, `definitions[${index}].policyBinding.runtimeMoment`),
+            };
         return {
             entity: definition.entity,
-            stableId: definition.stableId,
-            displayName: definition.displayName,
-            sourcePath: definition.sourcePath,
+            stableId,
+            displayName,
+            sourcePath,
             role: definition.role,
             transform: nativeOptionalObject(transform),
             bounds: nativeOptionalObject(bounds),
-            tags: [...definition.tags],
+            tags: [...tags],
             renderVisible: definition.renderVisible,
             staticCollider: definition.staticCollider,
             health: nativeOptionalObject(definition.health),
-            weapon: definition.weapon === null
+            weapon: definition.weapon == null
                 ? undefined
                 : {
                     weaponId: definition.weapon.weaponId,
@@ -233,12 +260,7 @@ function nativeFpsLoadRequest(request) {
                     ammo: definition.weapon.ammo,
                     cooldownTicksAfterFire: definition.weapon.cooldownTicksAfterFire,
                 },
-            policyBinding: definition.policyBinding === null
-                ? undefined
-                : {
-                    ...definition.policyBinding,
-                    allowedIntents: [...definition.policyBinding.allowedIntents],
-                },
+            policyBinding,
         };
     });
     return { projectBundle: request.projectBundle, definitions };
@@ -314,7 +336,8 @@ export class NativeRuntimeBridge {
     loadFpsRuntimeSession(request) {
         const handle = this.#requireHandle('loadFpsRuntimeSession');
         const nativeRequest = nativeFpsLoadRequest(request);
-        const result = callNative(() => this.#addon.loadFpsRuntimeSession(handle, nativeRequest.projectBundle, nativeRequest.definitions, JSON.stringify(request.gameRuleModules)));
+        const gameRuleModules = request.gameRuleModules ?? [];
+        const result = callNative(() => this.#addon.loadFpsRuntimeSession(handle, nativeRequest.projectBundle, nativeRequest.definitions, JSON.stringify(gameRuleModules)));
         return normalizeFpsSnapshot(result);
     }
     readFpsRuntimeSession() {

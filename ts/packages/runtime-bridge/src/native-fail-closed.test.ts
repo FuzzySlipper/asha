@@ -305,6 +305,14 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       const player = definitions[0] as Record<string, unknown>;
       const enemy = definitions[1] as Record<string, unknown>;
       const playerTransform = player['transform'] as { readonly translation?: { readonly x?: number } } | undefined;
+      const playerWeapon = player['weapon'] as Record<string, unknown> | undefined;
+      const enemyPolicy = enemy['policyBinding'] as Record<string, unknown> | undefined;
+      assert.equal(player['stableId'], 'actor/custom-player');
+      assert.equal(player['stable_id'], undefined);
+      assert.equal(playerWeapon?.['weaponId'], 'weapon.custom.primary');
+      assert.equal(playerWeapon?.['weapon_id'], undefined);
+      assert.equal(enemyPolicy?.['policyId'], 'policy.enemy.custom.v0');
+      assert.equal(enemy['policy_binding'], undefined);
       calls.push(
         `fpsNativeShape:${player['policyBinding'] === undefined}:${enemy['weapon'] === undefined}:${playerTransform?.translation?.x ?? 'missing'}`,
       );
@@ -974,6 +982,21 @@ void test('native facade validates numeric inputs before addon casts can wrap', 
     (e: unknown) => e instanceof RuntimeBridgeError && e.kind === 'invalid_input',
   );
   assert.deepEqual(calls, ['initialize:1']);
+});
+
+void test('native facade defaults omitted FPS game-rule modules before addon conversion', () => {
+  const calls: string[] = [];
+  const bridge = new NativeRuntimeBridge(fakeAddon(calls));
+  bridge.initializeEngine({ seed: 1 });
+  const request = fpsLoadRequest();
+  const legacyRequest = {
+    projectBundle: request.projectBundle,
+    definitions: request.definitions,
+  };
+
+  const loaded = bridge.loadFpsRuntimeSession(legacyRequest as ReturnType<typeof fpsLoadRequest>);
+  assert.equal(loaded.backend, 'native_rust');
+  assert.equal(calls.includes('fpsLoad:custom-demo:2:0'), true);
 });
 
 void test('native addon semantic errors are reclassified into RuntimeBridgeError', () => {
