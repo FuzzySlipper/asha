@@ -183,6 +183,11 @@ may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "render-
 lane = "contract-steward"
 may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-game-rules", "protocol-view"]
 
+[crate."engine-rs/crates/services/svc-game-rules"]
+lane = "rust-service"
+may_depend_on = ["core-ids", "core-time", "core-game-rules", "protocol-game-rules", "protocol-diagnostics"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "runtime-bridge-api"]
+
 # ─── Rust: Sim ───────────────────────────────────────────────────────────────
 
 [crate."engine-rs/crates/sim/sim-kernel"]

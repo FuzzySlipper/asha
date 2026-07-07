@@ -60,6 +60,7 @@ members = [
     "crates/services/svc-entity-authoring",
     "crates/services/svc-levelgen",
     "crates/services/svc-combat",
+    "crates/services/svc-game-rules",
 
     # Rules
     "crates/rules/rule-lifecycle",

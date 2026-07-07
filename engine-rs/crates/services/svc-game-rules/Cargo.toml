@@ -1,0 +1,14 @@
+[package]
+name = "svc-game-rules"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+core-time = { path = "../../foundation/core-time" }
+core-game-rules = { path = "../../state/core-game-rules" }
+protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
+protocol-game-rules = { path = "../../protocol/protocol-game-rules" }

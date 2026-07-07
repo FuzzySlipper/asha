@@ -917,6 +917,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc-game-rules"
+version = "0.1.0"
+dependencies = [
+ "core-game-rules",
+ "core-ids",
+ "core-time",
+ "protocol-diagnostics",
+ "protocol-game-rules",
+]
+
+[[package]]
 name = "svc-levelgen"
 version = "0.1.0"
 dependencies = [
