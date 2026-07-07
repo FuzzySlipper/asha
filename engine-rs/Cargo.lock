@@ -660,6 +660,7 @@ dependencies = [
  "core-voxel",
  "protocol-diagnostics",
  "protocol-entity-authoring",
+ "protocol-render",
  "protocol-view",
  "protocol-voxel-conversion",
  "rule-lifecycle",

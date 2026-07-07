@@ -424,6 +424,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-assets"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-ids",
+]
+
+[[package]]
 name = "protocol-diagnostics"
 version = "0.1.0"
 dependencies = [
@@ -435,6 +443,14 @@ name = "protocol-entity-authoring"
 version = "0.1.0"
 dependencies = [
  "core-ids",
+]
+
+[[package]]
+name = "protocol-render"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "protocol-assets",
 ]
 
 [[package]]
@@ -546,6 +562,7 @@ dependencies = [
  "core-voxel",
  "protocol-diagnostics",
  "protocol-entity-authoring",
+ "protocol-render",
  "protocol-view",
  "protocol-voxel-conversion",
  "rule-lifecycle",

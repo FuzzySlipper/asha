@@ -21,6 +21,7 @@ core-ids   = { path = "../../foundation/core-ids" }
 core-error = { path = "../../foundation/core-error" }
 core-math  = { path = "../../foundation/core-math" }
 protocol-view = { path = "../../protocol/protocol-view" }
+protocol-render = { path = "../../protocol/protocol-render" }
 protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
 protocol-voxel-conversion = { path = "../../protocol/protocol-voxel-conversion" }
 # Voxel command submission → Rust authority validation/apply (launchable-voxel, #2436).

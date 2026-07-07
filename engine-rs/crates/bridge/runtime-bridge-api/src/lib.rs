@@ -36,6 +36,11 @@ use protocol_diagnostics::DiagnosticSeverity;
 use protocol_entity_authoring::{
     AuthoringTransform, EntityDefinition, EntityDefinitionCapability, EntityDefinitionSourceTrace,
 };
+use protocol_render::{
+    MeshAttribute, MeshAttributeKind, MeshAttributeName, MeshBoundsDescriptor, MeshBufferLayout,
+    MeshCollisionPolicy, MeshGroupDescriptor, MeshIndexWidth, MeshMaterialSlot,
+    MeshPayloadDescriptor, MeshPayloadSource, MeshProvenance, StaticMeshAsset,
+};
 #[cfg(test)]
 use protocol_view::CameraCollisionPolicy;
 use protocol_view::{
@@ -833,12 +838,20 @@ pub struct ReferenceBridge {
     fps_epoch: u64,
     /// Last planned voxel conversion. This is bridge-owned authority state used
     /// by preview/apply hash guards; callers cannot provide their own output.
+    voxel_conversion_sources: BTreeMap<String, StaticMeshSource>,
+    voxel_conversion_targets: BTreeMap<(u64, Option<String>), VoxelConversionTargetAuthority>,
     voxel_conversion_plan: Option<PlannedConversion>,
     voxel_conversion_evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
 /// The bundle schema / protocol versions this reference bridge understands.
 const REFERENCE_SUPPORTED_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, PartialEq)]
+struct VoxelConversionTargetAuthority {
+    spec: VoxelGridSpec,
+    volume_asset_id: Option<String>,
+}
 
 impl ReferenceBridge {
     pub fn new() -> Self {
@@ -912,11 +925,185 @@ impl ReferenceBridge {
         }
     }
 
-    fn source_for_voxel_conversion(_request: &VoxelConversionPlanRequest) -> StaticMeshSource {
-        // Current bridge-owned fixture source. The conversion service validates
-        // the caller's source ref against it and emits typed diagnostics for
-        // unsupported source identity/hash mismatch instead of TS deciding.
-        Self::fixture_quad_source()
+    fn project_triangle_static_mesh_asset() -> StaticMeshAsset {
+        StaticMeshAsset {
+            asset: "mesh/import-fixture-a".to_string(),
+            payload: MeshPayloadDescriptor {
+                layout: MeshBufferLayout {
+                    vertex_count: 3,
+                    index_count: 3,
+                    index_width: MeshIndexWidth::U32,
+                    attributes: vec![
+                        MeshAttribute {
+                            name: MeshAttributeName::Position,
+                            components: 3,
+                            kind: MeshAttributeKind::F32,
+                        },
+                        MeshAttribute {
+                            name: MeshAttributeName::Normal,
+                            components: 3,
+                            kind: MeshAttributeKind::F32,
+                        },
+                    ],
+                },
+                groups: vec![MeshGroupDescriptor {
+                    material_slot: 0,
+                    start: 0,
+                    count: 3,
+                }],
+                bounds: MeshBoundsDescriptor {
+                    min: [0.0, 0.0, 0.0],
+                    max: [1.0, 1.0, 0.0],
+                },
+                source: MeshPayloadSource::Inline {
+                    positions: vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                    normals: vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+                    indices: vec![0, 1, 2],
+                },
+                provenance: MeshProvenance::StaticAsset,
+            },
+            material_slots: vec![MeshMaterialSlot {
+                slot: 0,
+                material: "material/surface-a".to_string(),
+            }],
+            collision: MeshCollisionPolicy::AabbFallback,
+        }
+    }
+
+    fn static_mesh_source_from_asset(
+        asset: &StaticMeshAsset,
+        asset_version: u64,
+        source_hash: impl Into<String>,
+        mesh_primitive: Option<String>,
+    ) -> BridgeResult<StaticMeshSource> {
+        asset.validate().map_err(|err| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!("static mesh asset cannot seed voxel conversion authority: {err:?}"),
+            )
+        })?;
+        if asset.payload.provenance != MeshProvenance::StaticAsset {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "voxel conversion source must be an authored static mesh asset",
+            ));
+        }
+        let MeshPayloadSource::Inline {
+            positions, indices, ..
+        } = &asset.payload.source
+        else {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "voxel conversion source requires authority-visible inline mesh geometry",
+            ));
+        };
+        let mut triangles = Vec::new();
+        for group in &asset.payload.groups {
+            if group.count % 3 != 0 {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    "voxel conversion source mesh group is not a triangle list",
+                ));
+            }
+            let start = group.start as usize;
+            let end = start + group.count as usize;
+            for tri in indices[start..end].chunks_exact(3) {
+                triangles.push(MeshTriangle {
+                    indices: [tri[0], tri[1], tri[2]],
+                    source_material_slot: group.material_slot as u32,
+                });
+            }
+        }
+
+        Ok(StaticMeshSource {
+            asset_id: asset.asset.clone(),
+            asset_kind: "mesh".to_string(),
+            asset_version,
+            source_hash: source_hash.into(),
+            mesh_primitive,
+            positions: positions
+                .chunks_exact(3)
+                .map(|position| [position[0], position[1], position[2]])
+                .collect(),
+            triangles,
+        })
+    }
+
+    fn empty_unsupported_source(
+        reference: &protocol_voxel_conversion::VoxelConversionSourceRef,
+    ) -> StaticMeshSource {
+        StaticMeshSource {
+            asset_id: reference.asset_id.clone(),
+            asset_kind: reference.asset_kind.clone(),
+            asset_version: reference.asset_version,
+            source_hash: reference.source_hash.clone(),
+            mesh_primitive: reference.mesh_primitive.clone(),
+            positions: Vec::new(),
+            triangles: Vec::new(),
+        }
+    }
+
+    fn seeded_voxel_conversion_sources() -> BridgeResult<BTreeMap<String, StaticMeshSource>> {
+        let mut sources = BTreeMap::new();
+        let fixture = Self::fixture_quad_source();
+        sources.insert(fixture.asset_id.clone(), fixture);
+
+        let project_source = Self::static_mesh_source_from_asset(
+            &Self::project_triangle_static_mesh_asset(),
+            1,
+            "sha256:import-fixture-a",
+            Some("default".to_string()),
+        )?;
+        sources.insert(project_source.asset_id.clone(), project_source);
+        Ok(sources)
+    }
+
+    fn seeded_voxel_conversion_targets(
+    ) -> BTreeMap<(u64, Option<String>), VoxelConversionTargetAuthority> {
+        let launch = Self::launch_grid();
+        let authored_grid =
+            VoxelGridSpec::new(GridId::new(7), launch.voxel_size(), launch.chunk_dims())
+                .expect("positive authored target voxel size");
+        [
+            VoxelConversionTargetAuthority {
+                spec: launch,
+                volume_asset_id: Some("voxel/generated".to_string()),
+            },
+            VoxelConversionTargetAuthority {
+                spec: authored_grid,
+                volume_asset_id: Some("voxel/generated".to_string()),
+            },
+        ]
+        .into_iter()
+        .map(|target| {
+            (
+                (
+                    target.spec.id().raw() as u64,
+                    target.volume_asset_id.clone(),
+                ),
+                target,
+            )
+        })
+        .collect()
+    }
+
+    fn source_for_voxel_conversion(
+        &self,
+        request: &VoxelConversionPlanRequest,
+    ) -> StaticMeshSource {
+        self.voxel_conversion_sources
+            .get(&request.source.asset_id)
+            .cloned()
+            .unwrap_or_else(|| Self::empty_unsupported_source(&request.source))
+    }
+
+    fn target_for_voxel_conversion(
+        &self,
+        target: &protocol_voxel_conversion::VoxelConversionTargetRef,
+    ) -> Option<VoxelConversionTargetAuthority> {
+        self.voxel_conversion_targets
+            .get(&(target.grid, target.volume_asset_id.clone()))
+            .cloned()
     }
 
     fn voxel_conversion_diagnostic(
@@ -977,6 +1164,73 @@ impl ReferenceBridge {
             })
             .collect::<BridgeResult<Vec<_>>>()?;
         Ok(Some(CommandBatch { commands }))
+    }
+
+    fn apply_command_batch_to_world(
+        batch: &CommandBatch,
+        world: &mut VoxelWorld,
+        materials: &MaterialCatalog,
+    ) -> BridgeResult<CommandResult> {
+        let mut accepted = 0u32;
+        let mut rejections = Vec::new();
+        for cmd in &batch.commands {
+            // Validate (no mutation), then apply on accept. A rejected command is
+            // classified and never touches authority state.
+            match rule_voxel_edit::validate(cmd, world, materials) {
+                Ok(events) => {
+                    for event in &events {
+                        rule_voxel_edit::apply(world, event).map_err(|rej| {
+                            RuntimeBridgeError::new(
+                                RuntimeBridgeErrorKind::Internal,
+                                format!("validated voxel command failed to apply: {rej}"),
+                            )
+                        })?;
+                    }
+                    accepted += 1;
+                }
+                Err(rejection) => rejections.push(rejection),
+            }
+        }
+
+        Ok(CommandResult {
+            accepted,
+            rejected: rejections.len() as u32,
+            rejections,
+        })
+    }
+
+    fn voxel_conversion_target_candidate(
+        &self,
+        target: &VoxelConversionTargetAuthority,
+        planned: &PlannedConversion,
+    ) -> BridgeResult<VoxelWorld> {
+        self.voxel.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "apply_voxel_conversion called before initialize_engine",
+            )
+        })?;
+        let should_replace_world = self
+            .voxel
+            .as_ref()
+            .is_none_or(|world| world.grid().id() != target.spec.id());
+        let mut candidate = if should_replace_world {
+            VoxelWorld::new(target.spec)
+        } else {
+            self.voxel.as_ref().expect("checked above").clone()
+        };
+
+        let Some(output) = &planned.output else {
+            return Ok(candidate);
+        };
+        for voxel in &output.voxels {
+            let coord = VoxelCoord::new(voxel.coord.x, voxel.coord.y, voxel.coord.z);
+            let chunk = target.spec.voxel_to_chunk(coord);
+            if candidate.get(chunk).is_none() {
+                candidate.insert(chunk, VoxelChunk::from_spec(&target.spec));
+            }
+        }
+        Ok(candidate)
     }
 
     fn remember_voxel_conversion_evidence(
@@ -1929,6 +2183,8 @@ impl RuntimeBridge for ReferenceBridge {
         self.fps_session = None;
         self.fps_seed = None;
         self.fps_epoch = 0;
+        self.voxel_conversion_sources = Self::seeded_voxel_conversion_sources()?;
+        self.voxel_conversion_targets = Self::seeded_voxel_conversion_targets();
         self.voxel_conversion_plan = None;
         self.voxel_conversion_evidence.clear();
 
@@ -1944,32 +2200,7 @@ impl RuntimeBridge for ReferenceBridge {
             )
         })?;
 
-        let mut accepted = 0u32;
-        let mut rejections = Vec::new();
-        for cmd in &batch.commands {
-            // Validate (no mutation), then apply on accept. A rejected command is
-            // classified and never touches authority state.
-            match rule_voxel_edit::validate(cmd, world, materials) {
-                Ok(events) => {
-                    for event in &events {
-                        rule_voxel_edit::apply(world, event).map_err(|rej| {
-                            RuntimeBridgeError::new(
-                                RuntimeBridgeErrorKind::Internal,
-                                format!("validated voxel command failed to apply: {rej}"),
-                            )
-                        })?;
-                    }
-                    accepted += 1;
-                }
-                Err(rejection) => rejections.push(rejection),
-            }
-        }
-
-        Ok(CommandResult {
-            accepted,
-            rejected: rejections.len() as u32,
-            rejections,
-        })
+        Self::apply_command_batch_to_world(&batch, world, materials)
     }
 
     fn pick_voxel(&self, ray: PickRay) -> BridgeResult<PickResult> {
@@ -2230,7 +2461,7 @@ impl RuntimeBridge for ReferenceBridge {
         request: VoxelConversionPlanRequest,
     ) -> BridgeResult<VoxelConversionPlan> {
         self.require_initialized("plan_voxel_conversion")?;
-        let source = Self::source_for_voxel_conversion(&request);
+        let source = self.source_for_voxel_conversion(&request);
         let planned = svc_voxel_conversion::plan_conversion(&request, &source);
         let plan = planned.plan.clone();
         self.voxel_conversion_plan = Some(planned);
@@ -2260,36 +2491,41 @@ impl RuntimeBridge for ReferenceBridge {
         request: VoxelConversionApplyRequest,
     ) -> BridgeResult<VoxelConversionReceipt> {
         self.require_initialized("apply_voxel_conversion")?;
-        let planned = self.voxel_conversion_plan.as_ref().ok_or_else(|| {
+        let planned = self.voxel_conversion_plan.clone().ok_or_else(|| {
             RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
                 "apply_voxel_conversion called before a conversion plan exists",
             )
         })?;
-        let mut receipt = svc_voxel_conversion::apply_conversion(&request, planned);
+        let mut receipt = svc_voxel_conversion::apply_conversion(&request, &planned);
         if !receipt.applied {
             self.remember_voxel_conversion_evidence(receipt.evidence.clone());
             return Ok(receipt);
         }
 
-        let hosted_grid = self.voxel.as_ref().ok_or_else(|| {
+        let target = match self.target_for_voxel_conversion(&planned.plan.target) {
+            Some(target) => target,
+            None => {
+                self.remember_voxel_conversion_evidence(receipt.evidence.clone());
+                return Ok(Self::rejected_voxel_conversion_receipt(
+                    request.plan_id,
+                    vec![Self::voxel_conversion_diagnostic(
+                        VoxelConversionDiagnosticCode::ConversionReplayMismatch,
+                        "target",
+                        "conversion target is not registered in current authority state",
+                    )],
+                ));
+            }
+        };
+
+        self.voxel.as_ref().ok_or_else(|| {
             RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::NotInitialized,
                 "apply_voxel_conversion called before initialize_engine",
             )
         })?;
-        if planned.plan.target.grid != hosted_grid.grid().id().raw() as u64 {
-            return Ok(Self::rejected_voxel_conversion_receipt(
-                request.plan_id,
-                vec![Self::voxel_conversion_diagnostic(
-                    VoxelConversionDiagnosticCode::ConversionReplayMismatch,
-                    "target.grid",
-                    "conversion target grid is not hosted by current authority state",
-                )],
-            ));
-        }
 
-        let Some(batch) = Self::conversion_commands(planned)? else {
+        let Some(batch) = Self::conversion_commands(&planned)? else {
             return Ok(Self::rejected_voxel_conversion_receipt(
                 request.plan_id,
                 vec![Self::voxel_conversion_diagnostic(
@@ -2299,8 +2535,10 @@ impl RuntimeBridge for ReferenceBridge {
                 )],
             ));
         };
+        let mut candidate = self.voxel_conversion_target_candidate(&target, &planned)?;
         let expected = batch.commands.len() as u32;
-        let command_result = self.submit_commands(batch)?;
+        let command_result =
+            Self::apply_command_batch_to_world(&batch, &mut candidate, &self.materials)?;
         if command_result.accepted != expected || command_result.rejected != 0 {
             receipt = Self::rejected_voxel_conversion_receipt(
                 request.plan_id,
@@ -2313,6 +2551,8 @@ impl RuntimeBridge for ReferenceBridge {
                     ),
                 )],
             );
+        } else {
+            self.voxel = Some(candidate);
         }
         self.remember_voxel_conversion_evidence(receipt.evidence.clone());
         Ok(receipt)
@@ -2885,14 +3125,14 @@ mod tests {
         bridge
     }
 
-    fn voxel_conversion_request(grid: u64) -> VoxelConversionPlanRequest {
+    fn project_voxel_conversion_request(grid: u64) -> VoxelConversionPlanRequest {
         VoxelConversionPlanRequest {
             source: protocol_voxel_conversion::VoxelConversionSourceRef {
-                asset_id: "mesh/quad".to_string(),
+                asset_id: "mesh/import-fixture-a".to_string(),
                 asset_kind: "mesh".to_string(),
                 asset_version: 1,
-                source_hash: "sha256:quad".to_string(),
-                mesh_primitive: None,
+                source_hash: "sha256:import-fixture-a".to_string(),
+                mesh_primitive: Some("default".to_string()),
             },
             target: protocol_voxel_conversion::VoxelConversionTargetRef {
                 grid,
@@ -2910,18 +3150,11 @@ mod tests {
                     1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,
                 ],
                 material_map: protocol_voxel_conversion::VoxelConversionMaterialMap {
-                    entries: vec![
-                        protocol_voxel_conversion::VoxelConversionMaterialMapEntry {
-                            source_material_slot: 0,
-                            source_material_id: Some("mat/a".to_string()),
-                            voxel_material: 3,
-                        },
-                        protocol_voxel_conversion::VoxelConversionMaterialMapEntry {
-                            source_material_slot: 1,
-                            source_material_id: Some("mat/b".to_string()),
-                            voxel_material: 2,
-                        },
-                    ],
+                    entries: vec![protocol_voxel_conversion::VoxelConversionMaterialMapEntry {
+                        source_material_slot: 0,
+                        source_material_id: Some("material/surface-a".to_string()),
+                        voxel_material: 3,
+                    }],
                     default_voxel_material: None,
                 },
             },
@@ -3262,14 +3495,16 @@ mod tests {
     #[test]
     fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
         let mut bridge = init_bridge();
-        let request = voxel_conversion_request(1);
+        let request = project_voxel_conversion_request(7);
         let plan = bridge.plan_voxel_conversion(request).unwrap();
         assert_eq!(
             plan.authority_version,
             svc_voxel_conversion::AUTHORITY_VERSION
         );
+        assert_eq!(plan.source.asset_id, "mesh/import-fixture-a");
+        assert_eq!(plan.target.grid, 7);
         assert!(plan.diagnostics.is_empty());
-        assert_eq!(plan.estimated_output_voxels, 4);
+        assert_eq!(plan.estimated_output_voxels, 3);
 
         let stale = bridge
             .preview_voxel_conversion(VoxelConversionPreviewRequest {
@@ -3289,7 +3524,7 @@ mod tests {
             })
             .unwrap();
         assert!(preview.diagnostics.is_empty());
-        assert_eq!(preview.output_voxel_count, 4);
+        assert_eq!(preview.output_voxel_count, 3);
 
         let receipt = bridge
             .apply_voxel_conversion(VoxelConversionApplyRequest {
@@ -3299,13 +3534,14 @@ mod tests {
             })
             .unwrap();
         assert!(receipt.applied);
-        assert_eq!(receipt.output_voxel_count, 4);
+        assert_eq!(receipt.output_voxel_count, 3);
 
         let world = bridge.voxel.as_ref().unwrap();
+        assert_eq!(world.grid().id(), GridId::new(7));
         let chunk = world.get(ChunkCoord::new(0, 0, 0)).unwrap();
         assert_eq!(
             chunk.get(LocalVoxelCoord::new(0, 0, 0)),
-            Some(VoxelValue::solid_raw(2)),
+            Some(VoxelValue::solid_raw(3)),
             "conversion output applied through voxel command authority"
         );
 
@@ -3323,10 +3559,35 @@ mod tests {
     }
 
     #[test]
-    fn voxel_conversion_apply_to_unknown_grid_returns_diagnostic_receipt() {
+    fn voxel_conversion_stale_source_hash_fails_closed() {
+        let mut bridge = init_bridge();
+        let mut request = project_voxel_conversion_request(7);
+        request.source.source_hash = "sha256:stale".to_string();
+        let plan = bridge.plan_voxel_conversion(request).unwrap();
+        assert_eq!(
+            plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::SourceHashMismatch
+        );
+    }
+
+    #[test]
+    fn voxel_conversion_unsupported_source_fails_closed() {
+        let mut bridge = init_bridge();
+        let mut request = project_voxel_conversion_request(7);
+        request.source.asset_id = "mesh/not-loaded".to_string();
+        request.source.source_hash = "sha256:not-loaded".to_string();
+        let plan = bridge.plan_voxel_conversion(request).unwrap();
+        assert_eq!(
+            plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::UnsupportedSourceAsset
+        );
+    }
+
+    #[test]
+    fn voxel_conversion_apply_to_unregistered_target_returns_diagnostic_receipt() {
         let mut bridge = init_bridge();
         let plan = bridge
-            .plan_voxel_conversion(voxel_conversion_request(7))
+            .plan_voxel_conversion(project_voxel_conversion_request(999))
             .unwrap();
         let preview = bridge
             .preview_voxel_conversion(VoxelConversionPreviewRequest {
