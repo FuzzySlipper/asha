@@ -1148,8 +1148,14 @@ pub fn voxel_conversion_module() -> Module {
             vec![
                 f("source", r("VoxelConversionSourceRef")),
                 f("positions", TsType::array(vec3())),
-                f("triangles", TsType::array(r("VoxelConversionSourceTriangle"))),
-                f("materialSlots", TsType::array(r("VoxelConversionSourceMaterialSlot"))),
+                f(
+                    "triangles",
+                    TsType::array(r("VoxelConversionSourceTriangle")),
+                ),
+                f(
+                    "materialSlots",
+                    TsType::array(r("VoxelConversionSourceMaterialSlot")),
+                ),
             ],
         ),
         iface(
@@ -1158,7 +1164,10 @@ pub fn voxel_conversion_module() -> Module {
             vec![
                 f("source", r("VoxelConversionSourceRef")),
                 f("registered", boolean()),
-                f("materialSlots", TsType::array(r("VoxelConversionSourceMaterialSlot"))),
+                f(
+                    "materialSlots",
+                    TsType::array(r("VoxelConversionSourceMaterialSlot")),
+                ),
                 f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
                 f("evidence", TsType::array(r("VoxelConversionEvidenceRef"))),
             ],
@@ -1312,6 +1321,299 @@ pub fn voxel_conversion_module() -> Module {
 
     Module {
         name: "voxelConversion",
+        imports,
+        items,
+    }
+}
+
+// ── gameRules.ts — generic effect/modifier catalog DTOs ──────────────────────
+//
+// Mirrors the border-only `protocol-game-rules` crate. Game rules authority and
+// resolution live in Rust services/rule crates; this generated surface only
+// carries catalogs, requests, receipts, diagnostics, traces, and evidence refs.
+
+pub fn game_rules_module() -> Module {
+    let imports = vec![
+        import("./ids.js", &["EntityId"]),
+        import("./diagnostics.js", &["DiagnosticSeverity"]),
+    ];
+
+    let items = vec![
+        string_enum(
+            "Stable kind tags for generic game-rule effect operations.",
+            "GameRuleEffectOpKind",
+            protocol_game_rules::GAME_RULE_EFFECT_OP_KINDS,
+        ),
+        string_enum(
+            "Stable kind tags for modifier stack policies.",
+            "GameRuleStackPolicyKind",
+            protocol_game_rules::GAME_RULE_STACK_POLICIES,
+        ),
+        string_enum(
+            "Stable classified diagnostic/error code for game-rule catalogs and resolution.",
+            "GameRuleDiagnosticCode",
+            protocol_game_rules::GAME_RULE_DIAGNOSTIC_CODES,
+        ),
+        string_enum(
+            "Role of an exported game-rule evidence artifact.",
+            "GameRuleEvidenceKind",
+            protocol_game_rules::GAME_RULE_EVIDENCE_KINDS,
+        ),
+        iface(
+            "Catalog identity and immutable content/version evidence.",
+            "GameRuleCatalogRef",
+            vec![
+                f("catalogId", string()),
+                f("version", string()),
+                f("contentHash", string()),
+            ],
+        ),
+        iface(
+            "A declared value channel, such as health or stamina.",
+            "GameRuleValueChannelRef",
+            vec![
+                f("channelId", string()),
+                f("displayName", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "A bounded runtime value snapshot for one channel.",
+            "GameRuleBoundedValue",
+            vec![
+                f("channelId", string()),
+                f("min", num()),
+                f("current", num()),
+                f("max", num()),
+            ],
+        ),
+        iface(
+            "A pending value delta emitted by resolution.",
+            "GameRuleValueDelta",
+            vec![f("channelId", string()), f("amount", num())],
+        ),
+        union(
+            "Duration policy for a modifier or effect.",
+            "GameRuleDuration",
+            "kind",
+            vec![
+                v("instant", vec![]),
+                v("ticks", vec![f("ticks", num())]),
+                v("infinite", vec![]),
+            ],
+        ),
+        iface(
+            "Periodic tick cadence for scheduled effects.",
+            "GameRuleTickCadence",
+            vec![f("periodTicks", num())],
+        ),
+        union(
+            "How repeated applications of a modifier combine.",
+            "GameRuleStackPolicy",
+            "kind",
+            vec![
+                v("refresh", vec![]),
+                v("stack", vec![f("maxStacks", num())]),
+                v("rejectDuplicate", vec![]),
+                v("replaceIfStronger", vec![]),
+            ],
+        ),
+        union(
+            "Generic effect operation IR for authored action/effect bundles.",
+            "GameRuleEffectOp",
+            "kind",
+            vec![
+                v(
+                    "applyDelta",
+                    vec![
+                        f("opId", string()),
+                        f("channelId", string()),
+                        f("amount", num()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "restore",
+                    vec![
+                        f("opId", string()),
+                        f("channelId", string()),
+                        f("amount", num()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "spend",
+                    vec![
+                        f("opId", string()),
+                        f("channelId", string()),
+                        f("amount", num()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "grant",
+                    vec![
+                        f("opId", string()),
+                        f("channelId", string()),
+                        f("amount", num()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "applyModifier",
+                    vec![
+                        f("opId", string()),
+                        f("modifierId", string()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "removeModifier",
+                    vec![
+                        f("opId", string()),
+                        f("modifierId", string()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "schedulePeriodicEffect",
+                    vec![
+                        f("opId", string()),
+                        f("modifierId", string()),
+                        f("cadence", r("GameRuleTickCadence")),
+                        f("duration", r("GameRuleDuration")),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "cancelResolution",
+                    vec![
+                        f("opId", string()),
+                        f("reason", string()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+                v(
+                    "emitTrace",
+                    vec![
+                        f("opId", string()),
+                        f("code", string()),
+                        f("message", string()),
+                        f("tags", TsType::array(string())),
+                    ],
+                ),
+            ],
+        ),
+        iface(
+            "One modifier definition in a game-rule catalog.",
+            "GameRuleModifierDefinition",
+            vec![
+                f("modifierId", string()),
+                f("stackPolicy", r("GameRuleStackPolicy")),
+                f("duration", r("GameRuleDuration")),
+                f("tickCadence", TsType::nullable(r("GameRuleTickCadence"))),
+                f("tags", TsType::array(string())),
+                f("effectOpIds", TsType::array(string())),
+                f("sourceHash", string()),
+            ],
+        ),
+        iface(
+            "Authored action/effect bundle expressed through generic effect operations.",
+            "GameRuleEffectBundle",
+            vec![
+                f("bundleId", string()),
+                f("effectOps", TsType::array(r("GameRuleEffectOp"))),
+                f("modifiers", TsType::array(r("GameRuleModifierDefinition"))),
+                f("tags", TsType::array(string())),
+                f("sourceHash", string()),
+            ],
+        ),
+        iface(
+            "Complete game-rule catalog DTO.",
+            "GameRuleCatalog",
+            vec![
+                f("catalog", r("GameRuleCatalogRef")),
+                f("valueChannels", TsType::array(r("GameRuleValueChannelRef"))),
+                f("bundles", TsType::array(r("GameRuleEffectBundle"))),
+            ],
+        ),
+        iface(
+            "One classified catalog or resolution diagnostic.",
+            "GameRuleDiagnostic",
+            vec![
+                f("code", r("GameRuleDiagnosticCode")),
+                f("severity", r("DiagnosticSeverity")),
+                f("path", string()),
+                f("message", string()),
+            ],
+        ),
+        iface(
+            "Reference to an inspectable game-rule artifact.",
+            "GameRuleEvidenceRef",
+            vec![
+                f("kind", r("GameRuleEvidenceKind")),
+                f("uri", string()),
+                f("contentHash", string()),
+            ],
+        ),
+        iface(
+            "One structured trace key/value pair.",
+            "GameRuleTraceRef",
+            vec![f("key", string()), f("value", string())],
+        ),
+        iface(
+            "One ordered resolution trace entry.",
+            "GameRuleTraceEntry",
+            vec![
+                f("step", num()),
+                f("code", string()),
+                f("message", string()),
+                f("refs", TsType::array(r("GameRuleTraceRef"))),
+            ],
+        ),
+        iface(
+            "Runtime readout for one applied modifier.",
+            "GameRuleModifierState",
+            vec![
+                f("modifierId", string()),
+                f("source", r("EntityId")),
+                f("target", r("EntityId")),
+                f("stacks", num()),
+                f("appliedTick", num()),
+                f("expiresTick", TsType::nullable(num())),
+                f("nextTick", TsType::nullable(num())),
+                f("sourceHash", string()),
+            ],
+        ),
+        iface(
+            "Request to resolve one authored effect bundle against source and target entities.",
+            "GameRuleResolutionRequest",
+            vec![
+                f("catalog", r("GameRuleCatalogRef")),
+                f("bundleId", string()),
+                f("source", r("EntityId")),
+                f("target", r("EntityId")),
+                f("values", TsType::array(r("GameRuleBoundedValue"))),
+                f("tick", num()),
+            ],
+        ),
+        iface(
+            "Resolution receipt carrying authority-ready deltas, modifier readouts, diagnostics, traces, and replay evidence.",
+            "GameRuleResolutionReceipt",
+            vec![
+                f("accepted", boolean()),
+                f("requestHash", string()),
+                f("pendingValueDeltas", TsType::array(r("GameRuleValueDelta"))),
+                f("appliedModifiers", TsType::array(r("GameRuleModifierState"))),
+                f("diagnostics", TsType::array(r("GameRuleDiagnostic"))),
+                f("trace", TsType::array(r("GameRuleTraceEntry"))),
+                f("evidence", TsType::array(r("GameRuleEvidenceRef"))),
+                f("replayHash", string()),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "gameRules",
         imports,
         items,
     }
@@ -2775,6 +3077,9 @@ pub fn index_module() -> Module {
                 from: "./voxelConversion.js".to_string(),
             },
             Item::ReExport {
+                from: "./gameRules.js".to_string(),
+            },
+            Item::ReExport {
                 from: "./scene.js".to_string(),
             },
             Item::ReExport {
@@ -2811,6 +3116,7 @@ pub fn all_modules() -> Vec<Module> {
         replay_module(),
         voxel_module(),
         voxel_conversion_module(),
+        game_rules_module(),
         scene_module(),
         world_bundle_module(),
         assets_module(),

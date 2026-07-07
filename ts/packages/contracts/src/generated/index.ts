@@ -18,6 +18,8 @@ export * from './voxel.js';
 
 export * from './voxelConversion.js';
 
+export * from './gameRules.js';
+
 export * from './scene.js';
 
 export * from './worldBundle.js';

@@ -1,0 +1,16 @@
+[package]
+name = "protocol-game-rules"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Border-only crate for generic ASHA game-rules catalogs, effect bundles,
+# modifier definitions, resolution receipts, trace readouts, and replay evidence.
+# Authority validation/resolution lives in svc-game-rules and rule crates.
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+protocol-diagnostics = { path = "../protocol-diagnostics" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

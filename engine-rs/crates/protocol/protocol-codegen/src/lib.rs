@@ -133,6 +133,9 @@ mod tests {
     use serde_json::{json, Value};
     use std::collections::{BTreeMap, BTreeSet};
 
+    #[path = "game_rules_tests.rs"]
+    mod game_rules_tests;
+
     #[test]
     fn generation_is_deterministic() {
         assert_eq!(
@@ -154,6 +157,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/replay.ts"),
                 format!("{OUTPUT_DIR}/voxel.ts"),
                 format!("{OUTPUT_DIR}/voxelConversion.ts"),
+                format!("{OUTPUT_DIR}/gameRules.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
                 format!("{OUTPUT_DIR}/worldBundle.ts"),
                 format!("{OUTPUT_DIR}/assets.ts"),
@@ -302,6 +306,37 @@ mod tests {
             interface_coverage_key("telemetry", "TelemetryMetric"),
             variant_coverage_key("telemetry", "TelemetryEvent", "metric"),
             variant_coverage_key("telemetry", "TelemetryEvent", "trace"),
+            interface_coverage_key("gameRules", "GameRuleCatalogRef"),
+            interface_coverage_key("gameRules", "GameRuleValueChannelRef"),
+            interface_coverage_key("gameRules", "GameRuleBoundedValue"),
+            interface_coverage_key("gameRules", "GameRuleValueDelta"),
+            variant_coverage_key("gameRules", "GameRuleDuration", "instant"),
+            variant_coverage_key("gameRules", "GameRuleDuration", "ticks"),
+            variant_coverage_key("gameRules", "GameRuleDuration", "infinite"),
+            interface_coverage_key("gameRules", "GameRuleTickCadence"),
+            variant_coverage_key("gameRules", "GameRuleStackPolicy", "refresh"),
+            variant_coverage_key("gameRules", "GameRuleStackPolicy", "stack"),
+            variant_coverage_key("gameRules", "GameRuleStackPolicy", "rejectDuplicate"),
+            variant_coverage_key("gameRules", "GameRuleStackPolicy", "replaceIfStronger"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "applyDelta"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "restore"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "spend"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "grant"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "applyModifier"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "removeModifier"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "schedulePeriodicEffect"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "cancelResolution"),
+            variant_coverage_key("gameRules", "GameRuleEffectOp", "emitTrace"),
+            interface_coverage_key("gameRules", "GameRuleModifierDefinition"),
+            interface_coverage_key("gameRules", "GameRuleEffectBundle"),
+            interface_coverage_key("gameRules", "GameRuleCatalog"),
+            interface_coverage_key("gameRules", "GameRuleDiagnostic"),
+            interface_coverage_key("gameRules", "GameRuleEvidenceRef"),
+            interface_coverage_key("gameRules", "GameRuleTraceRef"),
+            interface_coverage_key("gameRules", "GameRuleTraceEntry"),
+            interface_coverage_key("gameRules", "GameRuleModifierState"),
+            interface_coverage_key("gameRules", "GameRuleResolutionRequest"),
+            interface_coverage_key("gameRules", "GameRuleResolutionReceipt"),
         ]
         .into_iter()
         .collect()

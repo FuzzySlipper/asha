@@ -20,6 +20,7 @@ Rust protocol crates are the source of truth:
 - `protocol-assets` — asset catalog/lock shapes
 - `protocol-diagnostics` — classified diagnostic reports (load/projection/composition)
 - `protocol-policy-view` — read-only world view + proposed world commands
+- `protocol-game-rules` — schema-only generic effect/modifier catalog and readout DTOs
 
 Generated TypeScript lives in `ts/packages/contracts/src/generated/` and is committed
 for worker convenience. It is never hand-edited. `protocol-codegen` is the emitter.
@@ -64,6 +65,20 @@ differs from committed files. A PR with a manual edit to generated files will fa
 | `protocol-assets` | `catalog-*`, `renderer-three` (asset refs) | `check-contracts.sh`; asset-catalog fixtures |
 | `protocol-diagnostics` | `runtime-bridge`, `devtools`, `smoke` | `check-contracts.sh`; diagnostics fixtures |
 | `protocol-policy-view` | `script-sdk`, `script-host` policies | `check-contracts.sh`; policy fixtures |
+| `protocol-game-rules` | TS content packages, `runtime-bridge` facades, Studio tooling | `check-contracts.sh`; catalog/receipt fixtures |
 
 Every protocol change must keep `check-contracts.sh` green (generated TS matches Rust)
 and re-bless any golden listed above whose shape it intentionally changes.
+
+## Game Rules Contracts
+
+`protocol-game-rules` owns schema-only DTOs for generic effect bundles,
+modifier definitions, stack/duration/tick policies, validation diagnostics,
+resolution receipts, traces, and replay evidence summaries. Generated
+`gameRules.ts` is the public TypeScript border for authoring catalog data and
+reading authority receipts.
+
+Authority validation, effect interpretation, modifier application, and replay
+commit remain outside the protocol crate. Those belong to future
+`svc-game-rules` / rule crates and must not be implemented in generated
+contracts, TS content packages, renderers, bridges, or Studio UI code.

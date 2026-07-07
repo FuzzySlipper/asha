@@ -174,9 +174,14 @@ lane = "contract-steward"
 may_depend_on = ["protocol-diagnostics"]
 may_not_depend_on = ["core-state", "core-voxel", "core-scene", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
 
+[crate."engine-rs/crates/protocol/protocol-game-rules"]
+lane = "contract-steward"
+may_depend_on = ["core-ids", "protocol-diagnostics"]
+may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "render-bridge", "wasm-api"]
+
 [crate."engine-rs/crates/protocol/protocol-codegen"]
 lane = "contract-steward"
-may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-view"]
+may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-game-rules", "protocol-view"]
 
 # ─── Rust: Sim ───────────────────────────────────────────────────────────────
 

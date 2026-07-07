@@ -26,6 +26,7 @@ protocol-telemetry = { path = "../protocol-telemetry" }
 protocol-entity-authoring = { path = "../protocol-entity-authoring" }
 protocol-view = { path = "../protocol-view" }
 protocol-voxel-conversion = { path = "../protocol-voxel-conversion" }
+protocol-game-rules = { path = "../protocol-game-rules" }
 
 [dev-dependencies]
 core-ids = { path = "../../foundation/core-ids" }

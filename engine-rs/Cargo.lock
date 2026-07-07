@@ -401,6 +401,7 @@ dependencies = [
  "protocol-assets",
  "protocol-diagnostics",
  "protocol-entity-authoring",
+ "protocol-game-rules",
  "protocol-ids",
  "protocol-policy-view",
  "protocol-replay",
@@ -431,6 +432,16 @@ name = "protocol-entity-authoring"
 version = "0.1.0"
 dependencies = [
  "core-ids",
+]
+
+[[package]]
+name = "protocol-game-rules"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "protocol-diagnostics",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
