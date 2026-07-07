@@ -11,6 +11,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceRegistration,
+  VoxelConversionSourceRegistrationRequest,
   VoxelModelInfoReadout,
   VoxelModelInfoRequest,
   WeaponEffectHookRequest,
@@ -766,6 +768,13 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan {
     this.#requireInitialized('planVoxelConversion');
     return this.#bridge.planVoxelConversion(request);
+  }
+
+  registerVoxelConversionSource(
+    request: VoxelConversionSourceRegistrationRequest,
+  ): VoxelConversionSourceRegistration {
+    this.#requireInitialized('registerVoxelConversionSource');
+    return this.#bridge.registerVoxelConversionSource(request);
   }
 
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview {

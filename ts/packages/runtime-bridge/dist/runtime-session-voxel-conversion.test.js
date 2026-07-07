@@ -53,8 +53,39 @@ function voxelConversionPlanRequest() {
         },
     };
 }
+function voxelConversionSourceRegistrationRequest() {
+    return {
+        source: voxelConversionPlanRequest().source,
+        positions: [
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+        ],
+        triangles: [
+            {
+                indices: [0, 1, 2],
+                sourceMaterialSlot: 0,
+            },
+        ],
+        materialSlots: [
+            {
+                sourceMaterialSlot: 0,
+                sourceMaterialId: 'mat/a',
+            },
+        ],
+    };
+}
 const PLAN_HASH = 'fnv1a64:plan-hash';
 const PREVIEW_HASH = 'fnv1a64:preview-hash';
+function voxelConversionSourceRegistration(request) {
+    return {
+        source: request.source,
+        registered: true,
+        materialSlots: request.materialSlots,
+        diagnostics: [],
+        evidence: [{ kind: 'diagnostics', uri: 'asha://voxel-conversion/source/mesh/quad', contentHash: request.source.sourceHash }],
+    };
+}
 function voxelConversionPlan(request) {
     return {
         planId: 'fnv1a64:plan',
@@ -130,6 +161,9 @@ function createVoxelConversionBridge() {
     const availableEvidence = [];
     return new Proxy(bridge, {
         get(target, property, receiver) {
+            if (property === 'registerVoxelConversionSource') {
+                return (request) => voxelConversionSourceRegistration(request);
+            }
             if (property === 'planVoxelConversion') {
                 return (request) => {
                     const plan = voxelConversionPlan(request);
@@ -219,7 +253,9 @@ void test('reference RuntimeSession voxel conversion facade methods remain typed
     const request = voxelConversionPlanRequest();
     const referenceSession = createMockRuntimeSession();
     assert.throws(() => referenceSession.planVoxelConversion(request), (error) => error instanceof RuntimeBridgeError && error.kind === 'not_initialized');
+    assert.throws(() => referenceSession.registerVoxelConversionSource(voxelConversionSourceRegistrationRequest()), (error) => error instanceof RuntimeBridgeError && error.kind === 'not_initialized');
     referenceSession.initialize(sessionInput());
+    assert.throws(() => referenceSession.registerVoxelConversionSource(voxelConversionSourceRegistrationRequest()), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
     assert.throws(() => referenceSession.planVoxelConversion(request), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
     assert.throws(() => referenceSession.previewVoxelConversion({
         planId: 'plan',
@@ -247,6 +283,11 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
     const request = voxelConversionPlanRequest();
     const rustSession = createRuntimeSessionFacade({ bridge: createVoxelConversionBridge(), mode: 'rust' });
     rustSession.initialize(sessionInput());
+    const registrationRequest = voxelConversionSourceRegistrationRequest();
+    const registration = rustSession.registerVoxelConversionSource(registrationRequest);
+    assert.equal(registration.source.assetId, 'mesh/quad');
+    assert.equal(registration.registered, true);
+    assert.deepEqual(registration.materialSlots, registrationRequest.materialSlots);
     const plan = rustSession.planVoxelConversion(request);
     assert.equal(plan.authorityVersion, 'svc-voxel-conversion.v0');
     assert.deepEqual(plan.source, request.source);

@@ -19,6 +19,8 @@ import {
   type VoxelConversionPreview,
   type VoxelConversionPreviewRequest,
   type VoxelConversionReceipt,
+  type VoxelConversionSourceRegistration,
+  type VoxelConversionSourceRegistrationRequest,
   type VoxelModelInfoReadout,
   type VoxelModelInfoRequest,
   type GameExtensionHookReceipt,
@@ -805,6 +807,9 @@ export interface RuntimeSessionFacade {
   requestGeneratedTunnelOperation(
     request: GeneratedTunnelOperationRequest,
   ): RuntimeSessionGeneratedTunnelOperationReceipt;
+  registerVoxelConversionSource(
+    request: VoxelConversionSourceRegistrationRequest,
+  ): VoxelConversionSourceRegistration;
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
@@ -1496,6 +1501,14 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
     void _request;
     this.#requireInitialized('planVoxelConversion');
     throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion authority is not wired into the reference RuntimeSession');
+  }
+
+  registerVoxelConversionSource(
+    _request: VoxelConversionSourceRegistrationRequest,
+  ): VoxelConversionSourceRegistration {
+    void _request;
+    this.#requireInitialized('registerVoxelConversionSource');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion source registration is not wired into the reference RuntimeSession');
   }
 
   previewVoxelConversion(_request: VoxelConversionPreviewRequest): VoxelConversionPreview {

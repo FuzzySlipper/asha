@@ -581,6 +581,11 @@ class ReferenceRuntimeSessionFacade {
         this.#requireInitialized('planVoxelConversion');
         throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion authority is not wired into the reference RuntimeSession');
     }
+    registerVoxelConversionSource(_request) {
+        void _request;
+        this.#requireInitialized('registerVoxelConversionSource');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion source registration is not wired into the reference RuntimeSession');
+    }
     previewVoxelConversion(_request) {
         void _request;
         this.#requireInitialized('previewVoxelConversion');
