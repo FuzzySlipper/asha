@@ -66,7 +66,8 @@ Created from this matrix:
 - Den #4593: material/texture sampling authority posture and DTO plan.
 - Den #4594: output quota and resource guardrail enforcement.
 - Den #4595: public consumer evidence matrix in `asha-testing`.
-- Den #4596: Rust-owned texture and UV sampling design for voxel conversion.
+- Den #4596: Rust-owned texture and UV sampling design for voxel conversion;
+  see `docs/voxel-conversion-texture-sampling.md`.
 
 ## Resource Guardrail Defaults
 
@@ -99,9 +100,9 @@ Current material authority is intentionally narrow:
 Texture and UV sampling remain out of scope for the current implementation.
 Future texture support must first define authority-visible texture/source refs,
 UV data, sampling policy, hashes, and diagnostics in Rust/generated contracts
-(tracked by #4596). Studio may author references or display diagnostics, but it
-must not sample renderer textures locally and feed those samples back as if they
-were Rust authority.
+(tracked by #4596 and `docs/voxel-conversion-texture-sampling.md`). Studio may
+author references or display diagnostics, but it must not sample renderer
+textures locally and feed those samples back as if they were Rust authority.
 
 No Studio implementation task is created from this planning slice. Studio remains
 a consumer/evidence surface until the engine and testing lanes expose the needed
