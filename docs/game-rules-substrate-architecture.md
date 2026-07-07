@@ -187,6 +187,18 @@ replays the resulting typed facts.
 
 ## First Proving Fixtures
 
+The accepted fixture environment now lives in
+`harness/fixtures/game-rules/*.snapshot.txt` and is exercised by:
+
+```bash
+cargo test -p rule-game-modifier --test game_rules_fixtures
+```
+
+Those fixtures are the selection environment for future RPG/action-game rule
+work: new substrate behavior should be able to explain whether it preserves or
+intentionally changes the poisoned-impact and RPG-action readouts before it is
+promoted into demo or Studio surfaces.
+
 1. Real-time poisoned impact:
    - input: source, target, hit tags, immediate damage delta, poison modifier
      definition, tick cadence, duration, stack policy;

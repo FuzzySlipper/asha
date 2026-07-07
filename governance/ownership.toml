@@ -195,7 +195,7 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "runtime-br
 
 [crate."engine-rs/crates/rules/rule-game-modifier"]
 lane = "rust-rule"
-may_depend_on = ["core-ids", "core-time", "core-game-rules", "svc-game-rules"]
+may_depend_on = ["core-ids", "core-time", "core-game-rules", "protocol-game-rules", "svc-game-rules"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api", "runtime-bridge-api"]
 
 [crate."engine-rs/crates/rules/game-rule-extension"]

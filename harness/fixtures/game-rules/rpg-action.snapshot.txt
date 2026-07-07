@@ -1,0 +1,11 @@
+# game-rules fixture: rpg-action
+catalogAccepted=true
+resolutionAccepted=true
+pendingDeltas=[GameRuleValueDelta { channel_id: "value.focus", amount: -3 }, GameRuleValueDelta { channel_id: "value.health", amount: -8 }]
+appliedModifiers=[GameRuleModifierState { modifier_id: "modifier.guard-broken", source: EntityId(501), target: EntityId(777), stacks: 1, applied_tick: 12, expires_tick: Some(14), next_tick: None, source_hash: "fnv1a64:guard-broken" }]
+resolutionTrace=catalog.validationStarted,catalog.accepted,resolution.started,value.deltaPending,value.deltaPending,modifier.pendingApply,resolution.accepted
+resolutionReplay=fnv1a64:d729b5eff7f8cd08
+reactionAccepted=true
+reactionPendingDelta=-5
+reactionTrace=reaction.deltaModified
+reactionHash=fnv1a64:07bf3ca8760e3acd

@@ -613,6 +613,7 @@ dependencies = [
  "core-game-rules",
  "core-ids",
  "core-time",
+ "protocol-game-rules",
  "svc-game-rules",
 ]
 

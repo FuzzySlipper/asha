@@ -1,0 +1,18 @@
+# game-rules fixture: poisoned-impact
+catalogAccepted=true
+resolutionAccepted=true
+pendingDeltas=[GameRuleValueDelta { channel_id: "value.health", amount: -7 }]
+appliedModifiers=[GameRuleModifierState { modifier_id: "modifier.poison", source: EntityId(101), target: EntityId(777), stacks: 1, applied_tick: 4, expires_tick: Some(10), next_tick: Some(6), source_hash: "fnv1a64:poison" }]
+resolutionTrace=catalog.validationStarted,catalog.accepted,resolution.started,value.deltaPending,modifier.periodicScheduled,resolution.accepted
+resolutionReplay=fnv1a64:8c59564891f443ec
+modifierApplyAccepted=true
+modifierApplyReplay=fnv1a64:f484d949f7365021
+tick6Events=[ValueDeltaApplied { modifier: ModifierId("modifier.poison"), target: EntityId(777), channel: ValueChannelId("value.health"), amount: -2, before: 23, after: 21 }, PeriodicEffectTicked { modifier: ModifierId("modifier.poison"), target: EntityId(777), tick: Tick(6) }]
+tick6Replay=fnv1a64:44a04791df57c428
+tick8Events=[ValueDeltaApplied { modifier: ModifierId("modifier.poison"), target: EntityId(777), channel: ValueChannelId("value.health"), amount: -2, before: 21, after: 19 }, PeriodicEffectTicked { modifier: ModifierId("modifier.poison"), target: EntityId(777), tick: Tick(8) }]
+tick8Replay=fnv1a64:97f7c6f0451f34ab
+tick10Events=[ModifierExpired { modifier: ModifierId("modifier.poison"), target: EntityId(777), tick: Tick(10) }]
+tick10Replay=fnv1a64:1883277fb61390e1
+finalHealth=19
+activeModifierCount=0
+activeHash=fnv1a64:d3cea353801854ad

@@ -11,3 +11,6 @@ core-ids = { path = "../../foundation/core-ids" }
 core-time = { path = "../../foundation/core-time" }
 core-game-rules = { path = "../../state/core-game-rules" }
 svc-game-rules = { path = "../../services/svc-game-rules" }
+
+[dev-dependencies]
+protocol-game-rules = { path = "../../protocol/protocol-game-rules" }
