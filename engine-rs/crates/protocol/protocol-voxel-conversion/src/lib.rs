@@ -510,4 +510,77 @@ mod tests {
             3
         );
     }
+
+    #[test]
+    fn model_info_readout_round_trips_with_camel_case_fields() {
+        let request = VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("volume/demo-cave".to_string()),
+            include_material_counts: true,
+        };
+        let material_count = VoxelModelMaterialCount {
+            material: 11,
+            voxel_count: 512,
+        };
+        let readout = VoxelModelInfoReadout {
+            request: request.clone(),
+            resident: true,
+            model_id: "model/voxel-cave".to_string(),
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            bounds: Some(VoxelConversionBounds {
+                min: VoxelConversionCoord { x: -1, y: 0, z: 2 },
+                max: VoxelConversionCoord { x: 14, y: 8, z: 17 },
+            }),
+            voxel_count: 640,
+            material_counts: vec![material_count.clone()],
+            source: Some(VoxelConversionSourceRef {
+                asset_id: "mesh/cave-wall".to_string(),
+                asset_kind: "static_mesh".to_string(),
+                asset_version: 3,
+                source_hash: "sha256:source".to_string(),
+                mesh_primitive: Some("primitive-0".to_string()),
+            }),
+            latest_plan_id: Some("plan-123".to_string()),
+            latest_output_hash: Some("sha256:output".to_string()),
+            session_hash: "sha256:session".to_string(),
+            replay_hash: "sha256:replay".to_string(),
+            evidence: vec![VoxelConversionEvidenceRef {
+                kind: VoxelConversionEvidenceKind::OutputSnapshot,
+                uri: "asha://evidence/output".to_string(),
+                content_hash: "sha256:evidence".to_string(),
+            }],
+            diagnostics: vec![VoxelConversionDiagnostic {
+                code: VoxelConversionDiagnosticCode::StaleAuthoritySnapshot,
+                severity: DiagnosticSeverity::Warning,
+                reference: "grid:7".to_string(),
+                message: "sample warning".to_string(),
+            }],
+        };
+
+        assert_round_trip(&request);
+        assert_round_trip(&material_count);
+        assert_round_trip(&readout);
+
+        let serialized = serde_json::to_value(&readout).unwrap();
+        assert_eq!(serialized["request"]["includeMaterialCounts"], true);
+        assert_eq!(serialized["volumeAssetId"], "volume/demo-cave");
+        assert_eq!(serialized["materialCounts"][0]["voxelCount"], 512);
+        assert_eq!(serialized["latestOutputHash"], "sha256:output");
+        assert_eq!(serialized["evidence"][0]["kind"], "output_snapshot");
+        assert_eq!(serialized["diagnostics"][0]["severity"], "warning");
+    }
+
+    fn assert_round_trip<T>(sample: &T)
+    where
+        T: Clone
+            + PartialEq
+            + std::fmt::Debug
+            + serde::Serialize
+            + for<'de> serde::Deserialize<'de>,
+    {
+        let serialized = serde_json::to_string(sample).unwrap();
+        let deserialized: T = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(&deserialized, sample);
+    }
 }

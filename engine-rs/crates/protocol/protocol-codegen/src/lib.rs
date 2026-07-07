@@ -352,6 +352,9 @@ mod tests {
             interface_coverage_key("gameExtension", "GameExtensionTraceEntry"),
             interface_coverage_key("gameExtension", "GameExtensionHookReceipt"),
             interface_coverage_key("gameExtension", "GameExtensionReplayEvidence"),
+            interface_coverage_key("voxelConversion", "VoxelModelInfoRequest"),
+            interface_coverage_key("voxelConversion", "VoxelModelMaterialCount"),
+            interface_coverage_key("voxelConversion", "VoxelModelInfoReadout"),
         ]
         .into_iter()
         .collect()
