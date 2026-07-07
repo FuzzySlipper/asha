@@ -21,14 +21,12 @@ use runtime_bridge_api::{
     FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding, FpsBridgeRole,
     FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability, FpsBridgeWeaponMount,
     FpsEncounterDirectorSnapshot, FpsEncounterLifecycleInput, FpsEncounterStateReadout,
-    FpsEncounterTransitionRequest, FpsEncounterTransitionResult,
-    GameExtensionWeaponEffectInvocationRequest, GameExtensionWeaponEffectInvocationResult,
-    GameRuleModuleManifest,
-    FpsPrimaryFireRequest, FpsPrimaryFireResult, FpsRuntimeSessionLoadRequest,
-    FpsRuntimeSessionRestartRequest, FpsRuntimeSessionSnapshot, ReferenceBridge, RuntimeBridge, RuntimeBridgeError,
-    RuntimeBridgeErrorKind, StepInputEnvelope, VoxelConversionApplyRequest,
-    VoxelConversionEvidenceRef, VoxelConversionPlanRequest, VoxelConversionPreviewRequest,
-    VoxelConversionSourceRegistrationRequest,
+    FpsEncounterTransitionRequest, FpsEncounterTransitionResult, FpsPrimaryFireRequest,
+    FpsPrimaryFireResult, FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
+    FpsRuntimeSessionSnapshot, GameExtensionWeaponEffectInvocationRequest, GameRuleModuleManifest,
+    ReferenceBridge, RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
+    VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlanRequest,
+    VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
     WeaponEffectHookRequest, WorldLoadRequest,
 };
 use serde::{Deserialize, Serialize};
@@ -814,6 +812,15 @@ fn parse_voxel_conversion_evidence(
     })
 }
 
+fn parse_voxel_model_info_request(request_json: &str) -> napi::Result<VoxelModelInfoRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel model info request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_game_rule_module_manifests(
     manifests_json: &str,
 ) -> napi::Result<Vec<GameRuleModuleManifest>> {
@@ -1134,10 +1141,7 @@ pub fn plan_voxel_conversion(handle: i64, request_json: String) -> napi::Result<
 }
 
 #[napi]
-pub fn register_voxel_conversion_source(
-    handle: i64,
-    request_json: String,
-) -> napi::Result<String> {
+pub fn register_voxel_conversion_source(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_voxel_conversion_source_registration_request(&request_json)?;
     with_bridge(handle, |bridge| {
         let registration = bridge
@@ -1179,6 +1183,15 @@ pub fn export_voxel_conversion_evidence(
     })
 }
 
+#[napi]
+pub fn read_voxel_model_info(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_model_info_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let readout = bridge.read_voxel_model_info(request).map_err(to_napi)?;
+        voxel_conversion_json(&readout)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1198,6 +1211,7 @@ mod tests {
         "readFpsEncounterDirector",
         "readRenderDiffs",
         "readFpsRuntimeSession",
+        "readVoxelModelInfo",
         "registerVoxelConversionSource",
         "restartFpsRuntimeSession",
         "saveCurrentWorld",
@@ -1224,6 +1238,7 @@ mod tests {
                 "readFpsEncounterDirector",
                 "readRenderDiffs",
                 "readFpsRuntimeSession",
+                "readVoxelModelInfo",
                 "registerVoxelConversionSource",
                 "restartFpsRuntimeSession",
                 "saveCurrentWorld",

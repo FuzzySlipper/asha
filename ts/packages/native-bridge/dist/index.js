@@ -34,6 +34,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'previewVoxelConversion',
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',
+    'readVoxelModelInfo',
 ];
 const REQUIRED_EXPORTS = REQUIRED_NATIVE_ADDON_EXPORTS;
 /**

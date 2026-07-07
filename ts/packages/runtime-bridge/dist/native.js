@@ -36,6 +36,7 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'preview_voxel_conversion',
     'apply_voxel_conversion',
     'export_voxel_conversion_evidence',
+    'read_voxel_model_info',
     'read_render_diffs',
     'save_current_world',
     'get_composition_status',
@@ -417,6 +418,11 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('exportVoxelConversionEvidence');
         const payload = callNative(() => this.#addon.exportVoxelConversionEvidence(handle, JSON.stringify(evidence)));
         return parseNativeJson(payload, 'voxel conversion evidence');
+    }
+    readVoxelModelInfo(request) {
+        const handle = this.#requireHandle('readVoxelModelInfo');
+        const payload = callNative(() => this.#addon.readVoxelModelInfo(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel model info');
     }
     // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
     // Replace each body with its real native call (and add the manifest name to

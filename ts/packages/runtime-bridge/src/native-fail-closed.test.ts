@@ -14,6 +14,7 @@ import type {
   VoxelConversionPlanRequest,
   VoxelConversionPreviewRequest,
   VoxelConversionSourceRegistrationRequest,
+  VoxelModelInfoRequest,
 } from '@asha/contracts';
 import { entityId } from '@asha/contracts';
 import type { NativeAddon } from '@asha/native-bridge';
@@ -97,6 +98,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
   'preview_voxel_conversion',
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
+  'read_voxel_model_info',
   'read_render_diffs',
   'save_current_world',
   'get_composition_status',
@@ -156,6 +158,12 @@ const VOXEL_CONVERSION_EVIDENCE = [
     contentHash: VOXEL_PLAN_HASH,
   },
 ] as const;
+
+const VOXEL_MODEL_INFO_REQUEST = {
+  grid: 1,
+  volumeAssetId: 'voxel/generated',
+  includeMaterialCounts: true,
+} satisfies VoxelModelInfoRequest;
 
 function parseJsonFixture<T>(payload: string): T {
   return JSON.parse(payload) as T;
@@ -541,6 +549,27 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       calls.push(`voxelEvidence:${evidenceJson}`);
       return evidenceJson;
     },
+    readVoxelModelInfo: (_handle: number, requestJson: string) => {
+      calls.push(`voxelModelInfo:${requestJson}`);
+      const request = parseJsonFixture<VoxelModelInfoRequest>(requestJson);
+      return JSON.stringify({
+        request,
+        resident: true,
+        modelId: 'voxel-model:grid:1:volume:voxel/generated',
+        volumeAssetId: 'voxel/generated',
+        grid: 1,
+        bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+        voxelCount: 1,
+        materialCounts: [{ material: 3, voxelCount: 1 }],
+        source: VOXEL_CONVERSION_PLAN_REQUEST.source,
+        latestPlanId: 'fnv1a64:0000000000000101',
+        latestOutputHash: VOXEL_PREVIEW_HASH,
+        sessionHash: 'fnv1a64:0000000000000105',
+        replayHash: 'fnv1a64:0000000000000106',
+        evidence: VOXEL_CONVERSION_EVIDENCE,
+        diagnostics: [],
+      });
+    },
   } as unknown as NativeAddon;
 }
 
@@ -631,6 +660,7 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
     expectedPreviewHash: VOXEL_PREVIEW_HASH,
   })],
   ['exportVoxelConversionEvidence', (b) => b.exportVoxelConversionEvidence(VOXEL_CONVERSION_EVIDENCE)],
+  ['readVoxelModelInfo', (b) => b.readVoxelModelInfo(VOXEL_MODEL_INFO_REQUEST)],
   ['readModelMaterialPreview', (b) => b.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST)],
   ['readSceneObjectSnapshot', (b) => b.readSceneObjectSnapshot()],
   [

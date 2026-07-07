@@ -19,6 +19,8 @@ import {
   type VoxelConversionPreview,
   type VoxelConversionPreviewRequest,
   type VoxelConversionReceipt,
+  type VoxelModelInfoReadout,
+  type VoxelModelInfoRequest,
   type GameExtensionHookReceipt,
   type GameExtensionReplayEvidence,
   type WeaponEffectHookRequest,
@@ -779,6 +781,7 @@ export interface RuntimeSessionFacade {
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
   exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
+  readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout;
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
   readProjection(): RuntimeSessionProjectionSummary;
@@ -1446,6 +1449,12 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
     void _evidence;
     this.#requireInitialized('exportVoxelConversionEvidence');
     throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion evidence export is not wired into the reference RuntimeSession');
+  }
+
+  readVoxelModelInfo(_request: VoxelModelInfoRequest): VoxelModelInfoReadout {
+    void _request;
+    this.#requireInitialized('readVoxelModelInfo');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model info is not wired into the reference RuntimeSession');
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

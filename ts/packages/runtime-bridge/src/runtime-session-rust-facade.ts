@@ -11,6 +11,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelModelInfoReadout,
+  VoxelModelInfoRequest,
   WeaponEffectHookRequest,
 } from '@asha/contracts';
 import {
@@ -737,6 +739,11 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   ): readonly VoxelConversionEvidenceRef[] {
     this.#requireInitialized('exportVoxelConversionEvidence');
     return this.#bridge.exportVoxelConversionEvidence(evidence);
+  }
+
+  readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout {
+    this.#requireInitialized('readVoxelModelInfo');
+    return this.#bridge.readVoxelModelInfo(request);
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

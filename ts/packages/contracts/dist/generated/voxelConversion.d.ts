@@ -122,4 +122,30 @@ export interface VoxelConversionReceipt {
     readonly diagnostics: readonly VoxelConversionDiagnostic[];
     readonly evidence: readonly VoxelConversionEvidenceRef[];
 }
+export interface VoxelModelInfoRequest {
+    readonly grid: number;
+    readonly volumeAssetId: string | null;
+    readonly includeMaterialCounts: boolean;
+}
+export interface VoxelModelMaterialCount {
+    readonly material: number;
+    readonly voxelCount: number;
+}
+export interface VoxelModelInfoReadout {
+    readonly request: VoxelModelInfoRequest;
+    readonly resident: boolean;
+    readonly modelId: string;
+    readonly volumeAssetId: string | null;
+    readonly grid: number;
+    readonly bounds: VoxelConversionBounds | null;
+    readonly voxelCount: number;
+    readonly materialCounts: readonly VoxelModelMaterialCount[];
+    readonly source: VoxelConversionSourceRef | null;
+    readonly latestPlanId: string | null;
+    readonly latestOutputHash: string | null;
+    readonly sessionHash: string;
+    readonly replayHash: string;
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
+    readonly diagnostics: readonly VoxelConversionDiagnostic[];
+}
 //# sourceMappingURL=voxelConversion.d.ts.map

@@ -161,6 +161,51 @@ function createVoxelConversionBridge() {
                     return evidence;
                 };
             }
+            if (property === 'readVoxelModelInfo') {
+                return (request) => {
+                    if (request.grid !== 1 || request.volumeAssetId !== 'voxel/generated') {
+                        return {
+                            request,
+                            resident: false,
+                            modelId: `voxel-model:grid:${request.grid}:volume:${request.volumeAssetId ?? 'none'}`,
+                            volumeAssetId: request.volumeAssetId,
+                            grid: request.grid,
+                            bounds: null,
+                            voxelCount: 0,
+                            materialCounts: [],
+                            source: null,
+                            latestPlanId: null,
+                            latestOutputHash: null,
+                            sessionHash: 'fnv1a64:0000000000000201',
+                            replayHash: 'fnv1a64:0000000000000202',
+                            evidence: [],
+                            diagnostics: [{
+                                    code: 'voxel_conversion_unavailable',
+                                    severity: 'error',
+                                    reference: 'model',
+                                    message: 'voxel model is not resident in current authority state',
+                                }],
+                        };
+                    }
+                    return {
+                        request,
+                        resident: true,
+                        modelId: 'voxel-model:grid:1:volume:voxel/generated',
+                        volumeAssetId: 'voxel/generated',
+                        grid: 1,
+                        bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+                        voxelCount: 1,
+                        materialCounts: request.includeMaterialCounts ? [{ material: 3, voxelCount: 1 }] : [],
+                        source: voxelConversionPlanRequest().source,
+                        latestPlanId: 'fnv1a64:plan',
+                        latestOutputHash: PREVIEW_HASH,
+                        sessionHash: 'fnv1a64:0000000000000203',
+                        replayHash: 'fnv1a64:0000000000000204',
+                        evidence: availableEvidence,
+                        diagnostics: [],
+                    };
+                };
+            }
             const value = Reflect.get(target, property, receiver);
             if (typeof value === 'function') {
                 const boundValue = value.bind(target);
@@ -192,6 +237,11 @@ void test('reference RuntimeSession voxel conversion facade methods remain typed
             contentHash: 'fnv1a64:0000000000000000',
         },
     ]), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
+    assert.throws(() => referenceSession.readVoxelModelInfo({
+        grid: 1,
+        volumeAssetId: 'voxel/generated',
+        includeMaterialCounts: true,
+    }), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
 });
 void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge authority surface', () => {
     const request = voxelConversionPlanRequest();
@@ -229,6 +279,22 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
         ...preview.evidence,
         ...receipt.evidence,
     ]);
+    const modelInfo = rustSession.readVoxelModelInfo({
+        grid: 1,
+        volumeAssetId: 'voxel/generated',
+        includeMaterialCounts: true,
+    });
+    assert.equal(modelInfo.resident, true);
+    assert.equal(modelInfo.voxelCount, 1);
+    assert.deepEqual(modelInfo.materialCounts, [{ material: 3, voxelCount: 1 }]);
+    assert.equal(modelInfo.source?.assetId, 'mesh/quad');
+    const missingModel = rustSession.readVoxelModelInfo({
+        grid: 999,
+        volumeAssetId: 'voxel/missing',
+        includeMaterialCounts: true,
+    });
+    assert.equal(missingModel.resident, false);
+    assert.equal(missingModel.diagnostics[0]?.code, 'voxel_conversion_unavailable');
     assert.throws(() => rustSession.exportVoxelConversionEvidence([
         { kind: 'diagnostics', uri: 'asha://voxel-conversion/diagnostics/missing', contentHash: 'fnv1a64:missing' },
     ]), (error) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input');

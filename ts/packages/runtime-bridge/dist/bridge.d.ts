@@ -1,4 +1,4 @@
-import type { CameraCollisionSnapshot, CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CollisionConstrainedCameraInputEnvelope, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, GameExtensionHookReceipt, GameExtensionReplayEvidence, GameRuleModuleManifest, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickRay, PickResult, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, ScreenPointToPickRayRequest, VoxelSelectionSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, WeaponEffectHookRequest } from '@asha/contracts';
+import type { CameraCollisionSnapshot, CameraCreateRequest, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CollisionConstrainedCameraInputEnvelope, CommandBatch, CommandResult, FirstPersonCameraInputEnvelope, GameExtensionHookReceipt, GameExtensionReplayEvidence, GameRuleModuleManifest, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickRay, PickResult, RenderFrameDiff, SceneObjectCommandRequest, SceneObjectCommandResult, SceneObjectSnapshot, ScreenPointToPickRayRequest, VoxelSelectionSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, WeaponEffectHookRequest } from '@asha/contracts';
 export type EngineHandle = number & {
     readonly __brand: 'EngineHandle';
 };
@@ -307,6 +307,7 @@ export interface RuntimeBridge {
     previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
     applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
     exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
+    readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout;
     loadFpsRuntimeSession(request: FpsRuntimeSessionLoadRequest): FpsRuntimeSessionSnapshot;
     readFpsRuntimeSession(): FpsRuntimeSessionSnapshot;
     applyFpsPrimaryFire(request: FpsPrimaryFireRequest): FpsPrimaryFireResult;

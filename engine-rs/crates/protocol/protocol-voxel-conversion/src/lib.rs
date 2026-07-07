@@ -370,6 +370,44 @@ pub struct VoxelConversionReceipt {
     pub evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
+/// Request for authority-owned model/volume readback.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelInfoRequest {
+    pub grid: u64,
+    pub volume_asset_id: Option<String>,
+    pub include_material_counts: bool,
+}
+
+/// Per-material voxel count derived from authority state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelMaterialCount {
+    pub material: u16,
+    pub voxel_count: u64,
+}
+
+/// Rich but bounded model/volume readback for Studio and agents.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelInfoReadout {
+    pub request: VoxelModelInfoRequest,
+    pub resident: bool,
+    pub model_id: String,
+    pub volume_asset_id: Option<String>,
+    pub grid: u64,
+    pub bounds: Option<VoxelConversionBounds>,
+    pub voxel_count: u64,
+    pub material_counts: Vec<VoxelModelMaterialCount>,
+    pub source: Option<VoxelConversionSourceRef>,
+    pub latest_plan_id: Option<String>,
+    pub latest_output_hash: Option<String>,
+    pub session_hash: String,
+    pub replay_hash: String,
+    pub evidence: Vec<VoxelConversionEvidenceRef>,
+    pub diagnostics: Vec<VoxelConversionDiagnostic>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

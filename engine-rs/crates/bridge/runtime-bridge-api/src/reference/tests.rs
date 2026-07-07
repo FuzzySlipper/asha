@@ -829,6 +829,48 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
         )
         .unwrap();
     assert_eq!(exported.len(), 3);
+
+    let model_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(model_info.resident);
+    assert_eq!(
+        model_info.model_id,
+        "voxel-model:grid:7:volume:voxel/generated"
+    );
+    assert_eq!(model_info.voxel_count, 3);
+    assert_eq!(
+        model_info.material_counts,
+        vec![VoxelModelMaterialCount {
+            material: 3,
+            voxel_count: 3
+        }]
+    );
+    assert_eq!(
+        model_info.source.as_ref().unwrap().asset_id,
+        "mesh/import-fixture-a"
+    );
+    assert_eq!(
+        model_info.latest_plan_id.as_deref(),
+        Some(plan.plan_id.as_str())
+    );
+    assert!(model_info.latest_output_hash.is_some());
+    assert!(model_info.session_hash.starts_with("fnv1a64:"));
+    assert!(model_info.replay_hash.starts_with("fnv1a64:"));
+    assert!(model_info.diagnostics.is_empty());
+
+    let compact_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: false,
+        })
+        .unwrap();
+    assert!(compact_info.material_counts.is_empty());
 }
 
 #[test]
@@ -943,6 +985,27 @@ fn voxel_conversion_apply_to_unregistered_target_returns_diagnostic_receipt() {
         receipt.diagnostics[0].code,
         VoxelConversionDiagnosticCode::ConversionReplayMismatch
     );
+}
+
+#[test]
+fn voxel_model_info_missing_target_fails_closed_with_diagnostic_readout() {
+    let bridge = init_bridge();
+    let readout = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 999,
+            volume_asset_id: Some("voxel/missing".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(!readout.resident);
+    assert_eq!(readout.voxel_count, 0);
+    assert!(readout.material_counts.is_empty());
+    assert_eq!(
+        readout.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::VoxelConversionUnavailable
+    );
+    assert!(readout.session_hash.starts_with("fnv1a64:"));
+    assert!(readout.replay_hash.starts_with("fnv1a64:"));
 }
 
 fn set_voxel(coord: VoxelCoord, material: u16) -> VoxelCommand {

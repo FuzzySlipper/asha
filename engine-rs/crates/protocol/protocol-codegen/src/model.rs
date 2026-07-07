@@ -1317,6 +1317,44 @@ pub fn voxel_conversion_module() -> Module {
                 f("evidence", TsType::array(r("VoxelConversionEvidenceRef"))),
             ],
         ),
+        iface(
+            "Request for authority-owned model/volume readback.",
+            "VoxelModelInfoRequest",
+            vec![
+                f("grid", num()),
+                f("volumeAssetId", TsType::nullable(string())),
+                f("includeMaterialCounts", boolean()),
+            ],
+        ),
+        iface(
+            "Per-material voxel count derived from authority state.",
+            "VoxelModelMaterialCount",
+            vec![f("material", num()), f("voxelCount", num())],
+        ),
+        iface(
+            "Rich but bounded model/volume readback for Studio and agents.",
+            "VoxelModelInfoReadout",
+            vec![
+                f("request", r("VoxelModelInfoRequest")),
+                f("resident", boolean()),
+                f("modelId", string()),
+                f("volumeAssetId", TsType::nullable(string())),
+                f("grid", num()),
+                f("bounds", TsType::nullable(r("VoxelConversionBounds"))),
+                f("voxelCount", num()),
+                f(
+                    "materialCounts",
+                    TsType::array(r("VoxelModelMaterialCount")),
+                ),
+                f("source", TsType::nullable(r("VoxelConversionSourceRef"))),
+                f("latestPlanId", TsType::nullable(string())),
+                f("latestOutputHash", TsType::nullable(string())),
+                f("sessionHash", string()),
+                f("replayHash", string()),
+                f("evidence", TsType::array(r("VoxelConversionEvidenceRef"))),
+                f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
+            ],
+        ),
     ];
 
     Module {

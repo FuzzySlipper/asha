@@ -66,7 +66,8 @@ pub use protocol_voxel_conversion::{
     VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest,
     VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt,
     VoxelConversionSourceMaterialSlot, VoxelConversionSourceRegistration,
-    VoxelConversionSourceRegistrationRequest,
+    VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest,
+    VoxelModelMaterialCount,
 };
 pub(crate) use rule_lifecycle::{
     load_fps_project_bundle, FpsEncounterLastTransition,

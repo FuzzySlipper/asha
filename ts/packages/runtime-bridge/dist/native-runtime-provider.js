@@ -22,6 +22,7 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
     'previewVoxelConversion',
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',
+    'readVoxelModelInfo',
     'unloadWorld',
 ];
 export function createNativeRustRuntimeBridgeProvider(request) {

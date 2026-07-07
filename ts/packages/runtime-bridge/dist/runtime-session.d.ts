@@ -1,4 +1,4 @@
-import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt, type GameExtensionHookReceipt, type GameExtensionReplayEvidence, type WeaponEffectHookRequest } from '@asha/contracts';
+import { type CameraCollisionSnapshot, type CameraCreateRequest, type CameraHandle, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type CollisionAxis, type CollisionConstrainedCameraInputEnvelope, type CommandBatch, type CommandResult, type FirstPersonCameraInputEnvelope, type RenderFrameDiff, type VoxelConversionApplyRequest, type VoxelConversionEvidenceRef, type VoxelConversionPlan, type VoxelConversionPlanRequest, type VoxelConversionPreview, type VoxelConversionPreviewRequest, type VoxelConversionReceipt, type VoxelModelInfoReadout, type VoxelModelInfoRequest, type GameExtensionHookReceipt, type GameExtensionReplayEvidence, type WeaponEffectHookRequest } from '@asha/contracts';
 import { type CompositionStatus, type EngineHandle, type FrameCursor, type FpsPrimaryFireRequest, type FpsPrimaryFireResult, type RuntimeBridge, type StepResult, type WorldLoadRequest } from './bridge.js';
 import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import { type CombatReadoutScenario, type CombatRuntimeReadout } from './combat-readout.js';
@@ -510,6 +510,7 @@ export interface RuntimeSessionFacade {
     previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
     applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
     exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
+    readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout;
     readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
     readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
     readProjection(): RuntimeSessionProjectionSummary;

@@ -64,6 +64,13 @@ pub trait RuntimeBridge {
         &self,
         evidence: Vec<VoxelConversionEvidenceRef>,
     ) -> BridgeResult<Vec<VoxelConversionEvidenceRef>>;
+    /// Read bounded authority-owned model information for an applied voxel
+    /// conversion target. Missing/unknown models return typed diagnostics in the
+    /// readout rather than exposing private state or raw JSON.
+    fn read_voxel_model_info(
+        &self,
+        request: VoxelModelInfoRequest,
+    ) -> BridgeResult<VoxelModelInfoReadout>;
     /// Load an FPS/ECRP ProjectBundle-shaped session through Rust authority.
     /// Stored definitions are validated/bootstraped by rule-lifecycle and
     /// svc-entity-authoring; failure leaves any prior FPS session untouched.

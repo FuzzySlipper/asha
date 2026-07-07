@@ -31,6 +31,7 @@ impl RuntimeBridge for ReferenceBridge {
         self.voxel_conversion_targets = Self::seeded_voxel_conversion_targets();
         self.voxel_conversion_plan = None;
         self.voxel_conversion_evidence.clear();
+        self.voxel_model_infos.clear();
 
         Ok(handle)
     }
@@ -432,6 +433,7 @@ impl RuntimeBridge for ReferenceBridge {
             );
         } else {
             self.voxel = Some(candidate);
+            self.remember_voxel_model_info(&target, &planned, &receipt);
         }
         self.remember_voxel_conversion_evidence(receipt.evidence.clone());
         Ok(receipt)
@@ -454,6 +456,47 @@ impl RuntimeBridge for ReferenceBridge {
             }
         }
         Ok(evidence)
+    }
+
+    fn read_voxel_model_info(
+        &self,
+        request: VoxelModelInfoRequest,
+    ) -> BridgeResult<VoxelModelInfoReadout> {
+        self.require_initialized("read_voxel_model_info")?;
+        let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
+        if !self.voxel_conversion_targets.contains_key(&key) {
+            return Ok(Self::voxel_model_missing_readout(
+                request,
+                "voxel model request targets an unknown conversion target",
+            ));
+        }
+        let Some(info) = self.voxel_model_infos.get(&key) else {
+            return Ok(Self::voxel_model_missing_readout(
+                request,
+                "voxel model is not resident in current authority state; apply a conversion first",
+            ));
+        };
+        Ok(VoxelModelInfoReadout {
+            request: request.clone(),
+            resident: true,
+            model_id: info.model_id.clone(),
+            volume_asset_id: info.volume_asset_id.clone(),
+            grid: info.grid,
+            bounds: info.bounds,
+            voxel_count: info.voxel_count,
+            material_counts: if request.include_material_counts {
+                info.material_counts.clone()
+            } else {
+                Vec::new()
+            },
+            source: Some(info.source.clone()),
+            latest_plan_id: Some(info.latest_plan_id.clone()),
+            latest_output_hash: Some(info.latest_output_hash.clone()),
+            session_hash: info.session_hash.clone(),
+            replay_hash: info.replay_hash.clone(),
+            evidence: info.evidence.clone(),
+            diagnostics: Vec::new(),
+        })
     }
 
     fn load_fps_runtime_session(

@@ -14,6 +14,7 @@ export const MANIFEST_OPERATIONS = [
     { manifestName: 'preview_voxel_conversion', facadeMethod: 'previewVoxelConversion', surface: 'stable' },
     { manifestName: 'apply_voxel_conversion', facadeMethod: 'applyVoxelConversion', surface: 'stable' },
     { manifestName: 'export_voxel_conversion_evidence', facadeMethod: 'exportVoxelConversionEvidence', surface: 'stable' },
+    { manifestName: 'read_voxel_model_info', facadeMethod: 'readVoxelModelInfo', surface: 'stable' },
     { manifestName: 'load_fps_runtime_session', facadeMethod: 'loadFpsRuntimeSession', surface: 'stable' },
     { manifestName: 'read_fps_runtime_session', facadeMethod: 'readFpsRuntimeSession', surface: 'stable' },
     { manifestName: 'apply_fps_primary_fire', facadeMethod: 'applyFpsPrimaryFire', surface: 'stable' },

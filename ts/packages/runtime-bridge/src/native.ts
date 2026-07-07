@@ -20,6 +20,8 @@ import type {
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
+  VoxelModelInfoReadout,
+  VoxelModelInfoRequest,
   GameExtensionHookReceipt,
   GameExtensionReplayEvidence,
 } from '@asha/contracts';
@@ -97,6 +99,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'preview_voxel_conversion',
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
+  'read_voxel_model_info',
   'read_render_diffs',
   'save_current_world',
   'get_composition_status',
@@ -570,6 +573,12 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       this.#addon.exportVoxelConversionEvidence(handle, JSON.stringify(evidence)),
     );
     return parseNativeJson<readonly VoxelConversionEvidenceRef[]>(payload, 'voxel conversion evidence');
+  }
+
+  readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout {
+    const handle = this.#requireHandle('readVoxelModelInfo');
+    const payload = callNative(() => this.#addon.readVoxelModelInfo(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelModelInfoReadout>(payload, 'voxel model info');
   }
 
   // ── Unwired operations: fail-closed, never mock-backed ─────────────────────

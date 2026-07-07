@@ -563,6 +563,11 @@ class ReferenceRuntimeSessionFacade {
         this.#requireInitialized('exportVoxelConversionEvidence');
         throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion evidence export is not wired into the reference RuntimeSession');
     }
+    readVoxelModelInfo(_request) {
+        void _request;
+        this.#requireInitialized('readVoxelModelInfo');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model info is not wired into the reference RuntimeSession');
+    }
     readEcrpRuntimeReadout() {
         const identity = this.#requireInitialized('readEcrpRuntimeReadout');
         return buildEcrpRuntimeReadout({

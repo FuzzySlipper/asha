@@ -40,6 +40,7 @@ pub struct ReferenceBridge {
     voxel_conversion_targets: BTreeMap<(u64, Option<String>), VoxelConversionTargetAuthority>,
     voxel_conversion_plan: Option<PlannedConversion>,
     voxel_conversion_evidence: Vec<VoxelConversionEvidenceRef>,
+    voxel_model_infos: BTreeMap<(u64, Option<String>), VoxelModelInfoAuthority>,
 }
 
 /// The bundle schema / protocol versions this reference bridge understands.
@@ -54,6 +55,22 @@ const REFERENCE_GAME_RULE_HOOK_ID: &str = "weapon.primary.damage_modifier";
 struct VoxelConversionTargetAuthority {
     spec: VoxelGridSpec,
     volume_asset_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct VoxelModelInfoAuthority {
+    model_id: String,
+    volume_asset_id: Option<String>,
+    grid: u64,
+    bounds: Option<protocol_voxel_conversion::VoxelConversionBounds>,
+    voxel_count: u64,
+    material_counts: Vec<VoxelModelMaterialCount>,
+    source: protocol_voxel_conversion::VoxelConversionSourceRef,
+    latest_plan_id: String,
+    latest_output_hash: String,
+    session_hash: String,
+    replay_hash: String,
+    evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
 struct ReferenceDamageModifierModule {
@@ -499,6 +516,17 @@ impl ReferenceBridge {
             .cloned()
     }
 
+    fn voxel_model_key(grid: u64, volume_asset_id: &Option<String>) -> (u64, Option<String>) {
+        (grid, volume_asset_id.clone())
+    }
+
+    fn voxel_model_id(grid: u64, volume_asset_id: &Option<String>) -> String {
+        match volume_asset_id {
+            Some(id) => format!("voxel-model:grid:{grid}:volume:{id}"),
+            None => format!("voxel-model:grid:{grid}:volume:none"),
+        }
+    }
+
     fn voxel_conversion_diagnostic(
         code: VoxelConversionDiagnosticCode,
         reference: impl Into<String>,
@@ -634,6 +662,113 @@ impl ReferenceBridge {
             if !self.voxel_conversion_evidence.contains(&evidence) {
                 self.voxel_conversion_evidence.push(evidence);
             }
+        }
+    }
+
+    fn remember_voxel_model_info(
+        &mut self,
+        target: &VoxelConversionTargetAuthority,
+        planned: &PlannedConversion,
+        receipt: &VoxelConversionReceipt,
+    ) {
+        let Some(output) = &planned.output else {
+            return;
+        };
+        let Some(output_hash) = receipt.output_hash.clone() else {
+            return;
+        };
+        let grid = target.spec.id().raw() as u64;
+        let mut material_count_map = BTreeMap::<u16, u64>::new();
+        for voxel in &output.voxels {
+            if let Some(material) = voxel.value.material() {
+                *material_count_map.entry(material.raw()).or_insert(0) += 1;
+            }
+        }
+        let material_counts = material_count_map
+            .into_iter()
+            .map(|(material, voxel_count)| VoxelModelMaterialCount {
+                material,
+                voxel_count,
+            })
+            .collect::<Vec<_>>();
+        let model_id = Self::voxel_model_id(grid, &target.volume_asset_id);
+        let mut evidence = self.voxel_conversion_evidence.clone();
+        for item in &receipt.evidence {
+            if !evidence.contains(item) {
+                evidence.push(item.clone());
+            }
+        }
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-info|session|{}|{}|{}|{}|{:?}",
+                model_id,
+                planned.plan.plan_id,
+                output_hash,
+                output.voxels.len(),
+                material_counts
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-info|replay|{}|{}|{:?}",
+                planned.plan.plan_id, output_hash, evidence
+            ))
+        );
+        self.voxel_model_infos.insert(
+            Self::voxel_model_key(grid, &target.volume_asset_id),
+            VoxelModelInfoAuthority {
+                model_id,
+                volume_asset_id: target.volume_asset_id.clone(),
+                grid,
+                bounds: output.bounds,
+                voxel_count: output.voxels.len() as u64,
+                material_counts,
+                source: planned.plan.source.clone(),
+                latest_plan_id: planned.plan.plan_id.clone(),
+                latest_output_hash: output_hash,
+                session_hash,
+                replay_hash,
+                evidence,
+            },
+        );
+    }
+
+    fn voxel_model_missing_readout(
+        request: VoxelModelInfoRequest,
+        message: impl Into<String>,
+    ) -> VoxelModelInfoReadout {
+        let model_id = Self::voxel_model_id(request.grid, &request.volume_asset_id);
+        let diagnostic = Self::voxel_conversion_diagnostic(
+            VoxelConversionDiagnosticCode::VoxelConversionUnavailable,
+            model_id.clone(),
+            message,
+        );
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!("voxel-model-info|missing|{:?}", request))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!("voxel-model-info|missing-replay|{:?}", request))
+        );
+        VoxelModelInfoReadout {
+            request: request.clone(),
+            resident: false,
+            model_id,
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            bounds: None,
+            voxel_count: 0,
+            material_counts: Vec::new(),
+            source: None,
+            latest_plan_id: None,
+            latest_output_hash: None,
+            session_hash,
+            replay_hash,
+            evidence: Vec::new(),
+            diagnostics: vec![diagnostic],
         }
     }
 
