@@ -108,8 +108,15 @@ exposing raw native transports:
 ```ts
 import {
   assertNativeRustRuntimeBridgeAuthority,
+  createNativeRuntimeBridge,
+  installNativeRustRuntimeBridgeProvider,
   resolveNativeRustRuntimeBridgeProvider,
 } from '@asha/runtime-bridge';
+
+installNativeRustRuntimeBridgeProvider({
+  globalScope: globalThis,
+  createRuntimeBridge: createNativeRuntimeBridge,
+});
 
 const provider = await resolveNativeRustRuntimeBridgeProvider({
   globalScope: globalThis,
@@ -125,6 +132,13 @@ Providers must declare `backend: "native_rust"`, `productAuthority: true`, and
 operations needed by RuntimeSession. Missing providers, spoofed reference
 metadata, missing bridge objects, and missing operations return typed
 fail-closed diagnostics.
+
+Packaged standalone hosts should run the install step in their preload/host
+bootstrap before the game app entry imports or boots. The app then resolves the
+provider from the same public package root it uses in browser mode. This keeps
+the executable path independent of a manually managed local dev server or port,
+while still preventing product authority from falling back to a reference/mock
+RuntimeBridge.
 
 After a RuntimeSession loads project content, consumers should call
 `assertNativeRustRuntimeBridgeAuthority()` with the ECRP authority readout and

@@ -24,6 +24,52 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
     'exportVoxelConversionEvidence',
     'unloadWorld',
 ];
+export function createNativeRustRuntimeBridgeProvider(request) {
+    const hasBridge = request.bridge !== undefined;
+    const hasFactory = request.createRuntimeBridge !== undefined;
+    if (hasBridge === hasFactory) {
+        throw new RuntimeBridgeError('invalid_input', 'Native RuntimeBridge provider requires exactly one bridge or createRuntimeBridge factory.');
+    }
+    if (hasFactory) {
+        const createRuntimeBridge = request.createRuntimeBridge;
+        if (createRuntimeBridge === undefined) {
+            throw new RuntimeBridgeError('invalid_input', 'Native RuntimeBridge provider factory was missing.');
+        }
+        return {
+            kind: NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
+            backend: 'native_rust',
+            productAuthority: true,
+            referenceFallback: false,
+            createRuntimeBridge,
+        };
+    }
+    const bridge = request.bridge;
+    if (bridge === undefined) {
+        throw new RuntimeBridgeError('invalid_input', 'Native RuntimeBridge provider bridge was missing.');
+    }
+    return {
+        kind: NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
+        backend: 'native_rust',
+        productAuthority: true,
+        referenceFallback: false,
+        bridge,
+    };
+}
+export function installNativeRustRuntimeBridgeProvider(request) {
+    const provider = request.provider ?? createNativeRustRuntimeBridgeProvider(request);
+    if (!isNativeRustRuntimeBridgeProvider(provider, [NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND])) {
+        throw new RuntimeBridgeError('invalid_input', 'Standalone host must install the public native Rust RuntimeBridge provider contract with product authority and no reference fallback.');
+    }
+    const providerGlobalName = request.providerGlobalName ?? 'ashaRuntimeBridge';
+    const globalScope = request.globalScope ?? defaultNativeRustRuntimeBridgeProviderGlobalTarget();
+    globalScope[providerGlobalName] = provider;
+    const providerGlobal = `globalThis.${providerGlobalName}`;
+    return {
+        provider,
+        providerGlobal,
+        profile: nativeRustRuntimeBridgeProviderProfile(providerGlobal, provider.kind),
+    };
+}
 export async function resolveNativeRustRuntimeBridgeProvider(request = {}) {
     const lookup = readProviderCandidate(request);
     const providerKinds = request.providerKinds ?? [
@@ -107,6 +153,9 @@ function defaultNativeRustRuntimeBridgeProviderGlobals() {
         ashaRuntimeBridge: globals.ashaRuntimeBridge,
         ashaDemoRuntimeBridge: globals.ashaDemoRuntimeBridge,
     };
+}
+function defaultNativeRustRuntimeBridgeProviderGlobalTarget() {
+    return globalThis;
 }
 function isNativeRustRuntimeBridgeProvider(value, providerKinds) {
     return value !== null

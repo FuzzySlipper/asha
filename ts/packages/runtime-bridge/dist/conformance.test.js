@@ -38,7 +38,7 @@ const MODEL_MATERIAL_PREVIEW_REQUEST = {
     },
     instanceHandle: 7001,
 };
-import { MANIFEST_OPERATIONS, RuntimeBridgeError, assertNativeRustRuntimeBridgeAuthority, createNativeGameRuntimeLauncher, createNativeRuntimeBridge, createSelectedBackendGameRuntimeLauncher, frameCursor, nativeBackendProfile, resolveNativeRustRuntimeBridgeProvider, validateGameRuntimeBackendProfile, } from './index.js';
+import { MANIFEST_OPERATIONS, RuntimeBridgeError, assertNativeRustRuntimeBridgeAuthority, createNativeRustRuntimeBridgeProvider, createNativeGameRuntimeLauncher, createNativeRuntimeBridge, createSelectedBackendGameRuntimeLauncher, frameCursor, installNativeRustRuntimeBridgeProvider, nativeBackendProfile, resolveNativeRustRuntimeBridgeProvider, validateGameRuntimeBackendProfile, } from './index.js';
 import { MockRuntimeBridge, REFERENCE_RUNTIME_BACKEND_PROFILE, createMockRuntimeBridge, createMockRuntimeSession, createReferenceGameRuntimeLauncher, referenceBackendProfile, } from './reference.js';
 function writeStaleNativeAddonModule() {
     const dir = mkdtempSync(join(tmpdir(), 'asha-runtime-bridge-'));
@@ -398,6 +398,39 @@ void test('native Rust RuntimeBridge provider resolver accepts public native pro
     assert.equal(resolution.bridge, bridge);
     assert.equal(resolution.providerGlobal, 'globalThis.ashaRuntimeBridge');
     assert.equal(resolution.profile.providerContract, 'asha.runtime_bridge.native_rust_provider.v1');
+});
+void test('native Rust RuntimeBridge provider helper creates product-authority provider metadata', async () => {
+    const bridge = createMockRuntimeBridge();
+    const provider = createNativeRustRuntimeBridgeProvider({ bridge });
+    assert.equal(provider.kind, 'asha.runtime_bridge.native_rust_provider.v1');
+    assert.equal(provider.backend, 'native_rust');
+    assert.equal(provider.productAuthority, true);
+    assert.equal(provider.referenceFallback, false);
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({ provider });
+    assert.equal(resolution.status, 'available');
+    assert.equal(resolution.bridge, bridge);
+});
+void test('standalone host can install the native RuntimeBridge provider before app boot', async () => {
+    const bridge = createMockRuntimeBridge();
+    const globalScope = {};
+    const installation = installNativeRustRuntimeBridgeProvider({
+        globalScope,
+        createRuntimeBridge: () => bridge,
+    });
+    assert.equal(installation.providerGlobal, 'globalThis.ashaRuntimeBridge');
+    assert.equal(installation.profile.referenceFallback, false);
+    assert.equal(globalScope['ashaRuntimeBridge'], installation.provider);
+    const resolution = await resolveNativeRustRuntimeBridgeProvider({ globalScope });
+    assert.equal(resolution.status, 'available');
+    assert.equal(resolution.bridge, bridge);
+});
+void test('native RuntimeBridge provider helper rejects ambiguous host wiring', () => {
+    assert.throws(() => createNativeRustRuntimeBridgeProvider({
+        bridge: createMockRuntimeBridge(),
+        createRuntimeBridge: createMockRuntimeBridge,
+    }), (e) => e instanceof RuntimeBridgeError
+        && e.kind === 'invalid_input'
+        && e.message.includes('exactly one bridge or createRuntimeBridge'));
 });
 void test('native Rust RuntimeBridge authority validator rejects reference-backed readouts', () => {
     assert.throws(() => assertNativeRustRuntimeBridgeAuthority({
