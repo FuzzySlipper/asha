@@ -31,6 +31,24 @@ contracts.
 voxel collision blocker, resolves the nearest target AABB hit before that
 blocker, mutates health atomically, and emits deterministic events/readout.
 
+## Game-Rules Relationship
+
+The #4532 migration keeps `svc-combat` as the single FPS health mutation and
+fire/raycast readout path. `rule-lifecycle` now resolves primary-fire damage as
+a generated game-rules `ApplyDelta` effect through `svc-game-rules`, then passes
+the resulting bounded damage amount into `svc-combat::apply_fire_intent()` for
+the atomic health mutation and compatibility `CombatReadout`.
+
+That split prevents a second health table from forming in the generic
+game-rules substrate:
+
+- `svc-game-rules` owns generic catalog validation, effect resolution, modifier
+  receipt/readout evidence, and poison/periodic examples.
+- `svc-combat` owns target selection, fire validation, health mutation,
+  `CombatEvent` compatibility readouts, health hash, and combat replay hash.
+- RuntimeSession primary-fire readouts remain compatible; the internal damage
+  calculation is now generic effect resolution, not a parallel TS/demo rule.
+
 ## Evidence
 
 The committed fixture uses the #4038 generated tunnel collision projection:

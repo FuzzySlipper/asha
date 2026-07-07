@@ -319,7 +319,7 @@ may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge"]
 
 [crate."engine-rs/crates/rules/rule-lifecycle"]
 lane = "rust-rule"
-may_depend_on = ["core-ids", "core-space", "core-entity", "protocol-entity-authoring", "svc-collision", "svc-combat", "svc-entity-authoring", "svc-levelgen"]
+may_depend_on = ["core-ids", "core-space", "core-entity", "protocol-entity-authoring", "protocol-game-rules", "svc-collision", "svc-combat", "svc-entity-authoring", "svc-game-rules", "svc-levelgen"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]
@@ -656,7 +656,10 @@ lane = "rust-bridge"
 # invokes the public game-rule-extension trait for declared game-owned modules (#4517),
 # and routes RuntimeSession voxel conversion through generated diagnostics/DTOs
 # plus svc-voxel-conversion while preserving command-based authority apply (#4479).
-may_depend_on = ["core-ids", "core-error", "core-math", "core-space", "core-voxel", "core-commands", "core-entity", "svc-spatial", "svc-volume", "svc-collision", "svc-mesh", "svc-serialization", "svc-pathfinding", "svc-combat", "svc-voxel-conversion", "rule-voxel-edit", "rule-lifecycle", "game-rule-extension", "protocol-diagnostics", "protocol-view", "protocol-render", "protocol-script", "protocol-replay", "protocol-entity-authoring", "protocol-voxel-conversion"]
+# The game-rules RuntimeSession verbs added in #4531 route generated
+# protocol-game-rules DTOs into svc-game-rules for bounded validation,
+# resolution receipts, and readout evidence.
+may_depend_on = ["core-ids", "core-error", "core-math", "core-space", "core-voxel", "core-commands", "core-entity", "svc-spatial", "svc-volume", "svc-collision", "svc-mesh", "svc-serialization", "svc-pathfinding", "svc-combat", "svc-voxel-conversion", "svc-game-rules", "rule-voxel-edit", "rule-lifecycle", "game-rule-extension", "protocol-diagnostics", "protocol-view", "protocol-render", "protocol-script", "protocol-replay", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-game-rules"]
 may_not_depend_on = ["napi", "wasm-bindgen"]
 
 [crate."engine-rs/crates/bridge/native-bridge"]

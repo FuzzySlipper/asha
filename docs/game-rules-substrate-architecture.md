@@ -84,13 +84,15 @@ modifier apply/refresh/tick/expire facts in the first implementation wave.
 
 The generic substrate must not create a competing health/damage stack.
 
-Initial integration should preserve `svc-combat` public readouts while adding a
-generic effect path underneath or alongside them:
+Initial integration preserves `svc-combat` public readouts while adding a
+generic effect path underneath them:
 
 1. `svc-combat` keeps fire/raycast/target selection and the compatibility
    `CombatReadout` shape.
-2. Damage application should migrate toward generic bounded value delta
-   operations once `core-game-rules` and `svc-game-rules` exist.
+2. FPS primary-fire damage now resolves through a generated game-rules
+   `ApplyDelta` effect in `svc-game-rules`; the resolved bounded damage amount
+   is then passed to `svc-combat::apply_fire_intent()` for the only health
+   mutation path.
 3. `svc-combat::CombatEvent` remains a compatibility service readout during the
    transition. A later migration can map accepted generic value events back into
    the same public combat readouts.

@@ -18,6 +18,10 @@ use core_space::WorldPos;
 use protocol_entity_authoring::{
     AuthoringCapability, EntityAuthoringCommand, EntityDefinition, EntityDefinitionCapability,
 };
+use protocol_game_rules::{
+    GameRuleBoundedValue, GameRuleCatalog, GameRuleCatalogRef, GameRuleEffectBundle,
+    GameRuleEffectOp, GameRuleResolutionRequest, GameRuleValueChannelRef,
+};
 use svc_collision::{CollisionProjection, Ray};
 use svc_combat::{
     apply_fire_intent, CombatEvent, CombatFireOutcome, CombatOutcome, CombatReadout,
@@ -30,6 +34,7 @@ use svc_entity_authoring::{
     ProjectBundleEntityDefinitionBootstrapRecord, ProjectBundleEntityDefinitionBootstrapRequest,
     RuleOwnedEntityAuthoringOutcome,
 };
+use svc_game_rules::resolve_protocol_request;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FpsRuntimeRole {
@@ -414,13 +419,15 @@ impl FpsRuntimeSessionState {
             .weapon
             .as_ref()
             .ok_or(FpsRuntimeError::MissingPlayerWeapon { entity: shooter })?;
-        let adjusted_damage = i64::from(weapon.damage).saturating_add(damage_delta);
-        if adjusted_damage <= 0 || adjusted_damage > i64::from(u32::MAX) {
-            return Err(FpsRuntimeError::CombatRejected(
-                CombatRejectionReason::InvalidDamage,
-            ));
-        }
         let target_before = self.combat.health(target);
+        let resolved_damage = resolve_primary_fire_damage(
+            shooter,
+            target,
+            weapon.damage,
+            damage_delta,
+            target_before,
+            tick,
+        )?;
         let combat_target = self.combat_target(target)?;
         let combat = apply_fire_intent(
             &mut self.combat,
@@ -430,7 +437,7 @@ impl FpsRuntimeSessionState {
                 shooter,
                 ray,
                 max_distance: weapon.range_units as f64,
-                damage: adjusted_damage as u32,
+                damage: resolved_damage,
                 fire_control: FireControlState::ready(
                     weapon.ammo,
                     weapon.cooldown_ticks_after_fire,
@@ -687,6 +694,87 @@ fn hash_bootstrap(
         h.write_u64(record.entity_hash.0);
     }
     h.finish()
+}
+
+fn resolve_primary_fire_damage(
+    shooter: EntityId,
+    target: EntityId,
+    weapon_damage: u32,
+    damage_delta: i64,
+    target_before: Option<HealthState>,
+    tick: u64,
+) -> Result<u32, FpsRuntimeError> {
+    let before = target_before.ok_or(FpsRuntimeError::CombatRejected(
+        CombatRejectionReason::UnknownTargetHealth,
+    ))?;
+    let amount = i64::from(weapon_damage).saturating_add(damage_delta);
+    if amount <= 0 || amount > i64::from(u32::MAX) {
+        return Err(FpsRuntimeError::CombatRejected(
+            CombatRejectionReason::InvalidDamage,
+        ));
+    }
+
+    let catalog_ref = GameRuleCatalogRef {
+        catalog_id: "catalog.fps-primary-fire".to_string(),
+        version: "0.1.0".to_string(),
+        content_hash: "fnv1a64:fps-primary-fire-damage-v0".to_string(),
+    };
+    let catalog = GameRuleCatalog {
+        catalog: catalog_ref.clone(),
+        value_channels: vec![GameRuleValueChannelRef {
+            channel_id: "value.health".to_string(),
+            display_name: Some("Health".to_string()),
+        }],
+        bundles: vec![GameRuleEffectBundle {
+            bundle_id: "bundle.primary-fire-damage".to_string(),
+            effect_ops: vec![GameRuleEffectOp::ApplyDelta {
+                op_id: "op.primary-fire-damage".to_string(),
+                channel_id: "value.health".to_string(),
+                amount: -amount,
+                tags: vec!["tag.primary-fire".to_string()],
+            }],
+            modifiers: Vec::new(),
+            tags: vec!["tag.primary-fire".to_string()],
+            source_hash: "fnv1a64:fps-primary-fire-damage-bundle-v0".to_string(),
+        }],
+    };
+    let receipt = resolve_protocol_request(
+        &GameRuleResolutionRequest {
+            catalog: catalog_ref,
+            bundle_id: "bundle.primary-fire-damage".to_string(),
+            source: shooter,
+            target,
+            values: vec![GameRuleBoundedValue {
+                channel_id: "value.health".to_string(),
+                min: 0,
+                current: i64::from(before.current),
+                max: i64::from(before.max),
+            }],
+            tick,
+        },
+        &catalog,
+    );
+    if !receipt.accepted {
+        return Err(FpsRuntimeError::CombatRejected(
+            CombatRejectionReason::InvalidDamage,
+        ));
+    }
+    let Some(delta) = receipt
+        .pending_value_deltas
+        .iter()
+        .find(|delta| delta.channel_id == "value.health")
+    else {
+        return Err(FpsRuntimeError::CombatRejected(
+            CombatRejectionReason::InvalidDamage,
+        ));
+    };
+    if delta.amount >= 0 {
+        return Err(FpsRuntimeError::CombatRejected(
+            CombatRejectionReason::InvalidDamage,
+        ));
+    }
+    u32::try_from(-delta.amount)
+        .map_err(|_| FpsRuntimeError::CombatRejected(CombatRejectionReason::InvalidDamage))
 }
 
 fn hash_primary_fire(
@@ -1158,7 +1246,47 @@ mod tests {
         assert_eq!(receipt.target_health_after, Some(HealthState::new(45, 75)));
         assert_eq!(session.health(enemy), Some(HealthState::new(45, 75)));
         assert_eq!(session.lifecycle_status, FpsLifecycleStatus::Active);
+        assert!(receipt.combat.events.iter().any(|event| matches!(
+            event,
+            CombatEvent::DamageApplied {
+                target,
+                amount: 30,
+                before: 75,
+                after: 45,
+            } if *target == enemy
+        )));
         assert_ne!(receipt.replay_hash, 0);
+    }
+
+    #[test]
+    fn primary_fire_game_rule_damage_rejection_does_not_mutate_health() {
+        let projection = tunnel_projection();
+        let mut input = custom_load_input();
+        input.definitions[0]
+            .weapon
+            .as_mut()
+            .expect("player weapon")
+            .damage = 25;
+        let mut session = load_fps_project_bundle(input).expect("load session");
+        let enemy = EntityId::new(777);
+        let before_health_hash = session.combat.health_hash();
+
+        let err = session
+            .apply_primary_fire_with_damage_delta(
+                &projection,
+                Ray::new(WorldPos::new(2.5, 1.5, 1.5), WorldVec::new(0.0, 0.0, 1.0)),
+                14,
+                -25,
+            )
+            .expect_err("zero resolved damage rejected");
+
+        assert_eq!(
+            err,
+            FpsRuntimeError::CombatRejected(CombatRejectionReason::InvalidDamage)
+        );
+        assert_eq!(session.health(enemy), Some(HealthState::new(75, 75)));
+        assert_eq!(session.combat.health_hash(), before_health_hash);
+        assert_eq!(session.replay_records.len(), 1);
     }
 
     #[test]
