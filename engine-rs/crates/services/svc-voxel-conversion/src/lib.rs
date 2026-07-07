@@ -335,13 +335,15 @@ fn validate_settings(
             message,
         ));
     }
-    if request.settings.mode == VoxelConversionMode::Solid && !is_closed_manifold(source) {
-        diagnostics.push(diagnostic(
-            VoxelConversionDiagnosticCode::NonManifoldOrAmbiguousSolid,
-            DiagnosticSeverity::Error,
-            &request.source.asset_id,
-            "solid conversion requires each undirected mesh edge to be used exactly twice",
-        ));
+    if request.settings.mode == VoxelConversionMode::Solid {
+        if let Err(message) = validate_solid_topology(source) {
+            diagnostics.push(diagnostic(
+                VoxelConversionDiagnosticCode::NonManifoldOrAmbiguousSolid,
+                DiagnosticSeverity::Error,
+                &request.source.asset_id,
+                message,
+            ));
+        }
     }
 }
 
@@ -493,16 +495,52 @@ fn material_for(
         .expect("material map was validated before conversion")
 }
 
-fn is_closed_manifold(source: &StaticMeshSource) -> bool {
-    let mut edges: BTreeMap<(u32, u32), u32> = BTreeMap::new();
+fn validate_solid_topology(source: &StaticMeshSource) -> Result<(), &'static str> {
+    let mut faces = BTreeSet::<[u32; 3]>::new();
+    let mut edges: BTreeMap<(u32, u32), Vec<(u32, u32)>> = BTreeMap::new();
     for triangle in &source.triangles {
         let [a, b, c] = triangle.indices;
+        if a == b || b == c || c == a {
+            return Err("solid conversion requires non-degenerate triangle indices");
+        }
+        if triangle_area_squared(source, triangle) <= f32::EPSILON {
+            return Err("solid conversion requires non-degenerate triangle area");
+        }
+        let mut face = [a, b, c];
+        face.sort_unstable();
+        if !faces.insert(face) {
+            return Err("solid conversion requires unique triangle faces");
+        }
         for (u, v) in [(a, b), (b, c), (c, a)] {
             let edge = if u <= v { (u, v) } else { (v, u) };
-            *edges.entry(edge).or_default() += 1;
+            edges.entry(edge).or_default().push((u, v));
         }
     }
-    !edges.is_empty() && edges.values().all(|count| *count == 2)
+    if edges.is_empty() {
+        return Err("solid conversion requires closed manifold triangle edges");
+    }
+    if edges.values().any(|uses| uses.len() != 2) {
+        return Err("solid conversion requires each undirected mesh edge to be used exactly twice");
+    }
+    if edges.values().any(|uses| uses[0] == uses[1]) {
+        return Err("solid conversion requires paired edge uses to have opposite winding");
+    }
+    Ok(())
+}
+
+fn triangle_area_squared(source: &StaticMeshSource, triangle: &MeshTriangle) -> f32 {
+    let [a, b, c] = triangle.indices;
+    let a = source.positions[a as usize];
+    let b = source.positions[b as usize];
+    let c = source.positions[c as usize];
+    let ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    let ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let cross = [
+        ab[1] * ac[2] - ab[2] * ac[1],
+        ab[2] * ac[0] - ab[0] * ac[2],
+        ab[0] * ac[1] - ab[1] * ac[0],
+    ];
+    cross[0] * cross[0] + cross[1] * cross[1] + cross[2] * cross[2]
 }
 
 fn bounds_for(voxels: &[ConvertedVoxel]) -> Option<VoxelConversionBounds> {
@@ -1155,6 +1193,32 @@ mod tests {
     }
 
     #[test]
+    fn solid_topology_rejects_degenerate_duplicate_open_and_overused_edges() {
+        let mut degenerate = cube_source();
+        degenerate.triangles[0].indices = [0, 0, 1];
+        assert_solid_topology_rejected(&degenerate);
+
+        let mut duplicate_face = cube_source();
+        duplicate_face.triangles.push(duplicate_face.triangles[0]);
+        assert_solid_topology_rejected(&duplicate_face);
+
+        let mut open_shell = cube_source();
+        open_shell.triangles.pop();
+        assert_solid_topology_rejected(&open_shell);
+
+        let mut overused_edge = cube_source();
+        overused_edge.triangles.push(MeshTriangle {
+            indices: [0, 1, 4],
+            source_material_slot: 0,
+        });
+        assert_solid_topology_rejected(&overused_edge);
+
+        let mut flipped_winding = cube_source();
+        flipped_winding.triangles[1].indices = [0, 3, 2];
+        assert_solid_topology_rejected(&flipped_winding);
+    }
+
+    #[test]
     fn oversized_output_rejects_without_best_effort_output() {
         let source = cube_source();
         let request = request_for(&source, VoxelConversionMode::Solid, [2, 2, 2], 7);
@@ -1191,6 +1255,16 @@ mod tests {
         assert_eq!(
             planned.plan.diagnostics[0].code,
             VoxelConversionDiagnosticCode::SourceHashMismatch
+        );
+    }
+
+    fn assert_solid_topology_rejected(source: &StaticMeshSource) {
+        let request = request_for(source, VoxelConversionMode::Solid, [2, 2, 2], 8);
+        let planned = plan_conversion(&request, source);
+        assert!(planned.output.is_none());
+        assert_eq!(
+            planned.plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::NonManifoldOrAmbiguousSolid
         );
     }
 
