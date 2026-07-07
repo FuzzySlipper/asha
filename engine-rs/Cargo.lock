@@ -119,6 +119,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "core-game-rules"
+version = "0.1.0"
+dependencies = [
+ "core-error",
+ "core-ids",
+ "core-time",
+]
+
+[[package]]
 name = "core-ids"
 version = "0.1.0"
 

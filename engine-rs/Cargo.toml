@@ -20,6 +20,7 @@ members = [
     "crates/state/core-commands",
     "crates/state/core-snapshot",
     "crates/state/core-catalog",
+    "crates/state/core-game-rules",
 
     # Protocol
     "crates/protocol/protocol-ids",
