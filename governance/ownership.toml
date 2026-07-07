@@ -188,6 +188,11 @@ lane = "rust-service"
 may_depend_on = ["core-ids", "core-time", "core-game-rules", "protocol-game-rules", "protocol-diagnostics"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "runtime-bridge-api"]
 
+[crate."engine-rs/crates/rules/rule-game-modifier"]
+lane = "rust-rule"
+may_depend_on = ["core-ids", "core-time", "core-game-rules", "svc-game-rules"]
+may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api", "runtime-bridge-api"]
+
 # ─── Rust: Sim ───────────────────────────────────────────────────────────────
 
 [crate."engine-rs/crates/sim/sim-kernel"]

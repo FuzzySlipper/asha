@@ -587,6 +587,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rule-game-modifier"
+version = "0.1.0"
+dependencies = [
+ "core-game-rules",
+ "core-ids",
+ "core-time",
+ "svc-game-rules",
+]
+
+[[package]]
 name = "rule-lifecycle"
 version = "0.1.0"
 dependencies = [
