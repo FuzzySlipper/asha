@@ -27,6 +27,7 @@ void test('native addon loader rejects stale modules missing encounter authority
     const modulePath = writeStaleAddonModule();
     try {
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('planVoxelConversion'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('registerVoxelConversionSource'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('previewVoxelConversion'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelConversion'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('exportVoxelConversionEvidence'));
@@ -34,6 +35,7 @@ void test('native addon loader rejects stale modules missing encounter authority
             error.message.includes('readFpsEncounterDirector') &&
             error.message.includes('applyFpsEncounterTransition') &&
             error.message.includes('planVoxelConversion') &&
+            error.message.includes('registerVoxelConversionSource') &&
             error.message.includes('exportVoxelConversionEvidence'));
     }
     finally {

@@ -1087,6 +1087,7 @@ pub fn voxel_conversion_module() -> Module {
         ])
     };
     let resolution3 = || TsType::Tuple(vec![num(), num(), num()]);
+    let vec3 = || TsType::Tuple(vec![num(), num(), num()]);
 
     let items = vec![
         string_enum(
@@ -1123,6 +1124,43 @@ pub fn voxel_conversion_module() -> Module {
                 f("assetVersion", num()),
                 f("sourceHash", string()),
                 f("meshPrimitive", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "One static-mesh triangle registered as an authority-visible conversion source.",
+            "VoxelConversionSourceTriangle",
+            vec![
+                f("indices", TsType::Tuple(vec![num(), num(), num()])),
+                f("sourceMaterialSlot", num()),
+            ],
+        ),
+        iface(
+            "One source material slot available on a registered conversion source.",
+            "VoxelConversionSourceMaterialSlot",
+            vec![
+                f("sourceMaterialSlot", num()),
+                f("sourceMaterialId", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "Register inline static-mesh geometry as an authority-visible conversion source.",
+            "VoxelConversionSourceRegistrationRequest",
+            vec![
+                f("source", r("VoxelConversionSourceRef")),
+                f("positions", TsType::array(vec3())),
+                f("triangles", TsType::array(r("VoxelConversionSourceTriangle"))),
+                f("materialSlots", TsType::array(r("VoxelConversionSourceMaterialSlot"))),
+            ],
+        ),
+        iface(
+            "Result of registering a conversion source; rejected inputs carry diagnostics.",
+            "VoxelConversionSourceRegistration",
+            vec![
+                f("source", r("VoxelConversionSourceRef")),
+                f("registered", boolean()),
+                f("materialSlots", TsType::array(r("VoxelConversionSourceMaterialSlot"))),
+                f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
+                f("evidence", TsType::array(r("VoxelConversionEvidenceRef"))),
             ],
         ),
         iface(

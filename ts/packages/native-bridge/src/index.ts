@@ -17,6 +17,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceRegistration,
+  VoxelConversionSourceRegistrationRequest,
 } from '@asha/contracts';
 
 interface NativeVec3 {
@@ -232,6 +234,7 @@ export interface NativeAddon {
     blocksLoad: boolean;
   };
   planVoxelConversion(handle: number, requestJson: string): string;
+  registerVoxelConversionSource(handle: number, requestJson: string): string;
   previewVoxelConversion(handle: number, requestJson: string): string;
   applyVoxelConversion(handle: number, requestJson: string): string;
   exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
@@ -245,6 +248,8 @@ export type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceRegistration,
+  VoxelConversionSourceRegistrationRequest,
 };
 
 /** Raised when the native addon cannot be loaded (missing build / ABI mismatch). */
@@ -271,6 +276,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'saveCurrentWorld',
   'getCompositionStatus',
   'planVoxelConversion',
+  'registerVoxelConversionSource',
   'previewVoxelConversion',
   'applyVoxelConversion',
   'exportVoxelConversionEvidence',

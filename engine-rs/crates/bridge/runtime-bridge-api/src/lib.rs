@@ -18,7 +18,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use core_commands::VoxelCommand;
 use core_entity::{
@@ -55,6 +55,8 @@ pub use protocol_voxel_conversion::{
     VoxelConversionApplyRequest, VoxelConversionDiagnostic, VoxelConversionDiagnosticCode,
     VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest,
     VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt,
+    VoxelConversionSourceMaterialSlot, VoxelConversionSourceRegistration,
+    VoxelConversionSourceRegistrationRequest,
 };
 use rule_lifecycle::{
     load_fps_project_bundle, FpsEncounterLastTransition,
@@ -722,6 +724,13 @@ pub trait RuntimeBridge {
         &mut self,
         request: VoxelConversionPlanRequest,
     ) -> BridgeResult<VoxelConversionPlan>;
+    /// Register inline static-mesh geometry as an authority-visible conversion
+    /// source. This is source ingestion only; voxelization still happens through
+    /// plan/preview/apply authority operations.
+    fn register_voxel_conversion_source(
+        &mut self,
+        request: VoxelConversionSourceRegistrationRequest,
+    ) -> BridgeResult<VoxelConversionSourceRegistration>;
     /// Preview the most recently planned conversion, guarded by the plan hash.
     fn preview_voxel_conversion(
         &mut self,
@@ -1025,6 +1034,100 @@ impl ReferenceBridge {
                 .chunks_exact(3)
                 .map(|position| [position[0], position[1], position[2]])
                 .collect(),
+            triangles,
+        })
+    }
+
+    fn source_registration_diagnostic(
+        source: &protocol_voxel_conversion::VoxelConversionSourceRef,
+        message: impl Into<String>,
+    ) -> VoxelConversionSourceRegistration {
+        VoxelConversionSourceRegistration {
+            source: source.clone(),
+            registered: false,
+            material_slots: Vec::new(),
+            diagnostics: vec![Self::voxel_conversion_diagnostic(
+                VoxelConversionDiagnosticCode::UnsupportedSourceAsset,
+                source.asset_id.clone(),
+                message,
+            )],
+            evidence: Vec::new(),
+        }
+    }
+
+    fn static_mesh_source_from_registration(
+        request: &VoxelConversionSourceRegistrationRequest,
+    ) -> Result<StaticMeshSource, String> {
+        if request.source.asset_id.trim().is_empty() {
+            return Err("voxel conversion source asset id is required".to_string());
+        }
+        if request.source.asset_kind != "mesh" {
+            return Err(format!(
+                "voxel conversion source asset kind must be mesh, got {}",
+                request.source.asset_kind
+            ));
+        }
+        if request.source.asset_version == 0 {
+            return Err("voxel conversion source asset version must be positive".to_string());
+        }
+        if !request.source.source_hash.starts_with("sha256:") {
+            return Err("voxel conversion source hash must be a sha256: authority hash".to_string());
+        }
+        if request.positions.is_empty() {
+            return Err("voxel conversion source requires at least one vertex position".to_string());
+        }
+        if request.triangles.is_empty() {
+            return Err("voxel conversion source requires at least one triangle".to_string());
+        }
+
+        for (index, position) in request.positions.iter().enumerate() {
+            if !position.iter().all(|component| component.is_finite()) {
+                return Err(format!(
+                    "voxel conversion source position {index} contains a non-finite component"
+                ));
+            }
+        }
+
+        let mut material_slots = BTreeSet::new();
+        for slot in &request.material_slots {
+            if !material_slots.insert(slot.source_material_slot) {
+                return Err(format!(
+                    "voxel conversion source material slot {} is duplicated",
+                    slot.source_material_slot
+                ));
+            }
+        }
+        if material_slots.is_empty() {
+            return Err("voxel conversion source requires material slot bindings".to_string());
+        }
+
+        let vertex_count = request.positions.len() as u32;
+        let mut triangles = Vec::with_capacity(request.triangles.len());
+        for (index, triangle) in request.triangles.iter().enumerate() {
+            if triangle.indices.iter().any(|vertex| *vertex >= vertex_count) {
+                return Err(format!(
+                    "voxel conversion source triangle {index} references a missing vertex"
+                ));
+            }
+            if !material_slots.contains(&triangle.source_material_slot) {
+                return Err(format!(
+                    "voxel conversion source triangle {index} references unbound material slot {}",
+                    triangle.source_material_slot
+                ));
+            }
+            triangles.push(MeshTriangle {
+                indices: triangle.indices,
+                source_material_slot: triangle.source_material_slot,
+            });
+        }
+
+        Ok(StaticMeshSource {
+            asset_id: request.source.asset_id.clone(),
+            asset_kind: request.source.asset_kind.clone(),
+            asset_version: request.source.asset_version,
+            source_hash: request.source.source_hash.clone(),
+            mesh_primitive: request.source.mesh_primitive.clone(),
+            positions: request.positions.clone(),
             triangles,
         })
     }
@@ -2470,6 +2573,38 @@ impl RuntimeBridge for ReferenceBridge {
         Ok(plan)
     }
 
+    fn register_voxel_conversion_source(
+        &mut self,
+        request: VoxelConversionSourceRegistrationRequest,
+    ) -> BridgeResult<VoxelConversionSourceRegistration> {
+        self.require_initialized("register_voxel_conversion_source")?;
+        let source = match Self::static_mesh_source_from_registration(&request) {
+            Ok(source) => source,
+            Err(message) => {
+                return Ok(Self::source_registration_diagnostic(&request.source, message));
+            }
+        };
+        self.voxel_conversion_sources
+            .insert(source.asset_id.clone(), source);
+        self.voxel_conversion_plan = None;
+        let evidence = vec![VoxelConversionEvidenceRef {
+            kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
+            uri: format!(
+                "asha://voxel-conversion/source/{}",
+                request.source.asset_id.as_str()
+            ),
+            content_hash: request.source.source_hash.clone(),
+        }];
+        self.remember_voxel_conversion_evidence(evidence.clone());
+        Ok(VoxelConversionSourceRegistration {
+            source: request.source,
+            registered: true,
+            material_slots: request.material_slots,
+            diagnostics: Vec::new(),
+            evidence,
+        })
+    }
+
     fn preview_voxel_conversion(
         &mut self,
         request: VoxelConversionPreviewRequest,
@@ -3161,6 +3296,43 @@ mod tests {
         }
     }
 
+    fn studio_registered_source_request() -> VoxelConversionSourceRegistrationRequest {
+        VoxelConversionSourceRegistrationRequest {
+            source: protocol_voxel_conversion::VoxelConversionSourceRef {
+                asset_id: "mesh/studio-registered-triangle".to_string(),
+                asset_kind: "mesh".to_string(),
+                asset_version: 3,
+                source_hash: "sha256:studio-registered-triangle".to_string(),
+                mesh_primitive: Some("default".to_string()),
+            },
+            positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            triangles: vec![protocol_voxel_conversion::VoxelConversionSourceTriangle {
+                indices: [0, 1, 2],
+                source_material_slot: 4,
+            }],
+            material_slots: vec![VoxelConversionSourceMaterialSlot {
+                source_material_slot: 4,
+                source_material_id: Some("material/studio-copper".to_string()),
+            }],
+        }
+    }
+
+    fn registered_source_plan_request(
+        registration: &VoxelConversionSourceRegistrationRequest,
+    ) -> VoxelConversionPlanRequest {
+        let mut request = project_voxel_conversion_request(7);
+        request.source = registration.source.clone();
+        request.settings.material_map.entries = vec![
+            protocol_voxel_conversion::VoxelConversionMaterialMapEntry {
+                source_material_slot: 4,
+                source_material_id: Some("material/studio-copper".to_string()),
+                voxel_material: 9,
+            },
+        ];
+        request.settings.material_map.default_voxel_material = None;
+        request
+    }
+
     fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadRequest {
         FpsRuntimeSessionLoadRequest {
             project_bundle: "custom-demo".to_string(),
@@ -3556,6 +3728,60 @@ mod tests {
             )
             .unwrap();
         assert_eq!(exported.len(), 3);
+    }
+
+    #[test]
+    fn voxel_conversion_registers_studio_static_mesh_source_before_plan() {
+        let mut bridge = init_bridge();
+        let registration_request = studio_registered_source_request();
+        let registration = bridge
+            .register_voxel_conversion_source(registration_request.clone())
+            .unwrap();
+        assert!(registration.registered);
+        assert!(registration.diagnostics.is_empty());
+        assert_eq!(registration.source.asset_id, "mesh/studio-registered-triangle");
+        assert_eq!(registration.source.asset_version, 3);
+        assert_eq!(registration.material_slots[0].source_material_slot, 4);
+        assert_eq!(
+            registration.material_slots[0].source_material_id.as_deref(),
+            Some("material/studio-copper")
+        );
+        assert_eq!(
+            registration.evidence[0].kind,
+            protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot
+        );
+
+        let plan = bridge
+            .plan_voxel_conversion(registered_source_plan_request(&registration_request))
+            .unwrap();
+        assert!(plan.diagnostics.is_empty());
+        assert_eq!(plan.source.asset_id, "mesh/studio-registered-triangle");
+        assert_eq!(plan.expected_source_hash, "sha256:studio-registered-triangle");
+        assert_eq!(plan.settings.material_map.entries[0].source_material_slot, 4);
+    }
+
+    #[test]
+    fn voxel_conversion_source_registration_missing_geometry_fails_closed() {
+        let mut bridge = init_bridge();
+        let mut registration_request = studio_registered_source_request();
+        registration_request.positions = Vec::new();
+        let registration = bridge
+            .register_voxel_conversion_source(registration_request.clone())
+            .unwrap();
+        assert!(!registration.registered);
+        assert!(registration.evidence.is_empty());
+        assert_eq!(
+            registration.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::UnsupportedSourceAsset
+        );
+
+        let plan = bridge
+            .plan_voxel_conversion(registered_source_plan_request(&registration_request))
+            .unwrap();
+        assert_eq!(
+            plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::UnsupportedSourceAsset
+        );
     }
 
     #[test]

@@ -1,4 +1,4 @@
-import type { CameraCollisionSnapshot, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickResult, RenderFrameDiff, SceneObjectCommandResult, SceneObjectSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelSelectionSnapshot } from '@asha/contracts';
+import type { CameraCollisionSnapshot, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickResult, RenderFrameDiff, SceneObjectCommandResult, SceneObjectSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelSelectionSnapshot } from '@asha/contracts';
 import { type NativeAddon } from '@asha/native-bridge';
 import { type CompositionStatus, type EnemyDirectNavMovementRequest, type EnemyDirectNavMovementResult, type EngineConfig, type EngineHandle, type FrameCursor, type FpsEncounterDirectorSnapshot, type FpsEncounterLifecycleInput, type FpsEncounterTransitionRequest, type FpsEncounterTransitionResult, type FpsPrimaryFireRequest, type FpsPrimaryFireResult, type FpsRuntimeSessionLoadRequest, type FpsRuntimeSessionRestartRequest, type FpsRuntimeSessionSnapshot, type ReplaySessionHandle, type ReplayStepReport, type RuntimeBridge, type RuntimeBufferView, type StepInputEnvelope, type StepResult, type VoxelMeshEvidenceSnapshot, type WorldLoadRequest, type WorldSaveSummary } from './bridge.js';
 /**
@@ -30,6 +30,7 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     saveCurrentWorld(): WorldSaveSummary;
     getCompositionStatus(): CompositionStatus;
     planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
+    registerVoxelConversionSource(request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration;
     previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
     applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
     exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];

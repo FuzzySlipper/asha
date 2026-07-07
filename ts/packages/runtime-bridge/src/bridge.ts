@@ -25,6 +25,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceRegistration,
+  VoxelConversionSourceRegistrationRequest,
 } from '@asha/contracts';
 
 // ── Opaque handle types ───────────────────────────────────────────────────────
@@ -370,6 +372,7 @@ export interface RuntimeBridge {
   selectVoxel(request: ScreenPointToPickRayRequest): VoxelSelectionSnapshot;
   readVoxelMeshEvidence(request: VoxelMeshEvidenceRequest): VoxelMeshEvidenceSnapshot;
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
+  registerVoxelConversionSource(request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration;
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
   exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];

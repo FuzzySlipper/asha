@@ -33,6 +33,35 @@ export interface VoxelConversionSourceRef {
   readonly meshPrimitive: string | null;
 }
 
+// One static-mesh triangle registered as an authority-visible conversion source.
+export interface VoxelConversionSourceTriangle {
+  readonly indices: readonly [number, number, number];
+  readonly sourceMaterialSlot: number;
+}
+
+// One source material slot available on a registered conversion source.
+export interface VoxelConversionSourceMaterialSlot {
+  readonly sourceMaterialSlot: number;
+  readonly sourceMaterialId: string | null;
+}
+
+// Register inline static-mesh geometry as an authority-visible conversion source.
+export interface VoxelConversionSourceRegistrationRequest {
+  readonly source: VoxelConversionSourceRef;
+  readonly positions: readonly (readonly [number, number, number])[];
+  readonly triangles: readonly VoxelConversionSourceTriangle[];
+  readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+}
+
+// Result of registering a conversion source; rejected inputs carry diagnostics.
+export interface VoxelConversionSourceRegistration {
+  readonly source: VoxelConversionSourceRef;
+  readonly registered: boolean;
+  readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+  readonly diagnostics: readonly VoxelConversionDiagnostic[];
+  readonly evidence: readonly VoxelConversionEvidenceRef[];
+}
+
 // Target voxel grid/volume identity.
 export interface VoxelConversionTargetRef {
   readonly grid: number;

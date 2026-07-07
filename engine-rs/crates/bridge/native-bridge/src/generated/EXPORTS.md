@@ -15,6 +15,7 @@ operations are replay/devtools-only.
 | `select_voxel` | stable | `protocol_view::ScreenPointToPickRayRequest` | `protocol_view::VoxelSelectionSnapshot` | `RuntimeBridgeError` |
 | `read_voxel_mesh_evidence` | stable | `protocol_render::VoxelMeshEvidenceRequest` | `protocol_render::VoxelMeshEvidenceSnapshot` | `RuntimeBridgeError` |
 | `plan_voxel_conversion` | stable | `protocol_voxel_conversion::VoxelConversionPlanRequest` | `protocol_voxel_conversion::VoxelConversionPlan` | `RuntimeBridgeError` |
+| `register_voxel_conversion_source` | stable | `protocol_voxel_conversion::VoxelConversionSourceRegistrationRequest` | `protocol_voxel_conversion::VoxelConversionSourceRegistration` | `RuntimeBridgeError` |
 | `preview_voxel_conversion` | stable | `protocol_voxel_conversion::VoxelConversionPreviewRequest` | `protocol_voxel_conversion::VoxelConversionPreview` | `RuntimeBridgeError` |
 | `apply_voxel_conversion` | stable | `protocol_voxel_conversion::VoxelConversionApplyRequest` | `protocol_voxel_conversion::VoxelConversionReceipt` | `RuntimeBridgeError` |
 | `export_voxel_conversion_evidence` | stable | `protocol_voxel_conversion::VoxelConversionEvidenceRef[]` | `protocol_voxel_conversion::VoxelConversionEvidenceRef[]` | `RuntimeBridgeError` |

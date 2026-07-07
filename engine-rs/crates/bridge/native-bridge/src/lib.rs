@@ -26,6 +26,7 @@ use runtime_bridge_api::{
     FpsRuntimeSessionSnapshot, ReferenceBridge, RuntimeBridge, RuntimeBridgeError,
     RuntimeBridgeErrorKind, StepInputEnvelope, VoxelConversionApplyRequest,
     VoxelConversionEvidenceRef, VoxelConversionPlanRequest, VoxelConversionPreviewRequest,
+    VoxelConversionSourceRegistrationRequest,
     WorldLoadRequest,
 };
 use serde::Deserialize;
@@ -760,6 +761,17 @@ fn parse_voxel_conversion_plan_request(
     })
 }
 
+fn parse_voxel_conversion_source_registration_request(
+    request_json: &str,
+) -> napi::Result<VoxelConversionSourceRegistrationRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel conversion source registration request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_voxel_conversion_preview_request(
     request_json: &str,
 ) -> napi::Result<VoxelConversionPreviewRequest> {
@@ -1042,6 +1054,20 @@ pub fn plan_voxel_conversion(handle: i64, request_json: String) -> napi::Result<
 }
 
 #[napi]
+pub fn register_voxel_conversion_source(
+    handle: i64,
+    request_json: String,
+) -> napi::Result<String> {
+    let request = parse_voxel_conversion_source_registration_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let registration = bridge
+            .register_voxel_conversion_source(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&registration)
+    })
+}
+
+#[napi]
 pub fn preview_voxel_conversion(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_voxel_conversion_preview_request(&request_json)?;
     with_bridge(handle, |bridge| {
@@ -1081,13 +1107,17 @@ mod tests {
         "applyEnemyDirectNavMovement",
         "applyFpsEncounterTransition",
         "applyFpsPrimaryFire",
+        "applyVoxelConversion",
+        "exportVoxelConversionEvidence",
         "getCompositionStatus",
         "initializeEngine",
         "loadWorldBundle",
         "loadFpsRuntimeSession",
+        "planVoxelConversion",
         "readFpsEncounterDirector",
         "readRenderDiffs",
         "readFpsRuntimeSession",
+        "registerVoxelConversionSource",
         "restartFpsRuntimeSession",
         "saveCurrentWorld",
         "stepSimulation",
@@ -1102,13 +1132,17 @@ mod tests {
                 "applyEnemyDirectNavMovement",
                 "applyFpsEncounterTransition",
                 "applyFpsPrimaryFire",
+                "applyVoxelConversion",
+                "exportVoxelConversionEvidence",
                 "getCompositionStatus",
                 "initializeEngine",
                 "loadWorldBundle",
                 "loadFpsRuntimeSession",
+                "planVoxelConversion",
                 "readFpsEncounterDirector",
                 "readRenderDiffs",
                 "readFpsRuntimeSession",
+                "registerVoxelConversionSource",
                 "restartFpsRuntimeSession",
                 "saveCurrentWorld",
                 "stepSimulation",

@@ -17,6 +17,7 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
     'restartFpsRuntimeSession',
     'applyEnemyDirectNavMovement',
     'planVoxelConversion',
+    'registerVoxelConversionSource',
     'previewVoxelConversion',
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',

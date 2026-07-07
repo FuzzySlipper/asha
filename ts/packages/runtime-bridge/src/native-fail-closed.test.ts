@@ -13,6 +13,7 @@ import type {
   VoxelConversionApplyRequest,
   VoxelConversionPlanRequest,
   VoxelConversionPreviewRequest,
+  VoxelConversionSourceRegistrationRequest,
 } from '@asha/contracts';
 import type { NativeAddon } from '@asha/native-bridge';
 import {
@@ -90,6 +91,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
   'read_fps_encounter_director',
   'apply_fps_encounter_transition',
   'plan_voxel_conversion',
+  'register_voxel_conversion_source',
   'preview_voxel_conversion',
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
@@ -131,6 +133,19 @@ const VOXEL_CONVERSION_PLAN_REQUEST = {
     },
   },
 } as const;
+
+const VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST = {
+  source: {
+    assetId: 'mesh/native-registered-triangle',
+    assetKind: 'mesh',
+    assetVersion: 2,
+    sourceHash: 'sha256:native-registered-triangle',
+    meshPrimitive: 'default',
+  },
+  positions: [[0, 0, 0], [1, 0, 0], [0, 1, 0]] as const,
+  triangles: [{ indices: [0, 1, 2] as const, sourceMaterialSlot: 0 }],
+  materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'mat/a' }],
+} satisfies VoxelConversionSourceRegistrationRequest;
 
 const VOXEL_CONVERSION_EVIDENCE = [
   {
@@ -412,6 +427,21 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         evidence: [{ kind: 'plan', uri: 'asha://voxel-conversion/plan/fnv1a64:0000000000000101', contentHash: 'fnv1a64:0000000000000102' }],
       });
     },
+    registerVoxelConversionSource: (_handle: number, requestJson: string) => {
+      calls.push(`voxelRegister:${requestJson}`);
+      const request = parseJsonFixture<VoxelConversionSourceRegistrationRequest>(requestJson);
+      return JSON.stringify({
+        source: request.source,
+        registered: true,
+        materialSlots: request.materialSlots,
+        diagnostics: [],
+        evidence: [{
+          kind: 'source_snapshot',
+          uri: `asha://voxel-conversion/source/${request.source.assetId}`,
+          contentHash: request.source.sourceHash,
+        }],
+      });
+    },
     previewVoxelConversion: (_handle: number, requestJson: string) => {
       calls.push(`voxelPreview:${requestJson}`);
       const request = parseJsonFixture<VoxelConversionPreviewRequest>(requestJson);
@@ -502,6 +532,7 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
     },
   })],
   ['planVoxelConversion', (b) => b.planVoxelConversion(VOXEL_CONVERSION_PLAN_REQUEST)],
+  ['registerVoxelConversionSource', (b) => b.registerVoxelConversionSource(VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST)],
   ['previewVoxelConversion', (b) => b.previewVoxelConversion({
     planId: 'fnv1a64:0000000000000101',
     expectedPlanHash: VOXEL_PLAN_HASH,
@@ -652,6 +683,10 @@ void test('native conformance sequence routes through the addon without mock fal
   });
   assert.equal(encounterTransition.accepted, true);
   assert.equal(encounterTransition.replayHash, 'fnv1a64:00000000000000f0');
+  const registration = bridge.registerVoxelConversionSource(VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST);
+  assert.equal(registration.registered, true);
+  assert.equal(registration.source.assetId, 'mesh/native-registered-triangle');
+  assert.equal(registration.materialSlots[0]?.sourceMaterialId, 'mat/a');
   assert.deepEqual(bridge.readRenderDiffs(frameCursor(0)), { ops: [{ op: 'sentinel' }] });
   assert.deepEqual(bridge.saveCurrentWorld(), { artifactsWritten: 5, compactedEdits: 2, retainedEdits: 3 });
   assert.deepEqual(bridge.getCompositionStatus(), {
@@ -674,6 +709,7 @@ void test('native conformance sequence routes through the addon without mock fal
     'fpsRestart:1',
     'fpsEncounterRead',
     'fpsEncounterTransition',
+    'voxelRegister:{"source":{"assetId":"mesh/native-registered-triangle","assetKind":"mesh","assetVersion":2,"sourceHash":"sha256:native-registered-triangle","meshPrimitive":"default"},"positions":[[0,0,0],[1,0,0],[0,1,0]],"triangles":[{"indices":[0,1,2],"sourceMaterialSlot":0}],"materialSlots":[{"sourceMaterialSlot":0,"sourceMaterialId":"mat/a"}]}',
     'render:0',
     'save',
     'status',

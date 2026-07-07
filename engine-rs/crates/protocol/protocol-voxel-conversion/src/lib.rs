@@ -195,6 +195,43 @@ pub struct VoxelConversionSourceRef {
     pub mesh_primitive: Option<String>,
 }
 
+/// One static-mesh triangle registered as an authority-visible conversion source.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceTriangle {
+    pub indices: [u32; 3],
+    pub source_material_slot: u32,
+}
+
+/// One source material slot available on a registered conversion source.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceMaterialSlot {
+    pub source_material_slot: u32,
+    pub source_material_id: Option<String>,
+}
+
+/// Register inline static-mesh geometry as an authority-visible conversion source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceRegistrationRequest {
+    pub source: VoxelConversionSourceRef,
+    pub positions: Vec<[f32; 3]>,
+    pub triangles: Vec<VoxelConversionSourceTriangle>,
+    pub material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+}
+
+/// Result of registering a conversion source; rejected inputs carry diagnostics.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceRegistration {
+    pub source: VoxelConversionSourceRef,
+    pub registered: bool,
+    pub material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+    pub diagnostics: Vec<VoxelConversionDiagnostic>,
+    pub evidence: Vec<VoxelConversionEvidenceRef>,
+}
+
 /// Target voxel grid/volume identity.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

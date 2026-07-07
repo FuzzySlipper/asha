@@ -29,6 +29,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'saveCurrentWorld',
     'getCompositionStatus',
     'planVoxelConversion',
+    'registerVoxelConversionSource',
     'previewVoxelConversion',
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',

@@ -17,6 +17,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceRegistration,
+  VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
@@ -86,6 +88,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'read_fps_encounter_director',
   'apply_fps_encounter_transition',
   'plan_voxel_conversion',
+  'register_voxel_conversion_source',
   'preview_voxel_conversion',
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
@@ -488,6 +491,14 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('planVoxelConversion');
     const payload = callNative(() => this.#addon.planVoxelConversion(handle, JSON.stringify(request)));
     return parseNativeJson<VoxelConversionPlan>(payload, 'voxel conversion plan');
+  }
+
+  registerVoxelConversionSource(
+    request: VoxelConversionSourceRegistrationRequest,
+  ): VoxelConversionSourceRegistration {
+    const handle = this.#requireHandle('registerVoxelConversionSource');
+    const payload = callNative(() => this.#addon.registerVoxelConversionSource(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelConversionSourceRegistration>(payload, 'voxel conversion source registration');
   }
 
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview {

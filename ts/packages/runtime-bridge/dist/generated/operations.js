@@ -10,6 +10,7 @@ export const MANIFEST_OPERATIONS = [
     { manifestName: 'select_voxel', facadeMethod: 'selectVoxel', surface: 'stable' },
     { manifestName: 'read_voxel_mesh_evidence', facadeMethod: 'readVoxelMeshEvidence', surface: 'stable' },
     { manifestName: 'plan_voxel_conversion', facadeMethod: 'planVoxelConversion', surface: 'stable' },
+    { manifestName: 'register_voxel_conversion_source', facadeMethod: 'registerVoxelConversionSource', surface: 'stable' },
     { manifestName: 'preview_voxel_conversion', facadeMethod: 'previewVoxelConversion', surface: 'stable' },
     { manifestName: 'apply_voxel_conversion', facadeMethod: 'applyVoxelConversion', surface: 'stable' },
     { manifestName: 'export_voxel_conversion_evidence', facadeMethod: 'exportVoxelConversionEvidence', surface: 'stable' },

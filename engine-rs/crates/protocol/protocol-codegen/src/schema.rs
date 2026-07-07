@@ -61,7 +61,12 @@ impl TsType {
         match self {
             TsType::Prim(p) => p.render().to_string(),
             TsType::Ref(name) => name.clone(),
-            TsType::Array(inner) => format!("readonly {}[]", inner.render()),
+            TsType::Array(inner) => match inner.as_ref() {
+                TsType::Tuple(_) | TsType::StringEnum(_) => {
+                    format!("readonly ({})[]", inner.render())
+                }
+                _ => format!("readonly {}[]", inner.render()),
+            },
             TsType::Tuple(items) => {
                 let inner = items
                     .iter()

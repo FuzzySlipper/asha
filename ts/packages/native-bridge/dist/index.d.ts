@@ -1,4 +1,4 @@
-import type { CommandResult, RenderFrameDiff, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt } from '@asha/contracts';
+import type { CommandResult, RenderFrameDiff, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest } from '@asha/contracts';
 interface NativeVec3 {
     readonly x: number;
     readonly y: number;
@@ -189,16 +189,17 @@ export interface NativeAddon {
         blocksLoad: boolean;
     };
     planVoxelConversion(handle: number, requestJson: string): string;
+    registerVoxelConversionSource(handle: number, requestJson: string): string;
     previewVoxelConversion(handle: number, requestJson: string): string;
     applyVoxelConversion(handle: number, requestJson: string): string;
     exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
 }
-export type { VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, };
+export type { VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, };
 /** Raised when the native addon cannot be loaded (missing build / ABI mismatch). */
 export declare class NativeAddonUnavailable extends Error {
     constructor(message: string);
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence"];
 /**
  * Attempt to load the compiled addon. Returns a typed handle or throws a
  * classified {@link NativeAddonUnavailable} — never a raw module-resolution error,

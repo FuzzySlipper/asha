@@ -49,14 +49,39 @@ assert.deepEqual(a.getCompositionStatus(h), { loadedWorld: 1001, fatalCount: 0, 
 
 const bridge = createNativeRuntimeBridge('$DEST');
 bridge.initializeEngine({ seed: 1 });
-const planRequest = {
+const registrationRequest = {
   source: {
-    assetId: 'mesh/import-fixture-a',
+    assetId: 'mesh/check-native-registered-triangle',
     assetKind: 'mesh',
-    assetVersion: 1,
-    sourceHash: 'sha256:import-fixture-a',
+    assetVersion: 2,
+    sourceHash: 'sha256:check-native-registered-triangle',
     meshPrimitive: 'default',
   },
+  positions: [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
+  triangles: [{ indices: [0, 1, 2], sourceMaterialSlot: 0 }],
+  materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'material/surface-a' }],
+};
+const registration = bridge.registerVoxelConversionSource(registrationRequest);
+assert.equal(registration.registered, true);
+assert.equal(registration.diagnostics.length, 0);
+assert.equal(registration.source.assetVersion, 2);
+assert.equal(registration.materialSlots[0]?.sourceMaterialId, 'material/surface-a');
+assert.equal(registration.evidence[0]?.kind, 'source_snapshot');
+
+const rejectedRegistration = bridge.registerVoxelConversionSource({
+  ...registrationRequest,
+  source: {
+    ...registrationRequest.source,
+    assetId: 'mesh/check-native-missing-geometry',
+    sourceHash: 'sha256:check-native-missing-geometry',
+  },
+  positions: [],
+});
+assert.equal(rejectedRegistration.registered, false);
+assert.equal(rejectedRegistration.diagnostics[0]?.code, 'unsupported_source_asset');
+
+const planRequest = {
+  source: registrationRequest.source,
   target: {
     grid: 1,
     volumeAssetId: 'voxel/generated',
@@ -82,7 +107,7 @@ const planRequest = {
 };
 const plan = bridge.planVoxelConversion(planRequest);
 assert.equal(plan.authorityVersion, 'svc-voxel-conversion.v0');
-assert.equal(plan.expectedSourceHash, 'sha256:import-fixture-a');
+assert.equal(plan.expectedSourceHash, 'sha256:check-native-registered-triangle');
 assert.equal(plan.diagnostics.length, 0);
 assert.match(plan.planHash, /^fnv1a64:[0-9a-f]{16}$/u);
 

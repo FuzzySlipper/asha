@@ -12,6 +12,27 @@ export interface VoxelConversionSourceRef {
     readonly sourceHash: string;
     readonly meshPrimitive: string | null;
 }
+export interface VoxelConversionSourceTriangle {
+    readonly indices: readonly [number, number, number];
+    readonly sourceMaterialSlot: number;
+}
+export interface VoxelConversionSourceMaterialSlot {
+    readonly sourceMaterialSlot: number;
+    readonly sourceMaterialId: string | null;
+}
+export interface VoxelConversionSourceRegistrationRequest {
+    readonly source: VoxelConversionSourceRef;
+    readonly positions: readonly (readonly [number, number, number])[];
+    readonly triangles: readonly VoxelConversionSourceTriangle[];
+    readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+}
+export interface VoxelConversionSourceRegistration {
+    readonly source: VoxelConversionSourceRef;
+    readonly registered: boolean;
+    readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+    readonly diagnostics: readonly VoxelConversionDiagnostic[];
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
+}
 export interface VoxelConversionTargetRef {
     readonly grid: number;
     readonly volumeAssetId: string | null;
