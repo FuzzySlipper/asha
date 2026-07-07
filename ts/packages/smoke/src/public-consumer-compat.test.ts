@@ -11,6 +11,11 @@ import {
   type CollisionConstrainedCameraInputEnvelope,
 } from '@asha/runtime-bridge';
 import {
+  GENERATED_TUNNEL_FIRE_HIT_READOUT,
+  TINY_GENERATED_TUNNEL_READOUT,
+  type RuntimeActionIntentEnvelope,
+} from '@asha/runtime-session';
+import {
   REFERENCE_RUNTIME_BACKEND_PROFILE,
   createMockRuntimeSession,
 } from '@asha/runtime-bridge/reference';
@@ -117,7 +122,7 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
 
   const tunnel = session.readGeneratedTunnelReadout({ presetId: 'tiny-enclosed', seed: 17 });
   assert.equal(tunnel.status, 'available');
-  assert.equal(tunnel.generator.outputHash, 'a9b504096397f5b4');
+  assert.equal(tunnel.generator.outputHash, TINY_GENERATED_TUNNEL_READOUT.generator.outputHash);
   assert.deepEqual(tunnel.spawnMarkers.map((marker) => marker.id), ['player_start', 'exit_hint']);
 
   const unsupportedTunnelOperation = session.requestGeneratedTunnelOperation({
@@ -145,7 +150,7 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
   assert.equal(encounterActivated.after.state.activeEnemyCount, 1);
   assert.equal(encounterActivated.event?.kind, 'runtime_encounter.activated.v0');
 
-  const primaryFire = session.submitRuntimeActionIntent({
+  const primaryFireIntent: RuntimeActionIntentEnvelope = {
     kind: 'runtime_action_intent.v0',
     action: 'primary_fire',
     phase: 'pressed',
@@ -153,9 +158,11 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
     tick: 7,
     source: 'programmatic',
     pressed: true,
-  });
+  };
+  const primaryFire = session.submitRuntimeActionIntent(primaryFireIntent);
   assert.equal(primaryFire.accepted, true);
   assert.equal(primaryFire.combatReadout?.outcome.kind, 'hit');
+  assert.deepEqual(primaryFire.combatReadout?.outcome, GENERATED_TUNNEL_FIRE_HIT_READOUT.outcome);
   const health = primaryFire.combatReadout?.health[0];
   assert.ok(health);
   assert.equal(health.dead, true);

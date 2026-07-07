@@ -13,6 +13,9 @@
     },
     {
       "path": "../native-bridge"
+    },
+    {
+      "path": "../runtime-session"
     }
   ]
 }

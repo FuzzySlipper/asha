@@ -26,6 +26,7 @@
     "@asha/command-registry": "workspace:*",
     "@asha/catalog-core": "workspace:*",
     "@asha/runtime-bridge": "workspace:*",
+    "@asha/runtime-session": "workspace:*",
     "@asha/renderer-three": "workspace:*",
     "@asha/editor-tools": "workspace:*",
     "@asha/ui-dom": "workspace:*",

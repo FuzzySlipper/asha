@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "surface": "@asha/runtime-session",
+  "compatibilityVersion": "runtime-session.v0",
+  "packageVersion": "0.1.0",
+  "sourceOfTruth": "ts/packages/runtime-session/src/index.ts",
+  "changelog": "docs/consumer-compatibility.md#runtime-session-compatibility-log",
+  "migrationNoteTemplate": "docs/consumer-compatibility.md#breaking-change-migration-note-template",
+  "failClosedPolicy": "Consumers import semantic RuntimeSession readouts and proposal shapes from the package root only. Missing bridge-backed authority must route through @asha/runtime-bridge rather than adding private transports or local authority.",
+  "pinningGuidance": "Consumer evidence should record runtime-session.v0 plus the engine commit that provided the package.",
+  "breakingChangeRequires": [
+    "update docs/consumer-compatibility.md",
+    "update harness/public-surface/ts-packages.json",
+    "run package-root consumer compatibility checks",
+    "coordinate @asha/runtime-bridge re-export migration notes"
+  ]
+}

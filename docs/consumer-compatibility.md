@@ -36,6 +36,7 @@ metadata while their consumer role is still being ratified.
 |---|---|---|---|---|
 | `@asha/contracts` | `public` | `ts/packages/contracts/compatibility.json` | `contracts.v0` | Generated semantic DTO/type border from Rust protocol crates. |
 | `@asha/runtime-bridge` | `public` | `ts/packages/runtime-bridge/compatibility.json` | `runtime-bridge.v0` | Transport-neutral runtime facade, manifest-backed operation vocabulary, typed errors. |
+| `@asha/runtime-session` | `unstable` | `ts/packages/runtime-session/compatibility.json` | `runtime-session.v0` | Transport-neutral RuntimeSession semantic readouts, proposal envelopes, and domain helper projections. |
 | `@asha/catalog-core` | `unstable` | none | none | Typed gameplay preset/catalog validation surface for consumer-owned FPS tuning data; not runtime authority. |
 | `@asha/command-registry` | `unstable` | `ts/packages/command-registry/src/manifest.golden.json` | `command-registry.v0` | Studio command/evidence metadata registry. |
 | `@asha/devtools` | `unstable` | `ts/packages/devtools/compatibility.json` | `devtools-protocol.v0` | Observational attach/readout protocol for tools and testing harnesses. |
@@ -48,6 +49,7 @@ Additional unstable package statuses:
 
 - `@asha/catalog-core` is an unstable gameplay preset/catalog validation package. It may expose root-level typed tuning schemas and readouts for consumer-owned data, but it does not execute runtime authority, own generated contracts, or validate commands.
 - `@asha/editor-tools` is an unstable Studio/editor helper package. It is editor-local state only, not authority.
+- `@asha/runtime-session` is the unstable semantic RuntimeSession package introduced by #4547. It owns transport-neutral readout/proposal/helper vocabulary such as runtime action intents, generated tunnel readouts, combat/nav/encounter readouts, combat feedback projection, enemy policy proposal shapes, and ECRP render target identity. During the migration window, `@asha/runtime-bridge` re-exports this surface for compatibility while retaining bridge transports, native access, render decode, launchers, and bridge-backed facade adapters.
 - `@asha/renderer-host` is the unstable browser render surface host for human-facing demos. It exposes backend-neutral mount/lifecycle/projection handles and may use `@asha/renderer-three` internally while that remains the selected browser backend.
 - `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing only. It is not the long-term public renderer contract; human-facing demos should use `@asha/renderer-host` for browser mounting and `@asha/render-projection` for renderer-neutral retained semantics.
 - `@asha/ui-dom` is an unstable render-agnostic UI projection/control descriptor package. It can expose root-level HUD/menu projection helpers, but it does not execute runtime commands or own DOM framework state.
@@ -246,6 +248,7 @@ Breaking facade/operation changes require a migration note using the template be
 
 Additive notes under `runtime-bridge.v0`:
 
+- #4547 starts the package decomposition campaign by moving transport-neutral RuntimeSession semantic readouts and proposal helper modules into `@asha/runtime-session`, while preserving the existing `@asha/runtime-bridge` root exports as compatibility re-exports. Runtime bridge still owns native transport access, launchers, render decode, generated bridge operations, reference helpers, and bridge-backed RuntimeSession facade adapters during this migration phase. Consumers may begin importing semantic readout/helper types from `@asha/runtime-session`, but existing approved `@asha/runtime-bridge` imports remain valid.
 - #2564 adds three stable camera/view operations to the manifest-backed facade: `create_camera` / `createCamera`, `apply_first_person_camera_input` / `applyFirstPersonCameraInput`, and `read_camera_projection` / `readCameraProjection`. Native remains fail-closed with `operation_unimplemented` until a real native implementation lands; the mock/reference paths provide deterministic boundary evidence only. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #2895 adds one stable model/material preview/readback operation to the manifest-backed facade: `read_model_material_preview` / `readModelMaterialPreview`. The mock/reference facade derives a typed `RenderFrameDiff` from public `CatalogEntry` / `MaterialProjection` / `StaticMeshAsset` inputs. Native intentionally fail-closes with `operation_unimplemented` until a real native implementation is wired; consumers must not bypass this through renderer internals or raw transports. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #4028 adds a semantic `RuntimeSession` facade exported from `@asha/runtime-bridge`: `RuntimeSessionFacade` types for initialize/load, typed command submission, deterministic tick, projection readout, telemetry/replay/hash summary, and restart. The reference helper `createMockRuntimeSession` is now explicitly imported from `@asha/runtime-bridge/reference` so production consumers do not pick up the mock backend through the root. It wraps the existing public bridge without adding raw transports or arbitrary JSON calls. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
@@ -266,6 +269,28 @@ Additive notes under `runtime-bridge.v0`:
 - #4284 adds typed voxel conversion operations to `RuntimeSessionFacade`: `planVoxelConversion`, `previewVoxelConversion`, `applyVoxelConversion`, and `exportVoxelConversionEvidence`. The signatures use generated `@asha/contracts` voxel-conversion DTOs. Reference sessions deliberately fail closed with `operation_unimplemented`; consumers must not bypass this with raw native bridge calls, private generated paths, renderer buffers, Studio-owned voxelization, or JSON method tunnels. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #4479 wires the Rust-backed RuntimeSession voxel conversion methods through bounded runtime bridge operations: `plan_voxel_conversion`, `preview_voxel_conversion`, `apply_voxel_conversion`, and `export_voxel_conversion_evidence`. The native/runtime bridge calls `svc-voxel-conversion` for plan/preview/apply/evidence DTOs, preserves plan/preview hash guards, and commits accepted output through the existing generated voxel command authority path rather than Studio or TypeScript mutation. Unsupported target grids or stale hashes return classified conversion diagnostics. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #4287 records the Studio voxel conversion adoption boundary for the #4284 facade methods. Studio may consume generated DTOs from `@asha/contracts`, runtime methods from `@asha/runtime-bridge`, command/evidence metadata from `@asha/command-registry`, and optional renderer-neutral projection/readout surfaces only through approved package roots. Unavailable backend support remains a typed fail-closed `operation_unimplemented` result rather than permission to use raw native bridge calls, private generated imports, renderer buffers as authority, Rust crates, VoxelForge runtime code, or Studio-owned mesh voxelization. The compatibility marker remains `runtime-bridge.v0` because this is documentation of additive surfaces.
+
+## Runtime session compatibility log
+
+### `runtime-session.v0` — semantic RuntimeSession package split
+
+Status: unstable semantic package introduced by #4547. This is a migration target, not yet the sole RuntimeSession facade home.
+
+Initial root exports:
+
+- runtime action intent envelopes and receipt status types;
+- generated tunnel fixture/readout shapes;
+- combat readout and combat feedback projection helpers;
+- nav/path/policy-view readouts;
+- encounter director readouts and transition helpers;
+- enemy policy proposal/view helper shapes;
+- ECRP render target identity metadata.
+
+Compatibility posture:
+
+- Consumers may import these semantic readout/proposal surfaces from `@asha/runtime-session` root.
+- Existing `@asha/runtime-bridge` root imports remain supported by compatibility re-export shims during the transition.
+- Bridge-backed `RuntimeSessionFacade` construction, native transport access, reference helpers, launchers, render decode, and generated bridge operation conformance remain in `@asha/runtime-bridge` until later #4547 phases move or wrap them deliberately.
 
 ## Command registry compatibility log
 

@@ -8,6 +8,7 @@ Consumers import facade types and product/live launcher types from the package r
 
 ```ts
 import { type RuntimeSessionFacade } from '@asha/runtime-bridge';
+import { type RuntimeActionIntentEnvelope } from '@asha/runtime-session';
 import {
   REFERENCE_RUNTIME_BACKEND_PROFILE,
   createMockRuntimeSession,
@@ -16,6 +17,13 @@ import {
 
 No consumer should import package internals, raw native transports, generated file paths, or Rust crate paths.
 Demo and Studio live/default flows should not treat `@asha/runtime-bridge/reference` as product authority. Its `REFERENCE_RUNTIME_BACKEND_PROFILE.productAuthority` value is `false`, and reference RuntimeSession identities include `not_product_authority`.
+
+#4547 starts the package split: transport-neutral RuntimeSession semantic
+readouts, proposal envelopes, and helper projections can now be imported from
+`@asha/runtime-session`. `@asha/runtime-bridge` re-exports those surfaces during
+the migration window while retaining bridge-backed facade construction, native
+transport access, launchers, render decode, reference helpers, and generated
+bridge operation conformance.
 
 The cross-surface consumer proof for #4053 lives in
 `ts/packages/smoke/src/public-consumer-compat.test.ts`. It intentionally imports

@@ -1,0 +1,37 @@
+{
+  "name": "@asha/runtime-session",
+  "version": "0.1.0",
+  "private": true,
+  "asha": {
+    "publicSurface": {
+      "tier": 1,
+      "role": "runtime-session-semantics",
+      "allowedConsumers": ["asha-testing", "asha-demo", "asha-studio"],
+      "rootExportOnly": true,
+      "nativeTransportAccess": false,
+      "nativeTransportRule": "@asha/runtime-session must not import @asha/native-bridge; bridge-backed adapters remain in @asha/runtime-bridge during migration."
+    },
+    "compatibility": {
+      "version": "runtime-session.v0",
+      "metadataFile": "compatibility.json",
+      "changelog": "docs/consumer-compatibility.md#runtime-session-compatibility-log"
+    }
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "tsc --build && node --test 'dist/**/*.test.js'"
+  },
+  "dependencies": {
+    "@asha/contracts": "workspace:*"
+  }
+}
