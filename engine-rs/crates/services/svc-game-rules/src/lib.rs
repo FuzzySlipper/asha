@@ -10,6 +10,8 @@
 
 #![forbid(unsafe_code)]
 
+pub mod reaction;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use core_game_rules::{

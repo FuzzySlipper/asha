@@ -15,6 +15,9 @@
 
 #![forbid(unsafe_code)]
 
+pub mod reaction;
+pub use reaction::{ReactionBehavior, ReactionDefinition, ReactionWindow, ReactionWindowKind};
+
 use std::collections::BTreeSet;
 use std::fmt::{Display, Formatter};
 
