@@ -68,6 +68,22 @@ Created from this matrix:
 - Den #4595: public consumer evidence matrix in `asha-testing`.
 - Den #4596: Rust-owned texture and UV sampling design for voxel conversion.
 
+## Resource Guardrail Defaults
+
+The native conversion authority now rejects runaway requests before expensive
+output work when they exceed these roomy desktop-oriented defaults:
+
+- maximum source vertices: `1_000_000`;
+- maximum source triangles: `2_000_000`;
+- maximum resolution per axis: `4_096`;
+- maximum resolution cells: `512_000_000`;
+- maximum requested output voxels: `512_000_000`.
+
+These are semantic guardrails, not performance promises. Wall-clock/runtime
+evidence belongs in `asha-testing` perf or proof lanes with host labels. Engine
+receipts remain deterministic: over-budget requests produce typed
+`output_limit_exceeded` diagnostics and no partial authority output.
+
 ## Material And Texture Authority
 
 Current material authority is intentionally narrow:

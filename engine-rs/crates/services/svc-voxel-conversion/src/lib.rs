@@ -29,6 +29,19 @@ use protocol_voxel_conversion::{
 };
 
 pub const AUTHORITY_VERSION: &str = "svc-voxel-conversion.v0";
+pub const MAX_SOURCE_VERTICES: usize = 1_000_000;
+pub const MAX_SOURCE_TRIANGLES: usize = 2_000_000;
+pub const MAX_RESOLUTION_AXIS: u32 = 4_096;
+pub const MAX_RESOLUTION_CELLS: u64 = 512_000_000;
+pub const MAX_REQUESTED_OUTPUT_VOXELS: u64 = 512_000_000;
+
+const DEFAULT_RESOURCE_LIMITS: ConversionResourceLimits = ConversionResourceLimits {
+    max_source_vertices: MAX_SOURCE_VERTICES,
+    max_source_triangles: MAX_SOURCE_TRIANGLES,
+    max_resolution_axis: MAX_RESOLUTION_AXIS,
+    max_resolution_cells: MAX_RESOLUTION_CELLS,
+    max_requested_output_voxels: MAX_REQUESTED_OUTPUT_VOXELS,
+};
 
 /// One supported static mesh source already loaded by Asha authority.
 #[derive(Debug, Clone, PartialEq)]
@@ -69,6 +82,15 @@ pub struct ConversionOutput {
 pub struct PlannedConversion {
     pub plan: VoxelConversionPlan,
     pub output: Option<ConversionOutput>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ConversionResourceLimits {
+    max_source_vertices: usize,
+    max_source_triangles: usize,
+    max_resolution_axis: u32,
+    max_resolution_cells: u64,
+    max_requested_output_voxels: u64,
 }
 
 pub fn plan_conversion(
@@ -327,6 +349,7 @@ fn validate_settings(
             "conversion settings contain non-finite values or zero resolution",
         ));
     }
+    validate_resource_guardrails(request, source, DEFAULT_RESOURCE_LIMITS, diagnostics);
     if let Err(message) = validate_material_map(request, source) {
         diagnostics.push(diagnostic(
             VoxelConversionDiagnosticCode::InvalidMaterialMap,
@@ -345,6 +368,91 @@ fn validate_settings(
             ));
         }
     }
+}
+
+fn validate_resource_guardrails(
+    request: &VoxelConversionPlanRequest,
+    source: &StaticMeshSource,
+    limits: ConversionResourceLimits,
+    diagnostics: &mut Vec<VoxelConversionDiagnostic>,
+) {
+    if source.positions.len() > limits.max_source_vertices {
+        diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "source.positions",
+            format!(
+                "source vertex count {} exceeds native conversion limit {}",
+                source.positions.len(),
+                limits.max_source_vertices
+            ),
+        ));
+    }
+    if source.triangles.len() > limits.max_source_triangles {
+        diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "source.triangles",
+            format!(
+                "source triangle count {} exceeds native conversion limit {}",
+                source.triangles.len(),
+                limits.max_source_triangles
+            ),
+        ));
+    }
+    if request
+        .settings
+        .resolution
+        .iter()
+        .any(|axis| *axis > limits.max_resolution_axis)
+    {
+        diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "resolution",
+            format!(
+                "conversion resolution axis exceeds native conversion limit {}",
+                limits.max_resolution_axis
+            ),
+        ));
+    }
+    match resolution_cells(request.settings.resolution) {
+        Some(cells) if cells <= limits.max_resolution_cells => {}
+        Some(cells) => diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "resolution",
+            format!(
+                "conversion resolution cell budget {cells} exceeds native conversion limit {}",
+                limits.max_resolution_cells
+            ),
+        )),
+        None => diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "resolution",
+            "conversion resolution cell budget overflows u64",
+        )),
+    }
+    if request.settings.max_output_voxels == 0
+        || request.settings.max_output_voxels > limits.max_requested_output_voxels
+    {
+        diagnostics.push(diagnostic(
+            VoxelConversionDiagnosticCode::OutputLimitExceeded,
+            DiagnosticSeverity::Error,
+            "maxOutputVoxels",
+            format!(
+                "requested max output voxels must be in 1..={}",
+                limits.max_requested_output_voxels
+            ),
+        ));
+    }
+}
+
+fn resolution_cells(resolution: [u32; 3]) -> Option<u64> {
+    resolution
+        .into_iter()
+        .try_fold(1u64, |acc, axis| acc.checked_mul(u64::from(axis)))
 }
 
 fn validate_material_map(
@@ -1268,6 +1376,95 @@ mod tests {
             planned.plan.diagnostics[0].code,
             VoxelConversionDiagnosticCode::OutputLimitExceeded
         );
+    }
+
+    #[test]
+    fn resolution_axis_guardrail_rejects_before_output_work() {
+        let source = quad_source();
+        let request = request_for(
+            &source,
+            VoxelConversionMode::Surface,
+            [MAX_RESOLUTION_AXIS + 1, 4, 1],
+            16,
+        );
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.output.is_none());
+        assert_eq!(
+            planned.plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::OutputLimitExceeded
+        );
+        assert_eq!(planned.plan.diagnostics[0].reference, "resolution");
+    }
+
+    #[test]
+    fn resolution_cell_budget_guardrail_rejects_before_output_work() {
+        let source = quad_source();
+        let request = request_for(
+            &source,
+            VoxelConversionMode::Surface,
+            [MAX_RESOLUTION_AXIS, MAX_RESOLUTION_AXIS, 33],
+            16,
+        );
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.output.is_none());
+        assert!(planned
+            .plan
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code
+                == VoxelConversionDiagnosticCode::OutputLimitExceeded
+                && diagnostic.reference == "resolution"));
+    }
+
+    #[test]
+    fn requested_output_guardrail_rejects_unbounded_requests() {
+        let source = quad_source();
+        let request = request_for(
+            &source,
+            VoxelConversionMode::Surface,
+            [4, 4, 1],
+            MAX_REQUESTED_OUTPUT_VOXELS + 1,
+        );
+
+        let planned = plan_conversion(&request, &source);
+
+        assert!(planned.output.is_none());
+        assert_eq!(
+            planned.plan.diagnostics[0].code,
+            VoxelConversionDiagnosticCode::OutputLimitExceeded
+        );
+        assert_eq!(planned.plan.diagnostics[0].reference, "maxOutputVoxels");
+    }
+
+    #[test]
+    fn source_count_guardrails_are_typed_output_limit_diagnostics() {
+        let source = quad_source();
+        let request = request_for(&source, VoxelConversionMode::Surface, [4, 4, 1], 16);
+        let mut diagnostics = Vec::new();
+
+        validate_resource_guardrails(
+            &request,
+            &source,
+            ConversionResourceLimits {
+                max_source_vertices: 3,
+                max_source_triangles: 1,
+                max_resolution_axis: MAX_RESOLUTION_AXIS,
+                max_resolution_cells: MAX_RESOLUTION_CELLS,
+                max_requested_output_voxels: MAX_REQUESTED_OUTPUT_VOXELS,
+            },
+            &mut diagnostics,
+        );
+
+        assert_eq!(diagnostics.len(), 2);
+        assert!(diagnostics.iter().all(|diagnostic| {
+            diagnostic.code == VoxelConversionDiagnosticCode::OutputLimitExceeded
+        }));
+        assert_eq!(diagnostics[0].reference, "source.positions");
+        assert_eq!(diagnostics[1].reference, "source.triangles");
     }
 
     #[test]
