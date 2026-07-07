@@ -6,8 +6,10 @@ Public import path:
 
 ```ts
 import {
+  buildGameHudProjection,
   buildHudProjection,
   hudControlToIntent,
+  type GameHudProjection,
   type HudProjection,
   type HudMenuIntent,
 } from '@asha/ui-dom';
@@ -24,8 +26,19 @@ bindings because no state or authority is hidden in DOM components.
 - runtime non-claim text
 - menu controls for resume, restart, options, and exit
 
+`buildGameHudProjection()` is the broader FPS/game HUD descriptor surface for
+human-facing demos. It projects only readout-shaped data:
+
+- multiple health bars, such as player and current target
+- combat counters, accuracy ratio, and optional damage/restart/tick counters
+- pointer-lock, movement, fire, and pause status labels
+- pose labels for position, facing, and active camera
+- status rows and runtime event rows
+- menu controls for pause, resume, restart, options, and exit
+
 `hudControlToIntent()` returns typed proposals only:
 
+- `ui.pause_intent`
 - `runtime.restart_session_intent`
 - `ui.open_options_intent`
 - `ui.exit_to_menu_intent`

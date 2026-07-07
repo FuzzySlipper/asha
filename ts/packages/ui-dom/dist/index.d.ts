@@ -107,57 +107,7 @@ export declare function buildEditorControls(ctx: EditorContext, palette: readonl
  * so the DOM/agent layer only forwards interactions.
  */
 export declare function controlToAction(id: string, value: string): EditorAction | null;
-export interface HudHealthInput {
-    readonly entity: number;
-    readonly current: number;
-    readonly max: number;
-    readonly dead: boolean;
-}
-export interface HudStatusInput {
-    readonly id: string;
-    readonly tone: 'info' | 'warning' | 'danger';
-    readonly text: string;
-}
-export interface HudProjectionInput {
-    readonly health: HudHealthInput;
-    readonly status: readonly HudStatusInput[];
-    readonly nonClaims: readonly string[];
-    readonly menuOpen?: boolean;
-}
-export interface HudHealthProjection {
-    readonly entity: number;
-    readonly current: number;
-    readonly max: number;
-    readonly dead: boolean;
-    readonly ratio: number;
-    readonly label: string;
-}
-export interface HudMenuProjection {
-    readonly open: boolean;
-    readonly controls: readonly EditorControl[];
-}
-export interface HudProjection {
-    readonly kind: 'hud_projection.v0';
-    readonly health: HudHealthProjection;
-    readonly status: readonly HudStatusInput[];
-    readonly nonClaims: readonly string[];
-    readonly menu: HudMenuProjection;
-}
-export type HudMenuIntent = {
-    readonly kind: 'runtime.restart_session_intent';
-    readonly source: 'hud_menu';
-} | {
-    readonly kind: 'ui.open_options_intent';
-    readonly source: 'hud_menu';
-} | {
-    readonly kind: 'ui.exit_to_menu_intent';
-    readonly source: 'hud_menu';
-} | {
-    readonly kind: 'ui.resume_intent';
-    readonly source: 'hud_menu';
-};
-export declare function buildHudProjection(input: HudProjectionInput): HudProjection;
-export declare function hudControlToIntent(controlId: string): HudMenuIntent | null;
+export * from './hud.js';
 /** Values a value-carrying authoring control needs when its command is built. */
 export interface EntityAuthoringParams {
     readonly newEntityId?: EntityId;

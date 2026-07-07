@@ -12,6 +12,7 @@ import {
   previewOverlayDiffs,
   materialPalette,
   buildEditorControls,
+  buildGameHudProjection,
   controlToAction,
   buildHudProjection,
   hudControlToIntent,
@@ -253,6 +254,10 @@ void test('buildHudProjection exposes health, status, non-claims, and menu contr
 });
 
 void test('HUD menu controls map to typed intents only', () => {
+  assert.deepEqual(hudControlToIntent('hud-pause'), {
+    kind: 'ui.pause_intent',
+    source: 'hud_menu',
+  });
   assert.deepEqual(hudControlToIntent('hud-restart'), {
     kind: 'runtime.restart_session_intent',
     source: 'hud_menu',
@@ -292,5 +297,75 @@ void test('HUD health projection validates invalid readout data and marks defeat
   assert.throws(
     () => buildHudProjection({ health: { entity: 1, current: 41, max: 40, dead: false }, status: [], nonClaims: [] }),
     /current must not exceed max/,
+  );
+});
+
+void test('buildGameHudProjection exposes player and target HUD descriptors', () => {
+  const projection = buildGameHudProjection({
+    healthBars: [
+      { id: 'player-health', role: 'player', title: 'Player', entity: 10, current: 80, max: 100, dead: false },
+      { id: 'target-health', role: 'target', title: 'Target', entity: 20, current: 12, max: 40, dead: false },
+    ],
+    combat: { shotsFired: 5, hits: 3, misses: 2, damageDealt: 28, restartCount: 1, actionTick: 9 },
+    input: { pointerLocked: true, movementEnabled: true, fireEnabled: false, paused: false },
+    pose: { position: 'x 1.0 y 1.6 z 2.0', facing: 'yaw 90 pitch 0', camera: 'camera 1' },
+    status: [{ id: 'runtime', tone: 'info', text: 'Native runtime' }],
+    events: [{ id: 'hit-9', tone: 'warning', text: 'Hit target', detail: 'damage 14' }],
+    menuOpen: false,
+  });
+
+  assert.equal(projection.kind, 'game_hud_projection.v0');
+  assert.equal(projection.healthBars.length, 2);
+  assert.equal(projection.healthBars[0]?.label, 'Player health 80/100');
+  assert.equal(projection.healthBars[1]?.label, 'Target health 12/40');
+  assert.equal(projection.combat.accuracyRatio, 0.6);
+  assert.equal(projection.combat.label, 'Shots 5, hits 3, misses 2');
+  assert.equal(projection.combat.damageDealt, 28);
+  assert.equal(projection.input.lockLabel, 'Pointer locked');
+  assert.equal(projection.input.fireLabel, 'Fire disabled');
+  assert.equal(projection.pose.facing, 'yaw 90 pitch 0');
+  assert.deepEqual(projection.events, [{ id: 'hit-9', tone: 'warning', text: 'Hit target', detail: 'damage 14' }]);
+
+  const controlsById = new Map(projection.menu.controls.map((control) => [control.id, control]));
+  assert.equal(controlsById.get('hud-pause')?.disabled, false);
+  assert.equal(controlsById.get('hud-resume')?.disabled, true);
+  for (const control of projection.menu.controls) {
+    assert.equal(control.role, 'button');
+    assert.equal('command' in control, false);
+    assert.equal('submit' in control, false);
+  }
+});
+
+void test('game HUD projection validates readout-shaped data without owning authority', () => {
+  assert.throws(
+    () => buildGameHudProjection({
+      healthBars: [],
+      combat: { shotsFired: 0, hits: 0, misses: 0 },
+      input: { pointerLocked: false, movementEnabled: false, fireEnabled: false, paused: true },
+      pose: { position: 'unknown', facing: 'unknown', camera: 'none' },
+      status: [],
+      events: [],
+    }),
+    /requires at least one health bar/,
+  );
+
+  assert.throws(
+    () => buildGameHudProjection({
+      healthBars: [{
+        id: 'player-health',
+        role: 'player',
+        title: 'Player',
+        entity: 10,
+        current: 1,
+        max: 10,
+        dead: false,
+      }],
+      combat: { shotsFired: -1, hits: 0, misses: 0 },
+      input: { pointerLocked: false, movementEnabled: false, fireEnabled: false, paused: true },
+      pose: { position: 'unknown', facing: 'unknown', camera: 'none' },
+      status: [],
+      events: [],
+    }),
+    /shotsFired must be a finite non-negative number/,
   );
 });

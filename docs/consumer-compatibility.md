@@ -422,7 +422,7 @@ Additive notes under this unstable status:
 
 Additive notes under this unstable status:
 
-- #4043 adds `buildHudProjection` and `hudControlToIntent` for typed HUD/menu projection. The projection exposes health, status, non-claim text, and resume/restart/options/exit controls as pure data. `hudControlToIntent` emits typed proposals such as `runtime.restart_session_intent`; runtime/session code must still validate and execute restart behavior. No arbitrary JSON payloads or UI authority are introduced.
+- #4043/#4522 add `buildHudProjection`, `buildGameHudProjection`, and `hudControlToIntent` for typed HUD/menu projection. The basic projection exposes health, status, non-claim text, and resume/restart/options/exit controls as pure data. The game HUD projection adds player/target health bars, combat counters, input lock/fire/pause labels, pose labels, event rows, and pause-menu controls for FPS demos. `hudControlToIntent` emits typed proposals such as `runtime.restart_session_intent`; runtime/session code must still validate and execute restart behavior. No arbitrary JSON payloads or UI authority are introduced.
 
 ## Consumer pinning guidance
 
