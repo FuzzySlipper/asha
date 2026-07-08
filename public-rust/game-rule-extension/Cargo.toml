@@ -1,0 +1,14 @@
+[package]
+name = "asha-game-rule-extension"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.asha.public-surface]
+status = "public"
+role = "downstream-game-rule-module-api"
+source-of-truth = "engine-rs/crates/rules/game-rule-extension"
+allowed-consumer-roles = ["asha-demo"]
+
+[dependencies]
+game-rule-extension = { path = "../../engine-rs/crates/rules/game-rule-extension" }

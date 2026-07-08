@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate engine-owned public TypeScript surface metadata."""
+"""Validate engine-owned public TypeScript and Rust surface metadata."""
 from __future__ import annotations
 
 import json
@@ -10,7 +10,8 @@ import tomllib
 from typing import Any, NoReturn, cast
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "ts-packages.json"
+TS_MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "ts-packages.json"
+RUST_MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "rust-crates.json"
 RAW_TRANSPORT_PACKAGES = {"@asha/native-bridge", "@asha/wasm-replay-bridge"}
 VALID_STATUSES = {"public", "unstable", "internal"}
 
@@ -237,14 +238,14 @@ def check_consumer_policies(manifest: dict[str, Any], records_by_package: dict[s
             fail(f"{role} consumer policy must include glob-like forbidden specifier patterns")
 
 
-def check_manifest() -> None:
-    manifest = read_json(MANIFEST_PATH)
+def check_ts_manifest() -> None:
+    manifest = read_json(TS_MANIFEST_PATH)
     if manifest.get("schemaVersion") != 1:
-        fail("public surface manifest schemaVersion must be 1")
+        fail("TypeScript public surface manifest schemaVersion must be 1")
 
     records = manifest.get("packages")
     if not isinstance(records, list):
-        fail("public surface manifest must contain a packages array")
+        fail("TypeScript public surface manifest must contain a packages array")
 
     ownership_packages = load_ownership().get("package", {})
     seen_packages: set[str] = set()
@@ -324,12 +325,162 @@ def check_manifest() -> None:
     missing = sorted(actual_names - manifest_names)
     extra = sorted(manifest_names - actual_names)
     if missing:
-        fail(f"public surface manifest is missing package(s): {', '.join(missing)}")
+        fail(f"TypeScript public surface manifest is missing package(s): {', '.join(missing)}")
     if extra:
-        fail(f"public surface manifest references missing package(s): {', '.join(extra)}")
+        fail(f"TypeScript public surface manifest references missing package(s): {', '.join(extra)}")
     check_consumer_policies(manifest, records_by_package)
 
 
-check_manifest()
+def rust_crate_toml(facade_path: str) -> dict[str, Any]:
+    cargo_path = REPO_ROOT / facade_path / "Cargo.toml"
+    if not cargo_path.is_file():
+        fail(f"Rust public surface facade Cargo.toml is missing: {facade_path}/Cargo.toml")
+    return tomllib.loads(cargo_path.read_text())
+
+
+def check_rust_consumer_policies(
+    manifest: dict[str, Any],
+    records_by_crate: dict[str, dict[str, Any]],
+) -> None:
+    policies = manifest.get("consumerPolicies")
+    if not isinstance(policies, list) or not policies:
+        fail("Rust public surface manifest must declare consumerPolicies")
+
+    seen_roles: set[str] = set()
+    for policy in policies:
+        if not isinstance(policy, dict):
+            fail("Rust consumer policy records must be objects")
+        role = policy.get("consumerRole")
+        if not isinstance(role, str) or not role:
+            fail("Rust consumer policy must declare consumerRole")
+        if role in seen_roles:
+            fail(f"Rust consumer policy duplicates role {role}")
+        seen_roles.add(role)
+
+        approved_crates = policy.get("approvedCrates")
+        approved_paths = policy.get("approvedDependencyPaths")
+        forbidden_patterns = policy.get("forbiddenPathPatterns")
+        if not isinstance(approved_crates, list) or not all(
+            isinstance(crate, str) for crate in approved_crates
+        ):
+            fail(f"{role} Rust policy approvedCrates must be a string array")
+        if not isinstance(approved_paths, list) or not all(
+            isinstance(path, str) for path in approved_paths
+        ):
+            fail(f"{role} Rust policy approvedDependencyPaths must be a string array")
+        if not isinstance(forbidden_patterns, list) or not all(
+            isinstance(pattern, str) for pattern in forbidden_patterns
+        ):
+            fail(f"{role} Rust policy forbiddenPathPatterns must be a string array")
+        if "engine-rs/crates/*" not in forbidden_patterns:
+            fail(f"{role} Rust policy must forbid private engine-rs/crates/* dependency paths")
+
+        approved_set = set(cast(list[str], approved_crates))
+        for crate_name in sorted(approved_set):
+            record = records_by_crate.get(crate_name)
+            if record is None:
+                fail(f"{role} Rust policy approves unknown crate {crate_name}")
+            if record.get("status") not in {"public", "unstable"}:
+                fail(f"{role} Rust policy approves non-public Rust crate {crate_name}")
+            allowed_roles = record.get("allowedConsumerRoles")
+            if not isinstance(allowed_roles, list) or role not in allowed_roles:
+                fail(f"{role} Rust policy approves {crate_name}, but the crate record does not allow that role")
+
+        for dependency_path in cast(list[str], approved_paths):
+            if "engine-rs/crates" in dependency_path:
+                fail(f"{role} Rust policy approved path must not point into engine internals: {dependency_path}")
+            if not (REPO_ROOT / dependency_path.removeprefix("../asha-engine/")).exists():
+                fail(f"{role} Rust policy approved path does not exist in this checkout: {dependency_path}")
+
+
+def check_rust_manifest() -> None:
+    manifest = read_json(RUST_MANIFEST_PATH)
+    if manifest.get("schemaVersion") != 1:
+        fail("Rust public surface manifest schemaVersion must be 1")
+
+    records = manifest.get("crates")
+    if not isinstance(records, list) or not records:
+        fail("Rust public surface manifest must contain a crates array")
+
+    seen_crates: set[str] = set()
+    records_by_crate: dict[str, dict[str, Any]] = {}
+    for record in records:
+        if not isinstance(record, dict):
+            fail("Rust public surface crate records must be objects")
+        crate_name = record.get("crate")
+        if not isinstance(crate_name, str) or not crate_name:
+            fail("Rust public surface crate record missing crate")
+        if crate_name in seen_crates:
+            fail(f"Rust public surface manifest duplicates {crate_name}")
+        seen_crates.add(crate_name)
+        records_by_crate[crate_name] = record
+
+        status = record.get("status")
+        if status not in {"public", "unstable"}:
+            fail(f"{crate_name} has invalid Rust public surface status {status!r}")
+
+        facade_path = record.get("facadePath")
+        if not isinstance(facade_path, str) or not facade_path:
+            fail(f"{crate_name} must declare facadePath")
+        if "engine-rs/crates" in facade_path:
+            fail(f"{crate_name} facadePath must not point into engine internals")
+        cargo = rust_crate_toml(facade_path)
+        package = cargo.get("package", {})
+        if package.get("name") != crate_name:
+            fail(f"{crate_name} facade Cargo.toml package.name drifted: {package.get('name')!r}")
+        public_surface = package.get("metadata", {}).get("asha", {}).get("public-surface")
+        if not isinstance(public_surface, dict):
+            fail(f"{crate_name} facade Cargo.toml must declare package.metadata.asha.public-surface")
+        if public_surface.get("status") != status:
+            fail(f"{crate_name} facade metadata status must match rust-crates.json")
+
+        source_of_truth = record.get("sourceOfTruth")
+        if not isinstance(source_of_truth, str) or not source_of_truth:
+            fail(f"{crate_name} must declare sourceOfTruth")
+        if not source_of_truth.startswith("engine-rs/crates/"):
+            fail(f"{crate_name} sourceOfTruth must identify the owning engine crate")
+        if not (REPO_ROOT / source_of_truth / "Cargo.toml").is_file():
+            fail(f"{crate_name} sourceOfTruth Cargo.toml is missing: {source_of_truth}")
+        if public_surface.get("source-of-truth") != source_of_truth:
+            fail(f"{crate_name} facade metadata source-of-truth must match rust-crates.json")
+
+        role = record.get("intendedConsumerRole")
+        if not isinstance(role, str) or not role:
+            fail(f"{crate_name} must declare intendedConsumerRole")
+        allowed_roles = record.get("allowedConsumerRoles")
+        if not isinstance(allowed_roles, list) or not all(isinstance(role, str) for role in allowed_roles):
+            fail(f"{crate_name} allowedConsumerRoles must be a string array")
+        metadata_roles = public_surface.get("allowed-consumer-roles")
+        if metadata_roles != allowed_roles:
+            fail(f"{crate_name} facade metadata allowed-consumer-roles must match rust-crates.json")
+
+        dependency_form = record.get("dependencyForm")
+        if not isinstance(dependency_form, dict):
+            fail(f"{crate_name} must declare dependencyForm")
+        if dependency_form.get("kind") != "path":
+            fail(f"{crate_name} dependencyForm.kind must be path for the current local public route")
+        example = dependency_form.get("example")
+        if not isinstance(example, str) or facade_path not in example:
+            fail(f"{crate_name} dependencyForm.example must include facadePath {facade_path}")
+        if "engine-rs/crates" in example:
+            fail(f"{crate_name} dependencyForm.example must not point into engine internals")
+
+        exposes = record.get("exposes")
+        if not isinstance(exposes, list) or not all(isinstance(item, str) for item in exposes):
+            fail(f"{crate_name} exposes must be a string array")
+        for required in ["GameRuleModule", "WeaponEffectHookRequest", "GameExtensionProposal"]:
+            if required not in exposes:
+                fail(f"{crate_name} must expose {required}")
+
+        changelog = record.get("changelog")
+        if not isinstance(changelog, str) or not changelog:
+            fail(f"{crate_name} must declare a changelog anchor")
+        require_doc_anchor(changelog, f"{crate_name} Rust public surface changelog")
+
+    check_rust_consumer_policies(manifest, records_by_crate)
+
+
+check_ts_manifest()
+check_rust_manifest()
 check_runtime_bridge_api_crate()
 print("Public engine boundary metadata: OK")

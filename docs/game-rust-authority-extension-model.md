@@ -137,6 +137,10 @@ modules:
   `GameRuleModule` trait/API that downstream game crates can compile against.
   The default hook path fails closed with a typed diagnostic, and helper
   receipts explicitly remain pending proposals rather than authority mutations.
+- `public-rust/game-rule-extension` is the approved downstream dependency
+  facade for ASHA Game Projects. A downstream crate should depend on
+  `asha-game-rule-extension = { path = "../asha-engine/public-rust/game-rule-extension" }`
+  and import `asha_game_rule_extension`, not `engine-rs/crates/rules/game-rule-extension`.
 - `ts/packages/contracts/src/generated/gameExtension.ts` is generated from the
   Rust protocol source and re-exported from `@asha/contracts`, so TypeScript can
   name module refs, hooks, proposals, receipts, and replay evidence without

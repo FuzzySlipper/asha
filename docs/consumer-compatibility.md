@@ -19,6 +19,7 @@ The engine-owned public surface manifest is:
 
 ```text
 harness/public-surface/ts-packages.json
+harness/public-surface/rust-crates.json
 ```
 
 Every `ts/packages/*` package is listed there as `public`, `unstable`, or `internal`.
@@ -27,6 +28,18 @@ their own package truth. The manifest records each package's ownership key, inte
 consumer role, compatibility marker when one exists, and changelog anchor.
 It also records consumer-role import policies, starting with the `asha-demo`
 package-root allowlist and private/internal forbidden alternatives.
+
+The Rust manifest records approved public facade crates for downstream compiled
+game modules. For `asha-demo`, the current approved Rust dependency is:
+
+```toml
+asha-game-rule-extension = { path = "../asha-engine/public-rust/game-rule-extension" }
+```
+
+Downstream game repos must depend on that facade path, not on
+`../asha-engine/engine-rs/crates/*`. The facade re-exports the public
+game-rule extension trait and generated extension DTOs while the implementation
+source of truth remains inside the engine workspace.
 
 Tier 1 public packages carry `asha.compatibility` in `package.json` and a package-local
 `compatibility.json` file. Some unstable surfaces carry package-local compatibility
@@ -206,6 +219,43 @@ roots and do not introduce private ASHA paths, raw transports, Rust crate import
 or JSON command tunnels.
 
 ## Generated contract compatibility log
+
+## Rust game-rule extension compatibility log
+
+### `asha-game-rule-extension` — public local-path facade
+
+Status: task #4743 public Rust dependency lane for downstream game-owned rule
+modules.
+
+Source of truth:
+
+- Public facade: `public-rust/game-rule-extension`.
+- Engine implementation/API source: `engine-rs/crates/rules/game-rule-extension`.
+- Generated extension DTO source: `engine-rs/crates/protocol/protocol-game-extension`.
+- Metadata: `harness/public-surface/rust-crates.json`.
+- Check command: `python3 harness/public-surface/check-public-boundary.py`.
+
+Consumer behavior:
+
+- Downstream game crates depend on `asha-game-rule-extension` through the public
+  facade path, for example:
+
+  ```toml
+  asha-game-rule-extension = { path = "../asha-engine/public-rust/game-rule-extension" }
+  ```
+
+- Consumers import the Rust crate as `asha_game_rule_extension`.
+- Consumers implement `GameRuleModule` and use re-exported typed DTOs such as
+  `GameRuleModuleManifest`, `GameRuleModuleRef`, `WeaponEffectHookRequest`,
+  `GameExtensionProposal`, `GameExtensionHookReceipt`, and replay evidence
+  types.
+- Consumers do not depend on `engine-rs/crates/*`, vendor generated DTOs,
+  hand-edit generated contracts, call RuntimeSession internals, or mutate ASHA
+  authority directly.
+
+This facade is a compile-time rule-module API only. RuntimeSession still
+validates declared manifests, invokes modules through an approved host path, and
+applies accepted effects through Rust authority.
 
 ### `contracts.v0` — initial local-path boundary
 

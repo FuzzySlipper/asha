@@ -24,6 +24,7 @@ moving downstream planning truth into this engine repository.
 - [consumer-compatibility.md](../consumer-compatibility.md)
 - [game-agent-code-organization.md](../game-agent-code-organization.md)
 - [harness/public-surface/ts-packages.json](../../harness/public-surface/ts-packages.json)
+- [harness/public-surface/rust-crates.json](../../harness/public-surface/rust-crates.json)
 - [pack-public-artifacts.mjs](../../ts/scripts/pack-public-artifacts.mjs)
 
 ## Public Downstream Surfaces
@@ -37,10 +38,16 @@ moving downstream planning truth into this engine repository.
 - Public package tarballs and their generated manifest are emitted under
   `ts/artifacts/public-packages/`; that directory is a generated local output,
   not a checked-in Atlas link target.
+- Public Rust facade crates live under [public-rust](../../public-rust). They
+  are the approved downstream dependency paths when a game repo needs a compiled
+  Rust extension API.
 
 ## Private Or Forbidden Paths
 
 - Downstream repos must not import [engine-rs/crates](../../engine-rs/crates).
+- Downstream Rust crates must not depend on `../asha-engine/engine-rs/crates/*`;
+  use approved `public-rust/*` facades recorded in
+  [rust-crates.json](../../harness/public-surface/rust-crates.json).
 - Downstream repos must not import `@asha/*/src/*` or generated contract file
   paths.
 - `asha-demo` must not own upstream engine machinery such as collision,

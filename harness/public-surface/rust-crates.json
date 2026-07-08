@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "consumerPolicies": [
+    {
+      "consumerRole": "asha-demo",
+      "approvedCrates": [
+        "asha-game-rule-extension"
+      ],
+      "approvedDependencyPaths": [
+        "../asha-engine/public-rust/game-rule-extension"
+      ],
+      "forbiddenPathPatterns": [
+        "engine-rs/crates/*"
+      ]
+    }
+  ],
+  "crates": [
+    {
+      "crate": "asha-game-rule-extension",
+      "status": "public",
+      "facadePath": "public-rust/game-rule-extension",
+      "sourceOfTruth": "engine-rs/crates/rules/game-rule-extension",
+      "intendedConsumerRole": "Public Rust trait and DTO facade for downstream ASHA Game Project rule modules.",
+      "allowedConsumerRoles": [
+        "asha-demo"
+      ],
+      "dependencyForm": {
+        "kind": "path",
+        "example": "asha-game-rule-extension = { path = \"../asha-engine/public-rust/game-rule-extension\" }"
+      },
+      "exposes": [
+        "GameRuleModule",
+        "GameRuleExtensionResult",
+        "GameRuleModuleManifest",
+        "GameRuleModuleRef",
+        "GameRuleHookDeclaration",
+        "GameExtensionHookKind",
+        "WeaponEffectHookRequest",
+        "GameExtensionProposal",
+        "GameExtensionHookReceipt",
+        "GameExtensionReplayEvidence"
+      ],
+      "changelog": "docs/consumer-compatibility.md#rust-game-rule-extension-compatibility-log"
+    }
+  ]
+}
