@@ -335,7 +335,7 @@ summary = "Release a borrowed buffer; outstanding views must be copied out first
 [[operation]]
 name = "load_project_bundle"
 surface = "stable"
-input = "protocol_world_bundle::WorldBundleManifest"
+input = "protocol_project_bundle::ProjectBundleManifest"
 output = "protocol_diagnostics::DiagnosticReportSet"
 errors = "RuntimeBridgeError"
 summary = "Load a ProjectBundle into authority via the staged executor. Returns the composition diagnostics (empty == loaded; a fatal report == failed, prior ProjectBundle/session state untouched)."
@@ -344,7 +344,7 @@ summary = "Load a ProjectBundle into authority via the staged executor. Returns 
 name = "save_project_bundle"
 surface = "stable"
 input = "Unit"
-output = "protocol_world_bundle::SaveSummary"
+output = "protocol_project_bundle::SaveSummary"
 errors = "RuntimeBridgeError"
 summary = "Save the current ProjectBundle/session content through the real save/compaction path. Fails closed with NotInitialized if no ProjectBundle is loaded."
 

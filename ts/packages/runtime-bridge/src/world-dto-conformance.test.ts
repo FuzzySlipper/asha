@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import type {
-  WorldBundleManifest as GeneratedProjectBundleManifest, // vocab-allow: generated contract keeps legacy name until #5049.
+  ProjectBundleManifest as GeneratedProjectBundleManifest,
   SaveSummary,
   CompactionSummary,
 } from '@asha/contracts';
@@ -49,7 +49,7 @@ export type _CompactionSectionPresent = AssertExact<
   CompactionSummary
 >;
 
-void test('world DTO drift guard compiles (see type assertions above)', () => {
+void test('ProjectBundle DTO drift guard compiles (see type assertions above)', () => {
   // The real guard is the compile-time AssertExact<…> exports; this runtime body
   // exists so the file registers as a test and documents the intent.
   assert.ok(true);

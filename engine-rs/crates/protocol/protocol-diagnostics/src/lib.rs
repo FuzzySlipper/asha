@@ -1,4 +1,4 @@
-//! Protocol-level diagnostic report types for scene, asset, world-bundle, and
+//! Protocol-level diagnostic report types for scene, asset, project-bundle, and
 //! renderer-resource failures.
 //!
 //! # Lane
@@ -93,15 +93,15 @@ pub enum DiagnosticScope {
     Scene,
     /// Asset catalog / registry validation.
     AssetCatalog,
-    /// World bundle manifest / serialization / load.
-    WorldBundle,
+    /// ProjectBundle manifest / serialization / load.
+    ProjectBundle,
     /// Render handle → scene node → entity → asset projection traces.
     RenderProjection,
     /// Renderer resource lifecycle / leak / count reports.
     RendererResources,
-    /// World load/save execution and save→reload round-trip equivalence
-    /// (runtime composition). Distinct from `WorldBundle`, which is the bundle
-    /// *format*; this scope is the *executed* composition of a world.
+    /// ProjectBundle load/save execution and save→reload round-trip equivalence
+    /// (runtime composition). Distinct from `ProjectBundle`, which is the
+    /// bundle *format*; this scope is the *executed* composition of a session.
     WorldComposition,
 }
 
@@ -111,7 +111,7 @@ impl DiagnosticScope {
         match self {
             DiagnosticScope::Scene => "scene",
             DiagnosticScope::AssetCatalog => "assetCatalog",
-            DiagnosticScope::WorldBundle => "worldBundle",
+            DiagnosticScope::ProjectBundle => "projectBundle",
             DiagnosticScope::RenderProjection => "renderProjection",
             DiagnosticScope::RendererResources => "rendererResources",
             DiagnosticScope::WorldComposition => "worldComposition",
@@ -123,7 +123,7 @@ impl DiagnosticScope {
 pub const DIAGNOSTIC_SCOPES: &[&str] = &[
     "scene",
     "assetCatalog",
-    "worldBundle",
+    "projectBundle",
     "renderProjection",
     "rendererResources",
     "worldComposition",
@@ -243,7 +243,7 @@ impl DiagnosticCode {
             DiagnosticCode::ManifestProtocolMismatch
             | DiagnosticCode::CorruptBundleArtifact
             | DiagnosticCode::MissingCacheWarning
-            | DiagnosticCode::GeneratorMismatch => DiagnosticScope::WorldBundle,
+            | DiagnosticCode::GeneratorMismatch => DiagnosticScope::ProjectBundle,
             DiagnosticCode::FallbackUsed | DiagnosticCode::MissingSourceTrace => {
                 DiagnosticScope::RenderProjection
             }
@@ -680,7 +680,7 @@ mod tests {
         let variants = [
             DiagnosticScope::Scene,
             DiagnosticScope::AssetCatalog,
-            DiagnosticScope::WorldBundle,
+            DiagnosticScope::ProjectBundle,
             DiagnosticScope::RenderProjection,
             DiagnosticScope::RendererResources,
             DiagnosticScope::WorldComposition,
@@ -690,7 +690,7 @@ mod tests {
     }
 
     /// Consolidation guarantee (#2368): every diagnostic scope — scene, asset
-    /// catalog, world bundle, render projection, renderer resources, and world
+    /// catalog, project bundle, render projection, renderer resources, and world
     /// composition — is reachable by at least one stable code. A diagnostic
     /// source that has no code to map into would be a hole in the taxonomy.
     #[test]

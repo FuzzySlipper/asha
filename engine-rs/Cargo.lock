@@ -414,13 +414,13 @@ dependencies = [
  "protocol-game-rules",
  "protocol-ids",
  "protocol-policy-view",
+ "protocol-project-bundle",
  "protocol-replay",
  "protocol-scene",
  "protocol-telemetry",
  "protocol-view",
  "protocol-voxel-asset",
  "protocol-voxel-conversion",
- "protocol-world-bundle",
  "serde_json",
 ]
 
@@ -479,6 +479,13 @@ dependencies = [
  "core-ids",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "protocol-project-bundle"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
 ]
 
 [[package]]
@@ -544,13 +551,6 @@ dependencies = [
  "protocol-diagnostics",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "protocol-world-bundle"
-version = "0.1.0"
-dependencies = [
- "core-ids",
 ]
 
 [[package]]

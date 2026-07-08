@@ -1,16 +1,16 @@
-//! Cross-boundary schema for world bundles (scene-capability-super, epic #2351,
+//! Cross-boundary schema for project bundles (scene-capability-super, epic #2351,
 //! subtask #2366).
 //!
 //! # Lane
 //!
 //! `contract-steward` — owns the border shape TypeScript devtools use to
-//! **display** world-bundle manifests, ordered load plans, save/compaction
+//! **display** project-bundle manifests, ordered load plans, save/compaction
 //! summaries, version-compatibility findings, and the regenerate-and-replay
 //! generator diagnostic. Like `protocol-render`/`protocol-scene` it depends on
 //! `core-ids` only and carries **no authority logic**: manifest validation, load
 //! planning, save composition, and generator replay all stay in
-//! `svc-serialization` and `rule-world-bundle`. TS can read these shapes; it
-//! cannot mutate bundle state.
+//! `svc-serialization` and the project-bundle load/save rule lane. TS can read
+//! these shapes; it cannot mutate bundle state.
 //!
 //! # Single home for stable vocabularies
 //!
@@ -60,7 +60,7 @@ pub const ALL_ARTIFACT_CLASSES: &[ArtifactClass] = &[
 pub const KNOWN_ARTIFACT_ROLES: &[&str] = &[
     "sceneDocument",
     "assetLock",
-    "worldStateSnapshot",
+    "sessionStateSnapshot",
     "voxelChunkSnapshot",
     "voxelEditLog",
     "replayRecord",
@@ -79,7 +79,7 @@ pub const LOAD_STAGES: &[&str] = &[
     "terrainGeneration",
     "voxelEdits",
     "bootstrap",
-    "worldStateSnapshot",
+    "sessionStateSnapshot",
     "finalValidation",
 ];
 
@@ -92,10 +92,10 @@ pub enum LoadStage {
     TerrainGeneration,
     VoxelEdits,
     Bootstrap,
-    /// Restore the runtime-diverged world-state snapshot over the bootstrapped
+    /// Restore the runtime-diverged session-state snapshot over the bootstrapped
     /// scene baseline. Optional: present only when a save carried runtime
     /// divergence (#2484).
-    WorldStateSnapshot,
+    SessionStateSnapshot,
     FinalValidation,
 }
 
@@ -108,7 +108,7 @@ impl LoadStage {
             LoadStage::TerrainGeneration => "terrainGeneration",
             LoadStage::VoxelEdits => "voxelEdits",
             LoadStage::Bootstrap => "bootstrap",
-            LoadStage::WorldStateSnapshot => "worldStateSnapshot",
+            LoadStage::SessionStateSnapshot => "sessionStateSnapshot",
             LoadStage::FinalValidation => "finalValidation",
         }
     }
@@ -122,7 +122,7 @@ pub const ALL_LOAD_STAGES: &[LoadStage] = &[
     LoadStage::TerrainGeneration,
     LoadStage::VoxelEdits,
     LoadStage::Bootstrap,
-    LoadStage::WorldStateSnapshot,
+    LoadStage::SessionStateSnapshot,
     LoadStage::FinalValidation,
 ];
 
@@ -134,7 +134,7 @@ pub const LOAD_STEP_KINDS: &[&str] = &[
     "generateTerrain",
     "applyVoxelEdits",
     "bootstrapScene",
-    "restoreWorldState",
+    "restoreSessionState",
     "validateFinalState",
 ];
 
@@ -160,7 +160,7 @@ pub const LOAD_PLAN_ERROR_CODES: &[&str] = &[
 // ── Generator diagnostic ──────────────────────────────────────────────────────
 
 /// Stable suggested-action codes for an edit conflict. Mirrors
-/// `rule_world_bundle::SuggestedAction::label`.
+/// the project-bundle load/save rule lane's suggested-action label.
 pub const SUGGESTED_ACTIONS: &[&str] = &["keepEdit", "reviewConflict"];
 
 /// What to do about an edit whose generated context changed under a new generator.

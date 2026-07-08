@@ -9,7 +9,6 @@
 # (e.g. migration shims). Remove entries as files migrate.
 
 # Legacy crates (whole-crate: world-bundle/world-state is their current domain language)
-engine-rs/crates/protocol/protocol-world-bundle/
 engine-rs/crates/rules/rule-world-bundle/
 engine-rs/crates/services/svc-serialization/
 engine-rs/crates/tools/scene-diagnostics/

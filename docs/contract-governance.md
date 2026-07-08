@@ -16,7 +16,7 @@ Rust protocol crates are the source of truth:
 - `protocol-replay`
 - `protocol-telemetry`
 - `protocol-scene` — authored scene-graph documents
-- `protocol-world-bundle` — world bundle manifests, load plans, save summaries
+- `protocol-project-bundle` — project bundle manifests, load plans, save summaries
 - `protocol-assets` — asset catalog/lock shapes
 - `protocol-diagnostics` — classified diagnostic reports (load/projection/composition)
 - `protocol-policy-view` — read-only world view + proposed world commands
@@ -61,7 +61,7 @@ differs from committed files. A PR with a manual edit to generated files will fa
 | `protocol-replay` | `devtools` replay viewer, CI replay check | `check-replays.sh` golden reproduction |
 | `protocol-telemetry` | `devtools` debug dashboard | `check-contracts.sh` |
 | `protocol-scene` | `editor-tools`, `runtime-bridge` (world load) | `check-contracts.sh`; scene fixtures/goldens |
-| `protocol-world-bundle` | `runtime-bridge` (load/save), `smoke` | `check-contracts.sh`; world-bundle fixtures |
+| `protocol-project-bundle` | `runtime-bridge` (load/save), `smoke` | `check-contracts.sh`; project-bundle fixtures |
 | `protocol-assets` | `catalog-*`, `renderer-three` (asset refs) | `check-contracts.sh`; asset-catalog fixtures |
 | `protocol-diagnostics` | `runtime-bridge`, `devtools`, `smoke` | `check-contracts.sh`; diagnostics fixtures |
 | `protocol-policy-view` | `script-sdk`, `script-host` policies | `check-contracts.sh`; policy fixtures |

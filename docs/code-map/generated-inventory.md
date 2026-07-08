@@ -29,7 +29,7 @@ Source metadata:
 - [`protocol-view`](../../engine-rs/crates/protocol/protocol-view/Cargo.toml) — active
 - [`protocol-voxel-asset`](../../engine-rs/crates/protocol/protocol-voxel-asset/Cargo.toml) — active
 - [`protocol-voxel-conversion`](../../engine-rs/crates/protocol/protocol-voxel-conversion/Cargo.toml) — active
-- [`protocol-world-bundle`](../../engine-rs/crates/protocol/protocol-world-bundle/Cargo.toml) — active
+- [`protocol-project-bundle`](../../engine-rs/crates/protocol/protocol-project-bundle/Cargo.toml) — active
 
 ### rust-bridge (2)
 
@@ -226,7 +226,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `release_buffer` — stable; output `Unit`
 - `restart_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
 - `run_replay_step` — quarantined; output `protocol_replay::ReplayStepReport`
-- `save_project_bundle` — stable; output `protocol_world_bundle::SaveSummary`
+- `save_project_bundle` — stable; output `protocol_project_bundle::SaveSummary`
 - `save_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetSaveReceipt`
 - `select_voxel` — stable; output `protocol_view::VoxelSelectionSnapshot`
 - `step_simulation` — stable; output `protocol_runtime::StepResult`
@@ -270,7 +270,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/voxel-mesh`](../../harness/fixtures/voxel-mesh) — 1 files
 - [`harness/fixtures/voxel-persist`](../../harness/fixtures/voxel-persist) — 3 files
 - [`harness/fixtures/voxel-world`](../../harness/fixtures/voxel-world) — 6 files
-- [`harness/fixtures/world-bundle`](../../harness/fixtures/world-bundle) — 6 files
+- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 6 files
 - [`harness/fixtures/world-state`](../../harness/fixtures/world-state) — 3 files
 
 ### harness/goldens (7 groups)

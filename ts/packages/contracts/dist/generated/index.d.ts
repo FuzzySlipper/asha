@@ -8,7 +8,7 @@ export * from './voxelAsset.js';
 export * from './gameRules.js';
 export * from './gameExtension.js';
 export * from './scene.js';
-export * from './worldBundle.js';
+export * from './projectBundle.js';
 export * from './assets.js';
 export * from './diagnostics.js';
 export * from './policyView.js';

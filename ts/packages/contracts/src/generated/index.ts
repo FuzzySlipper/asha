@@ -26,7 +26,7 @@ export * from './gameExtension.js';
 
 export * from './scene.js';
 
-export * from './worldBundle.js';
+export * from './projectBundle.js';
 
 export * from './assets.js';
 

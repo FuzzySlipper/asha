@@ -66,8 +66,8 @@ separate governance change.
 
 ## World bundle / save serialization
 
-- `svc-serialization` (services) — the inspectable world-bundle **format** and plans:
-  - `WorldBundleManifest` — directory/manifest index with a classified artifact table
+- `svc-serialization` (services) — the inspectable project-bundle **format** and plans:
+  - `ProjectBundleManifest` — directory/manifest index with a classified artifact table
     (`durable` / `generated` / `cache`), bundle + protocol versions, world/scene identity,
     asset lock, generator metadata, and content hashes; validation fails closed on unknown
     newer versions. Std-only canonical JSON encode/decode.
@@ -83,14 +83,14 @@ separate governance change.
     conflict diagnostic (coordinate, old/new generated value, edit event id, suggested action)
     that never silently rewrites a save.
 - The directory/manifest layout is canonical for development; a `.asha` archive is a future
-  transport wrapper only. The cross-boundary schema lives in `protocol-world-bundle`
+  transport wrapper only. The cross-boundary schema lives in `protocol-project-bundle`
   (protocol layer, `core-ids`-only): manifest/artifact table, classified manifest +
   load-plan errors (version-compatibility findings), the ordered `LoadPlan`/`LoadStep`,
   save/compaction summaries, and the regenerate-and-replay generator diagnostic
   (`EditConflict`/`RegenConflictReport`), mirrored to `@asha/contracts` by
   `protocol-codegen`. Execution/validation stays in `svc-serialization`/`rule-world-bundle`;
   TS devtools *display* a manifest/load plan/generator diagnostic but cannot mutate bundle
-  state (proven by the `@asha/contracts` smoke against `harness/fixtures/world-bundle/`).
+  state (proven by the `@asha/contracts` smoke against `harness/fixtures/project-bundle/`).
 
 ## Asset registry / catalog validation
 
@@ -98,7 +98,7 @@ separate governance change.
   - `Catalog` / `CatalogEntry` + `validate` — catalog manifest validation (duplicate ids,
     material-payload placement, wrong-kind typed slots, missing dependencies) and a Rust-validated
     dependency `DependencyGraph` (DAG) with cycle-path diagnostics.
-  - `AssetLock` + `generate_lock` / `validate_lock` — world-bundle asset locks and classified
+  - `AssetLock` + `generate_lock` / `validate_lock` — project-bundle asset locks and classified
     catalog-drift findings (missing / wrong-kind / stale version|hash / dependency drift /
     new-in-catalog); validation reports, never silently re-locks.
   - `MaterialDef` with the authority/style split: `collision_projection()` → `CollisionMaterial`
@@ -152,7 +152,7 @@ separate governance change.
     one node/entity/asset; `Warning`/`Info` never block. `DiagnosticCode` strings are a contract
     (added, never renamed); the codegen tables (`DIAGNOSTIC_*`) are sourced from the crate.
   - The scope set is consolidated (#2368) to cover every diagnostic-producing system: `scene`,
-    `assetCatalog`, `worldBundle`, `renderProjection`, `rendererResources`, and `worldComposition`
+    `assetCatalog`, `projectBundle`, `renderProjection`, `rendererResources`, and `worldComposition`
     (load/save *execution* + save→reload equivalence, distinct from the bundle *format*). The
     composition codes `loadStageFailed`/`finalConsistencyMismatch` (Fatal) and `roundTripMismatch`
     (Error) give the runtime-composition work (#2361/#2362/#2364) stable codes to map into; a test

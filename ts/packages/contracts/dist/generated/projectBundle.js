@@ -6,4 +6,4 @@
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
 export {};
-//# sourceMappingURL=worldBundle.js.map
+//# sourceMappingURL=projectBundle.js.map

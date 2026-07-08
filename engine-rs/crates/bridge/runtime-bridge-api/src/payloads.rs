@@ -90,7 +90,7 @@ impl EnemyDirectNavMovementError {
 }
 
 // PROTOTYPE NOTE: these stand in for the generated
-// `protocol_world_bundle::{WorldBundleManifest, SaveSummary}` / vocab-allow: legacy protocol crate names remain until #5049.
+// `protocol_project_bundle::{ProjectBundleManifest, SaveSummary}` /
 // `protocol_diagnostics::DiagnosticReportSet` contract types named in the
 // manifest. The *shape* of the load/save verbs is the stable part.
 

@@ -1,8 +1,8 @@
 import type { SceneId, WorldId } from './scene.js';
 import type { VoxelCoord, VoxelValue } from './voxel.js';
 export type ArtifactClass = 'durable' | 'generated' | 'cache';
-export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'worldStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'replayRecord' | 'generatedMetadata' | 'cache';
-export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'bootstrap' | 'worldStateSnapshot' | 'finalValidation';
+export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'replayRecord' | 'generatedMetadata' | 'cache';
+export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
 export type SuggestedAction = 'keepEdit' | 'reviewConflict';
 export interface ArtifactEntry {
     readonly path: string;
@@ -15,7 +15,7 @@ export interface GeneratorMetadata {
     readonly version: number;
     readonly params: string;
 }
-export interface WorldSection {
+export interface ProjectSection {
     readonly id: WorldId;
     readonly name: string | null;
 }
@@ -28,10 +28,10 @@ export interface AssetLockSection {
     readonly artifact: string;
     readonly assetCount: number;
 }
-export interface WorldBundleManifest {
+export interface ProjectBundleManifest {
     readonly bundleSchemaVersion: number;
     readonly protocolVersion: number;
-    readonly world: WorldSection;
+    readonly project: ProjectSection;
     readonly scene: SceneSection;
     readonly assetLock: AssetLockSection;
     readonly generator: GeneratorMetadata;
@@ -83,9 +83,9 @@ export type LoadStep = {
 } | {
     readonly step: 'bootstrapScene';
     readonly scene: SceneId;
-    readonly world: WorldId;
+    readonly project: WorldId;
 } | {
-    readonly step: 'restoreWorldState';
+    readonly step: 'restoreSessionState';
     readonly artifact: string;
 } | {
     readonly step: 'validateFinalState';
@@ -133,6 +133,6 @@ export interface RegenConflictReport {
     readonly newVersion: number;
     readonly conflicts: readonly EditConflict[];
     readonly replayedEdits: number;
-    readonly stagingWorldHash: number;
+    readonly stagingSessionHash: number;
 }
-//# sourceMappingURL=worldBundle.d.ts.map
+//# sourceMappingURL=projectBundle.d.ts.map

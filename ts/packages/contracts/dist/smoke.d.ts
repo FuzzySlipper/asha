@@ -1,4 +1,4 @@
-import { type EntityId, type CommandEnvelope, type ScriptView, type ReplayRecord, type DiagnosticReportSet, type SourceTrace, type RendererResourceReport, type FlatSceneDocument, type SceneValidationReport, type BootstrapRecord, type WorldBundleManifest, type LoadPlan, type RegenConflictReport, type CatalogValidationReport, type LockValidationReport, type RenderMaterial, type CameraBasis, type CameraCreateRequest, type CameraHandle, type CameraPose, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type FirstPersonCameraInput, type FirstPersonCameraInputEnvelope, type PerspectiveProjection, type ViewportSize } from './index.js';
+import { type EntityId, type CommandEnvelope, type ScriptView, type ReplayRecord, type DiagnosticReportSet, type SourceTrace, type RendererResourceReport, type FlatSceneDocument, type SceneValidationReport, type BootstrapRecord, type ProjectBundleManifest, type LoadPlan, type RegenConflictReport, type CatalogValidationReport, type LockValidationReport, type RenderMaterial, type CameraBasis, type CameraCreateRequest, type CameraHandle, type CameraPose, type CameraProjectionRequest, type CameraProjectionSnapshot, type CameraSnapshot, type FirstPersonCameraInput, type FirstPersonCameraInputEnvelope, type PerspectiveProjection, type ViewportSize } from './index.js';
 export declare const __contractSmoke: {
     readonly entity: EntityId;
     readonly addTag: {
@@ -27,7 +27,7 @@ export declare const __contractSmoke: {
     readonly sampleScene: FlatSceneDocument;
     readonly cycleReport: SceneValidationReport;
     readonly bootstrap: BootstrapRecord;
-    readonly manifest: WorldBundleManifest;
+    readonly manifest: ProjectBundleManifest;
     readonly loadPlan: LoadPlan;
     readonly regenReport: RegenConflictReport;
     readonly catalogReport: CatalogValidationReport;

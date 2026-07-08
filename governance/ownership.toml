@@ -114,7 +114,7 @@ may_depend_on = ["core-ids", "core-error", "core-events", "core-commands"]
 lane = "contract-steward"
 may_depend_on = ["core-ids"]
 
-# Scene/asset/world-bundle/render diagnostic report border types (scene-capability-06).
+# Scene/asset/project-bundle/render diagnostic report border types (scene-capability-06).
 # Types and stable codes only — no product logic, no other crate (ids/coords are
 # plain integers/strings at the border). No Den coupling, ever.
 [crate."engine-rs/crates/protocol/protocol-diagnostics"]
@@ -131,11 +131,11 @@ lane = "contract-steward"
 may_depend_on = ["core-ids"]
 may_not_depend_on = ["core-state", "core-scene", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
 
-# World-bundle cross-boundary schema (scene-capability-super, #2366): manifests,
+# ProjectBundle cross-boundary schema (scene-capability-super, #2366): manifests,
 # artifact tables, ordered load plans, save/compaction summaries, and the
 # regenerate-and-replay generator diagnostic. Border vocabularies + shapes only —
 # execution stays in svc-serialization / rule-world-bundle. core-ids only.
-[crate."engine-rs/crates/protocol/protocol-world-bundle"]
+[crate."engine-rs/crates/protocol/protocol-project-bundle"]
 lane = "contract-steward"
 may_depend_on = ["core-ids"]
 may_not_depend_on = ["core-state", "svc-serialization", "rule-world-bundle", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
@@ -194,7 +194,7 @@ may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "runtime
 
 [crate."engine-rs/crates/protocol/protocol-codegen"]
 lane = "contract-steward"
-may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-world-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-voxel-asset", "protocol-game-rules", "protocol-game-extension", "protocol-view"]
+may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-project-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-voxel-asset", "protocol-game-rules", "protocol-game-extension", "protocol-view"]
 
 [crate."engine-rs/crates/services/svc-game-rules"]
 lane = "rust-service"
@@ -420,7 +420,7 @@ lane = "rust-tools"
 may_depend_on = ["core-space", "core-voxel", "core-events", "svc-volume", "svc-spatial", "svc-mesh", "svc-collision", "rule-voxel-edit", "rule-scheduler"]
 may_not_depend_on = ["render-bridge"]
 
-# Scene/asset/world-bundle/render diagnostic emitters (scene-capability-06, #2331).
+# Scene/asset/project-bundle/render diagnostic emitters (scene-capability-06, #2331).
 # Observational: maps scene/catalog/bundle validators + projection/resource state
 # into generated `protocol-diagnostics` reports. Never mutates authority; emits
 # generic ASHA artifacts (no Den coupling). Uses border diagnostic types only, so
@@ -463,7 +463,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 [crate."engine-rs/crates/tools/fixture-maker"]
 lane = "rust-tools"
 # Builds the canonical abstract voxel fixture (#2434): voxel storage/world +
-# persist snapshot format + world-bundle hashing. The basic interaction golden
+# persist snapshot format + project-bundle hashing. The basic interaction golden
 # uses svc-collision only to derive/check its authoritative selection hit.
 may_depend_on = ["core-space", "core-voxel", "svc-volume", "svc-spatial", "svc-serialization", "svc-collision", "rule-voxel-edit"]
 may_not_depend_on = ["render-bridge", "wasm-api"]

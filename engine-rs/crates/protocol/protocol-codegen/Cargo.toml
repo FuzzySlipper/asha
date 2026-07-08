@@ -19,7 +19,7 @@ protocol-ids = { path = "../protocol-ids" }
 protocol-replay = { path = "../protocol-replay" }
 protocol-diagnostics = { path = "../protocol-diagnostics" }
 protocol-scene = { path = "../protocol-scene" }
-protocol-world-bundle = { path = "../protocol-world-bundle" }
+protocol-project-bundle = { path = "../protocol-project-bundle" }
 protocol-assets = { path = "../protocol-assets" }
 protocol-policy-view = { path = "../protocol-policy-view" }
 protocol-telemetry = { path = "../protocol-telemetry" }

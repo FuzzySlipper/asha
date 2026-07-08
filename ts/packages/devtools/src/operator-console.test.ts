@@ -80,10 +80,10 @@ void test('classifyLane routes scope + code overrides to owning lanes', () => {
   assert.equal(classifyLane(diag({ scope: 'assetCatalog' })), 'assetCatalog');
   assert.equal(classifyLane(diag({ scope: 'renderProjection' })), 'renderProjection');
   assert.equal(classifyLane(diag({ scope: 'rendererResources' })), 'rendererResources');
-  assert.equal(classifyLane(diag({ scope: 'worldBundle' })), 'persistenceReplay'); // vocab-allow: generated diagnostic scope keeps legacy name until #5049.
+  assert.equal(classifyLane(diag({ scope: 'projectBundle' })), 'persistenceReplay');
   assert.equal(classifyLane(diag({ scope: 'worldComposition' })), 'persistenceReplay');
   // Protocol mismatch overrides scope.
-  assert.equal(classifyLane(diag({ scope: 'worldBundle', code: 'manifestProtocolMismatch' })), 'protocolContracts'); // vocab-allow: generated diagnostic scope keeps legacy name until #5049.
+  assert.equal(classifyLane(diag({ scope: 'projectBundle', code: 'manifestProtocolMismatch' })), 'protocolContracts');
 });
 
 void test('canonical fixture populates every section and reports ready', () => {

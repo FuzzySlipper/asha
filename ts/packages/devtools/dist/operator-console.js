@@ -23,7 +23,7 @@ export function classifyLane(report) {
             return 'renderProjection';
         case 'rendererResources':
             return 'rendererResources';
-        case 'worldBundle': // vocab-allow: generated diagnostic scope keeps legacy name until #5049.
+        case 'projectBundle':
         case 'worldComposition':
             return 'persistenceReplay';
     }

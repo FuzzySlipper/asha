@@ -2546,7 +2546,7 @@ pub fn scene_module() -> Module {
     }
 }
 
-pub fn world_bundle_module() -> Module {
+pub fn project_bundle_module() -> Module {
     let imports = vec![
         import("./scene.js", &["SceneId", "WorldId"]),
         import("./voxel.js", &["VoxelCoord", "VoxelValue"]),
@@ -2556,23 +2556,23 @@ pub fn world_bundle_module() -> Module {
         string_enum(
             "An artifact's persistence guarantee.",
             "ArtifactClass",
-            protocol_world_bundle::ARTIFACT_CLASSES,
+            protocol_project_bundle::ARTIFACT_CLASSES,
         ),
         string_enum(
             "The artifact roles this build names. The wire role is an open string; \
              unknown roles are carried verbatim. This is the known vocabulary for display.",
             "KnownArtifactRole",
-            protocol_world_bundle::KNOWN_ARTIFACT_ROLES,
+            protocol_project_bundle::KNOWN_ARTIFACT_ROLES,
         ),
         string_enum(
             "A stage in the canonical, ordered authority load sequence.",
             "LoadStage",
-            protocol_world_bundle::LOAD_STAGES,
+            protocol_project_bundle::LOAD_STAGES,
         ),
         string_enum(
             "What to do about an edit whose generated context changed under a new generator.",
             "SuggestedAction",
-            protocol_world_bundle::SUGGESTED_ACTIONS,
+            protocol_project_bundle::SUGGESTED_ACTIONS,
         ),
         iface(
             "One row of the manifest artifact table. `role` is an open string (see KnownArtifactRole).",
@@ -2594,8 +2594,8 @@ pub fn world_bundle_module() -> Module {
             ],
         ),
         iface(
-            "The world section of a bundle manifest.",
-            "WorldSection",
+            "The project identity section of a bundle manifest.",
+            "ProjectSection",
             vec![f("id", r("WorldId")), f("name", TsType::nullable(string()))],
         ),
         iface(
@@ -2613,12 +2613,12 @@ pub fn world_bundle_module() -> Module {
             vec![f("artifact", string()), f("assetCount", num())],
         ),
         iface(
-            "The inspectable world-bundle manifest: identity, versions, and the artifact table.",
-            "WorldBundleManifest",
+            "The inspectable project-bundle manifest: identity, versions, and the artifact table.",
+            "ProjectBundleManifest",
             vec![
                 f("bundleSchemaVersion", num()),
                 f("protocolVersion", num()),
-                f("world", r("WorldSection")),
+                f("project", r("ProjectSection")),
                 f("scene", r("SceneSection")),
                 f("assetLock", r("AssetLockSection")),
                 f("generator", r("GeneratorMetadata")),
@@ -2678,9 +2678,9 @@ pub fn world_bundle_module() -> Module {
                 ),
                 v(
                     "bootstrapScene",
-                    vec![f("scene", r("SceneId")), f("world", r("WorldId"))],
+                    vec![f("scene", r("SceneId")), f("project", r("WorldId"))],
                 ),
-                v("restoreWorldState", vec![f("artifact", string())]),
+                v("restoreSessionState", vec![f("artifact", string())]),
                 v("validateFinalState", vec![]),
             ],
         ),
@@ -2745,13 +2745,13 @@ pub fn world_bundle_module() -> Module {
                 f("newVersion", num()),
                 f("conflicts", TsType::array(r("EditConflict"))),
                 f("replayedEdits", num()),
-                f("stagingWorldHash", num()),
+                f("stagingSessionHash", num()),
             ],
         ),
     ];
 
     Module {
-        name: "worldBundle",
+        name: "projectBundle",
         imports,
         items,
     }
@@ -2884,7 +2884,7 @@ pub fn assets_module() -> Module {
             ],
         ),
         iface(
-            "A world-bundle asset lock.",
+            "A project-bundle asset lock.",
             "AssetLock",
             vec![f("entries", TsType::array(r("AssetLockEntry")))],
         ),
@@ -3656,7 +3656,7 @@ pub fn index_module() -> Module {
                 from: "./scene.js".to_string(),
             },
             Item::ReExport {
-                from: "./worldBundle.js".to_string(),
+                from: "./projectBundle.js".to_string(),
             },
             Item::ReExport {
                 from: "./assets.js".to_string(),
@@ -3693,7 +3693,7 @@ pub fn all_modules() -> Vec<Module> {
         game_rules_module(),
         game_extension_module(),
         scene_module(),
-        world_bundle_module(),
+        project_bundle_module(),
         assets_module(),
         diagnostics_module(),
         policy_view_module(),

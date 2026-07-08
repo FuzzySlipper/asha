@@ -105,7 +105,7 @@ export interface AssetLockEntry {
   readonly dependencies: readonly string[];
 }
 
-// A world-bundle asset lock.
+// A project-bundle asset lock.
 export interface AssetLock {
   readonly entries: readonly AssetLockEntry[];
 }

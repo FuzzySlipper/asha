@@ -25,9 +25,9 @@ import type {
   GeneratorMismatch,
   LoadPlan,
   LoadStep,
+  ProjectBundleManifest as GeneratedProjectBundleManifest,
   RegenConflictReport,
   SaveSummary,
-  WorldBundleManifest as GeneratedProjectBundleManifest, // vocab-allow: generated contract keeps legacy name until #5049.
 } from '@asha/contracts';
 
 // ── Manifest read model ──────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ export function buildManifestModel(manifest: GeneratedProjectBundleManifest): Ma
   return {
     bundleSchemaVersion: manifest.bundleSchemaVersion,
     protocolVersion: manifest.protocolVersion,
-    projectBundleId: manifest.world.id as number,
+    projectBundleId: manifest.project.id as number,
     sceneId: manifest.scene.id as number,
     assetCount: manifest.assetLock.assetCount,
     artifacts,
@@ -98,8 +98,8 @@ function describeLoadStep(step: LoadStep): string {
     case 'applyVoxelEdits':
       return `apply voxel edits (${step.editLogs.length} logs, ${step.snapshots.length} snapshots)`;
     case 'bootstrapScene':
-      return `bootstrap scene ${step.scene as number} → world ${step.world as number}`;
-    case 'restoreWorldState': // vocab-allow: generated load-step tag keeps legacy name until #5049.
+      return `bootstrap scene ${step.scene as number} -> project ${step.project as number}`;
+    case 'restoreSessionState':
       return `restore runtime session state ${step.artifact}`;
     case 'validateFinalState':
       return `validate final state`;
@@ -224,7 +224,7 @@ export interface RegenConflictView {
   readonly newVersion: number;
   readonly replayedEdits: number;
   readonly conflictCount: number;
-  readonly stagingWorldHash: number;
+  readonly stagingSessionHash: number;
   /** True when every replayed edit landed without a generated-context conflict. */
   readonly equivalent: boolean;
 }
@@ -236,7 +236,7 @@ export function buildRegenReport(report: RegenConflictReport): RegenConflictView
     newVersion: report.newVersion,
     replayedEdits: report.replayedEdits,
     conflictCount: report.conflicts.length,
-    stagingWorldHash: report.stagingWorldHash,
+    stagingSessionHash: report.stagingSessionHash,
     equivalent: report.conflicts.length === 0,
   };
 }
@@ -341,7 +341,7 @@ function recoveryHint(error: RuntimeBridgeError): string {
 }
 
 /**
- * Submit a project-bundle load through the facade. The prior world is left untouched
+ * Submit a project-bundle load through the facade. The prior ProjectBundle is left untouched
  * on failure (the facade stages the swap); this returns a classified result rather
  * than throwing, so a panel can render the fail-closed outcome.
  */

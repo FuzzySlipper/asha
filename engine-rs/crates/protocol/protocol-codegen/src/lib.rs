@@ -163,7 +163,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/gameRules.ts"),
                 format!("{OUTPUT_DIR}/gameExtension.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
-                format!("{OUTPUT_DIR}/worldBundle.ts"),
+                format!("{OUTPUT_DIR}/projectBundle.ts"),
                 format!("{OUTPUT_DIR}/assets.ts"),
                 format!("{OUTPUT_DIR}/diagnostics.ts"),
                 format!("{OUTPUT_DIR}/policyView.ts"),
@@ -633,38 +633,38 @@ mod tests {
 
         exempt_items(
             &mut exemptions,
-            "worldBundle",
+            "projectBundle",
             &[
-                "worldBundle.ArtifactEntry",
-                "worldBundle.GeneratorMetadata",
-                "worldBundle.WorldSection",
-                "worldBundle.SceneSection",
-                "worldBundle.AssetLockSection",
-                "worldBundle.WorldBundleManifest",
-                "worldBundle.ManifestError.unsupportedSchema",
-                "worldBundle.ManifestError.unsupportedProtocol",
-                "worldBundle.ManifestError.duplicateArtifact",
-                "worldBundle.ManifestError.missingArtifact",
-                "worldBundle.ManifestError.durableMissingHash",
-                "worldBundle.ManifestValidationReport",
-                "worldBundle.LoadStep.validateVersions",
-                "worldBundle.LoadStep.loadAssetLock",
-                "worldBundle.LoadStep.loadSceneDocument",
-                "worldBundle.LoadStep.generateTerrain",
-                "worldBundle.LoadStep.applyVoxelEdits",
-                "worldBundle.LoadStep.bootstrapScene",
-                "worldBundle.LoadStep.restoreWorldState",
-                "worldBundle.LoadStep.validateFinalState",
-                "worldBundle.LoadPlan",
-                "worldBundle.LoadPlanError.manifest",
-                "worldBundle.LoadPlanError.missingPrerequisiteArtifact",
-                "worldBundle.LoadPlanError.outOfOrder",
-                "worldBundle.LoadPlanError.missingStage",
-                "worldBundle.CompactionSummary",
-                "worldBundle.SaveSummary",
-                "worldBundle.GeneratorMismatch",
-                "worldBundle.EditConflict",
-                "worldBundle.RegenConflictReport",
+                "projectBundle.ArtifactEntry",
+                "projectBundle.GeneratorMetadata",
+                "projectBundle.ProjectSection",
+                "projectBundle.SceneSection",
+                "projectBundle.AssetLockSection",
+                "projectBundle.ProjectBundleManifest",
+                "projectBundle.ManifestError.unsupportedSchema",
+                "projectBundle.ManifestError.unsupportedProtocol",
+                "projectBundle.ManifestError.duplicateArtifact",
+                "projectBundle.ManifestError.missingArtifact",
+                "projectBundle.ManifestError.durableMissingHash",
+                "projectBundle.ManifestValidationReport",
+                "projectBundle.LoadStep.validateVersions",
+                "projectBundle.LoadStep.loadAssetLock",
+                "projectBundle.LoadStep.loadSceneDocument",
+                "projectBundle.LoadStep.generateTerrain",
+                "projectBundle.LoadStep.applyVoxelEdits",
+                "projectBundle.LoadStep.bootstrapScene",
+                "projectBundle.LoadStep.restoreSessionState",
+                "projectBundle.LoadStep.validateFinalState",
+                "projectBundle.LoadPlan",
+                "projectBundle.LoadPlanError.manifest",
+                "projectBundle.LoadPlanError.missingPrerequisiteArtifact",
+                "projectBundle.LoadPlanError.outOfOrder",
+                "projectBundle.LoadPlanError.missingStage",
+                "projectBundle.CompactionSummary",
+                "projectBundle.SaveSummary",
+                "projectBundle.GeneratorMismatch",
+                "projectBundle.EditConflict",
+                "projectBundle.RegenConflictReport",
             ],
             LEGACY_GAP_REASON,
         );
@@ -1317,32 +1317,32 @@ mod tests {
         assert!(s.contains("import type { EntityId } from './ids.js';"));
     }
 
-    /// Focused behavior test for the `worldBundle` family: artifact classes,
-    /// load stages, and suggested actions are sourced from `protocol-world-bundle`,
+    /// Focused behavior test for the `projectBundle` family: artifact classes,
+    /// load stages, and suggested actions are sourced from `protocol-project-bundle`,
     /// and the manifest/load-plan/save/regen shapes exist with the right imports.
-    /// This is the "Rust and generated TS world-bundle contracts agree" guard (#2366).
+    /// This is the "Rust and generated TS project-bundle contracts agree" guard (#2366).
     #[test]
-    fn world_bundle_family_emits_vocab_and_shapes() {
-        let w = file("worldBundle.ts");
-        for class in protocol_world_bundle::ARTIFACT_CLASSES {
+    fn project_bundle_family_emits_vocab_and_shapes() {
+        let w = file("projectBundle.ts");
+        for class in protocol_project_bundle::ARTIFACT_CLASSES {
             assert!(
                 w.contains(&format!("'{class}'")),
                 "missing artifact class {class}"
             );
         }
-        for stage in protocol_world_bundle::LOAD_STAGES {
+        for stage in protocol_project_bundle::LOAD_STAGES {
             assert!(
                 w.contains(&format!("'{stage}'")),
                 "missing load stage {stage}"
             );
         }
-        for action in protocol_world_bundle::SUGGESTED_ACTIONS {
+        for action in protocol_project_bundle::SUGGESTED_ACTIONS {
             assert!(
                 w.contains(&format!("'{action}'")),
                 "missing suggested action {action}"
             );
         }
-        assert!(w.contains("export interface WorldBundleManifest {"));
+        assert!(w.contains("export interface ProjectBundleManifest {"));
         assert!(w.contains("export interface LoadPlan {"));
         assert!(w.contains("export type LoadStep ="));
         assert!(w.contains("export type LoadPlanError ="));

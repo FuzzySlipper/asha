@@ -84,7 +84,7 @@ const missingAsset = {
     remedy: { action: 'provideAsset', detail: 'add sprite/hard-hat to the catalog' },
 };
 const corruptArtifact = {
-    scope: 'worldBundle',
+    scope: 'projectBundle',
     severity: 'fatal',
     code: 'corruptBundleArtifact',
     reference: 'chunks/0_0_0.snap',
@@ -223,14 +223,14 @@ const bootstrap = {
         { sceneNodeId: sceneNodeId(2), runtimeEntityId: entityId(2) },
     ],
 };
-// A world-bundle manifest a devtools panel would *display* from a Rust-produced
-// fixture — the same shape as harness/fixtures/world-bundle/sample-manifest.json.
+// A ProjectBundle manifest a devtools panel would *display* from a Rust-produced
+// fixture.
 // This is the "TS can display a manifest from a Rust-produced fixture" proof for
 // #2366: read-only, no authority to load or mutate the bundle.
 const manifest = {
     bundleSchemaVersion: 1,
     protocolVersion: 1,
-    world: { id: worldId(7), name: 'sample-world' },
+    project: { id: worldId(7), name: 'sample-project' },
     scene: { id: sceneId(100), schemaVersion: 1, artifact: 'scene/scene.json' },
     assetLock: { artifact: 'assets/lock.json', assetCount: 1 },
     generator: { seed: 42, version: 1, params: 'default' },
@@ -247,7 +247,7 @@ const loadPlan = {
         { step: 'loadAssetLock', artifact: 'assets/lock.json', assetCount: 1 },
         { step: 'loadSceneDocument', artifact: 'scene/scene.json', scene: sceneId(100) },
         { step: 'applyVoxelEdits', editLogs: ['voxel/edits.log'], snapshots: ['voxel/chunk_0_0_0.snapshot'] },
-        { step: 'bootstrapScene', scene: sceneId(100), world: worldId(7) },
+        { step: 'bootstrapScene', scene: sceneId(100), project: worldId(7) },
         { step: 'validateFinalState' },
     ],
 };
@@ -267,7 +267,7 @@ const regenReport = {
         },
     ],
     replayedEdits: 5,
-    stagingWorldHash: 0,
+    stagingSessionHash: 0,
 };
 // Catalog validation + asset-lock drift, displayed read-only by a devtools
 // inspector — the #2367 proof that TS can render diagnostics without `any`/raw

@@ -5,13 +5,13 @@ import { RuntimeBridgeError, type RuntimeBridge } from '@asha/runtime-bridge';
 import { createMockRuntimeBridge } from '@asha/runtime-bridge/reference';
 import {
   sceneId,
-  worldId, // vocab-allow: generated id helper keeps legacy name until #5049.
+  worldId,
   type DiagnosticReportSet,
   type GeneratorMismatch,
   type LoadPlan,
+  type ProjectBundleManifest as GeneratedProjectBundleManifest,
   type RegenConflictReport,
   type SaveSummary,
-  type WorldBundleManifest as GeneratedProjectBundleManifest, // vocab-allow: generated contract keeps legacy name until #5049.
 } from '@asha/contracts';
 
 import {
@@ -34,7 +34,7 @@ function manifest(): GeneratedProjectBundleManifest {
   return {
     bundleSchemaVersion: 1,
     protocolVersion: 1,
-    world: { id: worldId(7), name: 'fixture-world' },
+    project: { id: worldId(7), name: 'fixture-project' },
     scene: { id: sceneId(1001), schemaVersion: 1, artifact: 'scene.json' },
     assetLock: { artifact: 'lock.json', assetCount: 4 },
     generator: { seed: 42, version: 3, params: 'flat' },
@@ -73,7 +73,7 @@ void test('buildLoadPlanModel renders an ordered, human-readable plan', () => {
       { step: 'validateVersions', bundleSchemaVersion: 1, protocolVersion: 1 },
       { step: 'loadAssetLock', artifact: 'lock.json', assetCount: 4 },
       { step: 'loadSceneDocument', artifact: 'scene.json', scene: sceneId(1001) },
-      { step: 'bootstrapScene', scene: sceneId(1001), world: worldId(7) },
+      { step: 'bootstrapScene', scene: sceneId(1001), project: worldId(7) },
       { step: 'validateFinalState' },
     ],
   };
@@ -86,7 +86,7 @@ void test('buildLoadPlanModel renders an ordered, human-readable plan', () => {
     view.steps.map((s) => s.step),
     ['validateVersions', 'loadAssetLock', 'loadSceneDocument', 'bootstrapScene', 'validateFinalState'],
   );
-  assert.match(view.steps[3]!.summary, /bootstrap scene 1001 → world 7/);
+  assert.match(view.steps[3]!.summary, /bootstrap scene 1001 -> project 7/);
 });
 
 void test('buildSavePlanModel summarizes writes and compaction', () => {
@@ -118,7 +118,7 @@ void test('buildRegenReport reports equivalence and conflicts', () => {
     newVersion: 3,
     conflicts: [],
     replayedEdits: 10,
-    stagingWorldHash: 123,
+    stagingSessionHash: 123,
   };
   assert.equal(buildRegenReport(clean).equivalent, true);
 
@@ -136,7 +136,7 @@ void test('buildRegenReport reports equivalence and conflicts', () => {
       },
     ],
     replayedEdits: 10,
-    stagingWorldHash: 456,
+    stagingSessionHash: 456,
   };
   const view = buildRegenReport(conflicted);
   assert.equal(view.equivalent, false);
@@ -173,7 +173,7 @@ void test('buildDiagnosticsPanel carries severity, remedy, and navigation; only 
   const set: DiagnosticReportSet = {
     reports: [
       {
-        scope: 'worldBundle', // vocab-allow: generated diagnostic scope keeps legacy name until #5049.
+        scope: 'projectBundle',
         severity: 'fatal',
         code: 'corruptBundleArtifact',
         reference: 'bundle/scene.json',

@@ -23,7 +23,7 @@ export function buildManifestModel(manifest) {
     return {
         bundleSchemaVersion: manifest.bundleSchemaVersion,
         protocolVersion: manifest.protocolVersion,
-        projectBundleId: manifest.world.id,
+        projectBundleId: manifest.project.id,
         sceneId: manifest.scene.id,
         assetCount: manifest.assetLock.assetCount,
         artifacts,
@@ -43,8 +43,8 @@ function describeLoadStep(step) {
         case 'applyVoxelEdits':
             return `apply voxel edits (${step.editLogs.length} logs, ${step.snapshots.length} snapshots)`;
         case 'bootstrapScene':
-            return `bootstrap scene ${step.scene} → world ${step.world}`;
-        case 'restoreWorldState': // vocab-allow: generated load-step tag keeps legacy name until #5049.
+            return `bootstrap scene ${step.scene} -> project ${step.project}`;
+        case 'restoreSessionState':
             return `restore runtime session state ${step.artifact}`;
         case 'validateFinalState':
             return `validate final state`;
@@ -109,7 +109,7 @@ export function buildRegenReport(report) {
         newVersion: report.newVersion,
         replayedEdits: report.replayedEdits,
         conflictCount: report.conflicts.length,
-        stagingWorldHash: report.stagingWorldHash,
+        stagingSessionHash: report.stagingSessionHash,
         equivalent: report.conflicts.length === 0,
     };
 }
@@ -174,7 +174,7 @@ function recoveryHint(error) {
     }
 }
 /**
- * Submit a project-bundle load through the facade. The prior world is left untouched
+ * Submit a project-bundle load through the facade. The prior ProjectBundle is left untouched
  * on failure (the facade stages the swap); this returns a classified result rather
  * than throwing, so a panel can render the fail-closed outcome.
  */

@@ -30,7 +30,7 @@ members = [
     "crates/protocol/protocol-telemetry",
     "crates/protocol/protocol-diagnostics",
     "crates/protocol/protocol-scene",
-    "crates/protocol/protocol-world-bundle",
+    "crates/protocol/protocol-project-bundle",
     "crates/protocol/protocol-assets",
     "crates/protocol/protocol-policy-view",
     "crates/protocol/protocol-view",

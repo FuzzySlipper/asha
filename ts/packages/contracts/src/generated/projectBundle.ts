@@ -13,10 +13,10 @@ import type { VoxelCoord, VoxelValue } from './voxel.js';
 export type ArtifactClass = 'durable' | 'generated' | 'cache';
 
 // The artifact roles this build names. The wire role is an open string; unknown roles are carried verbatim. This is the known vocabulary for display.
-export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'worldStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'replayRecord' | 'generatedMetadata' | 'cache';
+export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'replayRecord' | 'generatedMetadata' | 'cache';
 
 // A stage in the canonical, ordered authority load sequence.
-export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'bootstrap' | 'worldStateSnapshot' | 'finalValidation';
+export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
 
 // What to do about an edit whose generated context changed under a new generator.
 export type SuggestedAction = 'keepEdit' | 'reviewConflict';
@@ -36,8 +36,8 @@ export interface GeneratorMetadata {
   readonly params: string;
 }
 
-// The world section of a bundle manifest.
-export interface WorldSection {
+// The project identity section of a bundle manifest.
+export interface ProjectSection {
   readonly id: WorldId;
   readonly name: string | null;
 }
@@ -55,11 +55,11 @@ export interface AssetLockSection {
   readonly assetCount: number;
 }
 
-// The inspectable world-bundle manifest: identity, versions, and the artifact table.
-export interface WorldBundleManifest {
+// The inspectable project-bundle manifest: identity, versions, and the artifact table.
+export interface ProjectBundleManifest {
   readonly bundleSchemaVersion: number;
   readonly protocolVersion: number;
-  readonly world: WorldSection;
+  readonly project: ProjectSection;
   readonly scene: SceneSection;
   readonly assetLock: AssetLockSection;
   readonly generator: GeneratorMetadata;
@@ -86,8 +86,8 @@ export type LoadStep =
   | { readonly step: 'loadSceneDocument'; readonly artifact: string; readonly scene: SceneId }
   | { readonly step: 'generateTerrain'; readonly seed: number; readonly version: number; readonly params: string }
   | { readonly step: 'applyVoxelEdits'; readonly editLogs: readonly string[]; readonly snapshots: readonly string[] }
-  | { readonly step: 'bootstrapScene'; readonly scene: SceneId; readonly world: WorldId }
-  | { readonly step: 'restoreWorldState'; readonly artifact: string }
+  | { readonly step: 'bootstrapScene'; readonly scene: SceneId; readonly project: WorldId }
+  | { readonly step: 'restoreSessionState'; readonly artifact: string }
   | { readonly step: 'validateFinalState' };
 
 // A deterministic, ordered authority load plan.
@@ -137,5 +137,5 @@ export interface RegenConflictReport {
   readonly newVersion: number;
   readonly conflicts: readonly EditConflict[];
   readonly replayedEdits: number;
-  readonly stagingWorldHash: number;
+  readonly stagingSessionHash: number;
 }

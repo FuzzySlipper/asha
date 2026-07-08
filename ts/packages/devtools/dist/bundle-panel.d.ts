@@ -1,5 +1,5 @@
 import { type CompositionStatus, type RuntimeBridge, type ProjectBundleLoadRequest, type ProjectBundleSaveSummary } from '@asha/runtime-bridge';
-import type { ArtifactClass, DiagnosticReport, DiagnosticReportSet, DiagnosticSeverity, DiagnosticSourceRef, GeneratorMismatch, LoadPlan, LoadStep, RegenConflictReport, SaveSummary, WorldBundleManifest as GeneratedProjectBundleManifest } from '@asha/contracts';
+import type { ArtifactClass, DiagnosticReport, DiagnosticReportSet, DiagnosticSeverity, DiagnosticSourceRef, GeneratorMismatch, LoadPlan, LoadStep, ProjectBundleManifest as GeneratedProjectBundleManifest, RegenConflictReport, SaveSummary } from '@asha/contracts';
 /** One artifact row with its persistence class and whether a durable hash is present. */
 export interface ArtifactView {
     readonly path: string;
@@ -80,7 +80,7 @@ export interface RegenConflictView {
     readonly newVersion: number;
     readonly replayedEdits: number;
     readonly conflictCount: number;
-    readonly stagingWorldHash: number;
+    readonly stagingSessionHash: number;
     /** True when every replayed edit landed without a generated-context conflict. */
     readonly equivalent: boolean;
 }
@@ -147,7 +147,7 @@ export type ProjectBundleActionResult<T> = {
     readonly recovery: string;
 };
 /**
- * Submit a project-bundle load through the facade. The prior world is left untouched
+ * Submit a project-bundle load through the facade. The prior ProjectBundle is left untouched
  * on failure (the facade stages the swap); this returns a classified result rather
  * than throwing, so a panel can render the fail-closed outcome.
  */

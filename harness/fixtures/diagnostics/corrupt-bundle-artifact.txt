@@ -1,2 +1,2 @@
 diagnostics count=1 maxSeverity=fatal blocksLoad=true
-[fatal] worldBundle/corruptBundleArtifact ref=voxel/chunks/0_0_0.snap bundlePath=voxel/chunks/0_0_0.snap :: durable artifact `voxel/chunks/0_0_0.snap` failed its content hash (recorded bd788d6921b32ff5, actual 69dfb48e91b44b71) | remedy=restoreArtifact: restore the artifact from a known-good bundle copy
+[fatal] projectBundle/corruptBundleArtifact ref=voxel/chunks/0_0_0.snap bundlePath=voxel/chunks/0_0_0.snap :: durable artifact `voxel/chunks/0_0_0.snap` failed its content hash (recorded bd788d6921b32ff5, actual 69dfb48e91b44b71) | remedy=restoreArtifact: restore the artifact from a known-good bundle copy

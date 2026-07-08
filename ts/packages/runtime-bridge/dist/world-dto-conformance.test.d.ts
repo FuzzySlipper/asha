@@ -1,5 +1,4 @@
-import type { WorldBundleManifest as GeneratedProjectBundleManifest, // vocab-allow: generated contract keeps legacy name until #5049.
-SaveSummary, CompactionSummary } from '@asha/contracts';
+import type { ProjectBundleManifest as GeneratedProjectBundleManifest, SaveSummary, CompactionSummary } from '@asha/contracts';
 import type { ProjectBundleLoadRequest, ProjectBundleSaveSummary } from './index.js';
 type IfEqual<A, B, Yes, No> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? Yes : No;
 type AssertExact<A, B> = IfEqual<A, B, A, never>;

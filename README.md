@@ -25,7 +25,7 @@ This repo has moved past the original prototype-phase checklist. Do not infer cu
 
 Major durable surfaces include:
 
-- Rust authoritative state, commands, events, snapshots, replay, voxel data, voxel edit rules, world-bundle load/save, diagnostics, and render projection infrastructure.
+- Rust authoritative state, commands, events, snapshots, replay, voxel data, voxel edit rules, project-bundle load/save, diagnostics, and render projection infrastructure.
 - Generated protocol contracts for TypeScript packages.
 - A transport-agnostic runtime bridge with native-addon, reference/mock, and WASM replay-related surfaces.
 - A semantic `RuntimeSession` facade for consumer repos: ProjectBundle-shaped ECRP bootstrap, Entity/CapabilityState readouts, collision-constrained camera input, primary-fire runtime action receipts, lifecycle/restart readouts, nav/policy proposal evidence, and deterministic telemetry/replay summaries.
@@ -49,7 +49,7 @@ engine-rs/          Rust workspace (64 crates, including reserved cells)
     protocol/       Rust protocol schemas + codegen for TS contracts
     sim/            validation, event application, replay, runner
     services/       deterministic services: rng, spatial, collision, mesh, volume, serialization, policy views
-    rules/          domain/rule lanes: lifecycle, process, scheduler, relationship, state machine, voxel edit, world bundle
+    rules/          domain/rule lanes: lifecycle, process, scheduler, relationship, state machine, voxel edit, project bundle
     render/         render-bridge and render-debug projection lanes
     bridge/         runtime-bridge-api manifest and native-bridge napi addon
     wasm/           wasm-api for replay/golden surfaces
@@ -69,7 +69,7 @@ ts/                 pnpm workspace (21 packages, including reserved cells)
     editor-tools/       pure editor state, selections, previews, voxel command helpers
     ui-dom/             DOM panels, inspectors, command palette, preview overlays
     cosmetic/           non-authoritative visual effects
-    devtools/           diagnostics/readout panels and replay/world-bundle views
+    devtools/           diagnostics/readout panels and replay/project-bundle views
     smoke/              end-to-end developer smoke harness
     app/                runtime/app composition and wiring
     electron-main/      process/window/IPC integration

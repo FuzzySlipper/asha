@@ -129,7 +129,7 @@ mod tests {
         let line = report_to_line(&report);
         assert_eq!(
             line,
-            "[fatal] worldBundle/corruptBundleArtifact ref=chunks/0_0_0.snap chunk=[0, 0, 0] bundlePath=chunks/0_0_0.snap :: durable artifact failed its content hash"
+            "[fatal] projectBundle/corruptBundleArtifact ref=chunks/0_0_0.snap chunk=[0, 0, 0] bundlePath=chunks/0_0_0.snap :: durable artifact failed its content hash"
         );
     }
 
