@@ -209,6 +209,30 @@ impl GameRuleModule for RegisteredDamageModifierModule {
     }
 }
 
+enum ResolvedGameRuleModule {
+    Reference(ReferenceDamageModifierModule),
+    Registered(RegisteredDamageModifierModule),
+}
+
+impl ResolvedGameRuleModule {
+    fn manifest(&self) -> &GameRuleModuleManifest {
+        match self {
+            Self::Reference(module) => module.manifest(),
+            Self::Registered(module) => module.manifest(),
+        }
+    }
+
+    fn evaluate_weapon_effect(
+        &self,
+        request: &WeaponEffectHookRequest,
+    ) -> GameRuleExtensionResult<GameExtensionProposal> {
+        match self {
+            Self::Reference(module) => module.evaluate_weapon_effect(request),
+            Self::Registered(module) => module.evaluate_weapon_effect(request),
+        }
+    }
+}
+
 #[cfg(test)]
 fn reference_game_rule_module_ref() -> GameRuleModuleRef {
     GameRuleModuleRef {
@@ -1256,16 +1280,16 @@ impl ReferenceBridge {
     fn resolve_weapon_effect_game_rule_module(
         loaded: &BTreeMap<String, GameRuleModuleManifest>,
         request: &WeaponEffectHookRequest,
-    ) -> BridgeResult<Box<dyn GameRuleModule>> {
+    ) -> BridgeResult<ResolvedGameRuleModule> {
         let manifest = Self::validate_loaded_game_rule_module(loaded, request)?;
         if manifest.module_ref.module_id == REFERENCE_GAME_RULE_MODULE_ID {
-            Ok(Box::new(ReferenceDamageModifierModule::new(
-                request.module_ref.clone(),
-            )))
+            Ok(ResolvedGameRuleModule::Reference(
+                ReferenceDamageModifierModule::new(request.module_ref.clone()),
+            ))
         } else {
-            Ok(Box::new(RegisteredDamageModifierModule::new(
-                manifest.clone(),
-            )))
+            Ok(ResolvedGameRuleModule::Registered(
+                RegisteredDamageModifierModule::new(manifest.clone()),
+            ))
         }
     }
 
