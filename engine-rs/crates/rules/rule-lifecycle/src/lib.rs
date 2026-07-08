@@ -409,7 +409,14 @@ impl FpsRuntimeSessionState {
         ray: Ray,
         tick: u64,
     ) -> Result<FpsPrimaryFireReceipt, FpsRuntimeError> {
-        self.apply_primary_fire_with_damage_delta(projection, ray, tick, 0)
+        self.apply_primary_fire_for_roles(
+            projection,
+            ray,
+            tick,
+            FpsRuntimeRole::Player,
+            FpsRuntimeRole::Enemy,
+            0,
+        )
     }
 
     pub fn apply_primary_fire_with_damage_delta(
@@ -419,16 +426,47 @@ impl FpsRuntimeSessionState {
         tick: u64,
         damage_delta: i64,
     ) -> Result<FpsPrimaryFireReceipt, FpsRuntimeError> {
-        let shooter = self.role_entity(FpsRuntimeRole::Player)?;
-        let target = self.role_entity(FpsRuntimeRole::Enemy)?;
+        self.apply_primary_fire_for_roles(
+            projection,
+            ray,
+            tick,
+            FpsRuntimeRole::Player,
+            FpsRuntimeRole::Enemy,
+            damage_delta,
+        )
+    }
+
+    pub fn apply_primary_fire_for_roles(
+        &mut self,
+        projection: &CollisionProjection,
+        ray: Ray,
+        tick: u64,
+        shooter_role: FpsRuntimeRole,
+        target_role: FpsRuntimeRole,
+        damage_delta: i64,
+    ) -> Result<FpsPrimaryFireReceipt, FpsRuntimeError> {
+        let shooter = self.role_entity(shooter_role)?;
+        let target = self.role_entity(target_role)?;
         let shooter_definition = self
             .definitions
             .get(&shooter)
             .expect("role map is populated from definitions");
-        let weapon = shooter_definition
-            .weapon
-            .as_ref()
-            .ok_or(FpsRuntimeError::MissingPlayerWeapon { entity: shooter })?;
+        let enemy_policy_weapon = FpsWeaponMount {
+            weapon_id: "weapon.enemy_policy.primary".to_string(),
+            damage: 10,
+            range_units: 16,
+            ammo: 2,
+            cooldown_ticks_after_fire: 4,
+        };
+        let weapon = match shooter_definition.weapon.as_ref() {
+            Some(weapon) => weapon,
+            None if shooter_role == FpsRuntimeRole::Enemy
+                && target_role == FpsRuntimeRole::Player =>
+            {
+                &enemy_policy_weapon
+            }
+            None => return Err(FpsRuntimeError::MissingPlayerWeapon { entity: shooter }),
+        };
         let target_before = self.combat.health(target);
         let resolved_damage = resolve_primary_fire_damage(
             shooter,
@@ -461,12 +499,14 @@ impl FpsRuntimeSessionState {
             CombatFireOutcome::Hit { target, .. } => Some(target),
             CombatFireOutcome::Miss { .. } => None,
         };
-        if combat.events.iter().any(|event| {
-            matches!(
-                event,
-                CombatEvent::EntityDefeated { target: defeated } if *defeated == target
-            )
-        }) {
+        if target_role == FpsRuntimeRole::Enemy
+            && combat.events.iter().any(|event| {
+                matches!(
+                    event,
+                    CombatEvent::EntityDefeated { target: defeated } if *defeated == target
+                )
+            })
+        {
             self.apply_enemy_defeated(target, tick)?;
         }
 
@@ -1147,6 +1187,64 @@ mod tests {
         assert_ne!(receipt.replay_hash, 0);
         assert_eq!(session.replay_records.len(), 2);
         assert_eq!(session.replay_records[1].record_hash, receipt.replay_hash);
+    }
+
+    #[test]
+    fn enemy_primary_fire_roles_damage_player_without_enemy_defeated_lifecycle() {
+        let projection = tunnel_projection();
+        let mut session = load_custom_session();
+        let player = EntityId::new(101);
+        let enemy = EntityId::new(777);
+
+        let first = session
+            .apply_primary_fire_for_roles(
+                &projection,
+                Ray::new(WorldPos::new(2.5, 1.5, 5.4), WorldVec::new(0.0, 0.0, -1.0)),
+                1,
+                FpsRuntimeRole::Enemy,
+                FpsRuntimeRole::Player,
+                0,
+            )
+            .expect("enemy primary fire damages player");
+
+        assert_eq!(first.shooter, enemy);
+        assert_eq!(first.target, Some(player));
+        assert_eq!(first.target_health_before, Some(HealthState::new(88, 88)));
+        assert_eq!(first.target_health_after, Some(HealthState::new(78, 88)));
+        assert_eq!(session.health(player), Some(HealthState::new(78, 88)));
+        assert_eq!(session.lifecycle_status, FpsLifecycleStatus::Active);
+        assert_eq!(
+            session.entity_lifecycle(player),
+            Some(EntityLifecycle::Active)
+        );
+        assert_eq!(
+            session.render_projection.get(&player).map(|r| r.visible),
+            Some(true)
+        );
+
+        let mut latest = first;
+        for tick in 2..=9 {
+            latest = session
+                .apply_primary_fire_for_roles(
+                    &projection,
+                    Ray::new(WorldPos::new(2.5, 1.5, 5.4), WorldVec::new(0.0, 0.0, -1.0)),
+                    tick,
+                    FpsRuntimeRole::Enemy,
+                    FpsRuntimeRole::Player,
+                    0,
+                )
+                .expect("repeated enemy primary fire damages player");
+        }
+
+        assert_eq!(latest.target_health_after, Some(HealthState::new(0, 88)));
+        assert_eq!(session.health(player), Some(HealthState::new(0, 88)));
+        assert_eq!(session.lifecycle_status, FpsLifecycleStatus::Active);
+        assert_eq!(
+            session.entity_lifecycle(player),
+            Some(EntityLifecycle::Active)
+        );
+        assert_eq!(session.health(enemy), Some(HealthState::new(75, 75)));
+        assert_eq!(session.replay_records.len(), 10);
     }
 
     #[test]

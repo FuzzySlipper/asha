@@ -27,11 +27,11 @@ use runtime_bridge_api::{
     GameExtensionWeaponEffectInvocationRequest, GameRuleCatalog, GameRuleEffectIntentRequest,
     GameRuleModuleManifest, GameRuleResolutionRequest, ProjectBundleLoadRequest, ReferenceBridge,
     RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
-    VoxelConversionApplyRequest,
-    VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest,
-    VoxelConversionPlanRequest, VoxelConversionPreviewRequest,
-    VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest, VoxelVolumeAssetExportRequest,
-    VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest, WeaponEffectHookRequest,
+    VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
+    VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
+    VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
+    VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest,
+    WeaponEffectHookRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -600,6 +600,21 @@ fn native_fps_role(value: &str) -> napi::Result<FpsBridgeRole> {
             RuntimeBridgeErrorKind::InvalidInput,
             format!("unknown FPS role '{other}'"),
         ))),
+    }
+}
+
+fn optional_native_fps_role(
+    value: Option<String>,
+    field: &str,
+) -> napi::Result<Option<FpsBridgeRole>> {
+    match value {
+        Some(role) => native_fps_role(role.as_str()).map(Some).map_err(|_| {
+            to_napi(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!("{field} must be player, enemy, or neutral"),
+            ))
+        }),
+        None => Ok(None),
     }
 }
 
@@ -1234,10 +1249,14 @@ pub fn apply_fps_primary_fire(
     tick: i64,
     origin: NativeVec3,
     direction: NativeVec3,
+    shooter_role: Option<String>,
+    target_role: Option<String>,
 ) -> napi::Result<NativeFpsPrimaryFireResult> {
     let tick = u64_input(tick, "tick")?;
     let origin = origin.to_vec3("origin")?;
     let direction = direction.to_vec3("direction")?;
+    let shooter_role = optional_native_fps_role(shooter_role, "shooterRole")?;
+    let target_role = optional_native_fps_role(target_role, "targetRole")?;
     with_bridge(handle, |bridge| {
         bridge
             .apply_fps_primary_fire(FpsPrimaryFireRequest {
@@ -1252,6 +1271,8 @@ pub fn apply_fps_primary_fire(
                     f64::from(direction.y),
                     f64::from(direction.z),
                 ],
+                shooter_role,
+                target_role,
             })
             .map(NativeFpsPrimaryFireResult::from)
             .map_err(to_napi)
@@ -1286,6 +1307,8 @@ pub fn invoke_game_extension_weapon_effect(
                         f64::from(direction.y),
                         f64::from(direction.z),
                     ],
+                    shooter_role: None,
+                    target_role: None,
                 },
             })
             .map_err(to_napi)?;
@@ -1753,6 +1776,8 @@ mod tests {
                 y: 0.0,
                 z: 1.0,
             },
+            None,
+            None,
         )
         .expect("fps primary fire applies");
         assert_eq!(fps_fire.target, Some(777));

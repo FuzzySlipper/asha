@@ -4,6 +4,7 @@ export interface NativeVec3 {
     readonly y: number;
     readonly z: number;
 }
+type NativeFpsRole = 'player' | 'enemy' | 'neutral';
 interface NativeEnemyDirectNavMovementResult {
     readonly entity: number;
     readonly authoritySource: string;
@@ -178,7 +179,7 @@ export interface NativeAddon {
     applyEnemyDirectNavMovement(handle: number, entity: number, seedPosition: NativeVec3, target: NativeVec3, maxStepUnits: number): NativeEnemyDirectNavMovementResult;
     loadFpsRuntimeSession(handle: number, projectBundle: string, definitions: readonly NativeFpsStoredEntityDefinition[], gameRuleModulesJson: string): NativeFpsRuntimeSessionSnapshot;
     readFpsRuntimeSession(handle: number): NativeFpsRuntimeSessionSnapshot;
-    applyFpsPrimaryFire(handle: number, tick: number, origin: NativeVec3, direction: NativeVec3): NativeFpsPrimaryFireResult;
+    applyFpsPrimaryFire(handle: number, tick: number, origin: NativeVec3, direction: NativeVec3, shooterRole?: NativeFpsRole, targetRole?: NativeFpsRole): NativeFpsPrimaryFireResult;
     invokeGameExtensionWeaponEffect(handle: number, hookJson: string, tick: number, origin: NativeVec3, direction: NativeVec3): NativeGameExtensionWeaponEffectInvocationResult;
     validateGameRuleCatalog(handle: number, catalogJson: string): string;
     submitGameRuleEffectIntent(handle: number, catalogJson: string, requestJson: string): string;

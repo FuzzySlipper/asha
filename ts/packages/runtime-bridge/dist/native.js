@@ -367,7 +367,9 @@ export class NativeRuntimeBridge {
         const tick = nonNegativeSafeInteger(request.tick, 'tick');
         const origin = nativeVec3(request.origin, 'origin');
         const direction = nativeVec3(request.direction, 'direction');
-        const result = callNative(() => this.#addon.applyFpsPrimaryFire(handle, tick, origin, direction));
+        const shooterRole = request.shooterRole === undefined ? undefined : fpsRole(request.shooterRole);
+        const targetRole = request.targetRole === undefined ? undefined : fpsRole(request.targetRole);
+        const result = callNative(() => this.#addon.applyFpsPrimaryFire(handle, tick, origin, direction, shooterRole, targetRole));
         return {
             ...result,
             backend: fpsBackend(result.backend),

@@ -203,6 +203,8 @@ export interface FpsPrimaryFireRequest {
   readonly tick: number;
   readonly origin: BridgeVec3;
   readonly direction: BridgeVec3;
+  readonly shooterRole?: FpsRuntimeRole;
+  readonly targetRole?: FpsRuntimeRole;
 }
 export type FpsLifecycleStatus =
   | { readonly state: 'active' }

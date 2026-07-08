@@ -21,6 +21,7 @@ import {
   type FpsEncounterStateReadout,
   type FpsEncounterTransitionRequest,
   type FpsEncounterTransitionResult,
+  type FpsPrimaryFireRequest,
   type FpsRuntimeSessionLoadRequest,
   type FpsRuntimeSessionRestartRequest,
   type FpsRuntimeSessionSnapshot,
@@ -187,9 +188,11 @@ function rustFpsSnapshot(input: {
   readonly epoch: number;
   readonly player: number;
   readonly enemy: number;
+  readonly playerHealth?: number;
   readonly enemyHealth: number;
   readonly replayHash: string;
 }): FpsRuntimeSessionSnapshot {
+  const playerHealth = input.playerHealth ?? 88;
   return {
     backend: 'native_rust',
     authoritySurface: 'runtime_session.fps.reference.v0',
@@ -201,7 +204,7 @@ function rustFpsSnapshot(input: {
     playerEntity: input.player,
     enemyEntity: input.enemy,
     health: [
-      { entity: input.player, current: 88, max: 88 },
+      { entity: input.player, current: playerHealth, max: 88 },
       { entity: input.enemy, current: input.enemyHealth, max: 55 },
     ],
     policyBindings: [{
@@ -225,7 +228,7 @@ function rustFpsSnapshot(input: {
       readSet: ['entity.lifecycle', 'capability.health'],
     }],
     entityHash: 'fnv1a64:00000000000000aa',
-    healthHash: input.enemyHealth <= 0 ? 'fnv1a64:00000000000000cc' : 'fnv1a64:00000000000000bb',
+    healthHash: input.enemyHealth <= 0 || playerHealth < 88 ? 'fnv1a64:00000000000000cc' : 'fnv1a64:00000000000000bb',
     replayHash: input.replayHash,
   };
 }
@@ -271,7 +274,7 @@ function rustRuntimeSessionBridgeDouble(options: {
   readonly calls: {
     load: FpsRuntimeSessionLoadRequest[];
     projectBundle: ProjectBundleLoadRequest[];
-    fire: number[];
+    fire: FpsPrimaryFireRequest[];
     nav: EnemyDirectNavMovementRequest[];
     restart: FpsRuntimeSessionRestartRequest[];
     encounterTransitions: FpsEncounterTransitionRequest[];
@@ -281,20 +284,23 @@ function rustRuntimeSessionBridgeDouble(options: {
   const calls: {
     load: FpsRuntimeSessionLoadRequest[];
     projectBundle: ProjectBundleLoadRequest[];
-    fire: number[];
+    fire: FpsPrimaryFireRequest[];
     nav: EnemyDirectNavMovementRequest[];
     restart: FpsRuntimeSessionRestartRequest[];
     encounterTransitions: FpsEncounterTransitionRequest[];
   } = { load: [], projectBundle: [], fire: [], nav: [], restart: [], encounterTransitions: [] };
   let player = 10;
   let enemy = 20;
+  let playerHealth = 88;
+  let enemyHealth = 40;
   let epoch = 1;
   let encounterState = rustEncounterState();
   let snapshot = rustFpsSnapshot({
     epoch,
     player,
     enemy,
-    enemyHealth: 40,
+    playerHealth,
+    enemyHealth,
     replayHash: 'fnv1a64:0000000000000001',
   });
   const bridge = new Proxy(base, {
@@ -307,12 +313,16 @@ function rustRuntimeSessionBridgeDouble(options: {
           calls.load.push(request);
           player = request.definitions.find((definition) => definition.role === 'player')?.entity ?? player;
           enemy = request.definitions.find((definition) => definition.role === 'enemy')?.entity ?? enemy;
+          const playerDefinition = request.definitions.find((definition) => definition.entity === player);
           const enemyDefinition = request.definitions.find((definition) => definition.entity === enemy);
+          playerHealth = playerDefinition?.health?.current ?? 88;
+          enemyHealth = enemyDefinition?.health?.current ?? 40;
           snapshot = rustFpsSnapshot({
             epoch,
             player,
             enemy,
-            enemyHealth: enemyDefinition?.health?.current ?? 40,
+            playerHealth,
+            enemyHealth,
             replayHash: 'fnv1a64:0000000000000002',
           });
           encounterState = rustEncounterState();
@@ -329,13 +339,21 @@ function rustRuntimeSessionBridgeDouble(options: {
         };
       }
       if (property === 'applyFpsPrimaryFire') {
-        return (request: { readonly tick: number }) => {
-          calls.fire.push(request.tick);
+        return (request: FpsPrimaryFireRequest) => {
+          calls.fire.push(request);
+          const enemyShootsPlayer = request.shooterRole === 'enemy' && request.targetRole === 'player';
+          const playerHealthBefore = playerHealth;
+          const enemyHealthBefore = enemyHealth;
+          playerHealth = enemyShootsPlayer ? Math.max(0, playerHealth - 10) : playerHealth;
+          enemyHealth = enemyShootsPlayer ? enemyHealth : 0;
+          const target = enemyShootsPlayer ? player : enemy;
+          const shooter = enemyShootsPlayer ? enemy : player;
           snapshot = rustFpsSnapshot({
             epoch,
             player,
             enemy,
-            enemyHealth: 0,
+            playerHealth,
+            enemyHealth,
             replayHash: 'fnv1a64:0000000000000003',
           });
           return {
@@ -343,12 +361,14 @@ function rustRuntimeSessionBridgeDouble(options: {
             authoritySurface: 'runtime_session.fps.primary_fire.v0',
             mutationOwner: 'svc-combat',
             workspaceTrace: ['workspace.primary_fire', 'svc-combat.apply_damage', 'rule-lifecycle.enemy_defeated'],
-            shooter: player,
-            target: enemy,
-            targetHealthBefore: { current: 55, max: 55 },
-            targetHealthAfter: { current: 0, max: 55 },
-            lifecycleStatus: { state: 'enemy_defeated' as const, entity: enemy, tick: request.tick },
-            targetRenderVisible: false,
+            shooter,
+            target,
+            targetHealthBefore: enemyShootsPlayer ? { current: playerHealthBefore, max: 88 } : { current: enemyHealthBefore, max: 55 },
+            targetHealthAfter: enemyShootsPlayer ? { current: playerHealth, max: 88 } : { current: enemyHealth, max: 55 },
+            lifecycleStatus: enemyShootsPlayer
+              ? { state: 'active' as const }
+              : { state: 'enemy_defeated' as const, entity: enemy, tick: request.tick },
+            targetRenderVisible: enemyShootsPlayer ? true : false,
             entityHash: 'fnv1a64:00000000000000aa',
             healthHash: 'fnv1a64:00000000000000cc',
             replayHash: 'fnv1a64:0000000000000003',
@@ -562,7 +582,7 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
   assert.equal(receipt.combatReadout?.authority.source, 'rust_bridge');
   assert.equal(receipt.combatReadout?.authority.backend, 'native_rust');
   assert.equal(receipt.combatReadout?.authority.surface, 'runtime_session.fps.primary_fire.v0');
-  assert.deepEqual(calls.fire, [7]);
+  assert.deepEqual(calls.fire.map((request) => request.tick), [7]);
 
   const lifecycle = session.readLifecycleStatus();
   assert.equal(lifecycle.restart.reason, 'rust_epoch_restart');
@@ -761,8 +781,16 @@ void test('Rust-backed RuntimeSession routes autonomous policy tick through brid
   assert.equal(tick.movementSummary?.authoritySource, 'rust_entity_store');
   assert.equal(tick.combatSummary?.status, 'accepted');
   assert.equal(tick.combatSummary?.healthHash, 'fnv1a64:00000000000000cc');
+  const combatOutcome = tick.combatSummary?.outcome ?? null;
+  assert.equal(combatOutcome?.kind, 'hit');
+  assert.equal(combatOutcome?.kind === 'hit' ? combatOutcome.target : null, 10);
+  assert.equal(session.readLifecycleStatus().player.health.current, 90);
   assert.deepEqual(calls.nav.map((request) => request.entity), [20]);
-  assert.deepEqual(calls.fire, [2]);
+  assert.deepEqual(calls.fire.map((request) => request.tick), [2]);
+  assert.equal(calls.fire[0]?.shooterRole, 'enemy');
+  assert.equal(calls.fire[0]?.targetRole, 'player');
+  assert.deepEqual(calls.fire[0]?.origin, [3, 1, 7]);
+  assert.deepEqual(calls.fire[0]?.direction.map((value) => Number(value.toFixed(6))), [-0.316228, 0, -0.948683]);
   assert.equal(tick.replay.lastRecordKind, 'runAutonomousPolicyTick');
   assert.ok(tick.tickHash.startsWith('fnv1a64:'));
 
@@ -778,21 +806,10 @@ void test('Rust-backed RuntimeSession routes autonomous policy tick through brid
   assert.equal(rejected.proposalSummary.rejectedProposalCount, 2);
   assert.equal(rejected.proposalReceipts[0]?.rejection?.reason, 'policy_source_forbidden_capability');
   assert.deepEqual(calls.nav.map((request) => request.entity), [20]);
-  assert.deepEqual(calls.fire, [2]);
+  assert.deepEqual(calls.fire.map((request) => request.tick), [2]);
 
-  assert.throws(
-    () => session.readNavProjection(),
-    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented',
-  );
-  assert.throws(
-    () =>
-      session.requestSessionRestart({
-        kind: 'runtime.restart_session_intent',
-        source: 'programmatic',
-        expectedSessionHash: '',
-      }),
-    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
-  );
+  assert.throws(() => session.readNavProjection(), (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
+  assert.throws(() => session.requestSessionRestart({ kind: 'runtime.restart_session_intent', source: 'programmatic', expectedSessionHash: '' }), (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input');
 });
 
 void test('RuntimeSession fails closed before initialize and on unsupported ProjectBundle', () => {

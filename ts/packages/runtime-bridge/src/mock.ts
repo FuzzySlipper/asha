@@ -709,18 +709,33 @@ export class MockRuntimeBridge implements RuntimeBridge {
     const tick = nonNegativeSafeInteger(request.tick, 'tick');
     validateVec3(request.origin, 'origin');
     validateVec3(request.direction, 'direction');
-    const player = this.#fpsSeed.definitions.find((definition) => definition.role === 'player');
-    const enemy = this.#fpsSeed.definitions.find((definition) => definition.role === 'enemy');
-    if (player?.weapon === null || player?.weapon === undefined || enemy === undefined) {
-      throw new RuntimeBridgeError('invalid_input', 'FPS RuntimeSession is missing player weapon or enemy');
+    const shooterRole = request.shooterRole ?? 'player';
+    const targetRole = request.targetRole ?? 'enemy';
+    const shooter = this.#fpsSeed.definitions.find((definition) => definition.role === shooterRole);
+    const target = this.#fpsSeed.definitions.find((definition) => definition.role === targetRole);
+    if (shooter === undefined || target === undefined) {
+      throw new RuntimeBridgeError('invalid_input', 'FPS RuntimeSession is missing shooter or target role');
     }
-    const before = this.#fpsSnapshot.health.find((health) => health.entity === enemy.entity) ?? null;
+    const enemyPolicyWeapon = {
+      weaponId: 'weapon.enemy_policy.primary',
+      damage: 10,
+      rangeUnits: 16,
+      ammo: 2,
+      cooldownTicksAfterFire: 4,
+    };
+    const weapon = shooter.weapon ?? (
+      shooterRole === 'enemy' && targetRole === 'player' ? enemyPolicyWeapon : null
+    );
+    if (weapon === null) {
+      throw new RuntimeBridgeError('invalid_input', 'FPS RuntimeSession shooter is missing weapon');
+    }
+    const before = this.#fpsSnapshot.health.find((health) => health.entity === target.entity) ?? null;
     const after = before === null
       ? null
-      : { ...before, current: Math.max(0, before.current - player.weapon.damage) };
-    const health = this.#fpsSnapshot.health.map((entry) => (entry.entity === enemy.entity && after !== null ? after : entry));
-    const lifecycleStatus = after !== null && after.current === 0
-      ? { state: 'enemy_defeated' as const, entity: enemy.entity, tick }
+      : { ...before, current: Math.max(0, before.current - weapon.damage) };
+    const health = this.#fpsSnapshot.health.map((entry) => (entry.entity === target.entity && after !== null ? after : entry));
+    const lifecycleStatus = targetRole === 'enemy' && after !== null && after.current === 0
+      ? { state: 'enemy_defeated' as const, entity: target.entity, tick }
       : this.#fpsSnapshot.lifecycleStatus;
     const healthHash = `fnv1a64:${fnv1a64(JSON.stringify(health))}`;
     const replayHash = `fnv1a64:${fnv1a64(`${this.#fpsSnapshot.entityHash}|${healthHash}|${tick}|runtime_session.fps.primary_fire.reference.v0`)}`;
@@ -743,12 +758,12 @@ export class MockRuntimeBridge implements RuntimeBridge {
       authoritySurface: 'runtime_session.fps.reference_primary_fire.v0',
       mutationOwner: 'reference-bridge',
       workspaceTrace: ['reference fixture primary-fire receipt'],
-      shooter: player.entity,
-      target: enemy.entity,
+      shooter: shooter.entity,
+      target: target.entity,
       targetHealthBefore: before,
       targetHealthAfter: after,
       lifecycleStatus,
-      targetRenderVisible: lifecycleStatus.state === 'enemy_defeated' ? false : true,
+      targetRenderVisible: targetRole === 'enemy' && lifecycleStatus.state === 'enemy_defeated' ? false : true,
       entityHash: this.#fpsSnapshot.entityHash,
       healthHash,
       replayHash,

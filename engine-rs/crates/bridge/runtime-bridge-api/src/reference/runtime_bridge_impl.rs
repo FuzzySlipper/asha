@@ -930,6 +930,15 @@ impl RuntimeBridge for ReferenceBridge {
         request: FpsPrimaryFireRequest,
     ) -> BridgeResult<FpsPrimaryFireResult> {
         self.require_initialized("apply_fps_primary_fire")?;
+        let tick = request.tick;
+        let shooter_role = request
+            .shooter_role
+            .map(Self::fps_runtime_role)
+            .unwrap_or(FpsRuntimeRole::Player);
+        let target_role = request
+            .target_role
+            .map(Self::fps_runtime_role)
+            .unwrap_or(FpsRuntimeRole::Enemy);
         let ray = Self::ray_from_primary_fire(request)?;
         let world = self.voxel.as_ref().ok_or_else(|| {
             RuntimeBridgeError::new(
@@ -940,7 +949,7 @@ impl RuntimeBridge for ReferenceBridge {
         let projection = CollisionProjection::build(world);
         let receipt = self
             .fps_session_mut("apply_fps_primary_fire")?
-            .apply_primary_fire(&projection, ray, request.tick)
+            .apply_primary_fire_for_roles(&projection, ray, tick, shooter_role, target_role, 0)
             .map_err(Self::fps_runtime_error)?;
         Ok(Self::primary_fire_result(receipt))
     }

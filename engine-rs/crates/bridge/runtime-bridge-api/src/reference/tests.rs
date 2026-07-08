@@ -642,6 +642,8 @@ fn fps_primary_fire_receipt_comes_from_rust_combat_lifecycle_and_replay() {
             tick: 9,
             origin: [2.5, 1.5, 1.5],
             direction: [0.0, 0.0, 1.0],
+            shooter_role: None,
+            target_role: None,
         })
         .expect("primary fire applies");
 
@@ -725,6 +727,8 @@ fn fps_encounter_transition_is_rule_lifecycle_authority() {
             tick: 9,
             origin: [2.5, 1.5, 1.5],
             direction: [0.0, 0.0, 1.0],
+            shooter_role: None,
+            target_role: None,
         })
         .unwrap();
     let won_lifecycle = FpsEncounterLifecycleInput {
@@ -796,6 +800,8 @@ fn fps_runtime_session_restart_is_epoch_guarded_and_authority_owned() {
             tick: 9,
             origin: [2.5, 1.5, 1.5],
             direction: [0.0, 0.0, 1.0],
+            shooter_role: None,
+            target_role: None,
         })
         .unwrap();
 

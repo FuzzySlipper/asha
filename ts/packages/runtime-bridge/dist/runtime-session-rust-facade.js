@@ -323,7 +323,7 @@ export class RustBackedRuntimeSessionFacade {
                 proposalReceipts.push(acceptedAutonomousMovementReceipt(proposal, movement));
                 continue;
             }
-            const actionReceipt = this.submitRuntimeActionIntent(proposal.intent);
+            const actionReceipt = this.#submitRustEnemyPolicyPrimaryFire(proposal, fixture.view.enemy.position, fixture.view.target.position);
             proposalReceipts.push(runtimeActionReceiptToAutonomousReceipt(proposal, actionReceipt));
         }
         this.#sequenceId += 1;
@@ -723,6 +723,30 @@ export class RustBackedRuntimeSessionFacade {
         });
         return movement;
     }
+    #submitRustEnemyPolicyPrimaryFire(proposal, enemyPosition, targetPosition) {
+        const envelope = proposal.intent;
+        const before = this.#sessionHash();
+        this.#sequenceId += 1;
+        const fire = this.#bridge.applyFpsPrimaryFire({
+            tick: envelope.tick,
+            origin: enemyPosition,
+            direction: directionBetween(enemyPosition, targetPosition),
+            shooterRole: 'enemy',
+            targetRole: 'player',
+        });
+        this.#snapshot = this.#bridge.readFpsRuntimeSession();
+        this.#record('submitRuntimeActionIntent', fire.replayHash);
+        return {
+            sequenceId: this.#sequenceId,
+            envelope,
+            accepted: true,
+            status: 'accepted',
+            rejection: null,
+            combatReadout: combatReadoutFromFpsPrimaryFire(fire, envelope.tick),
+            sessionHashBefore: before,
+            sessionHashAfter: this.#sessionHash(),
+        };
+    }
     #encounterLifecycleFromScenario(scenario) {
         const lifecycleScenario = scenario === undefined || scenario === 'active' ? 'current_session' : scenario;
         return lifecycleStatusToEncounterLifecycle(this.readLifecycleStatus({ scenario: lifecycleScenario }));
@@ -899,6 +923,15 @@ function fpsLifecycleHealth(snapshot, entity) {
         dead: current <= 0,
         healthHash: snapshot.healthHash,
     };
+}
+function directionBetween(origin, target) {
+    const dx = target[0] - origin[0];
+    const dy = target[1] - origin[1];
+    const dz = target[2] - origin[2];
+    const length = Math.hypot(dx, dy, dz);
+    if (length === 0)
+        return [0, 0, 1];
+    return [dx / length, dy / length, dz / length];
 }
 function combatReadoutFromFpsPrimaryFire(result, tick) {
     if (result.target === null || result.targetHealthBefore === null || result.targetHealthAfter === null) {

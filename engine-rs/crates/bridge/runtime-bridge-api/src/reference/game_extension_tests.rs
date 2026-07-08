@@ -93,6 +93,8 @@ fn game_extension_weapon_effect_requires_declared_module() {
                 tick: 9,
                 origin: [2.5, 1.5, 1.5],
                 direction: [0.0, 0.0, 1.0],
+                shooter_role: None,
+                target_role: None,
             },
         })
         .expect_err("missing module declaration rejects");
@@ -121,6 +123,8 @@ fn game_extension_weapon_effect_applies_validated_proposal_through_combat_author
                 tick: 9,
                 origin: [2.5, 1.5, 1.5],
                 direction: [0.0, 0.0, 1.0],
+                shooter_role: None,
+                target_role: None,
             },
         })
         .expect("extension hook invokes and applies");
@@ -173,6 +177,8 @@ fn game_extension_weapon_effect_invokes_downstream_registered_module_ref() {
                 tick: 10,
                 origin: [2.5, 1.5, 1.5],
                 direction: [0.0, 0.0, 1.0],
+                shooter_role: None,
+                target_role: None,
             },
         })
         .expect("downstream extension hook invokes and applies");

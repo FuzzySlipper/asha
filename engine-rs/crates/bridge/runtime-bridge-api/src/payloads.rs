@@ -367,6 +367,8 @@ pub struct FpsPrimaryFireRequest {
     pub tick: u64,
     pub origin: [f64; 3],
     pub direction: [f64; 3],
+    pub shooter_role: Option<FpsBridgeRole>,
+    pub target_role: Option<FpsBridgeRole>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

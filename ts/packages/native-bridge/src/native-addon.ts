@@ -11,6 +11,8 @@ export interface NativeVec3 {
   readonly z: number;
 }
 
+type NativeFpsRole = 'player' | 'enemy' | 'neutral';
+
 interface NativeEnemyDirectNavMovementResult {
   readonly entity: number;
   readonly authoritySource: string;
@@ -203,6 +205,8 @@ export interface NativeAddon {
     tick: number,
     origin: NativeVec3,
     direction: NativeVec3,
+    shooterRole?: NativeFpsRole,
+    targetRole?: NativeFpsRole,
   ): NativeFpsPrimaryFireResult;
   invokeGameExtensionWeaponEffect(
     handle: number,

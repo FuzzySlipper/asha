@@ -1606,11 +1606,7 @@ impl ReferenceBridge {
                     metadata: Vec::new(),
                     capabilities,
                 },
-                role: match entry.role {
-                    FpsBridgeRole::Player => FpsRuntimeRole::Player,
-                    FpsBridgeRole::Enemy => FpsRuntimeRole::Enemy,
-                    FpsBridgeRole::Neutral => FpsRuntimeRole::Neutral,
-                },
+                role: Self::fps_runtime_role(entry.role),
                 health: entry
                     .health
                     .map(|health| HealthState::new(health.current, health.max)),
@@ -1650,6 +1646,14 @@ impl ReferenceBridge {
             project_bundle: request.project_bundle.clone(),
             definitions,
         })
+    }
+
+    fn fps_runtime_role(role: FpsBridgeRole) -> FpsRuntimeRole {
+        match role {
+            FpsBridgeRole::Player => FpsRuntimeRole::Player,
+            FpsBridgeRole::Enemy => FpsRuntimeRole::Enemy,
+            FpsBridgeRole::Neutral => FpsRuntimeRole::Neutral,
+        }
     }
 
     fn verify_game_rule_modules(
