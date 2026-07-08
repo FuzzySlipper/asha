@@ -33,7 +33,7 @@ agents so partial surfaces do not become forgotten load-bearing scaffolds.
 Current state:
 
 - `sim-runner` has explicit tick execution, `Recorder`, checkpoint handling,
-  playback, and 18 local tests.
+  playback, and 17 local tests.
 - `sim-replay` owns deterministic text encode/decode, divergence classes, diff
   routing, and 17 local tests.
 - `docs/replay-model.md` now describes their authority split and `replay-tool`
@@ -67,7 +67,7 @@ not by a vague "expand RNG" task.
 Current state:
 
 - The crate exposes deterministic chunk work queueing, budgeted draining,
-  version/staleness classification, diagnostics snapshots, and eight local
+  version/staleness classification, diagnostics snapshots, and seven local
   tests.
 - The API is intentionally abstract over execution and does not call meshing,
   collision, render, or generator crates.
