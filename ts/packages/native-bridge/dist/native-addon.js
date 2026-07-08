@@ -1,6 +1,6 @@
 export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'initializeEngine',
-    'loadWorldBundle',
+    'loadWorldBundle', // vocab-allow: legacy native ABI symbol; public facade wraps ProjectBundle load semantics.
     'submitCommands',
     'stepSimulation',
     'applyEnemyDirectNavMovement',

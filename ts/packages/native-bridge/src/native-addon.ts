@@ -168,7 +168,7 @@ interface NativeFpsEncounterTransitionResult extends NativeFpsEncounterDirectorS
  */
 export interface NativeAddon {
   initializeEngine(seed: number): number;
-  loadWorldBundle(
+  loadWorldBundle( // vocab-allow: legacy native ABI symbol; public facade wraps ProjectBundle load semantics.
     handle: number,
     bundleSchemaVersion: number,
     protocolVersion: number,
@@ -246,7 +246,7 @@ export interface NativeAddon {
 
 export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'initializeEngine',
-  'loadWorldBundle',
+  'loadWorldBundle', // vocab-allow: legacy native ABI symbol; public facade wraps ProjectBundle load semantics.
   'submitCommands',
   'stepSimulation',
   'applyEnemyDirectNavMovement',

@@ -166,7 +166,8 @@ interface NativeFpsEncounterTransitionResult extends NativeFpsEncounterDirectorS
  */
 export interface NativeAddon {
     initializeEngine(seed: number): number;
-    loadWorldBundle(handle: number, bundleSchemaVersion: number, protocolVersion: number, sceneId: number): {
+    loadWorldBundle(// vocab-allow: legacy native ABI symbol; public facade wraps ProjectBundle load semantics.
+    handle: number, bundleSchemaVersion: number, protocolVersion: number, sceneId: number): {
         loadedWorld: number | null;
         fatalCount: number;
         totalCount: number;
