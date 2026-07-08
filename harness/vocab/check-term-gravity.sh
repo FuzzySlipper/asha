@@ -12,9 +12,9 @@
 #   Fix: use Capability / EntityDefinition vocabulary.
 #
 # Tier 2 — legacy-gated: WorldState/WorldBundle-family names are allowed only in
-#   files listed in legacy-term-allowlist.txt (pre-vocabulary code) or on lines
-#   carrying an explicit `vocab-allow: <reason>` marker (e.g. migration phrasing
-#   that names the legacy type deliberately).
+#   files listed in legacy-term-allowlist.txt (pre-vocabulary code with an owning
+#   removal task) or on lines carrying an explicit `vocab-allow: <reason>` marker
+#   (e.g. migration phrasing that names the legacy type deliberately).
 #   Fix: use SessionState / RuntimeSession / ProjectBundle vocabulary.
 #
 # Prose comments are free to discuss rejected ECS terminology; tier 1 only
@@ -64,6 +64,8 @@ is_allowlisted() {
 }
 
 violations=0
+allowed_report="$(mktemp)"
+trap 'rm -f "$allowed_report"' EXIT
 
 report() {
   local file="$1" line="$2" text="$3" advice="$4"
@@ -85,7 +87,17 @@ while IFS= read -r file; do
       "ECS-gravity type name. Use Capability (typed authority facet) or EntityDefinition (stored template). See docs/ecrp-capability-rule-ownership.md."
   done < <(grep -nE "$TIER1_DECL|$TIER1_WORD" "$REPO_ROOT/$file" || true)
 
-  if ! is_allowlisted "$file"; then
+  if is_allowlisted "$file"; then
+    allowed_hits="$(
+      (grep -nE "$TIER2" "$REPO_ROOT/$file" 2>/dev/null || true) \
+        | (grep -vF "$SUPPRESS" || true) \
+        | wc -l \
+        | tr -d ' '
+    )"
+    if [ "${allowed_hits:-0}" -gt 0 ]; then
+      printf '%s\t%s\n' "$file" "$allowed_hits" >> "$allowed_report"
+    fi
+  else
     while IFS= read -r hit; do
       line="${hit%%:*}"; text="${hit#*:}"
       case "$text" in *"$SUPPRESS"*) continue ;; esac
@@ -94,6 +106,15 @@ while IFS= read -r file; do
     done < <(grep -nE "$TIER2" "$REPO_ROOT/$file" || true)
   fi
 done < <(git -C "$REPO_ROOT" ls-files --cached --others --exclude-standard -- 'engine-rs/crates/**/*.rs' 'ts/packages/**/*.ts')
+
+if [ -s "$allowed_report" ]; then
+  echo "Remaining allowed legacy World vocabulary:"
+  sort "$allowed_report" | while IFS="$(printf '\t')" read -r file count; do
+    echo "  $file ($count hit(s))"
+  done
+else
+  echo "Remaining allowed legacy World vocabulary: none"
+fi
 
 if [ "$violations" -ne 0 ]; then
   echo ""
