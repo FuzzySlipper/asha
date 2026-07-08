@@ -123,6 +123,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "save_voxel_volume_asset",
+      "facadeMethod": "saveVoxelVolumeAsset",
+      "surface": "stable",
+      "input": "protocol_voxel_asset::VoxelVolumeAssetSaveRequest",
+      "output": "protocol_voxel_asset::VoxelVolumeAssetSaveReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "load_voxel_volume_asset",
       "facadeMethod": "loadVoxelVolumeAsset",
       "surface": "stable",

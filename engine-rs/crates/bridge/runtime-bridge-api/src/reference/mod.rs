@@ -978,6 +978,61 @@ impl ReferenceBridge {
         }
     }
 
+    fn rejected_voxel_volume_asset_save(
+        request: VoxelVolumeAssetSaveRequest,
+        diagnostics: Vec<VoxelAssetDiagnostic>,
+    ) -> VoxelVolumeAssetSaveReceipt {
+        VoxelVolumeAssetSaveReceipt {
+            request,
+            saved: false,
+            diff: None,
+            asset: None,
+            canonical_json: None,
+            canonical_json_hash: None,
+            voxel_data_hash: None,
+            diagnostics,
+        }
+    }
+
+    fn voxel_asset_save_request_diagnostics(
+        request: &VoxelVolumeAssetSaveRequest,
+    ) -> Vec<VoxelAssetDiagnostic> {
+        let mut diagnostics = Vec::new();
+        if request.target_project_bundle.trim().is_empty() {
+            diagnostics.push(Self::voxel_asset_diagnostic(
+                VoxelAssetDiagnosticCode::InvalidAssetId,
+                "targetProjectBundle",
+                "target project bundle must be non-empty",
+            ));
+        }
+        let path = request.target_asset_path.trim();
+        if path.is_empty()
+            || path.starts_with('/')
+            || path.contains('\\')
+            || path
+                .split('/')
+                .any(|segment| segment.is_empty() || segment == "." || segment == "..")
+            || !path.ends_with(VOXEL_ASSET_EXTENSION)
+        {
+            diagnostics.push(Self::voxel_asset_diagnostic(
+                VoxelAssetDiagnosticCode::InvalidAssetId,
+                "targetAssetPath",
+                format!(
+                    "target asset path must be a relative ProjectBundle path ending in .{}",
+                    VOXEL_ASSET_EXTENSION
+                ),
+            ));
+        }
+        if request.representation_kind != VoxelAssetRepresentationKind::SparseRuns.as_str() {
+            diagnostics.push(Self::voxel_asset_diagnostic(
+                VoxelAssetDiagnosticCode::UnsupportedRepresentation,
+                "representationKind",
+                "runtime-to-stored voxel asset save currently supports sparse_runs only",
+            ));
+        }
+        diagnostics
+    }
+
     fn voxel_asset_diagnostic(
         code: VoxelAssetDiagnosticCode,
         reference: impl Into<String>,

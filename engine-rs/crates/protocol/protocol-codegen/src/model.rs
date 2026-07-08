@@ -1572,6 +1572,58 @@ pub fn voxel_asset_module() -> Module {
             ],
         ),
         iface(
+            "Request to turn a resident runtime voxel model into an explicit stored asset diff/save proposal for a ProjectBundle.",
+            "VoxelVolumeAssetSaveRequest",
+            vec![
+                f("exportRequest", r("VoxelVolumeAssetExportRequest")),
+                f("targetProjectBundle", string()),
+                f("targetAssetPath", string()),
+                f("representationKind", string()),
+                f(
+                    "expectedExistingCanonicalJsonHash",
+                    TsType::nullable(string()),
+                ),
+                f("expectedCanonicalJsonHash", TsType::nullable(string())),
+                f("expectedVoxelDataHash", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "Explicit stored-asset diff summary produced before the host writes content.",
+            "VoxelVolumeAssetStoredDiff",
+            vec![
+                f("projectBundle", string()),
+                f("assetId", string()),
+                f("assetPath", string()),
+                f("operation", string()),
+                f(
+                    "previousCanonicalJsonHash",
+                    TsType::nullable(string()),
+                ),
+                f("nextCanonicalJsonHash", string()),
+                f("nextVoxelDataHash", string()),
+                f("representationKind", r("VoxelAssetRepresentationKind")),
+                f("sparseRunCount", num()),
+                f("voxelCount", num()),
+                f("materialCount", num()),
+                f("provenanceCount", num()),
+                f("runtimeSessionHash", string()),
+            ],
+        ),
+        iface(
+            "Receipt for an accepted/rejected runtime-to-stored voxel asset transaction.",
+            "VoxelVolumeAssetSaveReceipt",
+            vec![
+                f("request", r("VoxelVolumeAssetSaveRequest")),
+                f("saved", boolean()),
+                f("diff", TsType::nullable(r("VoxelVolumeAssetStoredDiff"))),
+                f("asset", TsType::nullable(r("VoxelVolumeAsset"))),
+                f("canonicalJson", TsType::nullable(string())),
+                f("canonicalJsonHash", TsType::nullable(string())),
+                f("voxelDataHash", TsType::nullable(string())),
+                f("diagnostics", TsType::array(r("VoxelAssetDiagnostic"))),
+            ],
+        ),
+        iface(
             "Explicit request to load a validated stored voxel-volume asset into runtime.",
             "VoxelVolumeAssetLoadRequest",
             vec![

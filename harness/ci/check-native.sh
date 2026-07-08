@@ -181,6 +181,27 @@ const exportedAsset = bridge.exportVoxelVolumeAsset({
 assert.equal(exportedAsset.exported, true);
 assert.equal(exportedAsset.asset.assetId, 'voxel-volume/check-native-export');
 assert.match(exportedAsset.canonicalJsonHash, /^fnv1a64:[0-9a-f]{16}$/u);
+const savedAsset = bridge.saveVoxelVolumeAsset({
+  exportRequest: {
+    grid: 1,
+    volumeAssetId: 'voxel/generated',
+    targetAssetId: 'voxel-volume/check-native-export',
+    label: 'Check native export',
+    createdBy: 'harness/ci/check-native.sh',
+    sourceTool: '@asha/runtime-bridge',
+    maxSparseRuns: 16,
+    expectedSessionHash: modelInfo.sessionHash,
+  },
+  targetProjectBundle: 'asha-demo',
+  targetAssetPath: 'assets/voxels/check-native-export.avxl.json',
+  representationKind: 'sparse_runs',
+  expectedExistingCanonicalJsonHash: null,
+  expectedCanonicalJsonHash: exportedAsset.canonicalJsonHash,
+  expectedVoxelDataHash: exportedAsset.voxelDataHash,
+});
+assert.equal(savedAsset.saved, true);
+assert.equal(savedAsset.diff.assetPath, 'assets/voxels/check-native-export.avxl.json');
+assert.equal(savedAsset.canonicalJsonHash, exportedAsset.canonicalJsonHash);
 const loadedAsset = bridge.loadVoxelVolumeAsset({
   asset: exportedAsset.asset,
   targetGrid: 1,

@@ -591,6 +591,10 @@ export class RustBackedRuntimeSessionFacade {
         this.#requireInitialized('exportVoxelVolumeAsset');
         return this.#bridge.exportVoxelVolumeAsset(request);
     }
+    saveVoxelVolumeAsset(request) {
+        this.#requireInitialized('saveVoxelVolumeAsset');
+        return this.#bridge.saveVoxelVolumeAsset(request);
+    }
     loadVoxelVolumeAsset(request) {
         this.#requireInitialized('loadVoxelVolumeAsset');
         return this.#bridge.loadVoxelVolumeAsset(request);

@@ -18,6 +18,7 @@ import type {
   VoxelModelInfoRequest,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadRequest,
+  VoxelVolumeAssetSaveRequest,
 } from '@asha/contracts';
 import { entityId } from '@asha/contracts';
 import type { NativeAddon } from '@asha/native-bridge';
@@ -107,6 +108,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
   'export_voxel_conversion_evidence',
   'read_voxel_model_info',
   'export_voxel_volume_asset',
+  'save_voxel_volume_asset',
   'load_voxel_volume_asset',
   'read_render_diffs',
   'save_current_world',
@@ -274,6 +276,16 @@ const VOXEL_VOLUME_ASSET_LOAD_REQUEST = {
   replaceExisting: true,
   includeMaterialCounts: true,
 } satisfies VoxelVolumeAssetLoadRequest;
+
+const VOXEL_VOLUME_ASSET_SAVE_REQUEST = {
+  exportRequest: VOXEL_VOLUME_ASSET_EXPORT_REQUEST,
+  targetProjectBundle: 'asha-demo',
+  targetAssetPath: 'assets/voxels/native-export.avxl.json',
+  representationKind: 'sparse_runs',
+  expectedExistingCanonicalJsonHash: null,
+  expectedCanonicalJsonHash: 'fnv1a64:0000000000000108',
+  expectedVoxelDataHash: 'fnv1a64:0000000000000109',
+} satisfies VoxelVolumeAssetSaveRequest;
 
 function parseJsonFixture<T>(payload: string): T {
   return JSON.parse(payload) as T;
@@ -803,6 +815,65 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         diagnostics: [],
       });
     },
+    saveVoxelVolumeAsset: (_handle: number, requestJson: string) => {
+      calls.push(`voxelVolumeAssetSave:${requestJson}`);
+      const request = parseJsonFixture<VoxelVolumeAssetSaveRequest>(requestJson);
+      const asset = {
+        assetId: request.exportRequest.targetAssetId,
+        schemaVersion: 1,
+        mediaType: 'application/vnd.asha.voxel-volume+json;version=1',
+        grid: {
+          origin: [0, 0, 0],
+          cellSize: 1,
+          coordinateSystem: 'y_up_right_handed',
+        },
+        bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+        representation: {
+          kind: 'sparse_runs',
+          sparseRuns: [{ start: { x: 0, y: 0, z: 0 }, length: 1, material: 3 }],
+        },
+        materialPalette: [{ voxelMaterial: 3, materialAssetId: 'mat/a' }],
+        provenance: [{
+          kind: 'runtime_export',
+          uri: `asha://runtime-session/voxel-volume-export/${request.exportRequest.targetAssetId}`,
+          contentHash: 'fnv1a64:0000000000000107',
+        }],
+        authoring: {
+          label: request.exportRequest.label,
+          createdBy: request.exportRequest.createdBy,
+          sourceTool: request.exportRequest.sourceTool,
+        },
+        validationDiagnostics: [],
+        contentHashes: {
+          canonicalJson: 'fnv1a64:0000000000000108',
+          voxelData: 'fnv1a64:0000000000000109',
+        },
+      };
+      return JSON.stringify({
+        request,
+        saved: true,
+        diff: {
+          projectBundle: request.targetProjectBundle,
+          assetId: asset.assetId,
+          assetPath: request.targetAssetPath,
+          operation: 'create',
+          previousCanonicalJsonHash: null,
+          nextCanonicalJsonHash: asset.contentHashes.canonicalJson,
+          nextVoxelDataHash: asset.contentHashes.voxelData,
+          representationKind: 'sparse_runs',
+          sparseRunCount: 1,
+          voxelCount: 1,
+          materialCount: 1,
+          provenanceCount: 1,
+          runtimeSessionHash: request.exportRequest.expectedSessionHash ?? 'fnv1a64:0000000000000105',
+        },
+        asset,
+        canonicalJson: `${JSON.stringify(asset)}\n`,
+        canonicalJsonHash: asset.contentHashes.canonicalJson,
+        voxelDataHash: asset.contentHashes.voxelData,
+        diagnostics: [],
+      });
+    },
     loadVoxelVolumeAsset: (_handle: number, requestJson: string) => {
       calls.push(`voxelVolumeAssetLoad:${requestJson}`);
       const request = parseJsonFixture<VoxelVolumeAssetLoadRequest>(requestJson);
@@ -922,6 +993,7 @@ const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
   ['exportVoxelConversionEvidence', (b) => b.exportVoxelConversionEvidence(VOXEL_CONVERSION_EVIDENCE)],
   ['readVoxelModelInfo', (b) => b.readVoxelModelInfo(VOXEL_MODEL_INFO_REQUEST)],
   ['exportVoxelVolumeAsset', (b) => b.exportVoxelVolumeAsset(VOXEL_VOLUME_ASSET_EXPORT_REQUEST)],
+  ['saveVoxelVolumeAsset', (b) => b.saveVoxelVolumeAsset(VOXEL_VOLUME_ASSET_SAVE_REQUEST)],
   ['loadVoxelVolumeAsset', (b) => b.loadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_LOAD_REQUEST)],
   ['readModelMaterialPreview', (b) => b.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST)],
   ['readSceneObjectSnapshot', (b) => b.readSceneObjectSnapshot()],

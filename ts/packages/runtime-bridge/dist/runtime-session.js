@@ -616,6 +616,11 @@ class ReferenceRuntimeSessionFacade {
         this.#requireInitialized('exportVoxelVolumeAsset');
         throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset export is not wired into the reference RuntimeSession');
     }
+    saveVoxelVolumeAsset(_request) {
+        void _request;
+        this.#requireInitialized('saveVoxelVolumeAsset');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset save is not wired into the reference RuntimeSession');
+    }
     loadVoxelVolumeAsset(_request) {
         void _request;
         this.#requireInitialized('loadVoxelVolumeAsset');

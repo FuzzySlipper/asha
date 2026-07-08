@@ -727,6 +727,120 @@ impl RuntimeBridge for ReferenceBridge {
         })
     }
 
+    fn save_voxel_volume_asset(
+        &self,
+        request: VoxelVolumeAssetSaveRequest,
+    ) -> BridgeResult<VoxelVolumeAssetSaveReceipt> {
+        self.require_initialized("save_voxel_volume_asset")?;
+        let diagnostics = Self::voxel_asset_save_request_diagnostics(&request);
+        if !diagnostics.is_empty() {
+            return Ok(Self::rejected_voxel_volume_asset_save(request, diagnostics));
+        }
+
+        let export = self.export_voxel_volume_asset(request.export_request.clone())?;
+        if !export.exported {
+            return Ok(Self::rejected_voxel_volume_asset_save(
+                request,
+                export.diagnostics,
+            ));
+        }
+
+        let Some(asset) = export.asset else {
+            return Ok(Self::rejected_voxel_volume_asset_save(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "asset",
+                    "export reported success but returned no stored voxel asset",
+                )],
+            ));
+        };
+        let Some(canonical_json) = export.canonical_json else {
+            return Ok(Self::rejected_voxel_volume_asset_save(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "canonicalJson",
+                    "export reported success but returned no canonical JSON payload",
+                )],
+            ));
+        };
+        let canonical_json_hash = asset.content_hashes.canonical_json.clone();
+        let voxel_data_hash = asset.content_hashes.voxel_data.clone();
+        let mut diagnostics = Vec::new();
+        if let Some(expected) = &request.expected_canonical_json_hash {
+            if expected != &canonical_json_hash {
+                diagnostics.push(Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::ContentHashMismatch,
+                    "expectedCanonicalJsonHash",
+                    "save request expected a different exported canonical JSON hash",
+                ));
+            }
+        }
+        if let Some(expected) = &request.expected_voxel_data_hash {
+            if expected != &voxel_data_hash {
+                diagnostics.push(Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::ContentHashMismatch,
+                    "expectedVoxelDataHash",
+                    "save request expected a different exported voxel data hash",
+                ));
+            }
+        }
+        if !diagnostics.is_empty() {
+            return Ok(Self::rejected_voxel_volume_asset_save(request, diagnostics));
+        }
+
+        let key = Self::voxel_model_key(
+            request.export_request.grid,
+            &request.export_request.volume_asset_id,
+        );
+        let Some(info) = self.voxel_model_infos.get(&key) else {
+            return Ok(Self::rejected_voxel_volume_asset_save(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "runtimeModel",
+                    "voxel model readback disappeared before save transaction could be packaged",
+                )],
+            ));
+        };
+        let voxel_count = asset
+            .representation
+            .sparse_runs
+            .iter()
+            .map(|run| u64::from(run.length))
+            .sum::<u64>();
+        let diff = VoxelVolumeAssetStoredDiff {
+            project_bundle: request.target_project_bundle.clone(),
+            asset_id: asset.asset_id.clone(),
+            asset_path: request.target_asset_path.clone(),
+            operation: if request.expected_existing_canonical_json_hash.is_some() {
+                "replace".to_string()
+            } else {
+                "create".to_string()
+            },
+            previous_canonical_json_hash: request.expected_existing_canonical_json_hash.clone(),
+            next_canonical_json_hash: canonical_json_hash.clone(),
+            next_voxel_data_hash: voxel_data_hash.clone(),
+            representation_kind: asset.representation.kind,
+            sparse_run_count: asset.representation.sparse_runs.len() as u64,
+            voxel_count,
+            material_count: asset.material_palette.len() as u64,
+            provenance_count: asset.provenance.len() as u64,
+            runtime_session_hash: info.session_hash.clone(),
+        };
+        Ok(VoxelVolumeAssetSaveReceipt {
+            request,
+            saved: true,
+            diff: Some(diff),
+            asset: Some(asset),
+            canonical_json: Some(canonical_json),
+            canonical_json_hash: Some(canonical_json_hash),
+            voxel_data_hash: Some(voxel_data_hash),
+            diagnostics: Vec::new(),
+        })
+    }
+
     fn load_voxel_volume_asset(
         &mut self,
         request: VoxelVolumeAssetLoadRequest,

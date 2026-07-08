@@ -85,6 +85,13 @@ pub trait RuntimeBridge {
         &self,
         request: VoxelVolumeAssetExportRequest,
     ) -> BridgeResult<VoxelVolumeAssetExportReceipt>;
+    /// Validate and package an explicit runtime-to-stored voxel asset save
+    /// transaction. The bridge returns the stored diff and canonical payload; host
+    /// code owns the actual file write after accepting the receipt.
+    fn save_voxel_volume_asset(
+        &self,
+        request: VoxelVolumeAssetSaveRequest,
+    ) -> BridgeResult<VoxelVolumeAssetSaveReceipt>;
     /// Load a validated stored voxel-volume asset into runtime authority through
     /// an explicit operation. Rejected assets leave runtime voxel state untouched.
     fn load_voxel_volume_asset(

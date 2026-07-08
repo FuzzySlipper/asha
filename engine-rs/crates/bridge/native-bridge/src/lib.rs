@@ -30,7 +30,7 @@ use runtime_bridge_api::{
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest,
     VoxelModelInfoRequest, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
-    WeaponEffectHookRequest, WorldLoadRequest,
+    VoxelVolumeAssetSaveRequest, WeaponEffectHookRequest, WorldLoadRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1306,11 +1306,31 @@ pub fn read_voxel_model_info(handle: i64, request_json: String) -> napi::Result<
     })
 }
 
+fn parse_voxel_volume_asset_save_request(
+    request_json: &str,
+) -> napi::Result<VoxelVolumeAssetSaveRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel volume asset save request JSON: {err}"),
+        ))
+    })
+}
+
 #[napi]
 pub fn export_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_voxel_volume_asset_export_request(&request_json)?;
     with_bridge(handle, |bridge| {
         let receipt = bridge.export_voxel_volume_asset(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn save_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_volume_asset_save_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.save_voxel_volume_asset(request).map_err(to_napi)?;
         voxel_conversion_json(&receipt)
     })
 }
@@ -1350,6 +1370,7 @@ mod tests {
         "registerVoxelConversionMeshAsset",
         "restartFpsRuntimeSession",
         "saveCurrentWorld",
+        "saveVoxelVolumeAsset",
         "stepSimulation",
         "submitCommands",
     ];
@@ -1380,6 +1401,7 @@ mod tests {
                 "registerVoxelConversionMeshAsset",
                 "restartFpsRuntimeSession",
                 "saveCurrentWorld",
+                "saveVoxelVolumeAsset",
                 "stepSimulation",
                 "submitCommands",
             ]

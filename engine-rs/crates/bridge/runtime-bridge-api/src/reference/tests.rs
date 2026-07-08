@@ -981,6 +981,131 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
     let decoded = svc_voxel_asset::decode_asset(canonical_json).expect("canonical asset decodes");
     assert_eq!(decoded, *asset);
 
+    let save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/generated-crate".to_string(),
+                label: Some("Generated crate".to_string()),
+                created_by: Some("runtime-bridge-api-test".to_string()),
+                source_tool: Some("svc-voxel-conversion".to_string()),
+                max_sparse_runs: 16,
+                expected_session_hash: Some(model_info.session_hash.clone()),
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "assets/voxels/generated-crate.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: exported.canonical_json_hash.clone(),
+            expected_voxel_data_hash: exported.voxel_data_hash.clone(),
+        })
+        .unwrap();
+    assert!(save.saved);
+    assert!(save.diagnostics.is_empty());
+    assert_eq!(
+        save.canonical_json_hash.as_deref(),
+        exported.canonical_json_hash.as_deref()
+    );
+    assert_eq!(
+        save.voxel_data_hash.as_deref(),
+        exported.voxel_data_hash.as_deref()
+    );
+    let diff = save.diff.as_ref().expect("stored diff");
+    assert_eq!(diff.project_bundle, "asha-demo");
+    assert_eq!(diff.asset_id, "voxel-volume/generated-crate");
+    assert_eq!(diff.asset_path, "assets/voxels/generated-crate.avxl.json");
+    assert_eq!(diff.operation, "create");
+    assert_eq!(
+        diff.sparse_run_count,
+        asset.representation.sparse_runs.len() as u64
+    );
+    assert_eq!(diff.voxel_count, 3);
+    assert_eq!(diff.material_count, 1);
+    assert_eq!(diff.runtime_session_hash, model_info.session_hash);
+    assert_eq!(
+        save.canonical_json.as_deref(),
+        exported.canonical_json.as_deref()
+    );
+
+    let invalid_path_save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/generated-crate".to_string(),
+                label: None,
+                created_by: None,
+                source_tool: None,
+                max_sparse_runs: 16,
+                expected_session_hash: None,
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "/tmp/generated-crate.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: None,
+            expected_voxel_data_hash: None,
+        })
+        .unwrap();
+    assert!(!invalid_path_save.saved);
+    assert_eq!(
+        invalid_path_save.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::InvalidAssetId
+    );
+
+    let unsupported_save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/generated-crate".to_string(),
+                label: None,
+                created_by: None,
+                source_tool: None,
+                max_sparse_runs: 16,
+                expected_session_hash: None,
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "assets/voxels/generated-crate.avxl.json".to_string(),
+            representation_kind: "dense_grid".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: None,
+            expected_voxel_data_hash: None,
+        })
+        .unwrap();
+    assert!(!unsupported_save.saved);
+    assert_eq!(
+        unsupported_save.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::UnsupportedRepresentation
+    );
+
+    let hash_mismatch_save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/generated-crate".to_string(),
+                label: None,
+                created_by: None,
+                source_tool: None,
+                max_sparse_runs: 16,
+                expected_session_hash: None,
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "assets/voxels/generated-crate.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: Some("fnv1a64:previous".to_string()),
+            expected_canonical_json_hash: Some("fnv1a64:wrong".to_string()),
+            expected_voxel_data_hash: exported.voxel_data_hash.clone(),
+        })
+        .unwrap();
+    assert!(!hash_mismatch_save.saved);
+    assert_eq!(
+        hash_mismatch_save.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::ContentHashMismatch
+    );
+
     let stale_export = bridge
         .export_voxel_volume_asset(VoxelVolumeAssetExportRequest {
             grid: 7,
@@ -996,6 +1121,32 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
     assert!(!stale_export.exported);
     assert_eq!(
         stale_export.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::StaleRuntimeSnapshot
+    );
+
+    let stale_save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/stale-save".to_string(),
+                label: None,
+                created_by: None,
+                source_tool: None,
+                max_sparse_runs: 16,
+                expected_session_hash: Some("fnv1a64:stale".to_string()),
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "assets/voxels/stale-save.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: None,
+            expected_voxel_data_hash: None,
+        })
+        .unwrap();
+    assert!(!stale_save.saved);
+    assert_eq!(
+        stale_save.diagnostics[0].code,
         protocol_voxel_asset::VoxelAssetDiagnosticCode::StaleRuntimeSnapshot
     );
 
@@ -1111,6 +1262,68 @@ fn voxel_volume_asset_load_accepts_hand_authored_asset_and_rejects_invalid_asset
     assert!(!rejected_material.loaded);
     assert_eq!(
         rejected_material.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::InvalidMaterialReference
+    );
+}
+
+#[test]
+fn voxel_volume_asset_save_rejects_missing_material_refs_without_storage_diff() {
+    let mut bridge = init_bridge();
+    let mut request = project_voxel_conversion_request(7);
+    request.settings.material_map.entries[0].source_material_id = None;
+    let plan = bridge.plan_voxel_conversion(request).unwrap();
+    assert!(plan.diagnostics.is_empty());
+
+    let preview = bridge
+        .preview_voxel_conversion(VoxelConversionPreviewRequest {
+            plan_id: plan.plan_id.clone(),
+            expected_plan_hash: svc_voxel_conversion::plan_hash(&plan),
+        })
+        .unwrap();
+    assert!(preview.diagnostics.is_empty());
+
+    let receipt = bridge
+        .apply_voxel_conversion(VoxelConversionApplyRequest {
+            plan_id: plan.plan_id.clone(),
+            expected_plan_hash: svc_voxel_conversion::plan_hash(&plan),
+            expected_preview_hash: Some(preview.output_hash),
+        })
+        .unwrap();
+    assert!(receipt.applied);
+
+    let model_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(model_info.resident);
+
+    let save = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: VoxelVolumeAssetExportRequest {
+                grid: 7,
+                volume_asset_id: Some("voxel/generated".to_string()),
+                target_asset_id: "voxel-volume/missing-material".to_string(),
+                label: None,
+                created_by: None,
+                source_tool: None,
+                max_sparse_runs: 16,
+                expected_session_hash: Some(model_info.session_hash),
+            },
+            target_project_bundle: "asha-demo".to_string(),
+            target_asset_path: "assets/voxels/missing-material.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: None,
+            expected_voxel_data_hash: None,
+        })
+        .unwrap();
+    assert!(!save.saved);
+    assert!(save.diff.is_none());
+    assert_eq!(
+        save.diagnostics[0].code,
         protocol_voxel_asset::VoxelAssetDiagnosticCode::InvalidMaterialReference
     );
 }

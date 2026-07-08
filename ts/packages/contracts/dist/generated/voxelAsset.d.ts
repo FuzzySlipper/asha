@@ -88,6 +88,40 @@ export interface VoxelVolumeAssetExportReceipt {
     readonly voxelDataHash: string | null;
     readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }
+export interface VoxelVolumeAssetSaveRequest {
+    readonly exportRequest: VoxelVolumeAssetExportRequest;
+    readonly targetProjectBundle: string;
+    readonly targetAssetPath: string;
+    readonly representationKind: string;
+    readonly expectedExistingCanonicalJsonHash: string | null;
+    readonly expectedCanonicalJsonHash: string | null;
+    readonly expectedVoxelDataHash: string | null;
+}
+export interface VoxelVolumeAssetStoredDiff {
+    readonly projectBundle: string;
+    readonly assetId: string;
+    readonly assetPath: string;
+    readonly operation: string;
+    readonly previousCanonicalJsonHash: string | null;
+    readonly nextCanonicalJsonHash: string;
+    readonly nextVoxelDataHash: string;
+    readonly representationKind: VoxelAssetRepresentationKind;
+    readonly sparseRunCount: number;
+    readonly voxelCount: number;
+    readonly materialCount: number;
+    readonly provenanceCount: number;
+    readonly runtimeSessionHash: string;
+}
+export interface VoxelVolumeAssetSaveReceipt {
+    readonly request: VoxelVolumeAssetSaveRequest;
+    readonly saved: boolean;
+    readonly diff: VoxelVolumeAssetStoredDiff | null;
+    readonly asset: VoxelVolumeAsset | null;
+    readonly canonicalJson: string | null;
+    readonly canonicalJsonHash: string | null;
+    readonly voxelDataHash: string | null;
+    readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}
 export interface VoxelVolumeAssetLoadRequest {
     readonly asset: VoxelVolumeAsset;
     readonly targetGrid: number;

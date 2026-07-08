@@ -370,6 +370,9 @@ mod tests {
             interface_coverage_key("voxelAsset", "VoxelVolumeAsset"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetExportRequest"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetExportReceipt"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAssetSaveRequest"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAssetStoredDiff"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAssetSaveReceipt"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetLoadRequest"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetLoadReceipt"),
         ]

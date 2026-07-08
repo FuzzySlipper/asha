@@ -137,6 +137,46 @@ export interface VoxelVolumeAssetExportReceipt {
   readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }
 
+// Request to turn a resident runtime voxel model into an explicit stored asset diff/save proposal for a ProjectBundle.
+export interface VoxelVolumeAssetSaveRequest {
+  readonly exportRequest: VoxelVolumeAssetExportRequest;
+  readonly targetProjectBundle: string;
+  readonly targetAssetPath: string;
+  readonly representationKind: string;
+  readonly expectedExistingCanonicalJsonHash: string | null;
+  readonly expectedCanonicalJsonHash: string | null;
+  readonly expectedVoxelDataHash: string | null;
+}
+
+// Explicit stored-asset diff summary produced before the host writes content.
+export interface VoxelVolumeAssetStoredDiff {
+  readonly projectBundle: string;
+  readonly assetId: string;
+  readonly assetPath: string;
+  readonly operation: string;
+  readonly previousCanonicalJsonHash: string | null;
+  readonly nextCanonicalJsonHash: string;
+  readonly nextVoxelDataHash: string;
+  readonly representationKind: VoxelAssetRepresentationKind;
+  readonly sparseRunCount: number;
+  readonly voxelCount: number;
+  readonly materialCount: number;
+  readonly provenanceCount: number;
+  readonly runtimeSessionHash: string;
+}
+
+// Receipt for an accepted/rejected runtime-to-stored voxel asset transaction.
+export interface VoxelVolumeAssetSaveReceipt {
+  readonly request: VoxelVolumeAssetSaveRequest;
+  readonly saved: boolean;
+  readonly diff: VoxelVolumeAssetStoredDiff | null;
+  readonly asset: VoxelVolumeAsset | null;
+  readonly canonicalJson: string | null;
+  readonly canonicalJsonHash: string | null;
+  readonly voxelDataHash: string | null;
+  readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}
+
 // Explicit request to load a validated stored voxel-volume asset into runtime.
 export interface VoxelVolumeAssetLoadRequest {
   readonly asset: VoxelVolumeAsset;

@@ -274,6 +274,53 @@ pub struct VoxelVolumeAssetExportReceipt {
     pub diagnostics: Vec<VoxelAssetDiagnostic>,
 }
 
+/// Request to turn a resident runtime voxel model into an explicit stored asset
+/// diff/save proposal for a ProjectBundle.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAssetSaveRequest {
+    pub export_request: VoxelVolumeAssetExportRequest,
+    pub target_project_bundle: String,
+    pub target_asset_path: String,
+    pub representation_kind: String,
+    pub expected_existing_canonical_json_hash: Option<String>,
+    pub expected_canonical_json_hash: Option<String>,
+    pub expected_voxel_data_hash: Option<String>,
+}
+
+/// Explicit stored-asset diff summary produced before the host writes content.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAssetStoredDiff {
+    pub project_bundle: String,
+    pub asset_id: String,
+    pub asset_path: String,
+    pub operation: String,
+    pub previous_canonical_json_hash: Option<String>,
+    pub next_canonical_json_hash: String,
+    pub next_voxel_data_hash: String,
+    pub representation_kind: VoxelAssetRepresentationKind,
+    pub sparse_run_count: u64,
+    pub voxel_count: u64,
+    pub material_count: u64,
+    pub provenance_count: u64,
+    pub runtime_session_hash: String,
+}
+
+/// Receipt for an accepted/rejected runtime-to-stored voxel asset transaction.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAssetSaveReceipt {
+    pub request: VoxelVolumeAssetSaveRequest,
+    pub saved: bool,
+    pub diff: Option<VoxelVolumeAssetStoredDiff>,
+    pub asset: Option<VoxelVolumeAsset>,
+    pub canonical_json: Option<String>,
+    pub canonical_json_hash: Option<String>,
+    pub voxel_data_hash: Option<String>,
+    pub diagnostics: Vec<VoxelAssetDiagnostic>,
+}
+
 /// Explicit request to load a validated stored voxel-volume asset into runtime.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

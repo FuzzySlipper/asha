@@ -353,6 +353,47 @@ function createVoxelConversionBridge() {
                     diagnostics: [],
                 });
             }
+            if (property === 'saveVoxelVolumeAsset') {
+                return (request) => {
+                    const exportReceipt = receiver.exportVoxelVolumeAsset(request.exportRequest);
+                    if (!exportReceipt.exported || exportReceipt.asset === null) {
+                        return {
+                            request,
+                            saved: false,
+                            diff: null,
+                            asset: null,
+                            canonicalJson: null,
+                            canonicalJsonHash: null,
+                            voxelDataHash: null,
+                            diagnostics: exportReceipt.diagnostics,
+                        };
+                    }
+                    return {
+                        request,
+                        saved: true,
+                        diff: {
+                            projectBundle: request.targetProjectBundle,
+                            assetId: exportReceipt.asset.assetId,
+                            assetPath: request.targetAssetPath,
+                            operation: request.expectedExistingCanonicalJsonHash === null ? 'create' : 'replace',
+                            previousCanonicalJsonHash: request.expectedExistingCanonicalJsonHash,
+                            nextCanonicalJsonHash: exportReceipt.asset.contentHashes.canonicalJson,
+                            nextVoxelDataHash: exportReceipt.asset.contentHashes.voxelData,
+                            representationKind: exportReceipt.asset.representation.kind,
+                            sparseRunCount: exportReceipt.asset.representation.sparseRuns.length,
+                            voxelCount: exportReceipt.asset.representation.sparseRuns.reduce((sum, run) => sum + run.length, 0),
+                            materialCount: exportReceipt.asset.materialPalette.length,
+                            provenanceCount: exportReceipt.asset.provenance.length,
+                            runtimeSessionHash: request.exportRequest.expectedSessionHash ?? 'fnv1a64:0000000000000203',
+                        },
+                        asset: exportReceipt.asset,
+                        canonicalJson: exportReceipt.canonicalJson,
+                        canonicalJsonHash: exportReceipt.canonicalJsonHash,
+                        voxelDataHash: exportReceipt.voxelDataHash,
+                        diagnostics: [],
+                    };
+                };
+            }
             const value = Reflect.get(target, property, receiver);
             if (typeof value === 'function') {
                 const boundValue = value.bind(target);
@@ -421,6 +462,24 @@ void test('reference RuntimeSession voxel conversion facade methods remain typed
         targetVolumeAssetId: 'voxel/generated',
         replaceExisting: true,
         includeMaterialCounts: true,
+    }), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
+    assert.throws(() => referenceSession.saveVoxelVolumeAsset({
+        exportRequest: {
+            grid: 1,
+            volumeAssetId: 'voxel/generated',
+            targetAssetId: 'voxel-volume/generated',
+            label: null,
+            createdBy: null,
+            sourceTool: null,
+            maxSparseRuns: 16,
+            expectedSessionHash: null,
+        },
+        targetProjectBundle: 'asha-demo',
+        targetAssetPath: 'assets/voxels/generated.avxl.json',
+        representationKind: 'sparse_runs',
+        expectedExistingCanonicalJsonHash: null,
+        expectedCanonicalJsonHash: null,
+        expectedVoxelDataHash: null,
     }), (error) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented');
 });
 void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge authority surface', () => {
@@ -514,6 +573,30 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
     assert.deepEqual(loadedAsset.materialCounts, [{ material: 3, voxelCount: 1 }]);
     assert.equal(loadedAsset.canonicalJsonHash, exportedAsset.asset?.contentHashes.canonicalJson);
     assert.equal(loadedAsset.voxelDataHash, exportedAsset.asset?.contentHashes.voxelData);
+    const savedAsset = rustSession.saveVoxelVolumeAsset({
+        exportRequest: {
+            grid: 1,
+            volumeAssetId: 'voxel/generated',
+            targetAssetId: 'voxel-volume/generated',
+            label: 'Generated voxel volume',
+            createdBy: 'runtime-session-voxel-conversion-test',
+            sourceTool: '@asha/runtime-bridge',
+            maxSparseRuns: 16,
+            expectedSessionHash: modelInfo.sessionHash,
+        },
+        targetProjectBundle: 'asha-demo',
+        targetAssetPath: 'assets/voxels/generated.avxl.json',
+        representationKind: 'sparse_runs',
+        expectedExistingCanonicalJsonHash: null,
+        expectedCanonicalJsonHash: exportedAsset.asset?.contentHashes.canonicalJson ?? null,
+        expectedVoxelDataHash: exportedAsset.asset?.contentHashes.voxelData ?? null,
+    });
+    assert.equal(savedAsset.saved, true);
+    assert.equal(savedAsset.diff?.projectBundle, 'asha-demo');
+    assert.equal(savedAsset.diff?.assetPath, 'assets/voxels/generated.avxl.json');
+    assert.equal(savedAsset.diff?.operation, 'create');
+    assert.equal(savedAsset.canonicalJsonHash, exportedAsset.asset?.contentHashes.canonicalJson);
+    assert.equal(savedAsset.voxelDataHash, exportedAsset.asset?.contentHashes.voxelData);
     const missingModel = rustSession.readVoxelModelInfo({
         grid: 999,
         volumeAssetId: 'voxel/missing',

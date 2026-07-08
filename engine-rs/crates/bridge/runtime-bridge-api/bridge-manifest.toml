@@ -144,6 +144,14 @@ errors = "RuntimeBridgeError"
 summary = "Export a complete resident runtime voxel model as an Asha-native voxel-volume asset proposal with Rust-owned sparse runs, validation diagnostics, canonical JSON, and authority hashes."
 
 [[operation]]
+name = "save_voxel_volume_asset"
+surface = "stable"
+input = "protocol_voxel_asset::VoxelVolumeAssetSaveRequest"
+output = "protocol_voxel_asset::VoxelVolumeAssetSaveReceipt"
+errors = "RuntimeBridgeError"
+summary = "Validate an explicit runtime-to-stored voxel-volume asset diff/save transaction and return the canonical payload for host persistence."
+
+[[operation]]
 name = "load_voxel_volume_asset"
 surface = "stable"
 input = "protocol_voxel_asset::VoxelVolumeAssetLoadRequest"

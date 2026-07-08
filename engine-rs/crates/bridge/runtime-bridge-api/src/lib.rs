@@ -71,11 +71,12 @@ pub(crate) use protocol_voxel_asset::{
     VoxelAssetDiagnostic, VoxelAssetDiagnosticCode, VoxelAssetGrid, VoxelAssetMaterialBinding,
     VoxelAssetMaterialCount, VoxelAssetProvenanceKind, VoxelAssetProvenanceRef,
     VoxelAssetRepresentation, VoxelAssetRepresentationKind, VoxelAssetSparseRun, VoxelVolumeAsset,
-    VOXEL_ASSET_MEDIA_TYPE, VOXEL_ASSET_SCHEMA_VERSION,
+    VOXEL_ASSET_EXTENSION, VOXEL_ASSET_MEDIA_TYPE, VOXEL_ASSET_SCHEMA_VERSION,
 };
 pub use protocol_voxel_asset::{
     VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt,
-    VoxelVolumeAssetLoadRequest,
+    VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveReceipt, VoxelVolumeAssetSaveRequest,
+    VoxelVolumeAssetStoredDiff,
 };
 pub use protocol_voxel_conversion::{
     VoxelConversionApplyRequest, VoxelConversionDiagnostic, VoxelConversionDiagnosticCode,
