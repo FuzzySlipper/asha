@@ -1484,6 +1484,11 @@ pub fn voxel_asset_module() -> Module {
             ],
         ),
         iface(
+            "Per-material voxel count for stored/runtime voxel asset readbacks.",
+            "VoxelAssetMaterialCount",
+            vec![f("material", num()), f("voxelCount", num())],
+        ),
+        iface(
             "A complete Asha-native stored voxel-volume asset.",
             "VoxelVolumeAsset",
             vec![
@@ -1530,6 +1535,40 @@ pub fn voxel_asset_module() -> Module {
                 f("canonicalJson", TsType::nullable(string())),
                 f("canonicalJsonHash", TsType::nullable(string())),
                 f("voxelDataHash", TsType::nullable(string())),
+                f("diagnostics", TsType::array(r("VoxelAssetDiagnostic"))),
+            ],
+        ),
+        iface(
+            "Explicit request to load a validated stored voxel-volume asset into runtime.",
+            "VoxelVolumeAssetLoadRequest",
+            vec![
+                f("asset", r("VoxelVolumeAsset")),
+                f("targetGrid", num()),
+                f("targetVolumeAssetId", TsType::nullable(string())),
+                f("replaceExisting", boolean()),
+                f("includeMaterialCounts", boolean()),
+            ],
+        ),
+        iface(
+            "Receipt/readback for loading a stored voxel-volume asset into runtime.",
+            "VoxelVolumeAssetLoadReceipt",
+            vec![
+                f("requestAssetId", string()),
+                f("loaded", boolean()),
+                f("modelId", string()),
+                f("volumeAssetId", TsType::nullable(string())),
+                f("grid", num()),
+                f("bounds", TsType::nullable(r("VoxelAssetBounds"))),
+                f("voxelCount", num()),
+                f(
+                    "materialCounts",
+                    TsType::array(r("VoxelAssetMaterialCount")),
+                ),
+                f("provenance", TsType::array(r("VoxelAssetProvenanceRef"))),
+                f("canonicalJsonHash", TsType::nullable(string())),
+                f("voxelDataHash", TsType::nullable(string())),
+                f("sessionHash", string()),
+                f("replayHash", string()),
                 f("diagnostics", TsType::array(r("VoxelAssetDiagnostic"))),
             ],
         ),

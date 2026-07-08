@@ -398,6 +398,51 @@ fn larger_registered_grid_plan_request(
     request
 }
 
+fn hand_authored_voxel_volume_asset() -> VoxelVolumeAsset {
+    let asset = VoxelVolumeAsset {
+        asset_id: "voxel-volume/hand-authored-room".to_string(),
+        schema_version: protocol_voxel_asset::VOXEL_ASSET_SCHEMA_VERSION,
+        media_type: protocol_voxel_asset::VOXEL_ASSET_MEDIA_TYPE.to_string(),
+        grid: VoxelAssetGrid {
+            origin: [0.0, 0.0, 0.0],
+            cell_size: 1.0,
+            coordinate_system: svc_voxel_asset::VOXEL_ASSET_COORDINATE_SYSTEM.to_string(),
+        },
+        bounds: VoxelAssetBounds {
+            min: VoxelAssetCoord { x: 0, y: 0, z: 0 },
+            max: VoxelAssetCoord { x: 1, y: 0, z: 0 },
+        },
+        representation: VoxelAssetRepresentation {
+            kind: VoxelAssetRepresentationKind::SparseRuns,
+            sparse_runs: vec![VoxelAssetSparseRun {
+                start: VoxelAssetCoord { x: 0, y: 0, z: 0 },
+                length: 2,
+                material: 1,
+            }],
+        },
+        material_palette: vec![VoxelAssetMaterialBinding {
+            voxel_material: 1,
+            material_asset_id: "material/concrete".to_string(),
+        }],
+        provenance: vec![VoxelAssetProvenanceRef {
+            kind: VoxelAssetProvenanceKind::Authored,
+            uri: "asha://project-bundle/assets/voxel-volume/hand-authored-room".to_string(),
+            content_hash: "fnv1a64:authored-room".to_string(),
+        }],
+        authoring: VoxelAssetAuthoringMetadata {
+            label: Some("Hand authored room".to_string()),
+            created_by: Some("runtime-bridge-api-test".to_string()),
+            source_tool: Some("fixture".to_string()),
+        },
+        validation_diagnostics: Vec::new(),
+        content_hashes: VoxelAssetContentHashes {
+            canonical_json: String::new(),
+            voxel_data: String::new(),
+        },
+    };
+    svc_voxel_asset::with_computed_hashes(&asset)
+}
+
 pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadRequest {
     FpsRuntimeSessionLoadRequest {
         project_bundle: "custom-demo".to_string(),
@@ -902,6 +947,121 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
     assert_eq!(
         stale_export.diagnostics[0].code,
         protocol_voxel_asset::VoxelAssetDiagnosticCode::StaleRuntimeSnapshot
+    );
+
+    let mut load_bridge = init_bridge();
+    let load_receipt = load_bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: asset.clone(),
+            target_grid: 7,
+            target_volume_asset_id: Some("voxel/generated".to_string()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(load_receipt.loaded);
+    assert_eq!(load_receipt.request_asset_id, asset.asset_id);
+    assert_eq!(load_receipt.voxel_count, 3);
+    assert_eq!(
+        load_receipt.material_counts,
+        vec![VoxelAssetMaterialCount {
+            material: 3,
+            voxel_count: 3
+        }]
+    );
+    let reloaded_info = load_bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(reloaded_info.resident);
+    assert_eq!(reloaded_info.voxel_count, 3);
+    assert_eq!(
+        reloaded_info.source.as_ref().unwrap().asset_id,
+        "voxel-volume/generated-crate"
+    );
+}
+
+#[test]
+fn voxel_volume_asset_load_accepts_hand_authored_asset_and_rejects_invalid_assets() {
+    let asset = hand_authored_voxel_volume_asset();
+    let mut bridge = init_bridge();
+    let receipt = bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: asset.clone(),
+            target_grid: 7,
+            target_volume_asset_id: Some(asset.asset_id.clone()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(receipt.loaded);
+    assert_eq!(receipt.voxel_count, 2);
+    assert_eq!(
+        receipt.material_counts,
+        vec![VoxelAssetMaterialCount {
+            material: 1,
+            voxel_count: 2
+        }]
+    );
+    let info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some(asset.asset_id.clone()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(info.resident);
+    assert_eq!(info.voxel_count, 2);
+    assert_eq!(
+        info.source.as_ref().unwrap().source_hash,
+        asset.content_hashes.voxel_data
+    );
+
+    let mut invalid_hash = asset.clone();
+    invalid_hash.content_hashes.voxel_data = "fnv1a64:stale".to_string();
+    let mut invalid_bridge = init_bridge();
+    let rejected = invalid_bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: invalid_hash,
+            target_grid: 7,
+            target_volume_asset_id: Some("voxel/invalid".to_string()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(!rejected.loaded);
+    assert_eq!(
+        rejected.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::ContentHashMismatch
+    );
+    let missing = invalid_bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/invalid".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(!missing.resident);
+
+    let mut invalid_material = asset;
+    invalid_material.material_palette[0].material_asset_id = "texture/not-material".to_string();
+    invalid_material = svc_voxel_asset::with_computed_hashes(&invalid_material);
+    let rejected_material = invalid_bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: invalid_material,
+            target_grid: 7,
+            target_volume_asset_id: Some("voxel/invalid-material".to_string()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(!rejected_material.loaded);
+    assert_eq!(
+        rejected_material.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::InvalidMaterialReference
     );
 }
 

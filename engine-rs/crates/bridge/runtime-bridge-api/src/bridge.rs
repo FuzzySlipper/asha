@@ -78,6 +78,12 @@ pub trait RuntimeBridge {
         &self,
         request: VoxelVolumeAssetExportRequest,
     ) -> BridgeResult<VoxelVolumeAssetExportReceipt>;
+    /// Load a validated stored voxel-volume asset into runtime authority through
+    /// an explicit operation. Rejected assets leave runtime voxel state untouched.
+    fn load_voxel_volume_asset(
+        &mut self,
+        request: VoxelVolumeAssetLoadRequest,
+    ) -> BridgeResult<VoxelVolumeAssetLoadReceipt>;
     /// Load an FPS/ECRP ProjectBundle-shaped session through Rust authority.
     /// Stored definitions are validated/bootstraped by rule-lifecycle and
     /// svc-entity-authoring; failure leaves any prior FPS session untouched.

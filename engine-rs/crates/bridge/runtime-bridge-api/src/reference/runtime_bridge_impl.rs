@@ -692,6 +692,63 @@ impl RuntimeBridge for ReferenceBridge {
         })
     }
 
+    fn load_voxel_volume_asset(
+        &mut self,
+        request: VoxelVolumeAssetLoadRequest,
+    ) -> BridgeResult<VoxelVolumeAssetLoadReceipt> {
+        self.require_initialized("load_voxel_volume_asset")?;
+        let asset = &request.asset;
+        let report = svc_voxel_asset::validate_asset(asset);
+        if !report.is_valid() {
+            return Ok(Self::rejected_voxel_volume_asset_load(
+                &request,
+                report.diagnostics,
+            ));
+        }
+        let target = match self.voxel_asset_load_target(&request) {
+            Ok(target) => target,
+            Err(diagnostic) => {
+                return Ok(Self::rejected_voxel_volume_asset_load(
+                    &request,
+                    vec![diagnostic],
+                ));
+            }
+        };
+        let batch = Self::voxel_asset_load_commands(asset, target.spec.id())?;
+        let mut candidate = self.voxel_asset_load_candidate(&target, request.replace_existing);
+        Self::ensure_candidate_chunks_for_asset(asset, &target.spec, &mut candidate);
+        let expected = batch.commands.len() as u32;
+        let command_result =
+            Self::apply_command_batch_to_world(&batch, &mut candidate, &self.materials)?;
+        if command_result.accepted != expected || command_result.rejected != 0 {
+            return Ok(Self::rejected_voxel_volume_asset_load(
+                &request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "voxelCommandApply",
+                    format!(
+                        "stored voxel asset command apply accepted {} of {} commands and rejected {}",
+                        command_result.accepted, expected, command_result.rejected
+                    ),
+                )],
+            ));
+        }
+
+        let info = Self::loaded_voxel_asset_info(&request, &target);
+        let receipt =
+            Self::voxel_volume_asset_load_receipt(&request, &target, &info, true, Vec::new());
+        self.voxel = Some(candidate);
+        self.voxel_conversion_targets.insert(
+            Self::voxel_model_key(info.grid, &info.volume_asset_id),
+            target,
+        );
+        self.voxel_model_infos.insert(
+            Self::voxel_model_key(info.grid, &info.volume_asset_id),
+            info,
+        );
+        Ok(receipt)
+    }
+
     fn load_fps_runtime_session(
         &mut self,
         request: FpsRuntimeSessionLoadRequest,

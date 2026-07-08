@@ -1,4 +1,4 @@
-import type { CommandResult, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, RenderFrameDiff, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest } from '@asha/contracts';
+import type { CommandResult, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, RenderFrameDiff, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest } from '@asha/contracts';
 interface NativeVec3 {
     readonly x: number;
     readonly y: number;
@@ -204,13 +204,14 @@ export interface NativeAddon {
     exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
     readVoxelModelInfo(handle: number, requestJson: string): string;
     exportVoxelVolumeAsset(handle: number, requestJson: string): string;
+    loadVoxelVolumeAsset(handle: number, requestJson: string): string;
 }
-export type { VoxelConversionApplyRequest, VoxelConversionEvidenceRef, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, };
+export type { VoxelConversionApplyRequest, VoxelConversionEvidenceRef, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest, };
 /** Raised when the native addon cannot be loaded (missing build / ABI mismatch). */
 export declare class NativeAddonUnavailable extends Error {
     constructor(message: string);
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "exportVoxelVolumeAsset"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadWorldBundle", "submitCommands", "stepSimulation", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveCurrentWorld", "getCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "exportVoxelVolumeAsset", "loadVoxelVolumeAsset"];
 /**
  * Attempt to load the compiled addon. Returns a typed handle or throws a
  * classified {@link NativeAddonUnavailable} — never a raw module-resolution error,

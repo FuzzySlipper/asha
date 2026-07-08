@@ -158,6 +158,16 @@ const exportedAsset = bridge.exportVoxelVolumeAsset({
 assert.equal(exportedAsset.exported, true);
 assert.equal(exportedAsset.asset.assetId, 'voxel-volume/check-native-export');
 assert.match(exportedAsset.canonicalJsonHash, /^fnv1a64:[0-9a-f]{16}$/u);
+const loadedAsset = bridge.loadVoxelVolumeAsset({
+  asset: exportedAsset.asset,
+  targetGrid: 1,
+  targetVolumeAssetId: 'voxel/generated',
+  replaceExisting: true,
+  includeMaterialCounts: true,
+});
+assert.equal(loadedAsset.loaded, true);
+assert.equal(loadedAsset.requestAssetId, 'voxel-volume/check-native-export');
+assert.equal(loadedAsset.voxelCount, modelInfo.voxelCount);
 console.log('Native addon smoke: OK');
 "
 

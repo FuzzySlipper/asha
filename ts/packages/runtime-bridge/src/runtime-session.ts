@@ -25,6 +25,8 @@ import {
   type VoxelModelInfoRequest,
   type VoxelVolumeAssetExportReceipt,
   type VoxelVolumeAssetExportRequest,
+  type VoxelVolumeAssetLoadReceipt,
+  type VoxelVolumeAssetLoadRequest,
   type GameRuleModuleManifest,
   type GameExtensionHookReceipt,
   type GameExtensionReplayEvidence,
@@ -821,6 +823,7 @@ export interface RuntimeSessionFacade {
   exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
   readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout;
   exportVoxelVolumeAsset(request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt;
+  loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt;
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
   readProjection(): RuntimeSessionProjectionSummary;
@@ -1547,6 +1550,12 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
     void _request;
     this.#requireInitialized('exportVoxelVolumeAsset');
     throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset export is not wired into the reference RuntimeSession');
+  }
+
+  loadVoxelVolumeAsset(_request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt {
+    void _request;
+    this.#requireInitialized('loadVoxelVolumeAsset');
+    throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset load is not wired into the reference RuntimeSession');
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

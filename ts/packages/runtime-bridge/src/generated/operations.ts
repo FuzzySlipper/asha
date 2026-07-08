@@ -28,6 +28,7 @@ export const MANIFEST_OPERATIONS: readonly BridgeOperation[] = [
   { manifestName: 'export_voxel_conversion_evidence', facadeMethod: 'exportVoxelConversionEvidence', surface: 'stable' },
   { manifestName: 'read_voxel_model_info', facadeMethod: 'readVoxelModelInfo', surface: 'stable' },
   { manifestName: 'export_voxel_volume_asset', facadeMethod: 'exportVoxelVolumeAsset', surface: 'stable' },
+  { manifestName: 'load_voxel_volume_asset', facadeMethod: 'loadVoxelVolumeAsset', surface: 'stable' },
   { manifestName: 'load_fps_runtime_session', facadeMethod: 'loadFpsRuntimeSession', surface: 'stable' },
   { manifestName: 'read_fps_runtime_session', facadeMethod: 'readFpsRuntimeSession', surface: 'stable' },
   { manifestName: 'apply_fps_primary_fire', facadeMethod: 'applyFpsPrimaryFire', surface: 'stable' },

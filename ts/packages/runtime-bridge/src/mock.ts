@@ -40,6 +40,8 @@ import type {
   VoxelModelInfoRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
+  VoxelVolumeAssetLoadReceipt,
+  VoxelVolumeAssetLoadRequest,
   GameExtensionHookReceipt,
   GameExtensionReplayEvidence,
   GameRuleCatalog,
@@ -1280,6 +1282,14 @@ export class MockRuntimeBridge implements RuntimeBridge {
       throw new RuntimeBridgeError('not_initialized', 'exportVoxelVolumeAsset before initializeEngine');
     }
     throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel volume asset export authority');
+  }
+
+  loadVoxelVolumeAsset(_request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt {
+    void _request;
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'loadVoxelVolumeAsset before initializeEngine');
+    }
+    throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel volume asset load authority');
   }
 
   readModelMaterialPreview(request: ModelMaterialPreviewRequest): ModelMaterialPreviewSnapshot {

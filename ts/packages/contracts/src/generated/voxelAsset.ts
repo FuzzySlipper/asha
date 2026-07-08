@@ -93,6 +93,12 @@ export interface VoxelAssetDiagnostic {
   readonly message: string;
 }
 
+// Per-material voxel count for stored/runtime voxel asset readbacks.
+export interface VoxelAssetMaterialCount {
+  readonly material: number;
+  readonly voxelCount: number;
+}
+
 // A complete Asha-native stored voxel-volume asset.
 export interface VoxelVolumeAsset {
   readonly assetId: string;
@@ -128,5 +134,32 @@ export interface VoxelVolumeAssetExportReceipt {
   readonly canonicalJson: string | null;
   readonly canonicalJsonHash: string | null;
   readonly voxelDataHash: string | null;
+  readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}
+
+// Explicit request to load a validated stored voxel-volume asset into runtime.
+export interface VoxelVolumeAssetLoadRequest {
+  readonly asset: VoxelVolumeAsset;
+  readonly targetGrid: number;
+  readonly targetVolumeAssetId: string | null;
+  readonly replaceExisting: boolean;
+  readonly includeMaterialCounts: boolean;
+}
+
+// Receipt/readback for loading a stored voxel-volume asset into runtime.
+export interface VoxelVolumeAssetLoadReceipt {
+  readonly requestAssetId: string;
+  readonly loaded: boolean;
+  readonly modelId: string;
+  readonly volumeAssetId: string | null;
+  readonly grid: number;
+  readonly bounds: VoxelAssetBounds | null;
+  readonly voxelCount: number;
+  readonly materialCounts: readonly VoxelAssetMaterialCount[];
+  readonly provenance: readonly VoxelAssetProvenanceRef[];
+  readonly canonicalJsonHash: string | null;
+  readonly voxelDataHash: string | null;
+  readonly sessionHash: string;
+  readonly replayHash: string;
   readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }

@@ -366,9 +366,12 @@ mod tests {
             interface_coverage_key("voxelAsset", "VoxelAssetAuthoringMetadata"),
             interface_coverage_key("voxelAsset", "VoxelAssetContentHashes"),
             interface_coverage_key("voxelAsset", "VoxelAssetDiagnostic"),
+            interface_coverage_key("voxelAsset", "VoxelAssetMaterialCount"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAsset"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetExportRequest"),
             interface_coverage_key("voxelAsset", "VoxelVolumeAssetExportReceipt"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAssetLoadRequest"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAssetLoadReceipt"),
         ]
         .into_iter()
         .collect()

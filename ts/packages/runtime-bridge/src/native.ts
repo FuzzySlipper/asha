@@ -24,6 +24,8 @@ import type {
   VoxelModelInfoRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
+  VoxelVolumeAssetLoadReceipt,
+  VoxelVolumeAssetLoadRequest,
   GameExtensionHookReceipt,
   GameExtensionReplayEvidence,
   GameRuleCatalog,
@@ -111,6 +113,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'export_voxel_conversion_evidence',
   'read_voxel_model_info',
   'export_voxel_volume_asset',
+  'load_voxel_volume_asset',
   'read_render_diffs',
   'save_current_world',
   'get_composition_status',
@@ -655,6 +658,12 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('exportVoxelVolumeAsset');
     const payload = callNative(() => this.#addon.exportVoxelVolumeAsset(handle, JSON.stringify(request)));
     return parseNativeJson<VoxelVolumeAssetExportReceipt>(payload, 'voxel volume asset export receipt');
+  }
+
+  loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt {
+    const handle = this.#requireHandle('loadVoxelVolumeAsset');
+    const payload = callNative(() => this.#addon.loadVoxelVolumeAsset(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelVolumeAssetLoadReceipt>(payload, 'voxel volume asset load receipt');
   }
 
   // ── Unwired operations: fail-closed, never mock-backed ─────────────────────

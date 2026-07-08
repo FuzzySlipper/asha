@@ -43,6 +43,8 @@ export type {
   VoxelVolumeAsset,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
+  VoxelVolumeAssetLoadReceipt,
+  VoxelVolumeAssetLoadRequest,
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,

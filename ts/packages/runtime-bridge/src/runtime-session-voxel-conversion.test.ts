@@ -15,6 +15,8 @@ import type {
   VoxelModelInfoRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
+  VoxelVolumeAssetLoadReceipt,
+  VoxelVolumeAssetLoadRequest,
 } from '@asha/contracts';
 
 import { RuntimeBridgeError, createRuntimeSessionFacade, type RuntimeBridge } from './index.js';
@@ -329,6 +331,24 @@ function createVoxelConversionBridge(): RuntimeBridge {
           };
         };
       }
+      if (property === 'loadVoxelVolumeAsset') {
+        return (request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt => ({
+          requestAssetId: request.asset.assetId,
+          loaded: true,
+          modelId: `voxel-model:grid:${request.targetGrid}:volume:${request.targetVolumeAssetId ?? request.asset.assetId}`,
+          volumeAssetId: request.targetVolumeAssetId ?? request.asset.assetId,
+          grid: request.targetGrid,
+          bounds: request.asset.bounds,
+          voxelCount: request.asset.representation.sparseRuns.reduce((sum, run) => sum + run.length, 0),
+          materialCounts: request.includeMaterialCounts ? [{ material: 3, voxelCount: 1 }] : [],
+          provenance: request.asset.provenance,
+          canonicalJsonHash: request.asset.contentHashes.canonicalJson,
+          voxelDataHash: request.asset.contentHashes.voxelData,
+          sessionHash: 'fnv1a64:0000000000000207',
+          replayHash: 'fnv1a64:0000000000000208',
+          diagnostics: [],
+        });
+      }
       const value = Reflect.get(target, property, receiver) as unknown;
       if (typeof value === 'function') {
         const boundValue: unknown = value.bind(target);
@@ -409,6 +429,29 @@ void test('reference RuntimeSession voxel conversion facade methods remain typed
         sourceTool: null,
         maxSparseRuns: 16,
         expectedSessionHash: null,
+      }),
+    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented',
+  );
+  assert.throws(
+    () =>
+      referenceSession.loadVoxelVolumeAsset({
+        asset: {
+          assetId: 'voxel-volume/generated',
+          schemaVersion: 1,
+          mediaType: 'application/vnd.asha.voxel-volume+json;version=1',
+          grid: { origin: [0, 0, 0], cellSize: 1, coordinateSystem: 'y_up_right_handed' },
+          bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+          representation: { kind: 'sparse_runs', sparseRuns: [] },
+          materialPalette: [],
+          provenance: [],
+          authoring: { label: null, createdBy: null, sourceTool: null },
+          validationDiagnostics: [],
+          contentHashes: { canonicalJson: '', voxelData: '' },
+        },
+        targetGrid: 1,
+        targetVolumeAssetId: 'voxel/generated',
+        replaceExisting: true,
+        includeMaterialCounts: true,
       }),
     (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented',
   );
@@ -493,6 +536,21 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
   assert.equal(exportedAsset.canonicalJsonHash, exportedAsset.asset?.contentHashes.canonicalJson);
   assert.equal(exportedAsset.voxelDataHash, exportedAsset.asset?.contentHashes.voxelData);
   assert.match(exportedAsset.canonicalJson ?? '', /"assetId":"voxel-volume\/generated"/u);
+
+  const loadedAsset = rustSession.loadVoxelVolumeAsset({
+    asset: exportedAsset.asset!,
+    targetGrid: 1,
+    targetVolumeAssetId: 'voxel/generated',
+    replaceExisting: true,
+    includeMaterialCounts: true,
+  });
+  assert.equal(loadedAsset.loaded, true);
+  assert.equal(loadedAsset.requestAssetId, 'voxel-volume/generated');
+  assert.equal(loadedAsset.grid, 1);
+  assert.equal(loadedAsset.voxelCount, 1);
+  assert.deepEqual(loadedAsset.materialCounts, [{ material: 3, voxelCount: 1 }]);
+  assert.equal(loadedAsset.canonicalJsonHash, exportedAsset.asset?.contentHashes.canonicalJson);
+  assert.equal(loadedAsset.voxelDataHash, exportedAsset.asset?.contentHashes.voxelData);
 
   const missingModel = rustSession.readVoxelModelInfo({
     grid: 999,

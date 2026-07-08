@@ -28,8 +28,8 @@ use runtime_bridge_api::{
     RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
     VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest,
-    VoxelModelInfoRequest, VoxelVolumeAssetExportRequest, WeaponEffectHookRequest,
-    WorldLoadRequest,
+    VoxelModelInfoRequest, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
+    WeaponEffectHookRequest, WorldLoadRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -834,6 +834,17 @@ fn parse_voxel_volume_asset_export_request(
     })
 }
 
+fn parse_voxel_volume_asset_load_request(
+    request_json: &str,
+) -> napi::Result<VoxelVolumeAssetLoadRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel volume asset load request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_game_rule_module_manifests(
     manifests_json: &str,
 ) -> napi::Result<Vec<GameRuleModuleManifest>> {
@@ -1278,6 +1289,15 @@ pub fn export_voxel_volume_asset(handle: i64, request_json: String) -> napi::Res
     })
 }
 
+#[napi]
+pub fn load_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_volume_asset_load_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.load_voxel_volume_asset(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1292,6 +1312,7 @@ mod tests {
         "getCompositionStatus",
         "initializeEngine",
         "invokeGameExtensionWeaponEffect",
+        "loadVoxelVolumeAsset",
         "loadWorldBundle",
         "loadFpsRuntimeSession",
         "planVoxelConversion",
@@ -1320,6 +1341,7 @@ mod tests {
                 "getCompositionStatus",
                 "initializeEngine",
                 "invokeGameExtensionWeaponEffect",
+                "loadVoxelVolumeAsset",
                 "loadWorldBundle",
                 "loadFpsRuntimeSession",
                 "planVoxelConversion",

@@ -611,6 +611,11 @@ class ReferenceRuntimeSessionFacade {
         this.#requireInitialized('exportVoxelVolumeAsset');
         throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset export is not wired into the reference RuntimeSession');
     }
+    loadVoxelVolumeAsset(_request) {
+        void _request;
+        this.#requireInitialized('loadVoxelVolumeAsset');
+        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset load is not wired into the reference RuntimeSession');
+    }
     readEcrpRuntimeReadout() {
         const identity = this.#requireInitialized('readEcrpRuntimeReadout');
         return buildEcrpRuntimeReadout({

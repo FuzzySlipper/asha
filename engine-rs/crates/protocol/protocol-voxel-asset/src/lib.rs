@@ -222,6 +222,14 @@ pub struct VoxelAssetDiagnostic {
     pub message: String,
 }
 
+/// Per-material voxel count for stored/runtime voxel asset readbacks.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetMaterialCount {
+    pub material: u16,
+    pub voxel_count: u64,
+}
+
 /// A complete Asha-native stored voxel-volume asset.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -263,6 +271,37 @@ pub struct VoxelVolumeAssetExportReceipt {
     pub canonical_json: Option<String>,
     pub canonical_json_hash: Option<String>,
     pub voxel_data_hash: Option<String>,
+    pub diagnostics: Vec<VoxelAssetDiagnostic>,
+}
+
+/// Explicit request to load a validated stored voxel-volume asset into runtime.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAssetLoadRequest {
+    pub asset: VoxelVolumeAsset,
+    pub target_grid: u64,
+    pub target_volume_asset_id: Option<String>,
+    pub replace_existing: bool,
+    pub include_material_counts: bool,
+}
+
+/// Receipt/readback for loading a stored voxel-volume asset into runtime.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAssetLoadReceipt {
+    pub request_asset_id: String,
+    pub loaded: bool,
+    pub model_id: String,
+    pub volume_asset_id: Option<String>,
+    pub grid: u64,
+    pub bounds: Option<VoxelAssetBounds>,
+    pub voxel_count: u64,
+    pub material_counts: Vec<VoxelAssetMaterialCount>,
+    pub provenance: Vec<VoxelAssetProvenanceRef>,
+    pub canonical_json_hash: Option<String>,
+    pub voxel_data_hash: Option<String>,
+    pub session_hash: String,
+    pub replay_hash: String,
     pub diagnostics: Vec<VoxelAssetDiagnostic>,
 }
 

@@ -1026,6 +1026,270 @@ impl ReferenceBridge {
         }
     }
 
+    fn rejected_voxel_volume_asset_load(
+        request: &VoxelVolumeAssetLoadRequest,
+        diagnostics: Vec<VoxelAssetDiagnostic>,
+    ) -> VoxelVolumeAssetLoadReceipt {
+        let volume_asset_id = request
+            .target_volume_asset_id
+            .clone()
+            .or_else(|| Some(request.asset.asset_id.clone()));
+        let grid = request.target_grid;
+        let model_id = Self::voxel_model_id(grid, &volume_asset_id);
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-load|rejected|{}|{}|{:?}",
+                request.asset.asset_id, grid, diagnostics
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-load|rejected-replay|{}|{}",
+                request.asset.asset_id, session_hash
+            ))
+        );
+        VoxelVolumeAssetLoadReceipt {
+            request_asset_id: request.asset.asset_id.clone(),
+            loaded: false,
+            model_id,
+            volume_asset_id,
+            grid,
+            bounds: None,
+            voxel_count: 0,
+            material_counts: Vec::new(),
+            provenance: request.asset.provenance.clone(),
+            canonical_json_hash: None,
+            voxel_data_hash: None,
+            session_hash,
+            replay_hash,
+            diagnostics,
+        }
+    }
+
+    fn voxel_asset_load_target(
+        &self,
+        request: &VoxelVolumeAssetLoadRequest,
+    ) -> Result<VoxelConversionTargetAuthority, VoxelAssetDiagnostic> {
+        let volume_asset_id = request
+            .target_volume_asset_id
+            .clone()
+            .or_else(|| Some(request.asset.asset_id.clone()));
+        if let Some(existing) = self.voxel_conversion_targets.get(&Self::voxel_model_key(
+            request.target_grid,
+            &volume_asset_id,
+        )) {
+            if (existing.spec.voxel_size() - request.asset.grid.cell_size).abs() > f64::EPSILON {
+                return Err(Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::InvalidGrid,
+                    "grid.cellSize",
+                    "stored asset cell size does not match the registered runtime target grid",
+                ));
+            }
+            return Ok(existing.clone());
+        }
+        let grid = u32::try_from(request.target_grid).map_err(|_| {
+            Self::voxel_asset_diagnostic(
+                VoxelAssetDiagnosticCode::InvalidGrid,
+                "targetGrid",
+                "target grid id must fit in u32",
+            )
+        })?;
+        let origin = request.asset.grid.origin;
+        let spec = VoxelGridSpec::new(
+            GridId::new(grid),
+            request.asset.grid.cell_size,
+            Self::launch_grid().chunk_dims(),
+        )
+        .map(|spec| spec.with_origin(WorldPos::new(origin[0], origin[1], origin[2])))
+        .ok_or_else(|| {
+            Self::voxel_asset_diagnostic(
+                VoxelAssetDiagnosticCode::InvalidGrid,
+                "grid",
+                "stored asset grid cannot create a runtime target grid",
+            )
+        })?;
+        Ok(VoxelConversionTargetAuthority {
+            spec,
+            volume_asset_id,
+        })
+    }
+
+    fn voxel_asset_load_commands(
+        asset: &VoxelVolumeAsset,
+        grid: GridId,
+    ) -> BridgeResult<CommandBatch> {
+        let mut commands = Vec::new();
+        for run in &asset.representation.sparse_runs {
+            for offset in 0..run.length {
+                let x = run.start.x + i64::from(offset);
+                commands.push(set_voxel_command(
+                    grid.raw(),
+                    x,
+                    run.start.y,
+                    run.start.z,
+                    run.material,
+                ));
+            }
+        }
+        Ok(CommandBatch { commands })
+    }
+
+    fn voxel_asset_load_candidate(
+        &self,
+        target: &VoxelConversionTargetAuthority,
+        replace_existing: bool,
+    ) -> VoxelWorld {
+        if replace_existing {
+            return VoxelWorld::new(target.spec);
+        }
+        match &self.voxel {
+            Some(world) if world.grid().id() == target.spec.id() => world.clone(),
+            _ => VoxelWorld::new(target.spec),
+        }
+    }
+
+    fn ensure_candidate_chunks_for_asset(
+        asset: &VoxelVolumeAsset,
+        spec: &VoxelGridSpec,
+        candidate: &mut VoxelWorld,
+    ) {
+        for run in &asset.representation.sparse_runs {
+            for offset in 0..run.length {
+                let coord =
+                    VoxelCoord::new(run.start.x + i64::from(offset), run.start.y, run.start.z);
+                let chunk = spec.voxel_to_chunk(coord);
+                if candidate.get(chunk).is_none() {
+                    candidate.insert(chunk, VoxelChunk::from_spec(spec));
+                }
+            }
+        }
+    }
+
+    fn loaded_voxel_asset_info(
+        request: &VoxelVolumeAssetLoadRequest,
+        target: &VoxelConversionTargetAuthority,
+    ) -> VoxelModelInfoAuthority {
+        let asset = &request.asset;
+        let volume_asset_id = target.volume_asset_id.clone();
+        let grid = target.spec.id().raw() as u64;
+        let material_counts = Self::voxel_asset_material_counts(asset)
+            .into_iter()
+            .map(|count| VoxelModelMaterialCount {
+                material: count.material,
+                voxel_count: count.voxel_count,
+            })
+            .collect::<Vec<_>>();
+        let model_id = Self::voxel_model_id(grid, &volume_asset_id);
+        let evidence = asset
+            .provenance
+            .iter()
+            .map(|provenance| VoxelConversionEvidenceRef {
+                kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::OutputSnapshot,
+                uri: provenance.uri.clone(),
+                content_hash: provenance.content_hash.clone(),
+            })
+            .collect::<Vec<_>>();
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-load|session|{}|{}|{}|{}",
+                asset.asset_id,
+                model_id,
+                asset.content_hashes.canonical_json,
+                asset.content_hashes.voxel_data
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-load|replay|{}|{}|{:?}",
+                asset.asset_id, session_hash, asset.provenance
+            ))
+        );
+        VoxelModelInfoAuthority {
+            model_id,
+            volume_asset_id,
+            grid,
+            bounds: Some(protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord {
+                    x: asset.bounds.min.x,
+                    y: asset.bounds.min.y,
+                    z: asset.bounds.min.z,
+                },
+                max: protocol_voxel_conversion::VoxelConversionCoord {
+                    x: asset.bounds.max.x,
+                    y: asset.bounds.max.y,
+                    z: asset.bounds.max.z,
+                },
+            }),
+            voxel_count: material_counts.iter().map(|count| count.voxel_count).sum(),
+            material_counts,
+            source: protocol_voxel_conversion::VoxelConversionSourceRef {
+                asset_id: asset.asset_id.clone(),
+                asset_kind: "voxel_volume_asset".to_string(),
+                asset_version: u64::from(asset.schema_version),
+                source_hash: asset.content_hashes.voxel_data.clone(),
+                mesh_primitive: None,
+            },
+            latest_plan_id: "stored-voxel-volume-load".to_string(),
+            latest_output_hash: asset.content_hashes.voxel_data.clone(),
+            session_hash,
+            replay_hash,
+            evidence,
+        }
+    }
+
+    fn voxel_volume_asset_load_receipt(
+        request: &VoxelVolumeAssetLoadRequest,
+        target: &VoxelConversionTargetAuthority,
+        info: &VoxelModelInfoAuthority,
+        loaded: bool,
+        diagnostics: Vec<VoxelAssetDiagnostic>,
+    ) -> VoxelVolumeAssetLoadReceipt {
+        VoxelVolumeAssetLoadReceipt {
+            request_asset_id: request.asset.asset_id.clone(),
+            loaded,
+            model_id: info.model_id.clone(),
+            volume_asset_id: target.volume_asset_id.clone(),
+            grid: info.grid,
+            bounds: Some(request.asset.bounds),
+            voxel_count: info.voxel_count,
+            material_counts: if request.include_material_counts {
+                info.material_counts
+                    .iter()
+                    .map(|count| VoxelAssetMaterialCount {
+                        material: count.material,
+                        voxel_count: count.voxel_count,
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            provenance: request.asset.provenance.clone(),
+            canonical_json_hash: Some(request.asset.content_hashes.canonical_json.clone()),
+            voxel_data_hash: Some(request.asset.content_hashes.voxel_data.clone()),
+            session_hash: info.session_hash.clone(),
+            replay_hash: info.replay_hash.clone(),
+            diagnostics,
+        }
+    }
+
+    fn voxel_asset_material_counts(asset: &VoxelVolumeAsset) -> Vec<VoxelAssetMaterialCount> {
+        let mut counts = BTreeMap::<u16, u64>::new();
+        for run in &asset.representation.sparse_runs {
+            *counts.entry(run.material).or_insert(0) += u64::from(run.length);
+        }
+        counts
+            .into_iter()
+            .map(|(material, voxel_count)| VoxelAssetMaterialCount {
+                material,
+                voxel_count,
+            })
+            .collect()
+    }
+
     fn world_hash(world: &VoxelWorld) -> String {
         let mut buf = String::new();
         for (coord, chunk) in world.resident_chunks() {

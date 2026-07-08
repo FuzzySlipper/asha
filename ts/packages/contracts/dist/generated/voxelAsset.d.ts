@@ -52,6 +52,10 @@ export interface VoxelAssetDiagnostic {
     readonly reference: string;
     readonly message: string;
 }
+export interface VoxelAssetMaterialCount {
+    readonly material: number;
+    readonly voxelCount: number;
+}
 export interface VoxelVolumeAsset {
     readonly assetId: string;
     readonly schemaVersion: number;
@@ -82,6 +86,29 @@ export interface VoxelVolumeAssetExportReceipt {
     readonly canonicalJson: string | null;
     readonly canonicalJsonHash: string | null;
     readonly voxelDataHash: string | null;
+    readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}
+export interface VoxelVolumeAssetLoadRequest {
+    readonly asset: VoxelVolumeAsset;
+    readonly targetGrid: number;
+    readonly targetVolumeAssetId: string | null;
+    readonly replaceExisting: boolean;
+    readonly includeMaterialCounts: boolean;
+}
+export interface VoxelVolumeAssetLoadReceipt {
+    readonly requestAssetId: string;
+    readonly loaded: boolean;
+    readonly modelId: string;
+    readonly volumeAssetId: string | null;
+    readonly grid: number;
+    readonly bounds: VoxelAssetBounds | null;
+    readonly voxelCount: number;
+    readonly materialCounts: readonly VoxelAssetMaterialCount[];
+    readonly provenance: readonly VoxelAssetProvenanceRef[];
+    readonly canonicalJsonHash: string | null;
+    readonly voxelDataHash: string | null;
+    readonly sessionHash: string;
+    readonly replayHash: string;
     readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }
 //# sourceMappingURL=voxelAsset.d.ts.map
