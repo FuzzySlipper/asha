@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import { extname, resolve } from 'node:path';
+import { extname, isAbsolute, relative, resolve } from 'node:path';
 
 import {
   createNativeRuntimeBridge,
@@ -309,7 +309,7 @@ async function sendStaticAssetFromRoot(
 ): Promise<void> {
   const normalizedPath = requestPath.replace(/^\/+/, '');
   const filePath = resolve(root, normalizedPath);
-  if (!filePath.startsWith(root)) {
+  if (!isPathInsideRoot(root, filePath)) {
     response.writeHead(403);
     response.end('Forbidden');
     return;
@@ -331,6 +331,11 @@ async function sendStaticAssetFromRoot(
     response.writeHead(404);
     response.end('Not found');
   }
+}
+
+function isPathInsideRoot(root: string, filePath: string): boolean {
+  const relativePath = relative(root, filePath);
+  return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 
 async function handleRuntimeBridgeInvocation(

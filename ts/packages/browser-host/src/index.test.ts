@@ -1,4 +1,5 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -70,7 +71,7 @@ void test('browser host serves a downstream UI root with provider status evidenc
   const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
   try {
     await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA demo</title>');
-  const globalScope = {};
+    const globalScope = {};
     const host = await launchNativeBrowserHost({
       uiRoot: tempRoot,
       host: '127.0.0.1',
@@ -122,10 +123,66 @@ void test('browser host serves a downstream UI root with provider status evidenc
   }
 });
 
+void test('browser host rejects raw traversal into sibling directories outside ui root', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
+  try {
+    const uiRoot = join(tempRoot, 'ui');
+    const secretRoot = join(tempRoot, 'ui-secret');
+    await mkdir(uiRoot);
+    await mkdir(secretRoot);
+    await writeFile(join(uiRoot, 'index.html'), '<!doctype html><title>ASHA demo</title>');
+    await writeFile(join(secretRoot, 'secret.txt'), 'outside-ui-root');
+
+    const host = await launchNativeBrowserHost({
+      uiRoot,
+      host: '127.0.0.1',
+      port: 0,
+      provider: {
+        globalScope: {},
+        createRuntimeBridge: createFakeRuntimeBridge,
+      },
+    });
+    try {
+      const response = await readRawHttpPath(host.url, '/%2e%2e/ui-secret/secret.txt');
+      assert.equal(response.statusCode, 403);
+      assert.equal(response.body, 'Forbidden');
+    } finally {
+      await host.close();
+    }
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 async function readJson(url: string): Promise<Record<string, unknown>> {
   const response = await fetch(url);
   assert.equal(response.status, 200);
   return await response.json() as Record<string, unknown>;
+}
+
+function readRawHttpPath(baseUrl: string, path: string): Promise<{ readonly statusCode: number; readonly body: string }> {
+  const url = new URL(baseUrl);
+  return new Promise((resolveRead, rejectRead) => {
+    const requestHandle = request({
+      hostname: url.hostname,
+      method: 'GET',
+      path,
+      port: Number(url.port),
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      response.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      response.on('end', () => {
+        resolveRead({
+          statusCode: response.statusCode ?? 0,
+          body: Buffer.concat(chunks).toString('utf8'),
+        });
+      });
+    });
+    requestHandle.on('error', rejectRead);
+    requestHandle.end();
+  });
 }
 
 function createFakeRuntimeBridge(): RuntimeBridge {

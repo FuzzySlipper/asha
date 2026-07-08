@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { extname, resolve } from 'node:path';
+import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { createNativeRuntimeBridge, installNativeRustRuntimeBridgeProvider, resolveNativeRustRuntimeBridgeProvider, } from '@asha/runtime-bridge';
 export const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = 'browser-host.v0';
 export const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = 'ashaRuntimeBridge';
@@ -199,7 +199,7 @@ function closeServer(server) {
 async function sendStaticAssetFromRoot(response, root, requestPath, injectProviderScript) {
     const normalizedPath = requestPath.replace(/^\/+/, '');
     const filePath = resolve(root, normalizedPath);
-    if (!filePath.startsWith(root)) {
+    if (!isPathInsideRoot(root, filePath)) {
         response.writeHead(403);
         response.end('Forbidden');
         return;
@@ -221,6 +221,10 @@ async function sendStaticAssetFromRoot(response, root, requestPath, injectProvid
         response.writeHead(404);
         response.end('Not found');
     }
+}
+function isPathInsideRoot(root, filePath) {
+    const relativePath = relative(root, filePath);
+    return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
 async function handleRuntimeBridgeInvocation(request, response, bridge) {
     if (bridge === undefined) {
