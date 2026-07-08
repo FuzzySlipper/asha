@@ -202,7 +202,14 @@ pub fn render_interaction_fixture() -> Vec<GeneratedArtifact> {
 
     vec![GeneratedArtifact {
         rel_path: INTERACTION_MANIFEST_NAME.to_string(),
-        contents: render_interaction_manifest(spec, &voxel_state_hash_hex, camera, ray, hit, edit_anchor),
+        contents: render_interaction_manifest(
+            spec,
+            &voxel_state_hash_hex,
+            camera,
+            ray,
+            hit,
+            edit_anchor,
+        ),
     }]
 }
 
@@ -372,7 +379,10 @@ fn render_interaction_manifest(
     );
     s.push_str("    \"abstract material ids only; no product block taxonomy\"\n");
     s.push_str("  ],\n");
-    s.push_str(&format!("  \"voxelStateHash\": {:?},\n", voxel_state_hash_hex));
+    s.push_str(&format!(
+        "  \"voxelStateHash\": {:?},\n",
+        voxel_state_hash_hex
+    ));
     s.push_str("  \"camera\": {\n");
     s.push_str(&format!(
         "    \"initialPose\": {{ \"position\": [{}, {}, {}], \"yawDegrees\": {}, \"pitchDegrees\": {} }},\n",
