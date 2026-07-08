@@ -9,7 +9,7 @@ import { previewTargets } from '@asha/editor-tools';
 export * from './scene-outliner.js';
 // Asset catalog, lock-drift, and material inspector read models (#2378).
 export * from './asset-inspector.js';
-// World-bundle save/load and diagnostics panel read models (#2379) intentionally
+// ProjectBundle save/load and diagnostics panel read models (#2379) intentionally
 // stay off the root export because they depend on the runtime-bridge facade,
 // which can pull native transport code into browser consumers. Node harnesses may
 // import `./bundle-panel.js` inside this package; public browser consumers use the

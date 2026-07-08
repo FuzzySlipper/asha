@@ -8,14 +8,5 @@
 # 'vocab-allow: <reason>' marker when it must name a legacy type deliberately
 # (e.g. migration shims). Remove entries as files migrate.
 
-# Legacy crates (whole-crate: world-bundle is their current domain language).
-# Each whole-directory exception must name the task that owns its removal.
-# Remove rule-world-bundle via Den #5100 after #5099 lands.
-engine-rs/crates/rules/rule-world-bundle/
-# Remove scene-diagnostics world-bundle diagnostics after the service/rule lanes
-# finish their ProjectBundle rename (#5099/#5100).
-engine-rs/crates/tools/scene-diagnostics/
-
-# Legacy touchpoints in otherwise-current crates
-engine-rs/crates/state/core-catalog/src/lib.rs
-engine-rs/crates/state/core-entity/src/persist.rs
+# No broad file or directory exceptions remain. Future deliberate legacy mentions
+# should use an inline `vocab-allow: <reason>` marker on the exact line.

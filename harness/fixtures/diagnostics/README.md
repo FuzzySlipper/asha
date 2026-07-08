@@ -36,14 +36,14 @@ report-set golden states `count`, `maxSeverity`, and `blocksLoad`.
 | `missing-sprite-texture.txt` | A material depends on a texture absent from the catalog | `missingAsset` | error | asset catalog (`core-catalog`) |
 | `wrong-kind-asset-ref.txt` | A material's texture slot points at a non-texture asset | `wrongKindAssetRef` | error | asset catalog (`core-catalog`) |
 | `asset-dependency-cycle.txt` | A cycle in the asset dependency DAG (path included) | `assetCycle` | error | asset catalog (`core-catalog`) |
-| `corrupt-bundle-artifact.txt` | A durable/generated artifact's bytes no longer match its recorded hash | `corruptBundleArtifact` | **fatal** | world-bundle serialization (`svc-serialization`) |
-| `unsupported-manifest-version.txt` | Manifest schema/protocol newer than this build (fail closed) | `manifestProtocolMismatch` | **fatal** | world-bundle serialization (`svc-serialization`) |
-| `stale-cache-warning.txt` | An optional cache artifact is absent (reproducible) | `missingCacheWarning` | warning | world-bundle serialization (rebuild cache) |
+| `corrupt-bundle-artifact.txt` | A durable/generated artifact's bytes no longer match its recorded hash | `corruptBundleArtifact` | **fatal** | project-bundle serialization (`svc-serialization`) |
+| `unsupported-manifest-version.txt` | Manifest schema/protocol newer than this build (fail closed) | `manifestProtocolMismatch` | **fatal** | project-bundle serialization (`svc-serialization`) |
+| `stale-cache-warning.txt` | An optional cache artifact is absent (reproducible) | `missingCacheWarning` | warning | project-bundle serialization (rebuild cache) |
 | `missing-render-source-trace.txt` | Render handles that can't be traced to authority / drew a fallback | `missingSourceTrace`, `fallbackUsed` | warning | render projection (`renderer-three`) |
 | `source-trace.txt` | Snapshot of a render handle → scene node → entity → asset trace batch (one healthy, two broken) | — | — | render projection (observational) |
 | `renderer-resources.txt` | Snapshot of a leaking renderer resource report + its diagnostics | `rendererResourceSummary`, `suspectedResourceLeak`, `fallbackUsed` | info/warning | renderer resources (observational) |
-| `round-trip-equivalence.txt` | A clean save→reload round-trip equivalence report (zero diagnostics here; an equivalence loss emits `roundTripMismatch`) | — / `roundTripMismatch` | error | world composition (`rule-world-bundle`) |
-| `composition-failures.txt` | A spread of world load/save composition failures (missing artifact, too-new version, voxel replay conflict, final-consistency mismatch) | `loadStageFailed`, `manifestProtocolMismatch`, `finalConsistencyMismatch` | **fatal** | world composition (`scene-diagnostics::composition`, #2364) |
+| `round-trip-equivalence.txt` | A clean save→reload round-trip equivalence report (zero diagnostics here; an equivalence loss emits `roundTripMismatch`) | — / `roundTripMismatch` | error | ProjectBundle composition (`rule-project-bundle`) |
+| `composition-failures.txt` | A spread of ProjectBundle load/save composition failures (missing artifact, too-new version, voxel replay conflict, final-consistency mismatch) | `loadStageFailed`, `manifestProtocolMismatch`, `finalConsistencyMismatch` | **fatal** | ProjectBundle composition (`scene-diagnostics::composition`, #2364) |
 | `bundle-equivalence.txt` | Full load→edit→save→reload bundle round-trip proving B==C (scene/entity hash, source traces, voxel fingerprint); a lost facet emits `roundTripMismatch` | — / `roundTripMismatch` | error | world composition (`scene-diagnostics::equivalence`, #2362) |
 
 ## No Den coupling

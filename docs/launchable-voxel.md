@@ -30,7 +30,7 @@ project authority output. Every edit and pick crosses the runtime-bridge facade 
 | Picking | `svc-collision` raycast, `rule-voxel-edit::picking` | `@asha/app` `pickAndSelect` / `bridgePicker` |
 | Editing | `rule-voxel-edit` validate/apply | `@asha/editor-tools`, `@asha/ui-dom` controls |
 | Commands | `runtime-bridge-api` `submit_commands` | `@asha/app` `bridgeCommandSink` |
-| Save / reload / replay | `rule-voxel-edit::persist`, `rule-world-bundle` | `@asha/devtools` `buildVoxelDurabilityModel` |
+| Save / reload / replay | `rule-voxel-edit::persist`, `rule-project-bundle` | `@asha/devtools` `buildVoxelDurabilityModel` |
 | Composition root | — | `@asha/app` `composeAppShell`, `@asha/electron-main` host |
 | Proof | — | `@asha/smoke` 10-stage harness |
 
@@ -88,8 +88,8 @@ guardrail** (preview draws debug-layer overlay only, never authority geometry).
 ## Save / reload / replay durability
 
 A voxel world saves as a base **edit log**, optionally compacted into chunk
-**snapshots** plus a retained edit tail. `rule-world-bundle::durability` records the
-`postLoad / postEdit / postReload` world fingerprints for the canonical edit sequence
+**snapshots** plus a retained edit tail. `rule-project-bundle::durability` records the
+`postLoad / postEdit / postReload` voxel state fingerprints for the canonical edit sequence
 and proves durability (`postEdit == postReload`); tampering fails closed with a
 classified error. Full model + the deferred generic-`ReplayRecord` unification:
 `docs/replay-model.md`.
@@ -97,7 +97,7 @@ classified error. Full model + the deferred generic-`ReplayRecord` unification:
 Runtime-diverged **entity** authority — runtime-created entities, diverged
 transforms, capability tables, relations, and source traces — persists separately as
 a durable `sessionStateSnapshot` artifact (`core_entity` snapshot codec, composed by
-`rule-world-bundle::spatial_session_state`, restored by the executor's `RestoreSessionState` load
+`rule-project-bundle::spatial_session_state`, restored by the executor's `RestoreSessionState` load
 stage). It is emitted only when runtime state diverged from the bootstrapped scene
 baseline, never collapses voxel persistence into the scene document, and reloads
 fail-closed. The mixed-world round-trip (scene-sourced + runtime-created, spatial +
@@ -107,8 +107,8 @@ non-spatial, contained/attached, voxel edit + entity change in one save) is prov
 
 ```bash
 cd engine-rs
-cargo run -p rule-world-bundle --example dump_durability > ../harness/fixtures/world-bundle/voxel-durability.txt
-cargo test -p rule-world-bundle -p rule-voxel-edit        # checks the durability + persist goldens
+cargo run -p rule-project-bundle --example dump_durability > ../harness/fixtures/project-bundle/voxel-durability.txt
+cargo test -p rule-project-bundle -p rule-voxel-edit        # checks the durability + persist goldens
 cargo test -p core-entity -p scene-diagnostics            # checks the session-state snapshot codec + equivalence goldens
 ```
 
@@ -136,10 +136,10 @@ how to compare runs: `docs/perf-baseline.md`.
 |---|---|
 | Canonical voxel fixture | `cd engine-rs && cargo run -p fixture-maker -- write` |
 | Voxel persist sample golden | covered by `cargo test -p rule-voxel-edit` (inline `include_str!` goldens) |
-| World-bundle compacted save | `cargo run -p rule-world-bundle --example dump_compacted_save > harness/fixtures/world-bundle/compacted-save.txt` |
-| Voxel durability checkpoints | `cargo run -p rule-world-bundle --example dump_durability > harness/fixtures/world-bundle/voxel-durability.txt` |
+| ProjectBundle compacted save | `cargo run -p rule-project-bundle --example dump_compacted_save > harness/fixtures/project-bundle/compacted-save.txt` |
+| Voxel durability checkpoints | `cargo run -p rule-project-bundle --example dump_durability > harness/fixtures/project-bundle/voxel-durability.txt` |
 | Session-state snapshot + equivalence | `BLESS=1 cargo test -p scene-diagnostics --test session_state_goldens` → `harness/fixtures/session-state/` |
-| Regen-conflict diagnostic | `cargo run -p rule-world-bundle --example dump_regen_conflict > harness/fixtures/world-bundle/regen-conflict.txt` |
+| Regen-conflict diagnostic | `cargo run -p rule-project-bundle --example dump_regen_conflict > harness/fixtures/project-bundle/regen-conflict.txt` |
 | Structural render goldens | `cd ts && pnpm --filter @asha/renderer-three test` (bless the `<name>.snapshot`); see `harness/goldens/render-diffs/README.md` |
 | Golden replays | record with `sim-runner::Recorder`; see `docs/replay-model.md` |
 | Reference smoke golden | re-render `formatResult(runSmoke(reference))` → `harness/fixtures/smoke/reference-smoke.txt`; see its README |
@@ -180,7 +180,7 @@ intent and a fresh decision — do not assume they are unimplemented by accident
 | `docs/replay-model.md` | Replay + voxel durability evidence |
 | `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
 | `harness/fixtures/voxel-world/README.md` | Canonical fixture details |
-| `harness/fixtures/world-bundle/README.md` | Save/compaction/durability goldens |
+| `harness/fixtures/project-bundle/README.md` | Save/compaction/durability goldens |
 | `harness/fixtures/smoke/README.md` | Smoke golden + regeneration |
 
 Den docs (`launchable-voxel-01`…`-10`) carry the original design intent and the

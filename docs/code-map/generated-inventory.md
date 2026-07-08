@@ -21,6 +21,7 @@ Source metadata:
 - [`protocol-game-rules`](../../engine-rs/crates/protocol/protocol-game-rules/Cargo.toml) — active
 - [`protocol-ids`](../../engine-rs/crates/protocol/protocol-ids/Cargo.toml) — active
 - [`protocol-policy-view`](../../engine-rs/crates/protocol/protocol-policy-view/Cargo.toml) — active
+- [`protocol-project-bundle`](../../engine-rs/crates/protocol/protocol-project-bundle/Cargo.toml) — active
 - [`protocol-render`](../../engine-rs/crates/protocol/protocol-render/Cargo.toml) — active
 - [`protocol-replay`](../../engine-rs/crates/protocol/protocol-replay/Cargo.toml) — active
 - [`protocol-scene`](../../engine-rs/crates/protocol/protocol-scene/Cargo.toml) — active
@@ -29,7 +30,6 @@ Source metadata:
 - [`protocol-view`](../../engine-rs/crates/protocol/protocol-view/Cargo.toml) — active
 - [`protocol-voxel-asset`](../../engine-rs/crates/protocol/protocol-voxel-asset/Cargo.toml) — active
 - [`protocol-voxel-conversion`](../../engine-rs/crates/protocol/protocol-voxel-conversion/Cargo.toml) — active
-- [`protocol-project-bundle`](../../engine-rs/crates/protocol/protocol-project-bundle/Cargo.toml) — active
 
 ### rust-bridge (2)
 
@@ -57,11 +57,11 @@ Source metadata:
 - [`rule-game-modifier`](../../engine-rs/crates/rules/rule-game-modifier/Cargo.toml) — active
 - [`rule-lifecycle`](../../engine-rs/crates/rules/rule-lifecycle/Cargo.toml) — active
 - [`rule-process`](../../engine-rs/crates/rules/rule-process/Cargo.toml) — active
+- [`rule-project-bundle`](../../engine-rs/crates/rules/rule-project-bundle/Cargo.toml) — active
 - [`rule-relationship`](../../engine-rs/crates/rules/rule-relationship/Cargo.toml) — active
 - [`rule-scheduler`](../../engine-rs/crates/rules/rule-scheduler/Cargo.toml) — active
 - [`rule-state-machine`](../../engine-rs/crates/rules/rule-state-machine/Cargo.toml) — active
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
-- [`rule-world-bundle`](../../engine-rs/crates/rules/rule-world-bundle/Cargo.toml) — active
 
 ### rust-service (15)
 
@@ -206,9 +206,9 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `initialize_engine` — stable; output `EngineHandle`
 - `invoke_game_extension_weapon_effect` — stable; output `protocol_runtime::GameExtensionWeaponEffectInvocationResult`
 - `load_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
+- `load_project_bundle` — stable; output `protocol_diagnostics::DiagnosticReportSet`
 - `load_replay_fixture` — quarantined; output `ReplaySessionHandle`
 - `load_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetLoadReceipt`
-- `load_project_bundle` — stable; output `protocol_diagnostics::DiagnosticReportSet`
 - `pick_voxel` — stable; output `protocol_voxel::PickResult`
 - `plan_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionPlan`
 - `preview_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionPreview`
@@ -257,10 +257,12 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/policy`](../../harness/fixtures/policy) — 1 files
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files
 - [`harness/fixtures/policy-outputs`](../../harness/fixtures/policy-outputs) — 3 files
+- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 6 files
 - [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 14 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files
 - [`harness/fixtures/scenes`](../../harness/fixtures/scenes) — 4 files
+- [`harness/fixtures/session-state`](../../harness/fixtures/session-state) — 3 files
 - [`harness/fixtures/smoke`](../../harness/fixtures/smoke) — 2 files
 - [`harness/fixtures/states`](../../harness/fixtures/states) — 1 files
 - [`harness/fixtures/voxel-conversion`](../../harness/fixtures/voxel-conversion) — 1 files
@@ -270,8 +272,6 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/voxel-mesh`](../../harness/fixtures/voxel-mesh) — 1 files
 - [`harness/fixtures/voxel-persist`](../../harness/fixtures/voxel-persist) — 3 files
 - [`harness/fixtures/voxel-world`](../../harness/fixtures/voxel-world) — 6 files
-- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 6 files
-- [`harness/fixtures/spatial-session-state`](../../harness/fixtures/spatial-session-state) — 3 files
 
 ### harness/goldens (7 groups)
 

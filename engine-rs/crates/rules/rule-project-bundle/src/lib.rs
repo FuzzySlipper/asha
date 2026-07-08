@@ -1,4 +1,4 @@
-//! World-bundle execution over voxel persistence (epic #2310, subtasks #2320/#2321).
+//! ProjectBundle execution over voxel persistence (epic #2310, subtasks #2320/#2321).
 //!
 //! # Lane
 //!
@@ -7,7 +7,7 @@
 //! manifest/plan *format* lives one layer down in `svc-serialization`; this crate
 //! supplies the parts that must execute voxel work:
 //!
-//! * [`compose`] — compose chunk snapshots / edit logs into world-bundle voxel
+//! * [`compose`] — compose chunk snapshots / edit logs into project-bundle voxel
 //!   sections and perform explicit **save-time compaction** with a reconstruction
 //!   guarantee (subtask #2320).
 //! * [`regen`] — **fail-closed** generator-mismatch handling plus the development
@@ -28,11 +28,11 @@ pub use compose::{
     compact_voxel_save, reconstruct, voxel_save_plan, ChunkSnapshotArtifact, CompactedVoxelSave,
 };
 pub use durability::{
-    build_durability_evidence, world_fingerprint, DurabilityError, DurabilityEvidence,
+    build_durability_evidence, voxel_state_fingerprint, DurabilityError, DurabilityEvidence,
 };
 pub use load::{
     execute_load_plan, execute_load_plan_with, ArtifactSource, BundleArtifacts, LoadExecutionError,
-    StageOutcome, WorldLoadResult, WorldStage,
+    ProjectBundleLoadResult, ProjectBundleStage, StageOutcome,
 };
 pub use regen::{
     check_generator, regenerate_and_replay, replay_against, EditConflict, GeneratorMismatch,

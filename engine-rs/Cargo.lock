@@ -655,6 +655,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "rule-project-bundle"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-entity",
+ "core-events",
+ "core-ids",
+ "core-math",
+ "core-scene",
+ "core-space",
+ "core-voxel",
+ "rule-voxel-edit",
+ "svc-serialization",
+ "svc-spatial",
+ "svc-volume",
+]
+
+[[package]]
 name = "rule-relationship"
 version = "0.1.0"
 dependencies = [
@@ -688,24 +706,6 @@ dependencies = [
  "core-space",
  "core-voxel",
  "svc-collision",
- "svc-spatial",
- "svc-volume",
-]
-
-[[package]]
-name = "rule-world-bundle"
-version = "0.1.0"
-dependencies = [
- "core-assets",
- "core-entity",
- "core-events",
- "core-ids",
- "core-math",
- "core-scene",
- "core-space",
- "core-voxel",
- "rule-voxel-edit",
- "svc-serialization",
  "svc-spatial",
  "svc-volume",
 ]
@@ -773,8 +773,8 @@ dependencies = [
  "core-space",
  "core-voxel",
  "protocol-diagnostics",
+ "rule-project-bundle",
  "rule-voxel-edit",
- "rule-world-bundle",
  "svc-serialization",
  "svc-spatial",
  "svc-volume",

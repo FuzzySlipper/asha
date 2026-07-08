@@ -10,7 +10,7 @@ projections.
 
 - RuntimeSession authority and readouts through Rust services/rules.
 - Command validation, accepted state mutation, deterministic replay, and hashes.
-- FPS lifecycle, combat, nav, camera, game-rules, voxel, and world-bundle
+- FPS lifecycle, combat, nav, camera, game-rules, voxel, and project-bundle
   authority paths when they are reusable engine substrate.
 - `rule-lifecycle::lifecycle_primitives` as the product-neutral spawn/despawn
   and terminal-state primitive layer.

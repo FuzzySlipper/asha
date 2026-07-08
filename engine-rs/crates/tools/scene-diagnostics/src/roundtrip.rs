@@ -1,7 +1,7 @@
 //! Save → load round-trip equivalence verification (scene-capability-06,
 //! subtask #2333).
 //!
-//! The critical end-to-end diagnostic: prove that world-bundle serialization
+//! The critical end-to-end diagnostic: prove that project-bundle serialization
 //! preserves authority-equivalent state. The flow follows the source doc:
 //!
 //! 1. Load a world (an initial edit log) → authority state A.
@@ -24,15 +24,15 @@ use protocol_diagnostics::{
     DiagnosticCode, DiagnosticReport, DiagnosticReportSet, DiagnosticSourceRef, RemedyAction,
     SuggestedRemedy,
 };
+use rule_project_bundle::{compact_voxel_save, reconstruct, CompactedVoxelSave};
 use rule_voxel_edit::persist::replay_edit_log;
 use rule_voxel_edit::VoxelEditRejection;
-use rule_world_bundle::{compact_voxel_save, reconstruct, CompactedVoxelSave};
 use svc_serialization::BundleHash;
 use svc_spatial::VoxelWorld;
 
 /// A deterministic fingerprint of a voxel world's resident chunks (coordinate
 /// order, each by content hash). State B and state C must share this.
-pub fn world_fingerprint(world: &VoxelWorld) -> BundleHash {
+pub fn voxel_state_fingerprint(world: &VoxelWorld) -> BundleHash {
     let mut rows: Vec<(i64, i64, i64, u64)> = world
         .resident_chunks()
         .map(|(c, chunk)| (c.x, c.y, c.z, chunk.content_hash().0))
@@ -103,12 +103,12 @@ pub fn voxel_round_trip(
 
     // State B: the world after the deterministic operations.
     let world_b = replay_edit_log(spec, &full_log)?;
-    let state_b_hash = world_fingerprint(&world_b);
+    let state_b_hash = voxel_state_fingerprint(&world_b);
 
     // Save B, then load it back into state C.
     let save = compact_voxel_save(spec, &full_log, retain_recent)?;
     let world_c = reconstruct(spec, &save)?;
-    let state_c_hash = world_fingerprint(&world_c);
+    let state_c_hash = voxel_state_fingerprint(&world_c);
 
     let mut diagnostics = DiagnosticReportSet::new();
     if state_b_hash != state_c_hash {
@@ -138,7 +138,7 @@ pub fn check_saved_bundle(
     save: &CompactedVoxelSave,
 ) -> Result<RoundTripReport, VoxelEditRejection> {
     let world_c = reconstruct(spec, save)?;
-    let state_c_hash = world_fingerprint(&world_c);
+    let state_c_hash = voxel_state_fingerprint(&world_c);
     let mut diagnostics = DiagnosticReportSet::new();
     if expected_b_hash != state_c_hash {
         diagnostics.push(mismatch_report(expected_b_hash, state_c_hash));
@@ -295,7 +295,7 @@ mod tests {
         let mut full = initial();
         full.extend(ticks());
         let world_b = replay_edit_log(spec(), &full).unwrap();
-        let expected = world_fingerprint(&world_b);
+        let expected = voxel_state_fingerprint(&world_b);
 
         // Corrupt the save: drop a retained edit (intentional data loss).
         let mut save = compact_voxel_save(spec(), &full, 2).unwrap();

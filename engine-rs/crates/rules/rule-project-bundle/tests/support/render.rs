@@ -1,4 +1,4 @@
-//! Deterministic renderers + shared fixtures for the world-bundle golden tests.
+//! Deterministic renderers + shared fixtures for the project-bundle golden tests.
 //! Shared between the golden drift tests and the regenerator examples; each
 //! consumer uses a subset, so unused-in-one-binary helpers are expected.
 #![allow(dead_code)]
@@ -6,11 +6,11 @@
 use core_events::VoxelEditEvent;
 use core_space::{ChunkCoord, ChunkDims, GridId, VoxelCoord, VoxelGridSpec};
 use core_voxel::VoxelValue;
-use rule_voxel_edit::generate_chunk;
-use rule_world_bundle::{
+use rule_project_bundle::{
     build_durability_evidence, compact_voxel_save, regenerate_and_replay, voxel_save_plan,
     CompactedVoxelSave, DurabilityEvidence, RegenReplayReport,
 };
+use rule_voxel_edit::generate_chunk;
 
 pub fn spec() -> VoxelGridSpec {
     VoxelGridSpec::new(GridId::new(0), 1.0, ChunkDims::cubic(4).unwrap()).unwrap()

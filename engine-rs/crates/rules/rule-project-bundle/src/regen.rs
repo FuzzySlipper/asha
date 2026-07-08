@@ -5,7 +5,7 @@
 //! the **default** load posture fails closed ([`GeneratorPolicy::FailClosed`]) —
 //! authority is never loaded against terrain it was not authored over. Development
 //! tooling may opt into [`GeneratorPolicy::RegenerateAndReplay`]: regenerate
-//! terrain at the new version in a staging world, replay the saved edit log, and
+//! terrain at the new version in staging voxel state, replay the saved edit log, and
 //! report every edit whose authored context changed (coordinate, old/new
 //! generated value, edit event id, suggested action). This is a **diagnostic** —
 //! it never silently rewrites the save.
@@ -112,7 +112,7 @@ pub struct RegenReplayReport {
     pub conflicts: Vec<EditConflict>,
     /// Number of edit events examined (non-generation events).
     pub replayed_edits: u32,
-    /// Deterministic fingerprint of the regenerated+replayed staging world.
+    /// Deterministic fingerprint of the regenerated+replayed staging voxel state.
     pub staging_spatial_session_hash: BundleHash,
 }
 
@@ -204,7 +204,7 @@ pub fn replay_against(
     }
 
     // Replay the edits onto the new (staging) terrain so the caller can inspect
-    // the resulting world. Snapshot a deterministic fingerprint of it.
+    // the resulting voxel state. Snapshot a deterministic fingerprint of it.
     apply_all(&mut staging, edits)?;
 
     Ok(RegenReplayReport {
@@ -212,7 +212,7 @@ pub fn replay_against(
         new_version,
         conflicts,
         replayed_edits,
-        staging_spatial_session_hash: world_fingerprint(&staging),
+        staging_spatial_session_hash: voxel_state_fingerprint(&staging),
     })
 }
 
@@ -239,7 +239,7 @@ fn record_conflict(
     }
 }
 
-/// The generated value at a world voxel coordinate (Empty when the chunk is not
+/// The generated value at a voxel coordinate (Empty when the chunk is not
 /// resident — treated as "nothing generated there").
 fn value_at(spec: VoxelGridSpec, world: &VoxelWorld, coord: VoxelCoord) -> VoxelValue {
     let (chunk, local) = spec.voxel_to_chunk_local(coord);
@@ -249,6 +249,6 @@ fn value_at(spec: VoxelGridSpec, world: &VoxelWorld, coord: VoxelCoord) -> Voxel
         .unwrap_or(VoxelValue::EMPTY)
 }
 
-// The world fingerprint is shared with the durability checkpoints so the two paths
-// stay directly comparable: see [`crate::durability::world_fingerprint`].
-use crate::durability::world_fingerprint;
+// The voxel state fingerprint is shared with the durability checkpoints so the two paths
+// stay directly comparable: see [`crate::durability::voxel_state_fingerprint`].
+use crate::durability::voxel_state_fingerprint;

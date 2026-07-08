@@ -2,10 +2,10 @@
 //! regenerate-and-replay conflict diagnostic (#2321).
 //!
 //! Regenerate with:
-//!   cargo run -p rule-world-bundle --example dump_compacted_save > \
-//!     harness/fixtures/world-bundle/compacted-save.txt
-//!   cargo run -p rule-world-bundle --example dump_regen_conflict > \
-//!     harness/fixtures/world-bundle/regen-conflict.txt
+//!   cargo run -p rule-project-bundle --example dump_compacted_save > \
+//!     harness/fixtures/project-bundle/compacted-save.txt
+//!   cargo run -p rule-project-bundle --example dump_regen_conflict > \
+//!     harness/fixtures/project-bundle/regen-conflict.txt
 
 use std::path::PathBuf;
 
@@ -18,7 +18,7 @@ fn dir() -> PathBuf {
         .ancestors()
         .find(|ancestor| ancestor.join("engine-rs").is_dir() && ancestor.join("harness").is_dir())
         .expect("repo root")
-        .join("harness/fixtures/world-bundle")
+        .join("harness/fixtures/project-bundle")
 }
 
 #[test]
@@ -28,8 +28,8 @@ fn compacted_save_matches_committed_golden() {
     let rendered = render::render_compacted_save(&render::sample_compacted_save());
     assert_eq!(
         rendered, committed,
-        "compacted save section drifted from harness/fixtures/world-bundle/compacted-save.txt; \
-         regenerate with `cargo run -p rule-world-bundle --example dump_compacted_save`"
+        "compacted save section drifted from harness/fixtures/project-bundle/compacted-save.txt; \
+         regenerate with `cargo run -p rule-project-bundle --example dump_compacted_save`"
     );
 }
 
@@ -39,19 +39,19 @@ fn voxel_durability_matches_committed_golden() {
     // The fixture must be a genuine edit (load != edit) and durable (edit == reload).
     assert_ne!(
         evidence.post_load, evidence.post_edit,
-        "durability fixture must actually edit the world"
+        "durability fixture must actually edit the voxel state"
     );
     assert!(
         evidence.is_durable(),
-        "canonical fixture must save/reload/replay to an identical world fingerprint"
+        "canonical fixture must save/reload/replay to an identical voxel state fingerprint"
     );
     let committed =
         std::fs::read_to_string(dir().join("voxel-durability.txt")).expect("read voxel-durability");
     let rendered = render::render_durability(&evidence);
     assert_eq!(
         rendered, committed,
-        "voxel durability checkpoints drifted from harness/fixtures/world-bundle/voxel-durability.txt; \
-         regenerate with `cargo run -p rule-world-bundle --example dump_durability`"
+        "voxel durability checkpoints drifted from harness/fixtures/project-bundle/voxel-durability.txt; \
+         regenerate with `cargo run -p rule-project-bundle --example dump_durability`"
     );
 }
 
@@ -68,7 +68,7 @@ fn regen_conflict_matches_committed_golden() {
     let rendered = render::render_report(&report);
     assert_eq!(
         rendered, committed,
-        "regen conflict diagnostic drifted from harness/fixtures/world-bundle/regen-conflict.txt; \
-         regenerate with `cargo run -p rule-world-bundle --example dump_regen_conflict`"
+        "regen conflict diagnostic drifted from harness/fixtures/project-bundle/regen-conflict.txt; \
+         regenerate with `cargo run -p rule-project-bundle --example dump_regen_conflict`"
     );
 }

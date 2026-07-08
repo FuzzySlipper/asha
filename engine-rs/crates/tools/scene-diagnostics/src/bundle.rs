@@ -7,7 +7,7 @@ use protocol_diagnostics::{
     DiagnosticCode, DiagnosticReport, DiagnosticReportSet, DiagnosticSeverity, DiagnosticSourceRef,
     RemedyAction, SuggestedRemedy,
 };
-use rule_world_bundle::{GeneratorMismatch, RegenReplayReport};
+use rule_project_bundle::{GeneratorMismatch, RegenReplayReport};
 use svc_serialization::{ArtifactClass, BundleHash, ManifestError, ProjectBundleManifest};
 
 /// Emit diagnostics for a ProjectBundle manifest by running its fail-closed
@@ -128,7 +128,7 @@ pub fn missing_cache_diagnostics(
 }
 
 /// Emit a `Fatal` diagnostic for a fail-closed terrain generator version
-/// mismatch (`rule-world-bundle`'s [`GeneratorMismatch`]).
+/// mismatch (`rule-project-bundle`'s [`GeneratorMismatch`]).
 pub fn generator_mismatch_diagnostic(mismatch: &GeneratorMismatch) -> DiagnosticReport {
     DiagnosticReport::new(
         DiagnosticCode::GeneratorMismatch,

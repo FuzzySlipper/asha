@@ -231,7 +231,7 @@ fn asset_dependency_cycle() {
     );
 }
 
-// ── world-bundle fixtures ──────────────────────────────────────────────────────
+// ── project-bundle fixtures ──────────────────────────────────────────────────────
 
 #[test]
 fn corrupt_bundle_artifact() {
@@ -349,7 +349,7 @@ fn renderer_resource_snapshot() {
 #[test]
 fn bundle_round_trip_equivalence_golden() {
     use core_scene::{SceneMetadata as TreeMeta, SceneNode, SceneTree};
-    use scene_diagnostics::world_bundle_round_trip;
+    use scene_diagnostics::project_bundle_round_trip;
 
     // An abstract fixture bundle: a two-node scene + a voxel section.
     let tree = SceneTree {
@@ -395,7 +395,7 @@ fn bundle_round_trip_equivalence_golden() {
         },
     ];
 
-    let report = world_bundle_round_trip(
+    let report = project_bundle_round_trip(
         &scene_json,
         SceneId::new(100),
         RuntimeSessionId::new(7),
@@ -413,7 +413,7 @@ fn bundle_round_trip_equivalence_golden() {
 
 #[test]
 fn composition_failures_golden() {
-    use rule_world_bundle::LoadExecutionError;
+    use rule_project_bundle::LoadExecutionError;
     use scene_diagnostics::composition_failure_diagnostic;
     use scene_diagnostics::DiagnosticReportSet;
     use svc_serialization::LoadStage;

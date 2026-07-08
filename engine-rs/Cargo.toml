@@ -72,7 +72,7 @@ members = [
     "crates/rules/rule-relationship",
     "crates/rules/rule-state-machine",
     "crates/rules/rule-voxel-edit",
-    "crates/rules/rule-world-bundle",
+    "crates/rules/rule-project-bundle",
     "crates/rules/rule-game-modifier",
     "crates/rules/game-rule-extension",
 

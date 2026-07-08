@@ -15,7 +15,7 @@
 //!   duplicate ids, material-payload placement, wrong-kind typed slots, missing
 //!   dependencies, and a Rust-validated dependency **DAG** with cycle-path
 //!   diagnostics (subtask #2322).
-//! * [`AssetLock`] + [`generate_lock`] / [`validate_lock`] — world-bundle asset
+//! * [`AssetLock`] + [`generate_lock`] / [`validate_lock`] — project-bundle asset
 //!   locks and classified catalog-drift diagnostics (subtask #2323).
 //! * [`MaterialDef`] with the **authority / style** projection split, plus
 //!   context-based [`fallback_for`] policy (subtask #2324).

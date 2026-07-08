@@ -1,7 +1,7 @@
 //! World load/save **composition** failure diagnostics (world-runtime-composition,
 //! #2364).
 //!
-//! The load executor ([`rule_world_bundle::execute_load_plan`]) returns a
+//! The load executor ([`rule_project_bundle::execute_load_plan`]) returns a
 //! classified [`LoadExecutionError`] on failure. This module maps each failure
 //! into a stable [`protocol_diagnostics`] report — scope `worldComposition` —
 //! carrying the stage / artifact source ref, a severity tied to recovery policy,
@@ -16,7 +16,7 @@ use protocol_diagnostics::{
     DiagnosticCode, DiagnosticReport, DiagnosticReportSet, DiagnosticSourceRef, RemedyAction,
     SuggestedRemedy,
 };
-use rule_world_bundle::LoadExecutionError;
+use rule_project_bundle::LoadExecutionError;
 
 /// Map one composition failure into a stable diagnostic report.
 pub fn composition_failure_diagnostic(err: &LoadExecutionError) -> DiagnosticReport {

@@ -12,7 +12,7 @@ change is caught.
 These are verified inline by `cargo test -p rule-voxel-edit` (under
 `harness/ci/check-rust.sh`). They are tiny by design — illustrative format anchors, not a
 full world. The larger composed save/compaction/durability goldens live in
-`harness/fixtures/world-bundle/`; the full canonical world is in
+`harness/fixtures/project-bundle/`; the full canonical world is in
 `harness/fixtures/voxel-world/`.
 
 To regenerate after an intentional format change, update the expected strings from the

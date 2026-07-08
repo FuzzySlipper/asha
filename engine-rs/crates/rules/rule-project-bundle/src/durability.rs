@@ -3,8 +3,8 @@
 //!
 //! This composes the existing persistence primitives ([`replay_edit_log`],
 //! [`compact_voxel_save`], [`reconstruct`]) into three committed checkpoints that
-//! prove a canonical edited world survives a save → compaction → reload cycle with an
-//! identical content fingerprint:
+//! prove canonical edited voxel state survives a save -> compaction -> reload
+//! cycle with an identical content fingerprint:
 //!
 //! - **post-load** — the base fixture replayed (generation only, before user edits);
 //! - **post-edit** — after the canonical edit sequence is applied on top;
@@ -13,7 +13,7 @@
 //!
 //! Durability holds iff `post_edit == post_reload`. A mismatch (e.g. a tampered
 //! snapshot or edit log) fails **closed** with a classified [`DurabilityError`] rather
-//! than silently loading a divergent world.
+//! than silently loading divergent voxel state.
 //!
 //! # Deferred debt: voxel durability vs. the generic `ReplayRecord`
 //!
@@ -22,7 +22,7 @@
 //! tick-stepped input/checkpoint streams). Unifying the two — so a voxel edit sequence
 //! is just another replay stream — is recorded as deferred debt for the first
 //! launchable loop (Den task #2440); see `docs/replay-model.md`. The fingerprint here
-//! is the same FNV-1a [`BundleHash`] world fingerprint the regenerate-and-replay
+//! is the same FNV-1a [`BundleHash`] voxel state fingerprint the regenerate-and-replay
 //! diagnostic already uses, so the two paths stay comparable when they are unified.
 
 use core_events::VoxelEditEvent;
@@ -34,12 +34,12 @@ use svc_spatial::VoxelWorld;
 
 use crate::compose::{compact_voxel_save, reconstruct};
 
-/// Deterministic content fingerprint over a voxel world's resident chunks: the FNV-1a
+/// Deterministic content fingerprint over a voxel state's resident chunks: the FNV-1a
 /// [`BundleHash`] of each resident `(chunk coord, chunk content hash)` in chunk order.
-/// Stable across runs and platforms; legible in diagnostics. This is the single world
-/// fingerprint shared by the durability checkpoints and the regenerate-and-replay
+/// Stable across runs and platforms; legible in diagnostics. This is the single
+/// voxel state fingerprint shared by the durability checkpoints and the regenerate-and-replay
 /// staging hash, so the two paths remain directly comparable.
-pub fn world_fingerprint(world: &VoxelWorld) -> BundleHash {
+pub fn voxel_state_fingerprint(world: &VoxelWorld) -> BundleHash {
     let mut rows: Vec<(i64, i64, i64, u64)> = world
         .resident_chunks()
         .map(|(c, chunk)| (c.x, c.y, c.z, chunk.content_hash().0))
@@ -60,7 +60,7 @@ pub struct DurabilityEvidence {
     pub post_load: BundleHash,
     /// Fingerprint after applying the canonical edit sequence on top of the base.
     pub post_edit: BundleHash,
-    /// Fingerprint after compaction + reconstruction (the reloaded world).
+    /// Fingerprint after compaction + reconstruction (the reloaded voxel state).
     pub post_reload: BundleHash,
     /// Edit events folded into chunk snapshots by compaction.
     pub compacted_edits: u32,
@@ -69,7 +69,7 @@ pub struct DurabilityEvidence {
 }
 
 impl DurabilityEvidence {
-    /// Durability holds iff a compacted reload reproduces the post-edit world exactly.
+    /// Durability holds iff a compacted reload reproduces the post-edit voxel state exactly.
     pub fn is_durable(&self) -> bool {
         self.post_edit == self.post_reload
     }
@@ -82,8 +82,8 @@ pub enum DurabilityError {
     /// Replaying the base log, the full log, or the retained tail was rejected
     /// (e.g. a stale generation hash → [`VoxelEditRejection::GenerationDivergence`]).
     Replay(VoxelEditRejection),
-    /// The reloaded world fingerprint disagreed with the post-edit world — a tampered
-    /// or corrupt save. Surfaced instead of loading the divergent world.
+    /// The reloaded voxel state fingerprint disagreed with the post-edit voxel state.
+    /// Surfaced instead of loading the divergent state.
     ReloadDivergence {
         post_edit: BundleHash,
         post_reload: BundleHash,
@@ -115,7 +115,7 @@ impl std::error::Error for DurabilityError {}
 /// fixture); `edit_events` is the user edit sequence applied on top. `retain_recent`
 /// controls compaction (trailing edits kept as a replayed tail). Returns
 /// [`DurabilityError::ReloadDivergence`] if the compacted reload does not reproduce the
-/// post-edit world — the durability guarantee, enforced rather than assumed.
+/// post-edit voxel state — the durability guarantee, enforced rather than assumed.
 pub fn build_durability_evidence(
     spec: VoxelGridSpec,
     base_events: &[VoxelEditEvent],
@@ -123,16 +123,16 @@ pub fn build_durability_evidence(
     retain_recent: usize,
 ) -> Result<DurabilityEvidence, DurabilityError> {
     let loaded = replay_edit_log(spec, base_events).map_err(DurabilityError::Replay)?;
-    let post_load = world_fingerprint(&loaded);
+    let post_load = voxel_state_fingerprint(&loaded);
 
     let mut full: Vec<VoxelEditEvent> = base_events.to_vec();
     full.extend_from_slice(edit_events);
     let edited = replay_edit_log(spec, &full).map_err(DurabilityError::Replay)?;
-    let post_edit = world_fingerprint(&edited);
+    let post_edit = voxel_state_fingerprint(&edited);
 
     let save = compact_voxel_save(spec, &full, retain_recent).map_err(DurabilityError::Replay)?;
     let reloaded = reconstruct(spec, &save).map_err(DurabilityError::Replay)?;
-    let post_reload = world_fingerprint(&reloaded);
+    let post_reload = voxel_state_fingerprint(&reloaded);
 
     if post_edit != post_reload {
         return Err(DurabilityError::ReloadDivergence {
@@ -200,7 +200,7 @@ mod tests {
         assert!(ev.is_durable(), "post_edit must equal post_reload");
         assert_ne!(
             ev.post_load, ev.post_edit,
-            "the edit sequence must actually change the world"
+            "the edit sequence must actually change the voxel state"
         );
         assert_eq!(ev.compacted_edits, 1);
         assert_eq!(ev.retained_edits, 1);
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn tampered_snapshot_reload_is_caught_as_divergence() {
-        // Tamper a compacted snapshot's bytes: reconstruct yields a different world, and
+        // Tamper a compacted snapshot's bytes: reconstruct yields different voxel state, and
         // the durability fingerprint comparison catches it (fail closed) rather than
         // accepting the corrupted reload.
         let mut full = base();
@@ -255,7 +255,7 @@ mod tests {
         let mut save = crate::compose::compact_voxel_save(spec(), &full, 1).expect("compact");
         let post_edit = {
             let edited = replay_edit_log(spec(), &full).unwrap();
-            world_fingerprint(&edited)
+            voxel_state_fingerprint(&edited)
         };
 
         // Replace the snapshot's bytes with a valid-but-wrong (all-empty) chunk for the
@@ -275,9 +275,9 @@ mod tests {
         // the durability check refuses to accept the corrupted reload as equivalent.
         let reloaded = reconstruct(spec(), &save).expect("decodes, but wrong content");
         assert_ne!(
-            world_fingerprint(&reloaded),
+            voxel_state_fingerprint(&reloaded),
             post_edit,
-            "a tampered snapshot must not reproduce the authoritative world"
+            "a tampered snapshot must not reproduce the authoritative voxel state"
         );
     }
 }

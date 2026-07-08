@@ -3,7 +3,7 @@
 Committed fixtures for the runtime **session-state snapshot** — the durable artifact
 that persists runtime-diverged entity authority (runtime-created entities, diverged
 transforms, capability tables, relations, source traces, asset references) across a
-world-bundle save → reload.
+project-bundle save → reload.
 
 These are generated from `core_entity::fixtures::mixed_world_save_fixture()` and
 checked by `scene-diagnostics`'s `session_state_goldens` test. Regenerate after an
@@ -28,5 +28,5 @@ BLESS=1 cargo test -p scene-diagnostics --test session_state_goldens
 - **tombstone** (id 6) — destroyed entity retained for replay/dangling-reference diagnostics.
 
 A combined "voxel edit plus entity change in the same save" round-trip is exercised
-by `rule-world-bundle`'s `session_state_roundtrip` integration test, which loads a
+by `rule-project-bundle`'s `session_state_roundtrip` integration test, which loads a
 bundle carrying both a voxel section and this session-state snapshot.

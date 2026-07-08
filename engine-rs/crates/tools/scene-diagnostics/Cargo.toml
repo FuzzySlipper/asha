@@ -20,5 +20,5 @@ svc-volume           = { path = "../../services/svc-volume" }
 svc-spatial          = { path = "../../services/svc-spatial" }
 svc-serialization    = { path = "../../services/svc-serialization" }
 rule-voxel-edit      = { path = "../../rules/rule-voxel-edit" }
-rule-world-bundle    = { path = "../../rules/rule-world-bundle" }
+rule-project-bundle    = { path = "../../rules/rule-project-bundle" }
 protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }

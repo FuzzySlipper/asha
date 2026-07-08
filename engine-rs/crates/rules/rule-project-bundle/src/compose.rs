@@ -1,7 +1,7 @@
 //! Voxel save composition + explicit compaction (subtask #2320).
 //!
 //! Composes the existing `rule-voxel-edit` chunk-snapshot / edit-log persistence
-//! into world-bundle voxel sections and declares the save via a
+//! into project-bundle voxel sections and declares the save via a
 //! `svc-serialization` [`SavePlan`]. Compaction is **explicit and save-time**:
 //! [`compact_voxel_save`] folds the older edit history into chunk snapshots and
 //! retains only the recent edits, and [`reconstruct`] proves a compacted snapshot

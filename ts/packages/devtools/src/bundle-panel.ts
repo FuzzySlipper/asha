@@ -147,7 +147,7 @@ export function buildSavePlanModel(summary: SaveSummary): SavePlanView {
 // ── Voxel save/reload/replay durability read model (task #2440) ──────────────────
 //
 // A projected mirror of the Rust `rule-project-bundle` durability evidence (the
-// post-load / post-edit / post-reload world fingerprints for the canonical fixture).
+// post-load / post-edit / post-reload voxel state fingerprints for the canonical fixture).
 // Observational only: devtools never computes the checkpoints — authority owns the
 // fingerprints; this formats them so a panel/agent can read whether the edited session
 // survives a save→reload→replay cycle.

@@ -3,7 +3,7 @@
 //!
 //! This drives the *real* composition code paths end to end — it builds an
 //! abstract fixture bundle (scene + voxel section), loads it through the
-//! [`rule_world_bundle::execute_load_plan`] executor, applies a deterministic
+//! [`rule_project_bundle::execute_load_plan`] executor, applies a deterministic
 //! edit sequence, saves through the real [`compact_voxel_save`] compaction path,
 //! reloads through the executor, and compares pre-save (B) against post-reload
 //! (C) authority-equivalent state. It is not a stub smoke: nothing here hardcodes
@@ -12,8 +12,8 @@
 //! # What "equivalent" means here
 //!
 //! - **Scene / entity authority**: entity count, `scene node → entity` source
-//!   trace, and the deterministic bootstrap world hash must reproduce.
-//! - **Voxel authority**: the world fingerprint after the edits must survive the
+//!   trace, and the deterministic bootstrap spatial-session hash must reproduce.
+//! - **Voxel authority**: the voxel state fingerprint after the edits must survive the
 //!   save→reload (snapshots + retained log reconstruct identical chunk content).
 //!
 //! A mismatch is reported as a structured [`DiagnosticCode::RoundTripMismatch`]
@@ -35,12 +35,13 @@ use protocol_diagnostics::{
     DiagnosticCode, DiagnosticReport, DiagnosticReportSet, DiagnosticSourceRef, RemedyAction,
     SuggestedRemedy,
 };
-use rule_world_bundle::{
-    compact_voxel_save, execute_load_plan, BundleArtifacts, LoadExecutionError, WorldLoadResult,
+use rule_project_bundle::{
+    compact_voxel_save, execute_load_plan, BundleArtifacts, LoadExecutionError,
+    ProjectBundleLoadResult,
 };
 use svc_serialization::{BundleHash, LoadPlan, LoadStep};
 
-use crate::roundtrip::world_fingerprint;
+use crate::roundtrip::voxel_state_fingerprint;
 
 /// A deterministic comparison of pre-save (B) vs post-reload (C) authority.
 #[derive(Debug, Clone)]
@@ -51,7 +52,7 @@ pub struct BundleEquivalenceReport {
     pub source_trace_c: usize,
     pub spatial_session_hash_b: SpatialSessionHash,
     pub spatial_session_hash_c: SpatialSessionHash,
-    /// Voxel world fingerprint after the edits (B') and after reload (C).
+    /// Voxel state fingerprint after the edits (B') and after reload (C).
     pub voxel_hash_b: Option<BundleHash>,
     pub voxel_hash_c: Option<BundleHash>,
     /// Structured mismatch diagnostics (empty == equivalent).
@@ -142,7 +143,7 @@ fn with_voxel_stage(
 /// `scene_json` is the bundle's scene artifact; `spec`/`initial_log` describe the
 /// loaded voxel section; `tick_edits` are the deterministic operations applied
 /// after load (the "tick/edit"); `retain_recent` controls save compaction.
-pub fn world_bundle_round_trip(
+pub fn project_bundle_round_trip(
     scene_json: &str,
     scene: SceneId,
     runtime_session: RuntimeSessionId,
@@ -165,7 +166,7 @@ pub fn world_bundle_round_trip(
         vec!["voxel/edits.log".into()],
         vec![],
     );
-    let result_b: WorldLoadResult = execute_load_plan(&plan_b, &load_artifacts)?;
+    let result_b: ProjectBundleLoadResult = execute_load_plan(&plan_b, &load_artifacts)?;
 
     // ── Tick / edit ──────────────────────────────────────────────────────────
     // No-op tick is implicit (deterministic). The voxel edit is the persisted op:
@@ -178,7 +179,7 @@ pub fn world_bundle_round_trip(
                 detail: format!("{e:?}"),
             }
         })?;
-    let voxel_hash_b = Some(world_fingerprint(&voxel_b_prime));
+    let voxel_hash_b = Some(voxel_state_fingerprint(&voxel_b_prime));
 
     // ── Save (real compaction) ─────────────────────────────────────────────────
     let save = compact_voxel_save(spec, &full_log, retain_recent).map_err(|e| {
@@ -204,7 +205,7 @@ pub fn world_bundle_round_trip(
         snapshot_paths,
     );
     let result_c = execute_load_plan(&plan_c, &reload_artifacts)?;
-    let voxel_hash_c = result_c.voxel.as_ref().map(world_fingerprint);
+    let voxel_hash_c = result_c.voxel.as_ref().map(voxel_state_fingerprint);
 
     // ── Compare B vs C ─────────────────────────────────────────────────────────
     let mut diagnostics = DiagnosticReportSet::new();
@@ -212,18 +213,18 @@ pub fn world_bundle_round_trip(
         diagnostics.push(mismatch(
             "world-hash",
             format!(
-                "scene/entity world hash changed across save/reload: {:016x} != {:016x}",
+                "scene/entity spatial-session hash changed across save/reload: {:016x} != {:016x}",
                 result_b.spatial_session_hash.0, result_c.spatial_session_hash.0
             ),
         ));
     }
-    if result_b.world.entity_count() != result_c.world.entity_count() {
+    if result_b.spatial_session.entity_count() != result_c.spatial_session.entity_count() {
         diagnostics.push(mismatch(
             "entity-count",
             format!(
                 "entity count changed: {} != {}",
-                result_b.world.entity_count(),
-                result_c.world.entity_count()
+                result_b.spatial_session.entity_count(),
+                result_c.spatial_session.entity_count()
             ),
         ));
     }
@@ -245,8 +246,8 @@ pub fn world_bundle_round_trip(
     }
 
     Ok(BundleEquivalenceReport {
-        entities_b: result_b.world.entity_count(),
-        entities_c: result_c.world.entity_count(),
+        entities_b: result_b.spatial_session.entity_count(),
+        entities_c: result_c.spatial_session.entity_count(),
         source_trace_b: result_b.bootstrap.source_trace.len(),
         source_trace_c: result_c.bootstrap.source_trace.len(),
         spatial_session_hash_b: result_b.spatial_session_hash,

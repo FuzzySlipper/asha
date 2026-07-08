@@ -1,4 +1,4 @@
-//! Ordered world-bundle **load executor** (world-runtime-composition, #2361).
+//! Ordered ProjectBundle **load executor** (runtime-session composition, #2361).
 //!
 //! This turns an already-validated [`LoadPlan`](svc_serialization::LoadPlan) into
 //! Rust authority state by *executing* its ordered stages — it is not a plan
@@ -9,12 +9,12 @@
 //!
 //! # Staging / no-partial-mutation
 //!
-//! [`execute_load_plan`] builds the new world entirely in locals and returns a
-//! [`WorldLoadResult`] only on success; on any failure it returns a classified
-//! [`LoadExecutionError`] and produces **no** world. A caller therefore swaps its
-//! live authority only on `Ok`, so a failed load cannot partially mutate an
-//! existing world. (#2364 formalizes and tests the commit/swap policy and maps
-//! these errors into `protocol-diagnostics`.)
+//! [`execute_load_plan`] builds the new runtime authority entirely in locals and
+//! returns a [`ProjectBundleLoadResult`] only on success; on any failure it returns
+//! a classified [`LoadExecutionError`] and produces **no** replacement session. A
+//! caller therefore swaps its live authority only on `Ok`, so a failed load cannot
+//! partially mutate an existing runtime session. (#2364 formalizes and tests the
+//! commit/swap policy and maps these errors into `protocol-diagnostics`.)
 
 use std::collections::BTreeMap;
 
@@ -57,7 +57,7 @@ pub trait ArtifactSource {
 }
 
 /// A simple in-memory artifact source: a map of bundle-relative path → text,
-/// plus the voxel grid spec a real bundle's world/generator metadata would carry
+/// plus the voxel grid spec a real bundle's project/generator metadata would carry
 /// (required only when the bundle has a voxel section).
 #[derive(Debug, Clone, Default)]
 pub struct BundleArtifacts {
@@ -106,26 +106,26 @@ pub struct StageOutcome {
 /// (`VoxelWorld` is not `PartialEq`, so neither is this; compare via hashes /
 /// the rendered summary instead.)
 #[derive(Debug, Clone)]
-pub struct WorldLoadResult {
+pub struct ProjectBundleLoadResult {
     /// Scene/entity authority (runtime transforms + `scene node → entity` trace).
-    pub world: SpatialSessionState,
+    pub spatial_session: SpatialSessionState,
     /// Restored runtime-diverged entity authority, when the bundle carried a
     /// session-state snapshot (#2484). Holds the full generic entity store —
     /// runtime-created entities, capability tables, relations, and source traces —
-    /// over and above the spatial bootstrap baseline in `world`. `None` when the
-    /// save had no runtime divergence to persist.
+    /// over and above the spatial bootstrap baseline in `spatial_session`. `None`
+    /// when the save had no runtime divergence to persist.
     pub runtime_entities: Option<EntityStore>,
     /// Voxel authority, when the bundle carried a voxel section.
     pub voxel: Option<VoxelWorld>,
     /// The atomic bootstrap record (carries the source trace).
     pub bootstrap: BootstrapRecord,
-    /// Deterministic fingerprint of the bootstrapped scene/entity world.
+    /// Deterministic fingerprint of the bootstrapped scene/entity spatial session.
     pub spatial_session_hash: SpatialSessionHash,
     /// Ordered per-stage outcomes (the executed plan, not the planned plan).
     pub stages: Vec<StageOutcome>,
 }
 
-impl WorldLoadResult {
+impl ProjectBundleLoadResult {
     /// A deterministic, greppable summary of the executed stages + final state,
     /// suitable for a golden fixture.
     pub fn render_summary(&self) -> String {
@@ -135,7 +135,7 @@ impl WorldLoadResult {
         }
         out.push_str(&format!(
             "result entities={} voxel={} spatialSessionHash={:016x}\n",
-            self.world.entity_count(),
+            self.spatial_session.entity_count(),
             self.voxel.is_some(),
             self.spatial_session_hash.0
         ));
@@ -199,48 +199,49 @@ pub enum LoadExecutionError {
     FinalConsistency { detail: String },
 }
 
-/// A staged live world with an explicit **commit/swap** load policy (#2364).
+/// A staged live ProjectBundle load with an explicit **commit/swap** policy (#2364).
 ///
 /// The recovery posture is "validate/execute into a staging area, then commit on
-/// success": [`WorldStage::load_and_commit`] builds a fresh world with
-/// [`execute_load_plan`] and replaces the live world **only** when the load
+/// success": [`ProjectBundleStage::load_and_commit`] builds fresh authority with
+/// [`execute_load_plan`] and replaces the live session **only** when the load
 /// succeeds. A failed load returns its classified [`LoadExecutionError`] and
-/// leaves the previously-live world byte-for-byte unchanged — there is no partial
-/// commit, because the new world does not touch the old one until the swap.
+/// leaves the previously-live session byte-for-byte unchanged — there is no
+/// partial commit, because the new authority does not touch the old one until the
+/// swap.
 #[derive(Debug, Clone, Default)]
-pub struct WorldStage {
-    live: Option<WorldLoadResult>,
+pub struct ProjectBundleStage {
+    live: Option<ProjectBundleLoadResult>,
 }
 
-impl WorldStage {
-    /// A stage with no live world yet.
+impl ProjectBundleStage {
+    /// A stage with no live ProjectBundle load yet.
     pub fn empty() -> Self {
         Self::default()
     }
 
-    /// The current live world, if one has been committed.
-    pub fn live(&self) -> Option<&WorldLoadResult> {
+    /// The current live ProjectBundle load, if one has been committed.
+    pub fn live(&self) -> Option<&ProjectBundleLoadResult> {
         self.live.as_ref()
     }
 
-    /// `true` if a live world is committed.
+    /// `true` if a live ProjectBundle load is committed.
     pub fn has_live(&self) -> bool {
         self.live.is_some()
     }
 
-    /// The committed live world's hash, if any (cheap mutation-safety probe).
+    /// The committed live spatial session hash, if any (cheap mutation-safety probe).
     pub fn live_spatial_session_hash(&self) -> Option<SpatialSessionHash> {
         self.live.as_ref().map(|w| w.spatial_session_hash)
     }
 
     /// Execute `plan` into a staging area and, **only on success**, swap it in as
-    /// the new live world. On failure the previous live world is untouched and the
-    /// classified error is returned for diagnostics/remediation.
+    /// the new live ProjectBundle load. On failure the previous live load is
+    /// untouched and the classified error is returned for diagnostics/remediation.
     pub fn load_and_commit(
         &mut self,
         plan: &LoadPlan,
         artifacts: &dyn ArtifactSource,
-    ) -> Result<&WorldLoadResult, LoadExecutionError> {
+    ) -> Result<&ProjectBundleLoadResult, LoadExecutionError> {
         let staged = execute_load_plan(plan, artifacts)?;
         self.live = Some(staged);
         Ok(self.live.as_ref().expect("just committed"))
@@ -251,20 +252,20 @@ impl WorldStage {
 ///
 /// Stage order is enforced at execution time (via
 /// [`LoadPlan::verify_order`]) before any artifact is touched. On any failure the
-/// function returns `Err` and produces no world, so an existing authority world a
-/// caller holds is never partially mutated.
+/// function returns `Err` and produces no replacement session, so existing
+/// authority held by a caller is never partially mutated.
 pub fn execute_load_plan(
     plan: &LoadPlan,
     artifacts: &dyn ArtifactSource,
-) -> Result<WorldLoadResult, LoadExecutionError> {
+) -> Result<ProjectBundleLoadResult, LoadExecutionError> {
     // 1. Enforce stage order + mandatory stages *before* executing anything.
     plan.verify_order()
         .map_err(LoadExecutionError::PlanInvalid)?;
 
     let mut stages = Vec::new();
     let mut scene_doc: Option<FlatSceneDocument> = None;
-    let mut voxel_world: Option<VoxelWorld> = None;
-    let mut world_and_record: Option<(SpatialSessionState, BootstrapRecord)> = None;
+    let mut voxel_state: Option<VoxelWorld> = None;
+    let mut spatial_session_and_record: Option<(SpatialSessionState, BootstrapRecord)> = None;
     let mut runtime_entities: Option<EntityStore> = None;
 
     for step in &plan.steps {
@@ -343,7 +344,7 @@ pub fn execute_load_plan(
             } => {
                 let world = apply_voxel_section(artifacts, edit_logs, snapshots)?;
                 let applied = world.is_some();
-                voxel_world = world;
+                voxel_state = world;
                 stages.push(StageOutcome {
                     stage: LoadStage::VoxelEdits,
                     detail: format!(
@@ -378,13 +379,13 @@ pub fn execute_load_plan(
                         record.entity_count
                     ),
                 });
-                world_and_record = Some((state, record));
+                spatial_session_and_record = Some((state, record));
             }
             LoadStep::RestoreSessionState { artifact } => {
                 // Restore over the bootstrapped baseline: the snapshot is the full
                 // runtime authority. Fail closed (no partial mutation) on a missing,
                 // empty, or undecodable artifact.
-                if world_and_record.is_none() {
+                if spatial_session_and_record.is_none() {
                     return Err(LoadExecutionError::FinalConsistency {
                         detail: "session-state restore reached before scene bootstrap".into(),
                     });
@@ -414,17 +415,18 @@ pub fn execute_load_plan(
                 runtime_entities = Some(store);
             }
             LoadStep::ValidateFinalState => {
-                let (state, record) =
-                    world_and_record
-                        .as_ref()
-                        .ok_or(LoadExecutionError::FinalConsistency {
-                            detail: "final validation reached without a bootstrapped world".into(),
-                        })?;
-                // Final consistency: the recorded world hash must reproduce, and
+                let (state, record) = spatial_session_and_record.as_ref().ok_or(
+                    LoadExecutionError::FinalConsistency {
+                        detail: "final validation reached without a bootstrapped spatial session"
+                            .into(),
+                    },
+                )?;
+                // Final consistency: the recorded spatial session hash must reproduce, and
                 // every entity must have a source-trace entry.
                 if state.hash() != record.spatial_session_hash {
                     return Err(LoadExecutionError::FinalConsistency {
-                        detail: "bootstrapped world hash does not match the record".into(),
+                        detail: "bootstrapped spatial session hash does not match the record"
+                            .into(),
                     });
                 }
                 if record.source_trace.len() != record.entity_count {
@@ -444,15 +446,16 @@ pub fn execute_load_plan(
         }
     }
 
-    let (world, bootstrap) = world_and_record.ok_or(LoadExecutionError::FinalConsistency {
-        detail: "plan completed without bootstrapping a world".into(),
-    })?;
-    let spatial_session_hash = world.hash();
+    let (spatial_session, bootstrap) =
+        spatial_session_and_record.ok_or(LoadExecutionError::FinalConsistency {
+            detail: "plan completed without bootstrapping a spatial session".into(),
+        })?;
+    let spatial_session_hash = spatial_session.hash();
 
-    Ok(WorldLoadResult {
-        world,
+    Ok(ProjectBundleLoadResult {
+        spatial_session,
         runtime_entities,
-        voxel: voxel_world,
+        voxel: voxel_state,
         bootstrap,
         spatial_session_hash,
         stages,
@@ -463,7 +466,7 @@ pub fn execute_load_plan(
 pub fn execute_load_plan_with(
     plan: &LoadPlan,
     artifacts: &BundleArtifacts,
-) -> Result<WorldLoadResult, LoadExecutionError> {
+) -> Result<ProjectBundleLoadResult, LoadExecutionError> {
     execute_load_plan(plan, artifacts)
 }
 
@@ -480,7 +483,7 @@ fn read_required<'a>(
         })
 }
 
-/// Build the voxel authority world from the bundle's edit-log and snapshot
+/// Build the voxel authority state from the bundle's edit-log and snapshot
 /// artifacts. Returns `Ok(None)` when there is no voxel section.
 fn apply_voxel_section(
     artifacts: &dyn ArtifactSource,
@@ -519,7 +522,7 @@ fn apply_voxel_section(
         retained.extend(events);
     }
 
-    let world = if snapshot_artifacts.is_empty() {
+    let voxel_authority = if snapshot_artifacts.is_empty() {
         // Pure edit-log replay (chunks are created by ChunkGenerated events).
         replay_edit_log(spec, &retained).map_err(|e| LoadExecutionError::VoxelReplay {
             detail: format!("{e:?}"),
@@ -535,7 +538,7 @@ fn apply_voxel_section(
             detail: format!("{e:?}"),
         })?
     };
-    Ok(Some(world))
+    Ok(Some(voxel_authority))
 }
 
 /// The voxel grid spec, if the artifact source is a [`BundleArtifacts`] that

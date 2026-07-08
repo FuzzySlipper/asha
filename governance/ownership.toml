@@ -134,11 +134,11 @@ may_not_depend_on = ["core-state", "core-scene", "sim-kernel", "protocol-render"
 # ProjectBundle cross-boundary schema (scene-capability-super, #2366): manifests,
 # artifact tables, ordered load plans, save/compaction summaries, and the
 # regenerate-and-replay generator diagnostic. Border vocabularies + shapes only —
-# execution stays in svc-serialization / rule-world-bundle. core-ids only.
+# execution stays in svc-serialization / rule-project-bundle. core-ids only.
 [crate."engine-rs/crates/protocol/protocol-project-bundle"]
 lane = "contract-steward"
 may_depend_on = ["core-ids"]
-may_not_depend_on = ["core-state", "svc-serialization", "rule-world-bundle", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
+may_not_depend_on = ["core-state", "svc-serialization", "rule-project-bundle", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
 
 # Asset catalog cross-boundary schema (scene-capability-super, #2367): catalog
 # entries, asset-lock drift, fallback decisions, and the disjoint material
@@ -368,7 +368,7 @@ lane = "rust-rule"
 may_depend_on = ["core-space", "core-voxel", "core-commands", "core-events", "svc-volume", "svc-spatial", "svc-collision"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
-[crate."engine-rs/crates/rules/rule-world-bundle"]
+[crate."engine-rs/crates/rules/rule-project-bundle"]
 lane = "rust-rule"
 may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
@@ -427,7 +427,7 @@ may_not_depend_on = ["render-bridge"]
 # it stays off `protocol-render`/`render-bridge`.
 [crate."engine-rs/crates/tools/scene-diagnostics"]
 lane = "rust-tools"
-may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-world-bundle", "protocol-diagnostics"]
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "core-catalog", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit", "rule-project-bundle", "protocol-diagnostics"]
 may_not_depend_on = ["render-bridge", "protocol-render", "wasm-api"]
 
 # Offline asset importer (asset-import super, #2384/#2385/#2386): deterministic

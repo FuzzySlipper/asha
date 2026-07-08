@@ -18,7 +18,7 @@ use core_ids::{EntityId, ProcessId, RuntimeSessionId, SceneId, SceneNodeId, Subj
 use core_scene::{encode, SceneMetadata, SceneNode, SceneNodeKind, SceneTree};
 use svc_serialization::{LoadPlan, LoadStep};
 
-use rule_world_bundle::{
+use rule_project_bundle::{
     compose_session_state_snapshot, execute_load_plan, BundleArtifacts, LoadExecutionError,
     SESSION_STATE_SNAPSHOT_PATH,
 };
@@ -203,7 +203,7 @@ fn mixed_runtime_spatial_session_state_survives_save_reload() {
         "reloaded runtime authority must reproduce the pre-save entity fingerprint"
     );
     // The scene baseline still bootstrapped one entity from the scene document.
-    assert_eq!(result.world.entity_count(), 1);
+    assert_eq!(result.spatial_session.entity_count(), 1);
     // Capability presence/absence survived: the logical entity has no transform.
     assert!(restored.transform(EntityId::new(3)).is_none());
     assert!(restored.collision(EntityId::new(2)).is_some());

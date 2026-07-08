@@ -38,7 +38,7 @@
     decoding is internally parallel; an out-of-order or missing-prerequisite plan is rejected
     with a classified diagnostic (`LoadPlan::verify_order`).
 16. Save-time compaction is **explicit** and never runs during ordinary simulation ticks: a
-    save may fold old edit history into chunk snapshots (`rule-world-bundle`), but replay and
+    save may fold old edit history into chunk snapshots (`rule-project-bundle`), but replay and
     save stay separate concepts and a compacted snapshot plus the retained edit log must
     reconstruct identical chunk hashes. A terrain-generator version mismatch **fails closed**
     by default; development may opt into a regenerate-and-replay *diagnostic* that reports
@@ -78,7 +78,7 @@
     source scene/entity IDs and named attachment points, never a durable `RenderHandle` (rule 12).
     A sprite **pick** is traced to authority identity (handle + source ids + asset ref); the renderer
     reports the trace and decides no gameplay action — authority revalidates and acts.
-21. **Diagnostics are observational and protocol-typed.** Scene/asset/world-bundle/render
+21. **Diagnostics are observational and protocol-typed.** Scene/asset/project-bundle/render
     diagnostics are generated `protocol-diagnostics` reports (`DiagnosticReport` with a stable
     `DiagnosticCode` + `DiagnosticSourceRef` + `SuggestedRemedy`), never ad-hoc JSON or prose
     logs. Emitting a diagnostic must never mutate authority or silently repair data — first

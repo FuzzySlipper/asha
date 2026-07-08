@@ -75,7 +75,7 @@ separate governance change.
     and missing-prerequisite diagnostics.
   - `SavePlan` / `CompactionPlan` — the declarative, voxel-agnostic save + explicit-compaction
     description.
-- `rule-world-bundle` (rules) — the **execution** that composes voxel persistence
+- `rule-project-bundle` (rules) — the **execution** that composes voxel persistence
   (`rule-voxel-edit`) the lower format crate cannot reach:
   - `compose` — fold chunk snapshots / edit logs into bundle sections with explicit save-time
     compaction; a compacted snapshot + retained edit log reconstructs identical chunk hashes.
@@ -88,7 +88,7 @@ separate governance change.
   load-plan errors (version-compatibility findings), the ordered `LoadPlan`/`LoadStep`,
   save/compaction summaries, and the regenerate-and-replay generator diagnostic
   (`EditConflict`/`RegenConflictReport`), mirrored to `@asha/contracts` by
-  `protocol-codegen`. Execution/validation stays in `svc-serialization`/`rule-world-bundle`;
+  `protocol-codegen`. Execution/validation stays in `svc-serialization`/`rule-project-bundle`;
   TS devtools *display* a manifest/load plan/generator diagnostic but cannot mutate bundle
   state (proven by the `@asha/contracts` smoke against `harness/fixtures/project-bundle/`).
 
@@ -159,7 +159,7 @@ separate governance change.
     asserts every scope is reachable by at least one code. Equivalence loss on a clean round-trip is
     `roundTripMismatch`, distinct from a genuinely corrupt artifact (`corruptBundleArtifact`).
 - `scene-diagnostics` (tools) — observational emitters that map the existing classified
-  validators (`core-scene`, `core-catalog`, `svc-serialization`, `rule-world-bundle`) and
+  validators (`core-scene`, `core-catalog`, `svc-serialization`, `rule-project-bundle`) and
   projection/resource state into those reports: scene/catalog/bundle diagnostics, render source
   traces, renderer resource reports, a deterministic text rendering for goldens, and a save→load
   **round-trip equivalence** check. Never mutates authority.

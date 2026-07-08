@@ -1,4 +1,4 @@
-//! Integration tests for the ordered world-bundle load executor (#2361).
+//! Integration tests for the ordered project-bundle load executor (#2361).
 //!
 //! Exercises a minimal valid bundle through the *real* executor (not a plan
 //! builder), plus the classified failure paths: missing durable artifact, an
@@ -9,7 +9,9 @@ use core_ids::{RuntimeSessionId, SceneId, SceneNodeId};
 use core_scene::{encode, SceneMetadata, SceneNode, SceneNodeKind, SceneTree};
 use svc_serialization::{LoadPlan, LoadStage, LoadStep};
 
-use rule_world_bundle::{execute_load_plan, BundleArtifacts, LoadExecutionError, WorldStage};
+use rule_project_bundle::{
+    execute_load_plan, BundleArtifacts, LoadExecutionError, ProjectBundleStage,
+};
 
 /// A small, valid two-node scene (scene id 100), encoded as canonical JSON.
 fn sample_scene_json() -> String {
@@ -65,7 +67,7 @@ fn sample_artifacts() -> BundleArtifacts {
 fn minimal_valid_bundle_loads_into_authority() {
     let result = execute_load_plan(&sample_plan(), &sample_artifacts()).expect("load succeeds");
     // Two scene nodes → two runtime entities, each with a source trace.
-    assert_eq!(result.world.entity_count(), 2);
+    assert_eq!(result.spatial_session.entity_count(), 2);
     assert_eq!(result.bootstrap.source_trace.len(), 2);
     assert_eq!(
         result.bootstrap.runtime_session_id,
@@ -244,7 +246,7 @@ fn voxel_section_reconstructs_authority() {
     let voxel = result.voxel.expect("voxel authority present");
     assert!(voxel.tracked_len() >= 1, "the generated chunk is resident");
     // Scene authority is still intact alongside voxel authority.
-    assert_eq!(result.world.entity_count(), 2);
+    assert_eq!(result.spatial_session.entity_count(), 2);
 }
 
 #[test]
@@ -265,8 +267,8 @@ fn voxel_section_without_spec_fails_closed() {
 
 #[test]
 fn staged_commit_swaps_only_on_success() {
-    let mut stage = WorldStage::empty();
-    // First load commits a live world.
+    let mut stage = ProjectBundleStage::empty();
+    // First load commits a live ProjectBundle load.
     stage
         .load_and_commit(&sample_plan(), &sample_artifacts())
         .expect("first load commits");
@@ -274,16 +276,16 @@ fn staged_commit_swaps_only_on_success() {
     let original_hash = stage.live_spatial_session_hash().unwrap();
 
     // A second, failing load (missing scene artifact) must NOT mutate the live
-    // world: the previous world stays committed, unchanged.
+    // load: the previous ProjectBundle load stays committed, unchanged.
     let broken = BundleArtifacts::new().with_artifact("assets/lock.json", "{}\n");
     let err = stage.load_and_commit(&sample_plan(), &broken).unwrap_err();
     assert!(matches!(err, LoadExecutionError::MissingArtifact { .. }));
     assert_eq!(
         stage.live_spatial_session_hash().unwrap(),
         original_hash,
-        "a failed load must leave the live world unchanged (no partial commit)"
+        "a failed load must leave the live ProjectBundle load unchanged (no partial commit)"
     );
-    assert_eq!(stage.live().unwrap().world.entity_count(), 2);
+    assert_eq!(stage.live().unwrap().spatial_session.entity_count(), 2);
 }
 
 #[test]

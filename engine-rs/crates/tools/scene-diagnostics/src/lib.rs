@@ -1,11 +1,11 @@
-//! Scene / asset / world-bundle / render diagnostic emitters (scene-capability-06,
+//! Scene / asset / project-bundle / render diagnostic emitters (scene-capability-06,
 //! epic #2313, subtask #2331).
 //!
 //! # Lane
 //!
 //! `rust-tools` — an **observational** read layer that turns the existing
 //! classified validators (`core-scene`, `core-catalog`, `svc-serialization`,
-//! `rule-world-bundle`) and projection/resource state into stable, generated
+//! `rule-project-bundle`) and projection/resource state into stable, generated
 //! [`protocol_diagnostics`] reports. Like `voxel-diagnostics` it is more
 //! omniscient than runtime crates but **never mutates authority** — every entry
 //! point takes `&` references and returns reports.
@@ -16,7 +16,7 @@
 //!   cycle, invalid transform, wrong-kind asset, and (when a catalog is supplied)
 //!   missing-asset cross-checks.
 //! * [`catalog`] — asset catalog validation and asset-lock drift.
-//! * [`bundle`] — world-bundle manifest validation, durable-artifact integrity,
+//! * [`bundle`] — project-bundle manifest validation, durable-artifact integrity,
 //!   missing optional cache, and terrain generator mismatch.
 //! * [`trace`] — render handle → scene node → entity → asset source traces and the
 //!   broken-trace diagnostics they warrant.
@@ -50,10 +50,11 @@ pub use bundle::{
 };
 pub use catalog::{catalog_diagnostics, lock_diagnostics};
 pub use composition::{composition_failure_diagnostic, composition_failure_set};
-pub use equivalence::{world_bundle_round_trip, BundleEquivalenceReport};
+pub use equivalence::{project_bundle_round_trip, BundleEquivalenceReport};
 pub use resources::resource_diagnostics;
 pub use roundtrip::{
-    check_saved_bundle, scene_round_trip, voxel_round_trip, world_fingerprint, RoundTripReport,
+    check_saved_bundle, scene_round_trip, voxel_round_trip, voxel_state_fingerprint,
+    RoundTripReport,
 };
 pub use scene::scene_diagnostics;
 pub use session_state::{

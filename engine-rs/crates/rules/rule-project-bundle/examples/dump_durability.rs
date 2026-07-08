@@ -1,7 +1,7 @@
 //! Regenerator for the voxel durability checkpoint golden (task #2440).
 //!
-//! `cargo run -p rule-world-bundle --example dump_durability` and redirect into
-//! `harness/fixtures/world-bundle/voxel-durability.txt`.
+//! `cargo run -p rule-project-bundle --example dump_durability` and redirect into
+//! `harness/fixtures/project-bundle/voxel-durability.txt`.
 
 #[path = "../tests/support/render.rs"]
 mod render;

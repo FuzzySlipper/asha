@@ -1,5 +1,5 @@
 [package]
-name    = "rule-world-bundle"
+name    = "rule-project-bundle"
 version.workspace = true
 edition.workspace = true
 

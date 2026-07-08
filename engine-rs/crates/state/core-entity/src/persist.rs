@@ -5,7 +5,7 @@
 //! a deterministic, in-memory [`EntitySnapshot`]; this module gives that snapshot a
 //! durable on-disk form so runtime-created entities, runtime-diverged transforms,
 //! capability tables, relations (transform attachment, containment, source
-//! ancestry), and source traces survive a world-bundle save → reload.
+//! ancestry), and source traces survive a project-bundle save → reload.
 //!
 //! Like `core-scene`'s scene-document codec, the codec is hand-written std-only
 //! JSON (the workspace carries no serde dependency). [`encode_snapshot`] emits a

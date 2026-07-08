@@ -56,7 +56,7 @@ See `docs/design.md`, `docs/agent-code-atlas.md` when present, and `README.md` f
       /protocol         # protocol schemas + protocol-codegen
       /sim              # sim-kernel, validator, applier, replay, runner
       /services         # rng, spatial, collision, physics, pathfinding, serialization, volume, mesh, policy-view
-      /rules            # lifecycle, process, scheduler, relationship, state-machine, voxel-edit, world-bundle/legacy migration lanes
+      /rules            # lifecycle, process, scheduler, relationship, state-machine, voxel-edit, project-bundle migration lanes
       /render           # render-bridge, render-debug
       /bridge           # runtime-bridge-api manifest; native-bridge napi addon is built explicitly
       /wasm             # wasm-api replay/golden surface
