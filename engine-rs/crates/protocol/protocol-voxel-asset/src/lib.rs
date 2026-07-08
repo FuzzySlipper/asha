@@ -1,0 +1,271 @@
+//! Protocol border for Asha-native stored voxel-volume assets.
+//!
+//! # Lane
+//!
+//! `contract-steward` — owns inert DTOs and stable vocabulary for durable
+//! ProjectBundle/catalog voxel-volume assets. Rust authority validates,
+//! serializes, hashes, imports, exports, and transitions these assets between
+//! stored ProjectBundle data and runtime SessionState.
+//!
+//! # Boundary posture
+//!
+//! This is not a VoxelForge compatibility layer and does not define `.vforge`.
+//! Studio and TypeScript may display these DTOs and submit them through public
+//! facades, but they do not own validation or canonical serialization.
+
+#![forbid(unsafe_code)]
+
+use protocol_diagnostics::DiagnosticSeverity;
+use serde::{Deserialize, Serialize};
+
+/// Current supported Asha voxel-volume asset schema.
+pub const VOXEL_ASSET_SCHEMA_VERSION: u32 = 1;
+
+/// Canonical media type for the JSON envelope.
+pub const VOXEL_ASSET_MEDIA_TYPE: &str = "application/vnd.asha.voxel-volume+json;version=1";
+
+/// Canonical filename extension for this JSON envelope.
+pub const VOXEL_ASSET_EXTENSION: &str = "avxl.json";
+
+/// Stable representation tags.
+pub const VOXEL_ASSET_REPRESENTATION_KINDS: &[&str] = &["sparse_runs"];
+
+/// Stable provenance/evidence ref tags.
+pub const VOXEL_ASSET_PROVENANCE_KINDS: &[&str] = &[
+    "authored",
+    "converted",
+    "runtime_export",
+    "imported_reference",
+];
+
+/// Stable classified validation diagnostics.
+pub const VOXEL_ASSET_DIAGNOSTIC_CODES: &[&str] = &[
+    "unsupported_schema_version",
+    "unsupported_media_type",
+    "invalid_asset_id",
+    "invalid_grid",
+    "invalid_bounds",
+    "unsupported_representation",
+    "invalid_sparse_run",
+    "duplicate_voxel",
+    "duplicate_material_binding",
+    "invalid_material_reference",
+    "unknown_voxel_material",
+    "content_hash_mismatch",
+];
+
+/// Stored voxel representation kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VoxelAssetRepresentationKind {
+    SparseRuns,
+}
+
+impl VoxelAssetRepresentationKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            VoxelAssetRepresentationKind::SparseRuns => "sparse_runs",
+        }
+    }
+}
+
+/// Stored voxel-volume provenance kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VoxelAssetProvenanceKind {
+    Authored,
+    Converted,
+    RuntimeExport,
+    ImportedReference,
+}
+
+impl VoxelAssetProvenanceKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            VoxelAssetProvenanceKind::Authored => "authored",
+            VoxelAssetProvenanceKind::Converted => "converted",
+            VoxelAssetProvenanceKind::RuntimeExport => "runtime_export",
+            VoxelAssetProvenanceKind::ImportedReference => "imported_reference",
+        }
+    }
+}
+
+/// Classified stored-voxel asset diagnostic code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VoxelAssetDiagnosticCode {
+    UnsupportedSchemaVersion,
+    UnsupportedMediaType,
+    InvalidAssetId,
+    InvalidGrid,
+    InvalidBounds,
+    UnsupportedRepresentation,
+    InvalidSparseRun,
+    DuplicateVoxel,
+    DuplicateMaterialBinding,
+    InvalidMaterialReference,
+    UnknownVoxelMaterial,
+    ContentHashMismatch,
+}
+
+impl VoxelAssetDiagnosticCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            VoxelAssetDiagnosticCode::UnsupportedSchemaVersion => "unsupported_schema_version",
+            VoxelAssetDiagnosticCode::UnsupportedMediaType => "unsupported_media_type",
+            VoxelAssetDiagnosticCode::InvalidAssetId => "invalid_asset_id",
+            VoxelAssetDiagnosticCode::InvalidGrid => "invalid_grid",
+            VoxelAssetDiagnosticCode::InvalidBounds => "invalid_bounds",
+            VoxelAssetDiagnosticCode::UnsupportedRepresentation => "unsupported_representation",
+            VoxelAssetDiagnosticCode::InvalidSparseRun => "invalid_sparse_run",
+            VoxelAssetDiagnosticCode::DuplicateVoxel => "duplicate_voxel",
+            VoxelAssetDiagnosticCode::DuplicateMaterialBinding => "duplicate_material_binding",
+            VoxelAssetDiagnosticCode::InvalidMaterialReference => "invalid_material_reference",
+            VoxelAssetDiagnosticCode::UnknownVoxelMaterial => "unknown_voxel_material",
+            VoxelAssetDiagnosticCode::ContentHashMismatch => "content_hash_mismatch",
+        }
+    }
+}
+
+/// Integer coordinate in stored voxel space.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct VoxelAssetCoord {
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+}
+
+/// Inclusive stored voxel-space bounds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetBounds {
+    pub min: VoxelAssetCoord,
+    pub max: VoxelAssetCoord,
+}
+
+/// Grid placement metadata for stored voxel cells.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetGrid {
+    pub origin: [f64; 3],
+    pub cell_size: f64,
+    pub coordinate_system: String,
+}
+
+/// One compact voxel-material binding to a catalog material asset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetMaterialBinding {
+    pub voxel_material: u16,
+    pub material_asset_id: String,
+}
+
+/// One run of solid voxels along +X. Absence is empty space.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetSparseRun {
+    pub start: VoxelAssetCoord,
+    pub length: u32,
+    pub material: u16,
+}
+
+/// Stored voxel representation payload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetRepresentation {
+    pub kind: VoxelAssetRepresentationKind,
+    pub sparse_runs: Vec<VoxelAssetSparseRun>,
+}
+
+/// Provenance/evidence reference for stored voxel assets.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetProvenanceRef {
+    pub kind: VoxelAssetProvenanceKind,
+    pub uri: String,
+    pub content_hash: String,
+}
+
+/// Human/editor metadata that never owns runtime authority.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetAuthoringMetadata {
+    pub label: Option<String>,
+    pub created_by: Option<String>,
+    pub source_tool: Option<String>,
+}
+
+/// Canonical hashes recorded with the stored asset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetContentHashes {
+    pub canonical_json: String,
+    pub voxel_data: String,
+}
+
+/// One classified validation diagnostic for a stored voxel-volume asset.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelAssetDiagnostic {
+    pub code: VoxelAssetDiagnosticCode,
+    pub severity: DiagnosticSeverity,
+    pub reference: String,
+    pub message: String,
+}
+
+/// A complete Asha-native stored voxel-volume asset.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelVolumeAsset {
+    pub asset_id: String,
+    pub schema_version: u32,
+    pub media_type: String,
+    pub grid: VoxelAssetGrid,
+    pub bounds: VoxelAssetBounds,
+    pub representation: VoxelAssetRepresentation,
+    pub material_palette: Vec<VoxelAssetMaterialBinding>,
+    pub provenance: Vec<VoxelAssetProvenanceRef>,
+    pub authoring: VoxelAssetAuthoringMetadata,
+    pub validation_diagnostics: Vec<VoxelAssetDiagnostic>,
+    pub content_hashes: VoxelAssetContentHashes,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn vocabulary_tables_are_nonempty_and_unique() {
+        for table in [
+            VOXEL_ASSET_REPRESENTATION_KINDS,
+            VOXEL_ASSET_PROVENANCE_KINDS,
+            VOXEL_ASSET_DIAGNOSTIC_CODES,
+        ] {
+            assert!(!table.is_empty());
+            let mut sorted = table.to_vec();
+            sorted.sort_unstable();
+            sorted.dedup();
+            assert_eq!(sorted.len(), table.len(), "duplicate in {table:?}");
+        }
+    }
+
+    #[test]
+    fn enum_tables_match_public_strings() {
+        assert_eq!(
+            vec![VoxelAssetRepresentationKind::SparseRuns.as_str()],
+            VOXEL_ASSET_REPRESENTATION_KINDS
+        );
+        assert_eq!(
+            [
+                VoxelAssetProvenanceKind::Authored,
+                VoxelAssetProvenanceKind::Converted,
+                VoxelAssetProvenanceKind::RuntimeExport,
+                VoxelAssetProvenanceKind::ImportedReference,
+            ]
+            .iter()
+            .map(|kind| kind.as_str())
+            .collect::<Vec<_>>(),
+            VOXEL_ASSET_PROVENANCE_KINDS
+        );
+    }
+}

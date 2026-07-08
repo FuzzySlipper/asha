@@ -1,0 +1,16 @@
+[package]
+name = "protocol-voxel-asset"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Border-only crate for the Asha-native stored voxel-volume asset format.
+# Validation, canonical JSON, hashing, and stored/runtime transition checks live
+# in Rust services/rules; this crate carries only DTOs and stable vocabularies
+# that protocol-codegen mirrors to TypeScript.
+[dependencies]
+protocol-diagnostics = { path = "../protocol-diagnostics" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

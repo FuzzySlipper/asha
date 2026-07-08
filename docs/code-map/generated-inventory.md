@@ -11,7 +11,7 @@ Source metadata:
 
 ## Rust Crates By Lane
 
-### contract-steward (16)
+### contract-steward (17)
 
 - [`protocol-assets`](../../engine-rs/crates/protocol/protocol-assets/Cargo.toml) — active
 - [`protocol-codegen`](../../engine-rs/crates/protocol/protocol-codegen/Cargo.toml) — active
@@ -27,6 +27,7 @@ Source metadata:
 - [`protocol-script`](../../engine-rs/crates/protocol/protocol-script/Cargo.toml) — active
 - [`protocol-telemetry`](../../engine-rs/crates/protocol/protocol-telemetry/Cargo.toml) — active
 - [`protocol-view`](../../engine-rs/crates/protocol/protocol-view/Cargo.toml) — active
+- [`protocol-voxel-asset`](../../engine-rs/crates/protocol/protocol-voxel-asset/Cargo.toml) — active
 - [`protocol-voxel-conversion`](../../engine-rs/crates/protocol/protocol-voxel-conversion/Cargo.toml) — active
 - [`protocol-world-bundle`](../../engine-rs/crates/protocol/protocol-world-bundle/Cargo.toml) — active
 
@@ -62,7 +63,7 @@ Source metadata:
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
 - [`rule-world-bundle`](../../engine-rs/crates/rules/rule-world-bundle/Cargo.toml) — active
 
-### rust-service (14)
+### rust-service (15)
 
 - [`svc-collision`](../../engine-rs/crates/services/svc-collision/Cargo.toml) — active
 - [`svc-combat`](../../engine-rs/crates/services/svc-combat/Cargo.toml) — active
@@ -77,6 +78,7 @@ Source metadata:
 - [`svc-serialization`](../../engine-rs/crates/services/svc-serialization/Cargo.toml) — active
 - [`svc-spatial`](../../engine-rs/crates/services/svc-spatial/Cargo.toml) — active
 - [`svc-volume`](../../engine-rs/crates/services/svc-volume/Cargo.toml) — active
+- [`svc-voxel-asset`](../../engine-rs/crates/services/svc-voxel-asset/Cargo.toml) — active
 - [`svc-voxel-conversion`](../../engine-rs/crates/services/svc-voxel-conversion/Cargo.toml) — active
 
 ### rust-state (14)

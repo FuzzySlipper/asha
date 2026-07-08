@@ -1364,6 +1364,157 @@ pub fn voxel_conversion_module() -> Module {
     }
 }
 
+// ── voxelAsset.ts — Asha-native stored voxel-volume asset DTOs ───────────────
+//
+// Mirrors the border-only `protocol-voxel-asset` crate. Rust services own
+// validation, canonical JSON, hashing, and stored/runtime transitions; this
+// generated surface only carries typed ProjectBundle/catalog asset data across
+// the TS border.
+
+pub fn voxel_asset_module() -> Module {
+    let imports = vec![import("./diagnostics.js", &["DiagnosticSeverity"])];
+    let vec3 = || TsType::Tuple(vec![num(), num(), num()]);
+
+    let items = vec![
+        Item::Const {
+            doc: "Current supported Asha voxel-volume asset schema.".to_string(),
+            name: "VOXEL_ASSET_SCHEMA_VERSION".to_string(),
+            value: protocol_voxel_asset::VOXEL_ASSET_SCHEMA_VERSION.to_string(),
+        },
+        Item::Const {
+            doc: "Canonical media type for the JSON envelope.".to_string(),
+            name: "VOXEL_ASSET_MEDIA_TYPE".to_string(),
+            value: format!("{:?}", protocol_voxel_asset::VOXEL_ASSET_MEDIA_TYPE),
+        },
+        Item::Const {
+            doc: "Canonical filename extension for this JSON envelope.".to_string(),
+            name: "VOXEL_ASSET_EXTENSION".to_string(),
+            value: format!("{:?}", protocol_voxel_asset::VOXEL_ASSET_EXTENSION),
+        },
+        string_enum(
+            "Stored voxel representation kind.",
+            "VoxelAssetRepresentationKind",
+            protocol_voxel_asset::VOXEL_ASSET_REPRESENTATION_KINDS,
+        ),
+        string_enum(
+            "Stored voxel-volume provenance kind.",
+            "VoxelAssetProvenanceKind",
+            protocol_voxel_asset::VOXEL_ASSET_PROVENANCE_KINDS,
+        ),
+        string_enum(
+            "Classified stored-voxel asset diagnostic code.",
+            "VoxelAssetDiagnosticCode",
+            protocol_voxel_asset::VOXEL_ASSET_DIAGNOSTIC_CODES,
+        ),
+        iface(
+            "Integer coordinate in stored voxel space.",
+            "VoxelAssetCoord",
+            vec![f("x", num()), f("y", num()), f("z", num())],
+        ),
+        iface(
+            "Inclusive stored voxel-space bounds.",
+            "VoxelAssetBounds",
+            vec![
+                f("min", r("VoxelAssetCoord")),
+                f("max", r("VoxelAssetCoord")),
+            ],
+        ),
+        iface(
+            "Grid placement metadata for stored voxel cells.",
+            "VoxelAssetGrid",
+            vec![
+                f("origin", vec3()),
+                f("cellSize", num()),
+                f("coordinateSystem", string()),
+            ],
+        ),
+        iface(
+            "One compact voxel-material binding to a catalog material asset.",
+            "VoxelAssetMaterialBinding",
+            vec![f("voxelMaterial", num()), f("materialAssetId", string())],
+        ),
+        iface(
+            "One run of solid voxels along +X. Absence is empty space.",
+            "VoxelAssetSparseRun",
+            vec![
+                f("start", r("VoxelAssetCoord")),
+                f("length", num()),
+                f("material", num()),
+            ],
+        ),
+        iface(
+            "Stored voxel representation payload.",
+            "VoxelAssetRepresentation",
+            vec![
+                f("kind", r("VoxelAssetRepresentationKind")),
+                f("sparseRuns", TsType::array(r("VoxelAssetSparseRun"))),
+            ],
+        ),
+        iface(
+            "Provenance/evidence reference for stored voxel assets.",
+            "VoxelAssetProvenanceRef",
+            vec![
+                f("kind", r("VoxelAssetProvenanceKind")),
+                f("uri", string()),
+                f("contentHash", string()),
+            ],
+        ),
+        iface(
+            "Human/editor metadata that never owns runtime authority.",
+            "VoxelAssetAuthoringMetadata",
+            vec![
+                f("label", TsType::nullable(string())),
+                f("createdBy", TsType::nullable(string())),
+                f("sourceTool", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "Canonical hashes recorded with the stored asset.",
+            "VoxelAssetContentHashes",
+            vec![f("canonicalJson", string()), f("voxelData", string())],
+        ),
+        iface(
+            "One classified validation diagnostic for a stored voxel-volume asset.",
+            "VoxelAssetDiagnostic",
+            vec![
+                f("code", r("VoxelAssetDiagnosticCode")),
+                f("severity", r("DiagnosticSeverity")),
+                f("reference", string()),
+                f("message", string()),
+            ],
+        ),
+        iface(
+            "A complete Asha-native stored voxel-volume asset.",
+            "VoxelVolumeAsset",
+            vec![
+                f("assetId", string()),
+                f("schemaVersion", num()),
+                f("mediaType", string()),
+                f("grid", r("VoxelAssetGrid")),
+                f("bounds", r("VoxelAssetBounds")),
+                f("representation", r("VoxelAssetRepresentation")),
+                f(
+                    "materialPalette",
+                    TsType::array(r("VoxelAssetMaterialBinding")),
+                ),
+                f("provenance", TsType::array(r("VoxelAssetProvenanceRef"))),
+                f("authoring", r("VoxelAssetAuthoringMetadata")),
+                f(
+                    "validationDiagnostics",
+                    TsType::array(r("VoxelAssetDiagnostic")),
+                ),
+                f("contentHashes", r("VoxelAssetContentHashes")),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "voxelAsset",
+        imports,
+        items,
+    }
+}
+
 // ── gameRules.ts — generic effect/modifier catalog DTOs ──────────────────────
 //
 // Mirrors the border-only `protocol-game-rules` crate. Game rules authority and
@@ -3294,6 +3445,9 @@ pub fn index_module() -> Module {
                 from: "./voxelConversion.js".to_string(),
             },
             Item::ReExport {
+                from: "./voxelAsset.js".to_string(),
+            },
+            Item::ReExport {
                 from: "./gameRules.js".to_string(),
             },
             Item::ReExport {
@@ -3336,6 +3490,7 @@ pub fn all_modules() -> Vec<Module> {
         replay_module(),
         voxel_module(),
         voxel_conversion_module(),
+        voxel_asset_module(),
         game_rules_module(),
         game_extension_module(),
         scene_module(),

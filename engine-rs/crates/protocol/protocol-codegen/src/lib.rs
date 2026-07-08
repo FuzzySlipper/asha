@@ -159,6 +159,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/replay.ts"),
                 format!("{OUTPUT_DIR}/voxel.ts"),
                 format!("{OUTPUT_DIR}/voxelConversion.ts"),
+                format!("{OUTPUT_DIR}/voxelAsset.ts"),
                 format!("{OUTPUT_DIR}/gameRules.ts"),
                 format!("{OUTPUT_DIR}/gameExtension.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
@@ -355,6 +356,17 @@ mod tests {
             interface_coverage_key("voxelConversion", "VoxelModelInfoRequest"),
             interface_coverage_key("voxelConversion", "VoxelModelMaterialCount"),
             interface_coverage_key("voxelConversion", "VoxelModelInfoReadout"),
+            interface_coverage_key("voxelAsset", "VoxelAssetCoord"),
+            interface_coverage_key("voxelAsset", "VoxelAssetBounds"),
+            interface_coverage_key("voxelAsset", "VoxelAssetGrid"),
+            interface_coverage_key("voxelAsset", "VoxelAssetMaterialBinding"),
+            interface_coverage_key("voxelAsset", "VoxelAssetSparseRun"),
+            interface_coverage_key("voxelAsset", "VoxelAssetRepresentation"),
+            interface_coverage_key("voxelAsset", "VoxelAssetProvenanceRef"),
+            interface_coverage_key("voxelAsset", "VoxelAssetAuthoringMetadata"),
+            interface_coverage_key("voxelAsset", "VoxelAssetContentHashes"),
+            interface_coverage_key("voxelAsset", "VoxelAssetDiagnostic"),
+            interface_coverage_key("voxelAsset", "VoxelVolumeAsset"),
         ]
         .into_iter()
         .collect()
@@ -957,6 +969,40 @@ mod tests {
         assert!(vc.contains("export interface VoxelConversionEvidenceRef {"));
         assert!(vc.contains("readonly transform: readonly [number, number, number, number"));
         assert!(vc.contains("readonly defaultVoxelMaterial: number | null;"));
+    }
+
+    /// Focused behavior test for the `voxelAsset` family: schema/media constants
+    /// and DTO shapes are sourced from `protocol-voxel-asset` and exposed through
+    /// the generated public contract surface. Guard for #4816.
+    #[test]
+    fn voxel_asset_family_emits_storage_contract() {
+        let va = file("voxelAsset.ts");
+        assert!(va.contains("import type { DiagnosticSeverity } from './diagnostics.js';"));
+        assert!(va.contains("export const VOXEL_ASSET_SCHEMA_VERSION = 1;"));
+        assert!(va.contains(
+            "export const VOXEL_ASSET_MEDIA_TYPE = \"application/vnd.asha.voxel-volume+json;version=1\";"
+        ));
+        assert!(va.contains("export const VOXEL_ASSET_EXTENSION = \"avxl.json\";"));
+        for kind in protocol_voxel_asset::VOXEL_ASSET_REPRESENTATION_KINDS {
+            assert!(
+                va.contains(&format!("'{kind}'")),
+                "missing representation kind {kind}"
+            );
+        }
+        for kind in protocol_voxel_asset::VOXEL_ASSET_PROVENANCE_KINDS {
+            assert!(
+                va.contains(&format!("'{kind}'")),
+                "missing provenance kind {kind}"
+            );
+        }
+        for code in protocol_voxel_asset::VOXEL_ASSET_DIAGNOSTIC_CODES {
+            assert!(va.contains(&format!("'{code}'")), "missing code {code}");
+        }
+
+        assert!(va.contains("export interface VoxelVolumeAsset {"));
+        assert!(va.contains("readonly materialPalette: readonly VoxelAssetMaterialBinding[];"));
+        assert!(va.contains("readonly validationDiagnostics: readonly VoxelAssetDiagnostic[];"));
+        assert!(va.contains("readonly contentHashes: VoxelAssetContentHashes;"));
     }
 
     #[test]

@@ -418,6 +418,7 @@ dependencies = [
  "protocol-scene",
  "protocol-telemetry",
  "protocol-view",
+ "protocol-voxel-asset",
  "protocol-voxel-conversion",
  "protocol-world-bundle",
  "serde_json",
@@ -525,6 +526,15 @@ name = "protocol-view"
 version = "0.1.0"
 dependencies = [
  "core-space",
+]
+
+[[package]]
+name = "protocol-voxel-asset"
+version = "0.1.0"
+dependencies = [
+ "protocol-diagnostics",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1046,6 +1056,16 @@ version = "0.1.0"
 dependencies = [
  "core-space",
  "core-voxel",
+]
+
+[[package]]
+name = "svc-voxel-asset"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "protocol-diagnostics",
+ "protocol-voxel-asset",
+ "serde_json",
 ]
 
 [[package]]
