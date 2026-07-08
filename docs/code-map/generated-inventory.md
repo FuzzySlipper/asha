@@ -249,7 +249,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/policy`](../../harness/fixtures/policy) — 1 files
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files
 - [`harness/fixtures/policy-outputs`](../../harness/fixtures/policy-outputs) — 3 files
-- [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 13 files
+- [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 14 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files
 - [`harness/fixtures/scenes`](../../harness/fixtures/scenes) — 4 files
@@ -268,7 +268,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 ### harness/goldens (7 groups)
 
 - [`harness/goldens/protocol`](../../harness/goldens/protocol) — 1 files
-- [`harness/goldens/render-diffs`](../../harness/goldens/render-diffs) — 10 files
+- [`harness/goldens/render-diffs`](../../harness/goldens/render-diffs) — 11 files
 - [`harness/goldens/render-projection`](../../harness/goldens/render-projection) — 2 files
 - [`harness/goldens/replays`](../../harness/goldens/replays) — 2 files
 - [`harness/goldens/screenshots`](../../harness/goldens/screenshots) — 2 files
