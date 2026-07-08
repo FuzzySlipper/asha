@@ -1,9 +1,7 @@
-export const ASHA_GAME_WORKSPACE_COMPATIBILITY = {
-    contracts: { compatibilityVersion: 'contracts.v0', packageVersion: '0.1.0' },
-    runtimeBridge: { compatibilityVersion: 'runtime-bridge.v0', packageVersion: '0.1.0' },
-    devtoolsProtocol: { compatibilityVersion: 'devtools-protocol.v0' },
-    publishArtifact: { compatibilityVersion: 'publish-artifact.v0' },
-};
+export { validateAshaConsumerCompatibility } from './manifest-compatibility.js';
+export { ASHA_GAME_WORKSPACE_COMPATIBILITY } from './manifest-types.js';
+import { manifestDiagnostic as diag, } from './manifest-types.js';
+import { parseTomlSubset } from './manifest-toml.js';
 const REQUIRED_SECTIONS = ['asha', 'workspace', 'runtime', 'studio', 'publish', 'dev_resource_profile', 'publish_resource_profile'];
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const LOCAL_WEBSOCKET_ENDPOINT_PATTERN = /^wss?:\/\/(?:127\.0\.0\.1|localhost):\d+(?:\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=-]*)?$/;
@@ -13,106 +11,6 @@ export function parseAshaGameManifestToml(toml) {
         return { ok: false, diagnostics: parsed.diagnostics };
     }
     return decodeAndValidateManifest(parsed.document);
-}
-export function validateAshaConsumerCompatibility(manifest, metadata) {
-    const diagnostics = [];
-    const contracts = requireSurface(metadata.contracts, 'contracts', diagnostics);
-    const runtimeBridge = requireSurface(metadata.runtimeBridge, 'runtimeBridge', diagnostics);
-    const devtoolsProtocol = requireProtocol(metadata.devtoolsProtocol, 'devtoolsProtocol', diagnostics);
-    const publishArtifact = requireProtocol(metadata.publishArtifact, 'publishArtifact', diagnostics);
-    if (contracts !== null) {
-        compareVersion(manifest.asha.contractsVersion, contracts.packageVersion, 'asha.contracts_version', diagnostics);
-    }
-    if (runtimeBridge !== null) {
-        compareVersion(manifest.asha.runtimeBridgeVersion, runtimeBridge.packageVersion, 'asha.runtime_bridge_version', diagnostics);
-    }
-    if (devtoolsProtocol !== null) {
-        compareVersion(manifest.asha.devtoolsProtocolVersion, devtoolsProtocol.compatibilityVersion, 'asha.devtools_protocol_version', diagnostics);
-    }
-    if (publishArtifact !== null) {
-        compareVersion(manifest.asha.publishArtifactFormatVersion, publishArtifact.compatibilityVersion, 'asha.publish_artifact_format_version', diagnostics);
-    }
-    if (diagnostics.length > 0 || contracts === null || runtimeBridge === null || devtoolsProtocol === null || publishArtifact === null) {
-        return { ok: false, diagnostics };
-    }
-    return {
-        ok: true,
-        metadata: { contracts, runtimeBridge, devtoolsProtocol, publishArtifact },
-        diagnostics: [],
-    };
-}
-function parseTomlSubset(toml) {
-    const document = {};
-    let currentSection = null;
-    const diagnostics = [];
-    toml.split(/\r?\n/).forEach((rawLine, index) => {
-        const lineNumber = index + 1;
-        const line = stripComment(rawLine).trim();
-        if (line.length === 0) {
-            return;
-        }
-        const sectionMatch = /^\[([A-Za-z0-9_-]+)\]$/.exec(line);
-        if (sectionMatch) {
-            currentSection = sectionMatch[1];
-            document[currentSection] ??= {};
-            return;
-        }
-        if (currentSection === null) {
-            diagnostics.push(diag('toml_parse_error', `line ${lineNumber}`, 'manifest keys must be inside a section'));
-            return;
-        }
-        const assignmentMatch = /^([A-Za-z0-9_]+)\s*=\s*(.+)$/.exec(line);
-        if (!assignmentMatch) {
-            diagnostics.push(diag('toml_parse_error', `line ${lineNumber}`, 'expected key = value'));
-            return;
-        }
-        const key = assignmentMatch[1];
-        const rawValue = assignmentMatch[2].trim();
-        const value = parseTomlValue(rawValue, `line ${lineNumber}`);
-        if (value.ok) {
-            document[currentSection][key] = value.value;
-        }
-        else {
-            diagnostics.push(value.diagnostic);
-        }
-    });
-    return diagnostics.length === 0 ? { ok: true, document } : { ok: false, diagnostics };
-}
-function stripComment(line) {
-    let inString = false;
-    for (let i = 0; i < line.length; i += 1) {
-        const char = line[i];
-        if (char === '"' && line[i - 1] !== '\\') {
-            inString = !inString;
-        }
-        if (char === '#' && !inString) {
-            return line.slice(0, i);
-        }
-    }
-    return line;
-}
-function parseTomlValue(rawValue, path) {
-    if (rawValue === 'true') {
-        return { ok: true, value: true };
-    }
-    if (rawValue === 'false') {
-        return { ok: true, value: false };
-    }
-    if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-        return { ok: true, value: rawValue.slice(1, -1) };
-    }
-    if (rawValue.startsWith('[') && rawValue.endsWith(']')) {
-        const inner = rawValue.slice(1, -1).trim();
-        if (inner.length === 0) {
-            return { ok: true, value: [] };
-        }
-        const values = inner.split(',').map((part) => part.trim());
-        if (!values.every((part) => part.startsWith('"') && part.endsWith('"'))) {
-            return { ok: false, diagnostic: diag('toml_parse_error', path, 'only string arrays are supported in asha.game.toml') };
-        }
-        return { ok: true, value: values.map((part) => part.slice(1, -1)) };
-    }
-    return { ok: false, diagnostic: diag('toml_parse_error', path, 'expected a string, boolean, or string array') };
 }
 function decodeAndValidateManifest(document) {
     const diagnostics = [];
@@ -229,25 +127,6 @@ function validateResourceProfiles(manifest, diagnostics) {
         diagnostics.push(diag('invalid_resource_profile', 'publish_resource_profile.resolution_policy', 'publish resolution_policy must be "locked"'));
     }
 }
-function requireSurface(surface, path, diagnostics) {
-    if (surface === undefined || surface.compatibilityVersion.length === 0 || surface.packageVersion.length === 0) {
-        diagnostics.push(compatDiag('missing_metadata', path, `missing ${path} compatibility metadata`));
-        return null;
-    }
-    return surface;
-}
-function requireProtocol(protocol, path, diagnostics) {
-    if (protocol === undefined || protocol.compatibilityVersion.length === 0) {
-        diagnostics.push(compatDiag('missing_metadata', path, `missing ${path} compatibility metadata`));
-        return null;
-    }
-    return protocol;
-}
-function compareVersion(manifestVersion, metadataVersion, path, diagnostics) {
-    if (manifestVersion !== metadataVersion) {
-        diagnostics.push(compatDiag('incompatible_version', path, `manifest declares "${manifestVersion}" but ASHA metadata provides "${metadataVersion}"`));
-    }
-}
 function validateVersion(version, path, diagnostics) {
     if (!VERSION_PATTERN.test(version)) {
         diagnostics.push(diag('bad_version', path, `version "${version}" must be semver-like x.y.z`));
@@ -341,11 +220,5 @@ function getBackendMode(document, diagnostics) {
     }
     diagnostics.push(diag('unsupported_backend_mode', 'runtime.backend_mode', 'backend_mode must be one of reference, native, or wasm'));
     return 'reference';
-}
-function diag(code, path, message) {
-    return { code, path, message };
-}
-function compatDiag(code, path, message) {
-    return { code, path, message };
 }
 //# sourceMappingURL=manifest.js.map

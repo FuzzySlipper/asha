@@ -1,128 +1,27 @@
-export interface AshaGameManifest {
-  readonly asha: {
-    readonly engineVersion: string;
-    readonly contractsVersion: string;
-    readonly runtimeBridgeVersion: string;
-    readonly devtoolsProtocolVersion: string;
-    readonly publishArtifactFormatVersion: string;
-    readonly engineSource: string;
-  };
-  readonly workspace: {
-    readonly sceneRoots: readonly string[];
-    readonly assetRoots: readonly string[];
-    readonly replayRoots: readonly string[];
-    readonly catalogPackages: readonly string[];
-    readonly policyPackages: readonly string[];
-  };
-  readonly runtime: {
-    readonly devCommand: string;
-    readonly devtoolsEndpoint: string;
-    readonly wasmOrNativeEntry: string;
-    readonly backendMode: AshaGameRuntimeBackendMode;
-    readonly backendProfile: string;
-    readonly backendProofRefs: readonly string[];
-  };
-  readonly studio: {
-    readonly workspaceMode: boolean;
-    readonly attachEnabled: boolean;
-    readonly allowedSourceWrites: readonly string[];
-  };
-  readonly publish: {
-    readonly command: string;
-    readonly artifactDir: string;
-    readonly verifyCommand: string;
-  };
-  readonly devResourceProfile: {
-    readonly localRoots: readonly string[];
-    readonly cacheDir: string;
-    readonly resolutionPolicy: string;
-  };
-  readonly publishResourceProfile: {
-    readonly outputDir: string;
-    readonly archiveDir: string;
-    readonly resolutionPolicy: string;
-  };
-}
+export { validateAshaConsumerCompatibility } from './manifest-compatibility.js';
+export type {
+  AshaCompatibilitySurfaceMetadata,
+  AshaConsumerCompatibilityDiagnostic,
+  AshaConsumerCompatibilityDiagnosticCode,
+  AshaConsumerCompatibilityMetadata,
+  AshaConsumerCompatibilityValidation,
+  AshaGameManifest,
+  AshaGameManifestDiagnostic,
+  AshaGameManifestDiagnosticCode,
+  AshaGameManifestValidation,
+  AshaGameRuntimeBackendMode,
+  AshaProtocolCompatibilityMetadata,
+} from './manifest-types.js';
+export { ASHA_GAME_WORKSPACE_COMPATIBILITY } from './manifest-types.js';
 
-export type AshaGameManifestDiagnosticCode =
-  | 'toml_parse_error'
-  | 'missing_required_field'
-  | 'missing_root'
-  | 'bad_version'
-  | 'unsupported_endpoint'
-  | 'unsupported_backend_mode'
-  | 'missing_backend_ref'
-  | 'private_transport_hint'
-  | 'invalid_write_scope'
-  | 'invalid_resource_profile'
-  | 'invalid_path';
-
-export type AshaGameRuntimeBackendMode = 'reference' | 'native' | 'wasm';
-
-export interface AshaGameManifestDiagnostic {
-  readonly code: AshaGameManifestDiagnosticCode;
-  readonly path: string;
-  readonly message: string;
-}
-
-export type AshaConsumerCompatibilityDiagnosticCode =
-  | 'missing_metadata'
-  | 'incompatible_version';
-
-export interface AshaConsumerCompatibilityDiagnostic {
-  readonly code: AshaConsumerCompatibilityDiagnosticCode;
-  readonly path: string;
-  readonly message: string;
-}
-
-export interface AshaCompatibilitySurfaceMetadata {
-  readonly compatibilityVersion: string;
-  readonly packageVersion: string;
-}
-
-export interface AshaProtocolCompatibilityMetadata {
-  readonly compatibilityVersion: string;
-}
-
-export interface AshaConsumerCompatibilityMetadata {
-  readonly contracts: AshaCompatibilitySurfaceMetadata;
-  readonly runtimeBridge: AshaCompatibilitySurfaceMetadata;
-  readonly devtoolsProtocol: AshaProtocolCompatibilityMetadata;
-  readonly publishArtifact: AshaProtocolCompatibilityMetadata;
-}
-
-export type AshaConsumerCompatibilityValidation =
-  | {
-      readonly ok: true;
-      readonly metadata: AshaConsumerCompatibilityMetadata;
-      readonly diagnostics: readonly [];
-    }
-  | {
-      readonly ok: false;
-      readonly diagnostics: readonly AshaConsumerCompatibilityDiagnostic[];
-    };
-
-export const ASHA_GAME_WORKSPACE_COMPATIBILITY: AshaConsumerCompatibilityMetadata = {
-  contracts: { compatibilityVersion: 'contracts.v0', packageVersion: '0.1.0' },
-  runtimeBridge: { compatibilityVersion: 'runtime-bridge.v0', packageVersion: '0.1.0' },
-  devtoolsProtocol: { compatibilityVersion: 'devtools-protocol.v0' },
-  publishArtifact: { compatibilityVersion: 'publish-artifact.v0' },
-};
-
-export type AshaGameManifestValidation =
-  | {
-      readonly ok: true;
-      readonly manifest: AshaGameManifest;
-      readonly diagnostics: readonly [];
-    }
-  | {
-      readonly ok: false;
-      readonly diagnostics: readonly AshaGameManifestDiagnostic[];
-    };
-
-type TomlScalar = string | boolean | readonly string[];
-type TomlSection = Record<string, TomlScalar>;
-type TomlDocument = Record<string, TomlSection>;
+import {
+  manifestDiagnostic as diag,
+  type AshaGameManifest,
+  type AshaGameManifestDiagnostic,
+  type AshaGameManifestValidation,
+  type AshaGameRuntimeBackendMode,
+} from './manifest-types.js';
+import { parseTomlSubset, type TomlDocument } from './manifest-toml.js';
 
 const REQUIRED_SECTIONS = ['asha', 'workspace', 'runtime', 'studio', 'publish', 'dev_resource_profile', 'publish_resource_profile'] as const;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -135,121 +34,6 @@ export function parseAshaGameManifestToml(toml: string): AshaGameManifestValidat
   }
 
   return decodeAndValidateManifest(parsed.document);
-}
-
-export function validateAshaConsumerCompatibility(
-  manifest: AshaGameManifest,
-  metadata: Partial<AshaConsumerCompatibilityMetadata>,
-): AshaConsumerCompatibilityValidation {
-  const diagnostics: AshaConsumerCompatibilityDiagnostic[] = [];
-  const contracts = requireSurface(metadata.contracts, 'contracts', diagnostics);
-  const runtimeBridge = requireSurface(metadata.runtimeBridge, 'runtimeBridge', diagnostics);
-  const devtoolsProtocol = requireProtocol(metadata.devtoolsProtocol, 'devtoolsProtocol', diagnostics);
-  const publishArtifact = requireProtocol(metadata.publishArtifact, 'publishArtifact', diagnostics);
-
-  if (contracts !== null) {
-    compareVersion(manifest.asha.contractsVersion, contracts.packageVersion, 'asha.contracts_version', diagnostics);
-  }
-  if (runtimeBridge !== null) {
-    compareVersion(manifest.asha.runtimeBridgeVersion, runtimeBridge.packageVersion, 'asha.runtime_bridge_version', diagnostics);
-  }
-  if (devtoolsProtocol !== null) {
-    compareVersion(manifest.asha.devtoolsProtocolVersion, devtoolsProtocol.compatibilityVersion, 'asha.devtools_protocol_version', diagnostics);
-  }
-  if (publishArtifact !== null) {
-    compareVersion(manifest.asha.publishArtifactFormatVersion, publishArtifact.compatibilityVersion, 'asha.publish_artifact_format_version', diagnostics);
-  }
-
-  if (diagnostics.length > 0 || contracts === null || runtimeBridge === null || devtoolsProtocol === null || publishArtifact === null) {
-    return { ok: false, diagnostics };
-  }
-
-  return {
-    ok: true,
-    metadata: { contracts, runtimeBridge, devtoolsProtocol, publishArtifact },
-    diagnostics: [],
-  };
-}
-
-function parseTomlSubset(toml: string): { readonly ok: true; readonly document: TomlDocument } | { readonly ok: false; readonly diagnostics: readonly AshaGameManifestDiagnostic[] } {
-  const document: TomlDocument = {};
-  let currentSection: string | null = null;
-  const diagnostics: AshaGameManifestDiagnostic[] = [];
-
-  toml.split(/\r?\n/).forEach((rawLine, index) => {
-    const lineNumber = index + 1;
-    const line = stripComment(rawLine).trim();
-    if (line.length === 0) {
-      return;
-    }
-
-    const sectionMatch = /^\[([A-Za-z0-9_-]+)\]$/.exec(line);
-    if (sectionMatch) {
-      currentSection = sectionMatch[1]!;
-      document[currentSection] ??= {};
-      return;
-    }
-
-    if (currentSection === null) {
-      diagnostics.push(diag('toml_parse_error', `line ${lineNumber}`, 'manifest keys must be inside a section'));
-      return;
-    }
-
-    const assignmentMatch = /^([A-Za-z0-9_]+)\s*=\s*(.+)$/.exec(line);
-    if (!assignmentMatch) {
-      diagnostics.push(diag('toml_parse_error', `line ${lineNumber}`, 'expected key = value'));
-      return;
-    }
-
-    const key = assignmentMatch[1]!;
-    const rawValue = assignmentMatch[2]!.trim();
-    const value = parseTomlValue(rawValue, `line ${lineNumber}`);
-    if (value.ok) {
-      document[currentSection]![key] = value.value;
-    } else {
-      diagnostics.push(value.diagnostic);
-    }
-  });
-
-  return diagnostics.length === 0 ? { ok: true, document } : { ok: false, diagnostics };
-}
-
-function stripComment(line: string): string {
-  let inString = false;
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    if (char === '"' && line[i - 1] !== '\\') {
-      inString = !inString;
-    }
-    if (char === '#' && !inString) {
-      return line.slice(0, i);
-    }
-  }
-  return line;
-}
-
-function parseTomlValue(rawValue: string, path: string): { readonly ok: true; readonly value: TomlScalar } | { readonly ok: false; readonly diagnostic: AshaGameManifestDiagnostic } {
-  if (rawValue === 'true') {
-    return { ok: true, value: true };
-  }
-  if (rawValue === 'false') {
-    return { ok: true, value: false };
-  }
-  if (rawValue.startsWith('"') && rawValue.endsWith('"')) {
-    return { ok: true, value: rawValue.slice(1, -1) };
-  }
-  if (rawValue.startsWith('[') && rawValue.endsWith(']')) {
-    const inner = rawValue.slice(1, -1).trim();
-    if (inner.length === 0) {
-      return { ok: true, value: [] };
-    }
-    const values = inner.split(',').map((part) => part.trim());
-    if (!values.every((part) => part.startsWith('"') && part.endsWith('"'))) {
-      return { ok: false, diagnostic: diag('toml_parse_error', path, 'only string arrays are supported in asha.game.toml') };
-    }
-    return { ok: true, value: values.map((part) => part.slice(1, -1)) };
-  }
-  return { ok: false, diagnostic: diag('toml_parse_error', path, 'expected a string, boolean, or string array') };
 }
 
 function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestValidation {
@@ -378,41 +162,6 @@ function validateResourceProfiles(manifest: AshaGameManifest, diagnostics: AshaG
   }
 }
 
-function requireSurface(
-  surface: AshaCompatibilitySurfaceMetadata | undefined,
-  path: string,
-  diagnostics: AshaConsumerCompatibilityDiagnostic[],
-): AshaCompatibilitySurfaceMetadata | null {
-  if (surface === undefined || surface.compatibilityVersion.length === 0 || surface.packageVersion.length === 0) {
-    diagnostics.push(compatDiag('missing_metadata', path, `missing ${path} compatibility metadata`));
-    return null;
-  }
-  return surface;
-}
-
-function requireProtocol(
-  protocol: AshaProtocolCompatibilityMetadata | undefined,
-  path: string,
-  diagnostics: AshaConsumerCompatibilityDiagnostic[],
-): AshaProtocolCompatibilityMetadata | null {
-  if (protocol === undefined || protocol.compatibilityVersion.length === 0) {
-    diagnostics.push(compatDiag('missing_metadata', path, `missing ${path} compatibility metadata`));
-    return null;
-  }
-  return protocol;
-}
-
-function compareVersion(
-  manifestVersion: string,
-  metadataVersion: string,
-  path: string,
-  diagnostics: AshaConsumerCompatibilityDiagnostic[],
-): void {
-  if (manifestVersion !== metadataVersion) {
-    diagnostics.push(compatDiag('incompatible_version', path, `manifest declares "${manifestVersion}" but ASHA metadata provides "${metadataVersion}"`));
-  }
-}
-
 function validateVersion(version: string, path: string, diagnostics: AshaGameManifestDiagnostic[]): void {
   if (!VERSION_PATTERN.test(version)) {
     diagnostics.push(diag('bad_version', path, `version "${version}" must be semver-like x.y.z`));
@@ -516,12 +265,4 @@ function getBackendMode(document: TomlDocument, diagnostics: AshaGameManifestDia
   }
   diagnostics.push(diag('unsupported_backend_mode', 'runtime.backend_mode', 'backend_mode must be one of reference, native, or wasm'));
   return 'reference';
-}
-
-function diag(code: AshaGameManifestDiagnosticCode, path: string, message: string): AshaGameManifestDiagnostic {
-  return { code, path, message };
-}
-
-function compatDiag(code: AshaConsumerCompatibilityDiagnosticCode, path: string, message: string): AshaConsumerCompatibilityDiagnostic {
-  return { code, path, message };
 }
