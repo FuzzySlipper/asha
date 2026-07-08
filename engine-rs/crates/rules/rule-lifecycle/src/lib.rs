@@ -1,12 +1,20 @@
-//! Lifecycle rule composition for the narrow FPS RuntimeSession authority slice.
+//! Lifecycle rule composition for generic entity lifecycle primitives and the
+//! narrow FPS RuntimeSession authority slice.
 //!
 //! # Lane
 //!
 //! `rust-rule` composes state/protocol/service crates into explicit lifecycle
 //! transitions. This crate does not render, run UI, or execute policy scripts.
-//! For the current FPS demo loop it owns the ProjectBundle bootstrap readout,
+//!
+//! [`lifecycle_primitives`] is the product-neutral layer: explicit spawn,
+//! despawn, and terminal-state transitions over an entity identity.
+//!
+//! The `Fps*` public APIs below are intentionally not generic. They are the
+//! current FPS RuntimeSession authority cell for ProjectBundle bootstrap,
 //! health/death lifecycle state, primary-fire application, and render visibility
-//! lifecycle projection over the lower-level `svc-*` substrates.
+//! lifecycle projection over the lower-level `svc-*` substrates. Future
+//! extraction should move reusable pieces out of the `Fps*` layer rather than
+//! making downstream games depend on FPS-shaped authority helpers.
 
 #![forbid(unsafe_code)]
 
@@ -35,6 +43,8 @@ use svc_entity_authoring::{
     RuleOwnedEntityAuthoringOutcome,
 };
 use svc_game_rules::resolve_protocol_request;
+
+pub mod lifecycle_primitives;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FpsRuntimeRole {

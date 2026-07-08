@@ -574,7 +574,10 @@ Services may be hot-loop optimized internally without turning the whole engine i
 
 ### 8.6 Rule crates
 
-Rule crates are authoritative but still generic at the infrastructure stage. They should prove that domain-specific rules can be added later without introducing domain assumptions now.
+Rule crates are authoritative. Their preferred shape is product-neutral and
+explicit, but a rule crate may host a named product-shaped authority slice when
+the boundary is documented in code and ownership metadata. Generic primitives
+must stay mechanically distinguishable from those product-shaped helpers.
 
 Early neutral examples:
 
@@ -584,7 +587,10 @@ Early neutral examples:
 - `rule-relationship`
 - `rule-state-machine`
 
-These crates should operate on abstract fixtures and generic entity/process concepts only.
+Generic rule APIs should operate on abstract fixtures and generic
+entity/process concepts only. Product-shaped APIs must be labelled by domain or
+feature, such as the current `rule-lifecycle` `lifecycle_primitives` layer
+beside its intentionally FPS-shaped RuntimeSession authority helpers.
 
 ### 8.7 Render bridge crates
 

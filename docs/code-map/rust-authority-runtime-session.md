@@ -12,6 +12,10 @@ projections.
 - Command validation, accepted state mutation, deterministic replay, and hashes.
 - FPS lifecycle, combat, nav, camera, game-rules, voxel, and world-bundle
   authority paths when they are reusable engine substrate.
+- `rule-lifecycle::lifecycle_primitives` as the product-neutral spawn/despawn
+  and terminal-state primitive layer.
+- `rule-lifecycle` `Fps*` APIs as the current FPS RuntimeSession authority
+  layer over `svc-entity-authoring`, `svc-combat`, and collision/rules services.
 
 ## Does Not Own
 
@@ -63,6 +67,8 @@ projections.
 
 - Missing or too-narrow RuntimeSession behavior: create an `asha-engine` task
   tagged `runtime-session`, `rust-rule`, or `rust-service`.
+- Reusable lifecycle behavior: extend `rule-lifecycle::lifecycle_primitives`
+  first, then layer product-specific APIs over it when needed.
 - Consumer ergonomics only: route to the downstream repo after the public
   engine surface exists.
 - Cross-lane dependency changes: update [ownership.toml](../../governance/ownership.toml)
