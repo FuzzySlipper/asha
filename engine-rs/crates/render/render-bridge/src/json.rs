@@ -9,7 +9,8 @@
 //! which keeps the committed fixture small and reviewable.
 
 use protocol_render::{
-    BillboardMode, Geometry, Material, MeshAttributeName, MeshCollisionPolicy, MeshMaterialSlot,
+    AnimatedMeshAsset, AnimatedMeshInstanceDescriptor, AnimatedMeshPlaybackCommand, BillboardMode,
+    Geometry, Material, MeshAttributeName, MeshCollisionPolicy, MeshMaterialSlot,
     MeshPayloadDescriptor, MeshPayloadSource, RenderDiff, RenderFrameDiff, RenderMetadata,
     RenderNode, SpriteAttachment, SpriteDepthPolicy, SpriteInstanceDescriptor, SpriteShading,
     SpriteSizeMode, StaticMeshAsset, StaticMeshInstanceDescriptor, Transform,
@@ -130,6 +131,11 @@ fn encode_diff(out: &mut String, diff: &RenderDiff) {
             encode_static_mesh_asset(out, asset);
             out.push_str(" }");
         }
+        RenderDiff::DefineAnimatedMesh { asset } => {
+            out.push_str("{ \"op\": \"defineAnimatedMesh\", \"asset\": ");
+            encode_animated_mesh_asset(out, asset);
+            out.push_str(" }");
+        }
         RenderDiff::CreateStaticMeshInstance {
             handle,
             parent,
@@ -145,6 +151,31 @@ fn encode_diff(out: &mut String, diff: &RenderDiff) {
             }
             out.push_str(", \"instance\": ");
             encode_static_mesh_instance(out, instance);
+            out.push_str(" }");
+        }
+        RenderDiff::CreateAnimatedMeshInstance {
+            handle,
+            parent,
+            instance,
+        } => {
+            out.push_str(&format!(
+                "{{ \"op\": \"createAnimatedMeshInstance\", \"handle\": {}, \"parent\": ",
+                handle.raw()
+            ));
+            match parent {
+                Some(p) => out.push_str(&p.raw().to_string()),
+                None => out.push_str("null"),
+            }
+            out.push_str(", \"instance\": ");
+            encode_animated_mesh_instance(out, instance);
+            out.push_str(" }");
+        }
+        RenderDiff::SetAnimatedMeshPlayback { handle, playback } => {
+            out.push_str(&format!(
+                "{{ \"op\": \"setAnimatedMeshPlayback\", \"handle\": {}, \"playback\": ",
+                handle.raw()
+            ));
+            encode_animated_mesh_playback(out, playback);
             out.push_str(" }");
         }
         RenderDiff::CreateSprite {
@@ -303,6 +334,105 @@ fn encode_static_mesh_instance(out: &mut String, instance: &StaticMeshInstanceDe
     out.push_str(", \"metadata\": ");
     encode_metadata(out, &instance.metadata);
     out.push_str(" }");
+}
+
+fn encode_animated_mesh_asset(out: &mut String, asset: &AnimatedMeshAsset) {
+    out.push_str(&format!(
+        "{{ \"asset\": {}, \"runtimeFormat\": \"{}\", \"contentHash\": ",
+        encode_json_string(&asset.asset),
+        asset.runtime_format.label()
+    ));
+    match &asset.content_hash {
+        Some(hash) => out.push_str(&encode_json_string(hash)),
+        None => out.push_str("null"),
+    }
+    out.push_str(", \"clips\": [");
+    for (i, clip) in asset.clips.iter().enumerate() {
+        if i > 0 {
+            out.push_str(", ");
+        }
+        out.push_str(&format!(
+            "{{ \"id\": {}, \"name\": ",
+            encode_json_string(&clip.id)
+        ));
+        match &clip.name {
+            Some(name) => out.push_str(&encode_json_string(name)),
+            None => out.push_str("null"),
+        }
+        out.push_str(", \"durationSeconds\": ");
+        match clip.duration_seconds {
+            Some(duration) => out.push_str(&format!("{duration}")),
+            None => out.push_str("null"),
+        }
+        out.push_str(" }");
+    }
+    out.push_str("], \"defaultClip\": ");
+    match &asset.default_clip {
+        Some(clip) => out.push_str(&encode_json_string(clip)),
+        None => out.push_str("null"),
+    }
+    out.push_str(", \"materialSlots\": ");
+    encode_material_slots(out, &asset.material_slots);
+    out.push_str(", \"bounds\": { \"min\": ");
+    encode_f32_array(out, &asset.bounds.min);
+    out.push_str(", \"max\": ");
+    encode_f32_array(out, &asset.bounds.max);
+    out.push_str(" } }");
+}
+
+fn encode_animated_mesh_instance(out: &mut String, instance: &AnimatedMeshInstanceDescriptor) {
+    out.push_str(&format!(
+        "{{ \"asset\": {}, \"transform\": ",
+        encode_json_string(&instance.asset)
+    ));
+    encode_transform(out, &instance.transform);
+    out.push_str(", \"materialOverrides\": ");
+    encode_material_slots(out, &instance.material_overrides);
+    out.push_str(", \"playback\": ");
+    match &instance.playback {
+        Some(playback) => encode_animated_mesh_playback(out, playback),
+        None => out.push_str("null"),
+    }
+    out.push_str(", \"metadata\": ");
+    encode_metadata(out, &instance.metadata);
+    out.push_str(" }");
+}
+
+fn encode_animated_mesh_playback(out: &mut String, playback: &AnimatedMeshPlaybackCommand) {
+    match playback {
+        AnimatedMeshPlaybackCommand::Play {
+            clip,
+            loop_mode,
+            speed,
+            weight,
+            restart,
+            fade_seconds,
+        } => {
+            out.push_str(&format!(
+                "{{ \"action\": \"play\", \"clip\": {}, \"loop\": \"{}\", \"speed\": {}, \"weight\": {}, \"restart\": {}, \"fadeSeconds\": ",
+                encode_json_string(clip),
+                loop_mode.label(),
+                speed,
+                weight,
+                restart
+            ));
+            match fade_seconds {
+                Some(fade) => out.push_str(&format!("{fade}")),
+                None => out.push_str("null"),
+            }
+            out.push_str(" }");
+        }
+        AnimatedMeshPlaybackCommand::Stop { fade_seconds } => {
+            out.push_str("{ \"action\": \"stop\", \"fadeSeconds\": ");
+            match fade_seconds {
+                Some(fade) => out.push_str(&format!("{fade}")),
+                None => out.push_str("null"),
+            }
+            out.push_str(" }");
+        }
+        AnimatedMeshPlaybackCommand::Pause => out.push_str("{ \"action\": \"pause\" }"),
+        AnimatedMeshPlaybackCommand::Resume => out.push_str("{ \"action\": \"resume\" }"),
+    }
 }
 
 fn encode_sprite_attachment(out: &mut String, attachment: &SpriteAttachment) {

@@ -33,6 +33,12 @@ import {
   type MeshCollisionPolicy,
   type StaticMeshAsset,
   type StaticMeshInstanceDescriptor,
+  type AnimatedMeshAsset,
+  type AnimatedMeshInstanceDescriptor,
+  type AnimatedMeshPlaybackCommand,
+  type AnimatedMeshRuntimeFormat,
+  type AnimationClipDescriptor,
+  type AnimationLoopMode,
   type SpriteSizeMode,
   type BillboardMode,
   type SpriteDepthPolicy,
@@ -75,8 +81,13 @@ interface RenderPayloadRecord {
   readonly components?: unknown;
   readonly contentHash?: unknown;
   readonly count?: unknown;
+  readonly action?: unknown;
+  readonly clips?: unknown;
+  readonly defaultClip?: unknown;
   readonly depth?: unknown;
+  readonly durationSeconds?: unknown;
   readonly emissive?: unknown;
+  readonly fadeSeconds?: unknown;
   readonly filter?: unknown;
   readonly frame?: unknown;
   readonly frames?: unknown;
@@ -94,6 +105,7 @@ interface RenderPayloadRecord {
   readonly label?: unknown;
   readonly layer?: unknown;
   readonly layout?: unknown;
+  readonly loop?: unknown;
   readonly material?: unknown;
   readonly materialOverrides?: unknown;
   readonly materialSlot?: unknown;
@@ -109,6 +121,7 @@ interface RenderPayloadRecord {
   readonly ops?: unknown;
   readonly parent?: unknown;
   readonly payload?: unknown;
+  readonly playback?: unknown;
   readonly pivot?: unknown;
   readonly positions?: unknown;
   readonly positionsByteOffset?: unknown;
@@ -117,6 +130,8 @@ interface RenderPayloadRecord {
   readonly renderOrder?: unknown;
   readonly rotation?: unknown;
   readonly roughness?: unknown;
+  readonly restart?: unknown;
+  readonly runtimeFormat?: unknown;
   readonly scale?: unknown;
   readonly shading?: unknown;
   readonly shape?: unknown;
@@ -139,6 +154,7 @@ interface RenderPayloadRecord {
   readonly version?: unknown;
   readonly vertexCount?: unknown;
   readonly visible?: unknown;
+  readonly weight?: unknown;
   readonly width?: unknown;
   readonly wireframe?: unknown;
   readonly wrap?: unknown;
@@ -564,6 +580,143 @@ function decodeStaticMeshInstance(v: unknown, path: string): StaticMeshInstanceD
   };
 }
 
+function decodeAnimatedMeshRuntimeFormat(v: unknown, path: string): AnimatedMeshRuntimeFormat {
+  if (v === 'glb') {
+    return v;
+  }
+  throw new RenderDecodeError(`unknown animated mesh runtime format ${JSON.stringify(v)}`, path);
+}
+
+function decodeAnimationLoopMode(v: unknown, path: string): AnimationLoopMode {
+  if (v === 'once' || v === 'repeat' || v === 'pingPong') {
+    return v;
+  }
+  throw new RenderDecodeError(`unknown animation loop mode ${JSON.stringify(v)}`, path);
+}
+
+function decodeAnimationClip(v: unknown, path: string): AnimationClipDescriptor {
+  const o = asObject(v, path);
+  if (typeof o.id !== 'string' || o.id.length === 0) {
+    throw new RenderDecodeError('expected a non-empty clip id', `${path}.id`);
+  }
+  return {
+    id: o.id,
+    name: nullable(o.name, (name) => {
+      if (typeof name !== 'string' || name.length === 0) {
+        throw new RenderDecodeError('expected a non-empty clip name', `${path}.name`);
+      }
+      return name;
+    }),
+    durationSeconds: nullable(o.durationSeconds, (duration) => {
+      const value = asNumber(duration, `${path}.durationSeconds`);
+      if (value < 0) {
+        throw new RenderDecodeError('duration must be non-negative', `${path}.durationSeconds`);
+      }
+      return value;
+    }),
+  };
+}
+
+/** Decode an animated mesh asset descriptor, validating clip ids and defaults. */
+export function decodeAnimatedMeshAsset(v: unknown, path = '$'): AnimatedMeshAsset {
+  const o = asObject(v, path);
+  if (typeof o.asset !== 'string' || o.asset.length === 0) {
+    throw new RenderDecodeError('expected a non-empty asset id', `${path}.asset`);
+  }
+  const clips = asArray(o.clips, `${path}.clips`).map((clip, i) =>
+    decodeAnimationClip(clip, `${path}.clips[${i}]`),
+  );
+  const clipIds = new Set<string>();
+  for (const clip of clips) {
+    if (clipIds.has(clip.id)) {
+      throw new RenderDecodeError(`duplicate animation clip ${clip.id}`, `${path}.clips`);
+    }
+    clipIds.add(clip.id);
+  }
+  const defaultClip = nullable(o.defaultClip, (clip) => {
+    if (typeof clip !== 'string' || clip.length === 0) {
+      throw new RenderDecodeError('expected a non-empty default clip id', `${path}.defaultClip`);
+    }
+    return clip;
+  });
+  if (defaultClip !== null && !clipIds.has(defaultClip)) {
+    throw new RenderDecodeError(`default clip ${defaultClip} is not declared`, `${path}.defaultClip`);
+  }
+  const materialSlots = asArray(o.materialSlots, `${path}.materialSlots`).map((slot, i) =>
+    decodeMaterialSlot(slot, `${path}.materialSlots[${i}]`),
+  );
+  const seenSlots = new Set<number>();
+  for (const slot of materialSlots) {
+    if (seenSlots.has(slot.slot)) {
+      throw new RenderDecodeError(`duplicate material slot ${slot.slot}`, `${path}.materialSlots`);
+    }
+    seenSlots.add(slot.slot);
+  }
+  return {
+    asset: o.asset,
+    runtimeFormat: decodeAnimatedMeshRuntimeFormat(o.runtimeFormat, `${path}.runtimeFormat`),
+    contentHash: nullable(o.contentHash, (hash) => {
+      if (typeof hash !== 'string' || hash.length === 0) {
+        throw new RenderDecodeError('expected a non-empty content hash', `${path}.contentHash`);
+      }
+      return hash;
+    }),
+    clips,
+    defaultClip,
+    materialSlots,
+    bounds: decodeMeshBounds(o.bounds, `${path}.bounds`),
+  };
+}
+
+export function decodeAnimatedMeshPlaybackCommand(v: unknown, path = '$'): AnimatedMeshPlaybackCommand {
+  const o = asObject(v, path);
+  switch (o.action) {
+    case 'play': {
+      if (typeof o['clip'] !== 'string' || o['clip'].length === 0) {
+        throw new RenderDecodeError('expected a non-empty clip id', `${path}.clip`);
+      }
+      return {
+        action: 'play',
+        clip: o['clip'],
+        loop: decodeAnimationLoopMode(o.loop, `${path}.loop`),
+        speed: asNumber(o['speed'], `${path}.speed`),
+        weight: asNumber(o.weight, `${path}.weight`),
+        restart: asBoolean(o.restart, `${path}.restart`),
+        fadeSeconds: nullable(o.fadeSeconds, (fade) => asNumber(fade, `${path}.fadeSeconds`)),
+      };
+    }
+    case 'stop':
+      return {
+        action: 'stop',
+        fadeSeconds: nullable(o.fadeSeconds, (fade) => asNumber(fade, `${path}.fadeSeconds`)),
+      };
+    case 'pause':
+      return { action: 'pause' };
+    case 'resume':
+      return { action: 'resume' };
+    default:
+      throw new RenderDecodeError(`unknown animation playback action ${JSON.stringify(o.action)}`, `${path}.action`);
+  }
+}
+
+function decodeAnimatedMeshInstance(v: unknown, path: string): AnimatedMeshInstanceDescriptor {
+  const o = asObject(v, path);
+  if (typeof o.asset !== 'string' || o.asset.length === 0) {
+    throw new RenderDecodeError('expected a non-empty asset id', `${path}.asset`);
+  }
+  return {
+    asset: o.asset,
+    transform: decodeTransform(o.transform, `${path}.transform`),
+    materialOverrides: asArray(o.materialOverrides, `${path}.materialOverrides`).map((slot, i) =>
+      decodeMaterialSlot(slot, `${path}.materialOverrides[${i}]`),
+    ),
+    playback: nullable(o.playback, (playback) =>
+      decodeAnimatedMeshPlaybackCommand(playback, `${path}.playback`),
+    ),
+    metadata: decodeMetadata(o.metadata, `${path}.metadata`),
+  };
+}
+
 function decodeSizeMode(v: unknown, path: string): SpriteSizeMode {
   if (v === 'world' || v === 'pixel') return v;
   throw new RenderDecodeError(`unknown sprite size mode ${JSON.stringify(v)}`, path);
@@ -685,12 +838,30 @@ export function decodeRenderDiff(v: unknown, path = '$'): RenderDiff {
         op: 'defineStaticMesh',
         asset: decodeStaticMeshAsset(o.asset, `${path}.asset`),
       };
+    case 'defineAnimatedMesh':
+      return {
+        op: 'defineAnimatedMesh',
+        asset: decodeAnimatedMeshAsset(o.asset, `${path}.asset`),
+      };
     case 'createStaticMeshInstance':
       return {
         op: 'createStaticMeshInstance',
         handle: decodeHandle(o.handle, `${path}.handle`),
         parent: nullable(o.parent, (p) => decodeHandle(p, `${path}.parent`)),
         instance: decodeStaticMeshInstance(o.instance, `${path}.instance`),
+      };
+    case 'createAnimatedMeshInstance':
+      return {
+        op: 'createAnimatedMeshInstance',
+        handle: decodeHandle(o.handle, `${path}.handle`),
+        parent: nullable(o.parent, (p) => decodeHandle(p, `${path}.parent`)),
+        instance: decodeAnimatedMeshInstance(o.instance, `${path}.instance`),
+      };
+    case 'setAnimatedMeshPlayback':
+      return {
+        op: 'setAnimatedMeshPlayback',
+        handle: decodeHandle(o.handle, `${path}.handle`),
+        playback: decodeAnimatedMeshPlaybackCommand(o.playback, `${path}.playback`),
       };
     case 'createSprite':
       return {

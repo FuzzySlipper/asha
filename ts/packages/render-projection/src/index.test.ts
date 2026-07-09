@@ -3,7 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { entityId, renderHandle, type MeshPayloadDescriptor, type RenderDiff, type RenderFrameDiff, type RenderNode, type SpriteInstanceDescriptor, type StaticMeshAsset } from '@asha/contracts';
+import {
+  entityId,
+  renderHandle,
+  type AnimatedMeshAsset,
+  type MeshPayloadDescriptor,
+  type RenderDiff,
+  type RenderFrameDiff,
+  type RenderNode,
+  type SpriteInstanceDescriptor,
+  type StaticMeshAsset,
+} from '@asha/contracts';
 import {
   RenderProjection,
   RenderProjectionError,
@@ -16,6 +26,10 @@ const repoRoot = resolve(import.meta.dirname, '../../../..');
 
 function fixturePath(name: string): string {
   return resolve(repoRoot, 'harness/fixtures/render-projection', name);
+}
+
+function renderDiffFixturePath(name: string): string {
+  return resolve(repoRoot, 'harness/fixtures/render-diffs', name);
 }
 
 function goldenPath(name: string): string {
@@ -105,6 +119,22 @@ function meshAsset(asset = 'mesh/crate'): StaticMeshAsset {
   };
 }
 
+function animatedMeshAsset(asset = 'mesh-animation/kenney-retro-character-medium'): AnimatedMeshAsset {
+  return {
+    asset,
+    runtimeFormat: 'glb',
+    contentHash: 'sha256-fixture-pending',
+    clips: [
+      { id: 'idle', name: 'Idle', durationSeconds: 1.2 },
+      { id: 'run', name: 'Run', durationSeconds: 0.8 },
+      { id: 'jump', name: 'Jump', durationSeconds: 0.6 },
+    ],
+    defaultClip: 'idle',
+    materialSlots: [{ slot: 0, material: 'material/kenney-human-male-a' }],
+    bounds: { min: [-0.5, 0, -0.5], max: [0.5, 1.8, 0.5] },
+  };
+}
+
 function sprite(asset = 'sprite/ui', frame = 0): SpriteInstanceDescriptor {
   return {
     asset,
@@ -191,6 +221,89 @@ void test('tracks static mesh definitions and fails closed on in-use redefinitio
   projection.applyDiff({ op: 'destroy', handle: renderHandle(1) });
   assert.equal(projection.staticMeshRefCount('mesh/crate'), 0);
   assert.doesNotThrow(() => projection.applyDiff({ op: 'defineStaticMesh', asset: meshAsset() }));
+});
+
+void test('tracks animated mesh definitions and command-selected named clip playback', () => {
+  const projection = new RenderProjection();
+  projection.applyDiff({ op: 'defineAnimatedMesh', asset: animatedMeshAsset() });
+  projection.applyDiff({
+    op: 'createAnimatedMeshInstance',
+    handle: renderHandle(12),
+    parent: null,
+    instance: {
+      asset: 'mesh-animation/kenney-retro-character-medium',
+      transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      materialOverrides: [],
+      playback: null,
+      metadata: { source: entityId(12), tags: [], label: 'animated-proof' },
+    },
+  });
+
+  assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 1);
+  const instructions = projection.applyDiff({
+    op: 'setAnimatedMeshPlayback',
+    handle: renderHandle(12),
+    playback: {
+      action: 'play',
+      clip: 'run',
+      loop: 'repeat',
+      speed: 1,
+      weight: 1,
+      restart: true,
+      fadeSeconds: 0.1,
+    },
+  });
+
+  assert.equal(instructions[0]?.op, 'upsertNode');
+  const node = projection.node(renderHandle(12));
+  assert.equal(node?.kind, 'animatedMesh');
+  if (node?.kind === 'animatedMesh') {
+    assert.equal(node.playback?.action, 'play');
+    if (node.playback?.action === 'play') {
+      assert.equal(node.playback.clip, 'run');
+    }
+  }
+
+  assert.throws(
+    () =>
+      projection.applyDiff({
+        op: 'setAnimatedMeshPlayback',
+        handle: renderHandle(12),
+        playback: {
+          action: 'play',
+          clip: 'dance',
+          loop: 'repeat',
+          speed: 1,
+          weight: 1,
+          restart: true,
+          fadeSeconds: null,
+        },
+      }),
+    RenderProjectionError,
+  );
+
+  assert.throws(
+    () => projection.applyDiff({ op: 'defineAnimatedMesh', asset: animatedMeshAsset() }),
+    RenderProjectionError,
+  );
+  projection.applyDiff({ op: 'destroy', handle: renderHandle(12) });
+  assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 0);
+});
+
+void test('animated mesh render-diff fixture registers asset and starts the run clip', () => {
+  const frame = JSON.parse(readFileSync(renderDiffFixturePath('animated-mesh.json'), 'utf8')) as RenderFrameDiff;
+  const projection = new RenderProjection();
+  projection.applyFrame(frame);
+
+  const node = projection.node(renderHandle(41));
+  assert.equal(node?.kind, 'animatedMesh');
+  if (node?.kind === 'animatedMesh') {
+    assert.equal(node.instance.asset, 'mesh-animation/kenney-retro-character-medium');
+    assert.equal(node.playback?.action, 'play');
+    if (node.playback?.action === 'play') {
+      assert.equal(node.playback.clip, 'run');
+    }
+  }
 });
 
 void test('resolves sprite atlas frames and sprite pick hints without renderer types', () => {

@@ -293,6 +293,11 @@ pub enum RenderDiff {
     /// slots + collision policy under its asset id. Idempotent: many instances
     /// reference the asset and share one uploaded geometry (render-asset-04).
     DefineStaticMesh { asset: StaticMeshAsset },
+    /// Define (or redefine) an animated mesh asset under its asset id. The
+    /// descriptor carries stable clip ids and metadata only; renderer asset
+    /// loading resolves the id through an explicit provider, never an arbitrary
+    /// URL in the diff stream.
+    DefineAnimatedMesh { asset: AnimatedMeshAsset },
     /// Create one placed instance of a previously defined static mesh asset.
     /// Instances share the asset geometry and own their transform, per-slot
     /// material overrides, and metadata.
@@ -300,6 +305,19 @@ pub enum RenderDiff {
         handle: RenderHandle,
         parent: Option<RenderHandle>,
         instance: StaticMeshInstanceDescriptor,
+    },
+    /// Create one placed instance of a previously defined animated mesh asset.
+    CreateAnimatedMeshInstance {
+        handle: RenderHandle,
+        parent: Option<RenderHandle>,
+        instance: AnimatedMeshInstanceDescriptor,
+    },
+    /// Projection-only animation playback command for an animated mesh instance.
+    /// Runtime/gameplay authority may choose this intent; renderer mixer progress
+    /// never feeds back into authority state.
+    SetAnimatedMeshPlayback {
+        handle: RenderHandle,
+        playback: AnimatedMeshPlaybackCommand,
     },
     /// Create one plane-geometry sprite/billboard instance (render-asset-05).
     CreateSprite {
@@ -703,6 +721,155 @@ pub struct StaticMeshInstanceDescriptor {
     /// Per-slot material rebindings for just this instance (empty = use asset's).
     pub material_overrides: Vec<MeshMaterialSlot>,
     pub metadata: RenderMetadata,
+}
+
+// ── Animated mesh assets + projection-only playback (#5288) ───────────────────
+
+/// Runtime container format for an animated mesh asset. The first supported
+/// format is GLB; FBX stays an import/source format, not a runtime render diff
+/// payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AnimatedMeshRuntimeFormat {
+    #[default]
+    Glb,
+}
+
+impl AnimatedMeshRuntimeFormat {
+    pub fn label(self) -> &'static str {
+        match self {
+            AnimatedMeshRuntimeFormat::Glb => "glb",
+        }
+    }
+}
+
+/// Looping policy for visual animation playback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AnimationLoopMode {
+    /// Play once and clamp/stop according to renderer backend behaviour.
+    Once,
+    /// Repeat continuously.
+    #[default]
+    Repeat,
+    /// Alternate forward and backward playback.
+    PingPong,
+}
+
+impl AnimationLoopMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            AnimationLoopMode::Once => "once",
+            AnimationLoopMode::Repeat => "repeat",
+            AnimationLoopMode::PingPong => "pingPong",
+        }
+    }
+}
+
+/// One named animation clip available on an animated mesh asset.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnimationClipDescriptor {
+    /// Stable ASHA clip id, e.g. `run`.
+    pub id: String,
+    /// Optional source/display name from the imported asset.
+    pub name: Option<String>,
+    /// Optional duration discovered by import validation.
+    pub duration_seconds: Option<f32>,
+}
+
+/// An authored animated mesh asset descriptor. This registers identity and clip
+/// vocabulary only; binary GLB data is resolved by the renderer asset provider.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnimatedMeshAsset {
+    /// Catalog asset id, e.g. `mesh-animation/kenney-retro-character-medium`.
+    pub asset: String,
+    pub runtime_format: AnimatedMeshRuntimeFormat,
+    /// Optional content hash for the resolved runtime artifact.
+    pub content_hash: Option<String>,
+    pub clips: Vec<AnimationClipDescriptor>,
+    /// Optional rest/default visual clip. This does not authorize renderer
+    /// autoplay proofs; explicit commands still identify the proof clip.
+    pub default_clip: Option<String>,
+    /// Per-slot material defaults for the imported mesh.
+    pub material_slots: Vec<MeshMaterialSlot>,
+    pub bounds: MeshBoundsDescriptor,
+}
+
+/// A malformed animated mesh asset descriptor, classified for agent routing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AnimatedMeshAssetError {
+    EmptyAssetId,
+    EmptyClipId,
+    DuplicateClipId { clip: String },
+    DefaultClipMissing { clip: String },
+    DuplicateMaterialSlot { slot: u16 },
+}
+
+impl AnimatedMeshAsset {
+    /// Validate asset identity, unique clip ids, default-clip membership, and
+    /// unique material slots.
+    pub fn validate(&self) -> Result<(), AnimatedMeshAssetError> {
+        if self.asset.is_empty() {
+            return Err(AnimatedMeshAssetError::EmptyAssetId);
+        }
+        let mut clips: Vec<&str> = Vec::with_capacity(self.clips.len());
+        for clip in &self.clips {
+            if clip.id.is_empty() {
+                return Err(AnimatedMeshAssetError::EmptyClipId);
+            }
+            if clips.contains(&clip.id.as_str()) {
+                return Err(AnimatedMeshAssetError::DuplicateClipId {
+                    clip: clip.id.clone(),
+                });
+            }
+            clips.push(clip.id.as_str());
+        }
+        if let Some(default_clip) = &self.default_clip {
+            if !clips.contains(&default_clip.as_str()) {
+                return Err(AnimatedMeshAssetError::DefaultClipMissing {
+                    clip: default_clip.clone(),
+                });
+            }
+        }
+        let mut slots: Vec<u16> = Vec::with_capacity(self.material_slots.len());
+        for slot in &self.material_slots {
+            if slots.contains(&slot.slot) {
+                return Err(AnimatedMeshAssetError::DuplicateMaterialSlot { slot: slot.slot });
+            }
+            slots.push(slot.slot);
+        }
+        Ok(())
+    }
+}
+
+/// One placed instance of an animated mesh asset.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AnimatedMeshInstanceDescriptor {
+    /// The animated mesh asset id this instance references.
+    pub asset: String,
+    pub transform: Transform,
+    /// Per-slot material rebindings for just this instance (empty = use asset's).
+    pub material_overrides: Vec<MeshMaterialSlot>,
+    /// Optional initial playback intent. `None` means no clip starts implicitly.
+    pub playback: Option<AnimatedMeshPlaybackCommand>,
+    pub metadata: RenderMetadata,
+}
+
+/// Projection-only animation playback command. These are renderer mixer inputs,
+/// never gameplay authority.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnimatedMeshPlaybackCommand {
+    Play {
+        clip: String,
+        loop_mode: AnimationLoopMode,
+        speed: f32,
+        weight: f32,
+        restart: bool,
+        fade_seconds: Option<f32>,
+    },
+    Stop {
+        fade_seconds: Option<f32>,
+    },
+    Pause,
+    Resume,
 }
 
 // ── Sprites / billboards (render-asset-05 / scene-capability-05) ───────────────
@@ -1109,6 +1276,35 @@ impl RenderFrameDiff {
 mod tests {
     use super::*;
 
+    fn animated_asset() -> AnimatedMeshAsset {
+        AnimatedMeshAsset {
+            asset: "mesh-animation/kenney-retro-character-medium".to_string(),
+            runtime_format: AnimatedMeshRuntimeFormat::Glb,
+            content_hash: Some("sha256-fixture-pending".to_string()),
+            clips: vec![
+                AnimationClipDescriptor {
+                    id: "idle".to_string(),
+                    name: Some("Idle".to_string()),
+                    duration_seconds: Some(1.2),
+                },
+                AnimationClipDescriptor {
+                    id: "run".to_string(),
+                    name: Some("Run".to_string()),
+                    duration_seconds: Some(0.8),
+                },
+            ],
+            default_clip: Some("idle".to_string()),
+            material_slots: vec![MeshMaterialSlot {
+                slot: 0,
+                material: "material/kenney-human-male-a".to_string(),
+            }],
+            bounds: MeshBoundsDescriptor {
+                min: [-0.5, 0.0, -0.5],
+                max: [0.5, 1.8, 0.5],
+            },
+        }
+    }
+
     #[test]
     fn handle_roundtrip_and_distinct_from_entity() {
         let h = RenderHandle::new(7);
@@ -1125,6 +1321,33 @@ mod tests {
         // The single source of truth for the wire label; emitters derive from this
         // (#2429). A new variant forces the exhaustive match above to be updated.
         assert_eq!(MeshIndexWidth::U32.label(), "u32");
+    }
+
+    #[test]
+    fn animated_mesh_asset_validates_clip_vocabulary() {
+        assert!(animated_asset().validate().is_ok());
+
+        let mut duplicate = animated_asset();
+        duplicate.clips.push(AnimationClipDescriptor {
+            id: "run".to_string(),
+            name: Some("Run Duplicate".to_string()),
+            duration_seconds: None,
+        });
+        assert_eq!(
+            duplicate.validate(),
+            Err(AnimatedMeshAssetError::DuplicateClipId {
+                clip: "run".to_string(),
+            })
+        );
+
+        let mut missing_default = animated_asset();
+        missing_default.default_clip = Some("jump".to_string());
+        assert_eq!(
+            missing_default.validate(),
+            Err(AnimatedMeshAssetError::DefaultClipMissing {
+                clip: "jump".to_string(),
+            })
+        );
     }
 
     #[test]

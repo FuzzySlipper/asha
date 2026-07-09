@@ -1,0 +1,49 @@
+{
+  "ops": [
+    {
+      "op": "defineAnimatedMesh",
+      "asset": {
+        "asset": "mesh-animation/kenney-retro-character-medium",
+        "runtimeFormat": "glb",
+        "contentHash": "sha256-fixture-pending",
+        "clips": [
+          { "id": "idle", "name": "Idle", "durationSeconds": 1.2 },
+          { "id": "run", "name": "Run", "durationSeconds": 0.8 },
+          { "id": "jump", "name": "Jump", "durationSeconds": 0.6 }
+        ],
+        "defaultClip": "idle",
+        "materialSlots": [{ "slot": 0, "material": "material/kenney-human-male-a" }],
+        "bounds": { "min": [-0.5, 0, -0.5], "max": [0.5, 1.8, 0.5] }
+      }
+    },
+    {
+      "op": "createAnimatedMeshInstance",
+      "handle": 41,
+      "parent": null,
+      "instance": {
+        "asset": "mesh-animation/kenney-retro-character-medium",
+        "transform": {
+          "translation": [0, 0, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "materialOverrides": [],
+        "playback": null,
+        "metadata": { "source": null, "tags": [], "label": "mesh-animation-proof" }
+      }
+    },
+    {
+      "op": "setAnimatedMeshPlayback",
+      "handle": 41,
+      "playback": {
+        "action": "play",
+        "clip": "run",
+        "loop": "repeat",
+        "speed": 1,
+        "weight": 1,
+        "restart": true,
+        "fadeSeconds": 0.1
+      }
+    }
+  ]
+}

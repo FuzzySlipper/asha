@@ -177,6 +177,10 @@ export class ThreeRenderer {
       case 'defineStaticMesh':
         this.#defineStaticMesh(diff.asset);
         break;
+      case 'defineAnimatedMesh':
+      case 'createAnimatedMeshInstance':
+      case 'setAnimatedMeshPlayback':
+        throw new RenderApplyError(`${diff.op}: animated mesh playback is not implemented by renderer-three yet`);
       case 'createStaticMeshInstance':
         this.#createStaticMeshInstance(diff);
         break;

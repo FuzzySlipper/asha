@@ -107,6 +107,45 @@ export interface StaticMeshInstanceDescriptor {
     readonly materialOverrides: readonly MeshMaterialSlot[];
     readonly metadata: RenderMetadata;
 }
+export type AnimatedMeshRuntimeFormat = 'glb';
+export type AnimationLoopMode = 'once' | 'repeat' | 'pingPong';
+export interface AnimationClipDescriptor {
+    readonly id: string;
+    readonly name: string | null;
+    readonly durationSeconds: number | null;
+}
+export interface AnimatedMeshAsset {
+    readonly asset: string;
+    readonly runtimeFormat: AnimatedMeshRuntimeFormat;
+    readonly contentHash: string | null;
+    readonly clips: readonly AnimationClipDescriptor[];
+    readonly defaultClip: string | null;
+    readonly materialSlots: readonly MeshMaterialSlot[];
+    readonly bounds: MeshBoundsDescriptor;
+}
+export type AnimatedMeshPlaybackCommand = {
+    readonly action: 'play';
+    readonly clip: string;
+    readonly loop: AnimationLoopMode;
+    readonly speed: number;
+    readonly weight: number;
+    readonly restart: boolean;
+    readonly fadeSeconds: number | null;
+} | {
+    readonly action: 'stop';
+    readonly fadeSeconds: number | null;
+} | {
+    readonly action: 'pause';
+} | {
+    readonly action: 'resume';
+};
+export interface AnimatedMeshInstanceDescriptor {
+    readonly asset: string;
+    readonly transform: Transform;
+    readonly materialOverrides: readonly MeshMaterialSlot[];
+    readonly playback: AnimatedMeshPlaybackCommand | null;
+    readonly metadata: RenderMetadata;
+}
 export type SpriteSizeMode = 'world' | 'pixel';
 export type BillboardMode = 'none' | 'spherical' | 'cylindrical';
 export type SpriteDepthPolicy = 'default' | 'depthTestOff' | 'depthWriteOff';
@@ -204,10 +243,22 @@ export type RenderDiff = {
     readonly op: 'defineStaticMesh';
     readonly asset: StaticMeshAsset;
 } | {
+    readonly op: 'defineAnimatedMesh';
+    readonly asset: AnimatedMeshAsset;
+} | {
     readonly op: 'createStaticMeshInstance';
     readonly handle: RenderHandle;
     readonly parent: RenderHandle | null;
     readonly instance: StaticMeshInstanceDescriptor;
+} | {
+    readonly op: 'createAnimatedMeshInstance';
+    readonly handle: RenderHandle;
+    readonly parent: RenderHandle | null;
+    readonly instance: AnimatedMeshInstanceDescriptor;
+} | {
+    readonly op: 'setAnimatedMeshPlayback';
+    readonly handle: RenderHandle;
+    readonly playback: AnimatedMeshPlaybackCommand;
 } | {
     readonly op: 'createSprite';
     readonly handle: RenderHandle;

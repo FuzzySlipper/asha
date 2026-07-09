@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { decodeRenderDiff, decodeRenderFrameDiff, decodeMeshPayloadDescriptor, decodeStaticMeshAsset, decodeSpriteInstance, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
+import { decodeRenderDiff, decodeRenderFrameDiff, decodeMeshPayloadDescriptor, decodeStaticMeshAsset, decodeAnimatedMeshAsset, decodeAnimatedMeshPlaybackCommand, decodeSpriteInstance, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 const fixturesRoot = resolve(import.meta.dirname, '../../../../harness/fixtures/render-diffs');
 function loadFixture(name) {
     return JSON.parse(readFileSync(resolve(fixturesRoot, `${name}.json`), 'utf8'));
@@ -109,6 +109,29 @@ void test('decodes the Rust render-bridge fixture sequence', () => {
     assert.equal(decoded[1].ops.length, 3);
     assert.equal(decoded[0].ops[0].op, 'create');
     assert.equal(decoded[1].ops[2].op, 'destroy');
+});
+void test('decodes the animated mesh named-clip fixture', () => {
+    const frame = decodeRenderFrameDiff(loadFixture('animated-mesh'));
+    assert.deepEqual(frame.ops.map((op) => op.op), [
+        'defineAnimatedMesh',
+        'createAnimatedMeshInstance',
+        'setAnimatedMeshPlayback',
+    ]);
+    const define = frame.ops[0];
+    const playback = frame.ops[2];
+    assert.equal(define.op, 'defineAnimatedMesh');
+    assert.equal(playback.op, 'setAnimatedMeshPlayback');
+    if (define.op === 'defineAnimatedMesh' && playback.op === 'setAnimatedMeshPlayback') {
+        assert.equal(define.asset.asset, 'mesh-animation/kenney-retro-character-medium');
+        assert.deepEqual(define.asset.clips.map((clip) => clip.id), ['idle', 'run', 'jump']);
+        assert.equal(define.asset.defaultClip, 'idle');
+        assert.equal(playback.playback.action, 'play');
+        if (playback.playback.action === 'play') {
+            assert.equal(playback.playback.clip, 'run');
+            assert.equal(playback.playback.loop, 'repeat');
+            assert.equal(playback.playback.restart, true);
+        }
+    }
 });
 void test('FrameMemory enforces its single-frame lifetime', () => {
     const mem = new FrameMemory(new Uint8Array([1, 2, 3]));
@@ -285,6 +308,72 @@ void test('rejects a static mesh whose group references an unbound material slot
     const bad = crateAssetRaw();
     bad['materialSlots'] = [{ slot: 9, material: 'material/wood' }]; // group uses slot 1
     assert.throws(() => decodeStaticMeshAsset(bad), RenderDecodeError);
+});
+function animatedMeshAssetRaw() {
+    return {
+        asset: 'mesh-animation/kenney-retro-character-medium',
+        runtimeFormat: 'glb',
+        contentHash: 'sha256-fixture-pending',
+        clips: [
+            { id: 'idle', name: 'Idle', durationSeconds: 1.2 },
+            { id: 'run', name: 'Run', durationSeconds: 0.8 },
+            { id: 'jump', name: 'Jump', durationSeconds: 0.6 },
+        ],
+        defaultClip: 'idle',
+        materialSlots: [{ slot: 0, material: 'material/kenney-human-male-a' }],
+        bounds: { min: [-0.5, 0, -0.5], max: [0.5, 1.8, 0.5] },
+    };
+}
+void test('decodes animated mesh assets and projection-only playback commands', () => {
+    const asset = decodeAnimatedMeshAsset(animatedMeshAssetRaw());
+    assert.equal(asset.runtimeFormat, 'glb');
+    assert.deepEqual(asset.clips.map((clip) => clip.id), ['idle', 'run', 'jump']);
+    const playback = decodeAnimatedMeshPlaybackCommand({
+        action: 'play',
+        clip: 'run',
+        loop: 'repeat',
+        speed: 1,
+        weight: 1,
+        restart: true,
+        fadeSeconds: 0.1,
+    });
+    assert.equal(playback.action, 'play');
+    if (playback.action === 'play') {
+        assert.equal(playback.clip, 'run');
+    }
+    const diff = decodeRenderDiff({
+        op: 'createAnimatedMeshInstance',
+        handle: 8,
+        parent: null,
+        instance: {
+            asset: 'mesh-animation/kenney-retro-character-medium',
+            transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+            materialOverrides: [],
+            playback: null,
+            metadata: { source: null, tags: [], label: 'animated-proof' },
+        },
+    });
+    assert.equal(diff.op, 'createAnimatedMeshInstance');
+});
+void test('rejects malformed animated mesh assets and playback actions', () => {
+    const duplicateClip = animatedMeshAssetRaw();
+    duplicateClip['clips'] = [
+        { id: 'run', name: 'Run A', durationSeconds: 1 },
+        { id: 'run', name: 'Run B', durationSeconds: 1 },
+    ];
+    assert.throws(() => decodeAnimatedMeshAsset(duplicateClip), RenderDecodeError);
+    const missingDefault = animatedMeshAssetRaw();
+    missingDefault['defaultClip'] = 'dance';
+    assert.throws(() => decodeAnimatedMeshAsset(missingDefault), RenderDecodeError);
+    assert.throws(() => decodeAnimatedMeshPlaybackCommand({
+        action: 'play',
+        clip: '',
+        loop: 'repeat',
+        speed: 1,
+        weight: 1,
+        restart: true,
+        fadeSeconds: null,
+    }), RenderDecodeError);
 });
 void test('rejects a proxy collision policy with an empty proxy asset', () => {
     const bad = crateAssetRaw();

@@ -91,5 +91,6 @@
       ]
     }
   ],
-  "staticMeshes": []
+  "staticMeshes": [],
+  "animatedMeshes": []
 }

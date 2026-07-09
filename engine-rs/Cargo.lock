@@ -415,6 +415,7 @@ dependencies = [
  "protocol-ids",
  "protocol-policy-view",
  "protocol-project-bundle",
+ "protocol-render",
  "protocol-replay",
  "protocol-scene",
  "protocol-telemetry",

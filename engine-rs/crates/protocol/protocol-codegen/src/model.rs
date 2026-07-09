@@ -473,6 +473,75 @@ pub fn render_module() -> Module {
                 f("metadata", r("RenderMetadata")),
             ],
         ),
+        // ── animated mesh assets + projection-only playback (#5288) ───────────
+        Item::Alias {
+            doc: "Runtime container format for an animated mesh asset.".to_string(),
+            name: "AnimatedMeshRuntimeFormat".to_string(),
+            ty: TsType::StringEnum(vec!["glb".to_string()]),
+        },
+        Item::Alias {
+            doc: "Looping policy for visual animation playback.".to_string(),
+            name: "AnimationLoopMode".to_string(),
+            ty: TsType::StringEnum(vec![
+                "once".to_string(),
+                "repeat".to_string(),
+                "pingPong".to_string(),
+            ]),
+        },
+        iface(
+            "One named animation clip available on an animated mesh asset.",
+            "AnimationClipDescriptor",
+            vec![
+                f("id", string()),
+                f("name", TsType::nullable(string())),
+                f("durationSeconds", TsType::nullable(num())),
+            ],
+        ),
+        iface(
+            "An authored animated mesh asset descriptor: identity, runtime format, clips, material slots, and bounds. Binary data resolves through a renderer asset provider, not arbitrary URLs.",
+            "AnimatedMeshAsset",
+            vec![
+                f("asset", string()),
+                f("runtimeFormat", r("AnimatedMeshRuntimeFormat")),
+                f("contentHash", TsType::nullable(string())),
+                f("clips", TsType::array(r("AnimationClipDescriptor"))),
+                f("defaultClip", TsType::nullable(string())),
+                f("materialSlots", TsType::array(r("MeshMaterialSlot"))),
+                f("bounds", r("MeshBoundsDescriptor")),
+            ],
+        ),
+        union(
+            "Projection-only animation playback command for a renderer mixer. Gameplay authority never reads mixer progress.",
+            "AnimatedMeshPlaybackCommand",
+            "action",
+            vec![
+                v(
+                    "play",
+                    vec![
+                        f("clip", string()),
+                        f("loop", r("AnimationLoopMode")),
+                        f("speed", num()),
+                        f("weight", num()),
+                        f("restart", boolean()),
+                        f("fadeSeconds", TsType::nullable(num())),
+                    ],
+                ),
+                v("stop", vec![f("fadeSeconds", TsType::nullable(num()))]),
+                v("pause", vec![]),
+                v("resume", vec![]),
+            ],
+        ),
+        iface(
+            "One placed instance of an animated mesh asset. Playback is optional and projection-only.",
+            "AnimatedMeshInstanceDescriptor",
+            vec![
+                f("asset", string()),
+                f("transform", r("Transform")),
+                f("materialOverrides", TsType::array(r("MeshMaterialSlot"))),
+                f("playback", TsType::nullable(r("AnimatedMeshPlaybackCommand"))),
+                f("metadata", r("RenderMetadata")),
+            ],
+        ),
         // ── sprites / billboards (render-asset-05/06) ──────────────────────────
         Item::Alias {
             doc: "How a sprite size is interpreted (world units vs screen pixels).".to_string(),
@@ -669,11 +738,30 @@ pub fn render_module() -> Module {
                 ),
                 v("defineStaticMesh", vec![f("asset", r("StaticMeshAsset"))]),
                 v(
+                    "defineAnimatedMesh",
+                    vec![f("asset", r("AnimatedMeshAsset"))],
+                ),
+                v(
                     "createStaticMeshInstance",
                     vec![
                         f("handle", r("RenderHandle")),
                         f("parent", TsType::nullable(r("RenderHandle"))),
                         f("instance", r("StaticMeshInstanceDescriptor")),
+                    ],
+                ),
+                v(
+                    "createAnimatedMeshInstance",
+                    vec![
+                        f("handle", r("RenderHandle")),
+                        f("parent", TsType::nullable(r("RenderHandle"))),
+                        f("instance", r("AnimatedMeshInstanceDescriptor")),
+                    ],
+                ),
+                v(
+                    "setAnimatedMeshPlayback",
+                    vec![
+                        f("handle", r("RenderHandle")),
+                        f("playback", r("AnimatedMeshPlaybackCommand")),
                     ],
                 ),
                 v(

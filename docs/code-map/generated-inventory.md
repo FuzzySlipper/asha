@@ -272,7 +272,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files
 - [`harness/fixtures/policy-outputs`](../../harness/fixtures/policy-outputs) — 3 files
 - [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 6 files
-- [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 14 files
+- [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 15 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files
 - [`harness/fixtures/scenes`](../../harness/fixtures/scenes) — 4 files

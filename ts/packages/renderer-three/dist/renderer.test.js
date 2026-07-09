@@ -642,6 +642,21 @@ void test('instance of an undefined asset, and redefine while in use, are classi
     r.applyDiff({ op: 'createStaticMeshInstance', handle: renderHandle(1), parent: null, instance: crateInstance() });
     assert.throws(() => r.applyDiff({ op: 'defineStaticMesh', asset: crateAsset() }), RenderApplyError);
 });
+void test('animated mesh ops fail closed until the renderer adapter implements playback', () => {
+    const r = new ThreeRenderer();
+    assert.throws(() => r.applyDiff({
+        op: 'defineAnimatedMesh',
+        asset: {
+            asset: 'mesh-animation/kenney-retro-character-medium',
+            runtimeFormat: 'glb',
+            contentHash: 'sha256-fixture-pending',
+            clips: [{ id: 'run', name: 'Run', durationSeconds: 0.8 }],
+            defaultClip: null,
+            materialSlots: [],
+            bounds: { min: [-0.5, 0, -0.5], max: [0.5, 1.8, 0.5] },
+        },
+    }), /animated mesh playback is not implemented/);
+});
 // ── sprites / billboards + picking (render-asset-05/06 / #2328-2329) ──────────
 function sparkSprite(over = {}) {
     return {

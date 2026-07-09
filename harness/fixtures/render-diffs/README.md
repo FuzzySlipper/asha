@@ -9,6 +9,7 @@ consume them. Their rendered scene snapshots live in
 | Fixture | Producer | Consumers |
 |---|---|---|
 | `bridge-sequence.json` | `render-bridge` (`RenderProjector`) | `render-bridge` lib test; `renderer-three` apply test |
+| `animated-mesh.json` | hand-authored animated mesh protocol fixture | `runtime-bridge` decode test; `render-projection` named-clip projection tests |
 | `sample-frame.json` | hand-authored create→update→destroy | `renderer-three` decode test |
 | `scene-projection.json`, `scene-projection-sequence.json` | `render-bridge` `ScenePresentationProjector` | `renderer-three` golden snapshot |
 | `scene-showcase.json`, `sprite-showcase.json`, `static-mesh-instances.json` | authored showcase frames | `renderer-three` golden snapshots |
@@ -31,5 +32,8 @@ changed:
 cd ts && pnpm --filter @asha/renderer-three test   # or: bash harness/ci/check-render-goldens.sh
 ```
 
-Hand-authored fixtures (`sample-frame`, the `*-showcase` frames) are edited
-directly; keep them minimal and abstract.
+Hand-authored fixtures (`sample-frame`, `animated-mesh`, the `*-showcase`
+frames) are edited directly; keep them minimal and abstract. `animated-mesh`
+is protocol/readout evidence only until the GLB fixture and renderer adapter
+tasks land; it proves a stable asset id, clip list, and explicit `run` playback
+command, not live mixer animation.

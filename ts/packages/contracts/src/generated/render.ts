@@ -136,6 +136,46 @@ export interface StaticMeshInstanceDescriptor {
   readonly metadata: RenderMetadata;
 }
 
+// Runtime container format for an animated mesh asset.
+export type AnimatedMeshRuntimeFormat = 'glb';
+
+// Looping policy for visual animation playback.
+export type AnimationLoopMode = 'once' | 'repeat' | 'pingPong';
+
+// One named animation clip available on an animated mesh asset.
+export interface AnimationClipDescriptor {
+  readonly id: string;
+  readonly name: string | null;
+  readonly durationSeconds: number | null;
+}
+
+// An authored animated mesh asset descriptor: identity, runtime format, clips, material slots, and bounds. Binary data resolves through a renderer asset provider, not arbitrary URLs.
+export interface AnimatedMeshAsset {
+  readonly asset: string;
+  readonly runtimeFormat: AnimatedMeshRuntimeFormat;
+  readonly contentHash: string | null;
+  readonly clips: readonly AnimationClipDescriptor[];
+  readonly defaultClip: string | null;
+  readonly materialSlots: readonly MeshMaterialSlot[];
+  readonly bounds: MeshBoundsDescriptor;
+}
+
+// Projection-only animation playback command for a renderer mixer. Gameplay authority never reads mixer progress.
+export type AnimatedMeshPlaybackCommand =
+  | { readonly action: 'play'; readonly clip: string; readonly loop: AnimationLoopMode; readonly speed: number; readonly weight: number; readonly restart: boolean; readonly fadeSeconds: number | null }
+  | { readonly action: 'stop'; readonly fadeSeconds: number | null }
+  | { readonly action: 'pause' }
+  | { readonly action: 'resume' };
+
+// One placed instance of an animated mesh asset. Playback is optional and projection-only.
+export interface AnimatedMeshInstanceDescriptor {
+  readonly asset: string;
+  readonly transform: Transform;
+  readonly materialOverrides: readonly MeshMaterialSlot[];
+  readonly playback: AnimatedMeshPlaybackCommand | null;
+  readonly metadata: RenderMetadata;
+}
+
 // How a sprite size is interpreted (world units vs screen pixels).
 export type SpriteSizeMode = 'world' | 'pixel';
 
@@ -241,7 +281,10 @@ export type RenderDiff =
   | { readonly op: 'defineTexture'; readonly texture: TextureDescriptor }
   | { readonly op: 'defineSpriteAtlas'; readonly atlas: SpriteAtlasDescriptor }
   | { readonly op: 'defineStaticMesh'; readonly asset: StaticMeshAsset }
+  | { readonly op: 'defineAnimatedMesh'; readonly asset: AnimatedMeshAsset }
   | { readonly op: 'createStaticMeshInstance'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly instance: StaticMeshInstanceDescriptor }
+  | { readonly op: 'createAnimatedMeshInstance'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly instance: AnimatedMeshInstanceDescriptor }
+  | { readonly op: 'setAnimatedMeshPlayback'; readonly handle: RenderHandle; readonly playback: AnimatedMeshPlaybackCommand }
   | { readonly op: 'createSprite'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly sprite: SpriteInstanceDescriptor }
   | { readonly op: 'updateSprite'; readonly handle: RenderHandle; readonly frame: number | null; readonly tint: readonly [number, number, number, number] | null; readonly renderOrder: number | null; readonly visible: boolean | null };
 
