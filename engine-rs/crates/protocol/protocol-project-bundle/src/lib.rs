@@ -63,6 +63,7 @@ pub const KNOWN_ARTIFACT_ROLES: &[&str] = &[
     "sessionStateSnapshot",
     "voxelChunkSnapshot",
     "voxelEditLog",
+    "voxelAnnotationLayer",
     "replayRecord",
     "generatedMetadata",
     "cache",
@@ -78,6 +79,7 @@ pub const LOAD_STAGES: &[&str] = &[
     "sceneDocument",
     "terrainGeneration",
     "voxelEdits",
+    "voxelAnnotations",
     "bootstrap",
     "sessionStateSnapshot",
     "finalValidation",
@@ -91,6 +93,9 @@ pub enum LoadStage {
     SceneDocument,
     TerrainGeneration,
     VoxelEdits,
+    /// Validate stored voxel annotation layers against their target voxel-volume
+    /// artifacts before any consumer can reference semantic region ids.
+    VoxelAnnotations,
     Bootstrap,
     /// Restore the runtime-diverged session-state snapshot over the bootstrapped
     /// scene baseline. Optional: present only when a save carried runtime
@@ -107,6 +112,7 @@ impl LoadStage {
             LoadStage::SceneDocument => "sceneDocument",
             LoadStage::TerrainGeneration => "terrainGeneration",
             LoadStage::VoxelEdits => "voxelEdits",
+            LoadStage::VoxelAnnotations => "voxelAnnotations",
             LoadStage::Bootstrap => "bootstrap",
             LoadStage::SessionStateSnapshot => "sessionStateSnapshot",
             LoadStage::FinalValidation => "finalValidation",
@@ -121,6 +127,7 @@ pub const ALL_LOAD_STAGES: &[LoadStage] = &[
     LoadStage::SceneDocument,
     LoadStage::TerrainGeneration,
     LoadStage::VoxelEdits,
+    LoadStage::VoxelAnnotations,
     LoadStage::Bootstrap,
     LoadStage::SessionStateSnapshot,
     LoadStage::FinalValidation,
@@ -133,6 +140,7 @@ pub const LOAD_STEP_KINDS: &[&str] = &[
     "loadSceneDocument",
     "generateTerrain",
     "applyVoxelEdits",
+    "loadVoxelAnnotations",
     "bootstrapScene",
     "restoreSessionState",
     "validateFinalState",

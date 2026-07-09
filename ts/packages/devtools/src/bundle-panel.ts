@@ -97,6 +97,8 @@ function describeLoadStep(step: LoadStep): string {
       return `generate terrain (seed ${step.seed}, generator v${step.version})`;
     case 'applyVoxelEdits':
       return `apply voxel edits (${step.editLogs.length} logs, ${step.snapshots.length} snapshots)`;
+    case 'loadVoxelAnnotations':
+      return `load voxel annotations (${step.artifacts.length} artifacts)`;
     case 'bootstrapScene':
       return `bootstrap scene ${step.scene as number} -> runtime session ${step.runtimeSession as number}`;
     case 'restoreSessionState':

@@ -1,8 +1,8 @@
 import type { ProjectId, RuntimeSessionId, SceneId } from './scene.js';
 import type { VoxelCoord, VoxelValue } from './voxel.js';
 export type ArtifactClass = 'durable' | 'generated' | 'cache';
-export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'replayRecord' | 'generatedMetadata' | 'cache';
-export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
+export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'voxelAnnotationLayer' | 'replayRecord' | 'generatedMetadata' | 'cache';
+export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'voxelAnnotations' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
 export type SuggestedAction = 'keepEdit' | 'reviewConflict';
 export interface ArtifactEntry {
     readonly path: string;
@@ -80,6 +80,9 @@ export type LoadStep = {
     readonly step: 'applyVoxelEdits';
     readonly editLogs: readonly string[];
     readonly snapshots: readonly string[];
+} | {
+    readonly step: 'loadVoxelAnnotations';
+    readonly artifacts: readonly string[];
 } | {
     readonly step: 'bootstrapScene';
     readonly scene: SceneId;

@@ -386,7 +386,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-project-bundle"]
 lane = "rust-rule"
-may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "rule-voxel-edit"]
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "svc-voxel-annotation", "protocol-voxel-annotation", "rule-voxel-edit"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
 
 # ─── Rust: Render ────────────────────────────────────────────────────────────

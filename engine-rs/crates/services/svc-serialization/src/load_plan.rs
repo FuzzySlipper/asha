@@ -9,8 +9,9 @@
 //! 3. load + validate the flat scene document,
 //! 4. generate terrain from seed + version + params,
 //! 5. apply voxel edit log / load compacted snapshots,
-//! 6. atomically bootstrap runtime entities from the scene document,
-//! 7. validate final state.
+//! 6. validate stored voxel annotation layers against target voxel-volume hashes,
+//! 7. atomically bootstrap runtime entities from the scene document,
+//! 8. validate final state.
 //!
 //! [`LoadPlan::build`] constructs this sequence deterministically from a manifest;
 //! [`LoadPlan::verify_order`] rejects an out-of-order or prerequisite-missing
@@ -31,6 +32,9 @@ pub enum LoadStage {
     SceneDocument,
     TerrainGeneration,
     VoxelEdits,
+    /// Validate stored voxel annotation layers after voxel-volume content inputs
+    /// and before bootstrap/consumers can reference semantic region ids.
+    VoxelAnnotations,
     Bootstrap,
     /// Restore a runtime-diverged session-state snapshot over the bootstrapped scene
     /// baseline. Optional: present only when the save carried runtime divergence
@@ -48,9 +52,10 @@ impl LoadStage {
             LoadStage::SceneDocument => 2,
             LoadStage::TerrainGeneration => 3,
             LoadStage::VoxelEdits => 4,
-            LoadStage::Bootstrap => 5,
-            LoadStage::SessionStateSnapshot => 6,
-            LoadStage::FinalValidation => 7,
+            LoadStage::VoxelAnnotations => 5,
+            LoadStage::Bootstrap => 6,
+            LoadStage::SessionStateSnapshot => 7,
+            LoadStage::FinalValidation => 8,
         }
     }
 
@@ -62,6 +67,7 @@ impl LoadStage {
             LoadStage::SceneDocument => "sceneDocument",
             LoadStage::TerrainGeneration => "terrainGeneration",
             LoadStage::VoxelEdits => "voxelEdits",
+            LoadStage::VoxelAnnotations => "voxelAnnotations",
             LoadStage::Bootstrap => "bootstrap",
             LoadStage::SessionStateSnapshot => "sessionStateSnapshot",
             LoadStage::FinalValidation => "finalValidation",
@@ -93,6 +99,10 @@ pub enum LoadStep {
         edit_logs: Vec<String>,
         snapshots: Vec<String>,
     },
+    /// Validate stored voxel annotation layer artifacts. The executor checks each
+    /// layer against an authority-visible target voxel-volume asset hash and
+    /// never applies it to voxel occupancy.
+    LoadVoxelAnnotations { artifacts: Vec<String> },
     /// Atomically bootstrap runtime entities from the scene document.
     BootstrapScene {
         scene: SceneId,
@@ -114,6 +124,7 @@ impl LoadStep {
             LoadStep::LoadSceneDocument { .. } => LoadStage::SceneDocument,
             LoadStep::GenerateTerrain { .. } => LoadStage::TerrainGeneration,
             LoadStep::ApplyVoxelEdits { .. } => LoadStage::VoxelEdits,
+            LoadStep::LoadVoxelAnnotations { .. } => LoadStage::VoxelAnnotations,
             LoadStep::BootstrapScene { .. } => LoadStage::Bootstrap,
             LoadStep::RestoreSessionState { .. } => LoadStage::SessionStateSnapshot,
             LoadStep::ValidateFinalState => LoadStage::FinalValidation,
@@ -180,6 +191,7 @@ impl LoadPlan {
 
         let edit_logs = artifacts_with_role(manifest, &ArtifactRole::VoxelEditLog);
         let snapshots = artifacts_with_role(manifest, &ArtifactRole::VoxelChunkSnapshot);
+        let voxel_annotations = artifacts_with_role(manifest, &ArtifactRole::VoxelAnnotationLayer);
         // The runtime session-state snapshot is optional: a save only carries one
         // when runtime authority diverged from the bootstrapped scene (#2484).
         let session_state_snapshot =
@@ -208,6 +220,9 @@ impl LoadPlan {
             LoadStep::ApplyVoxelEdits {
                 edit_logs,
                 snapshots,
+            },
+            LoadStep::LoadVoxelAnnotations {
+                artifacts: voxel_annotations,
             },
             LoadStep::BootstrapScene {
                 scene: manifest.scene.id,
@@ -255,7 +270,12 @@ impl LoadPlan {
         use core::fmt::Write;
         let mut s = String::new();
         for (i, step) in self.steps.iter().enumerate() {
-            let _ = writeln!(s, "{i} {} {}", step.stage().label(), render_step(step));
+            let detail = render_step(step);
+            if detail.is_empty() {
+                let _ = writeln!(s, "{i} {}", step.stage().label());
+            } else {
+                let _ = writeln!(s, "{i} {} {detail}", step.stage().label());
+            }
         }
         s
     }
@@ -298,6 +318,9 @@ fn render_step(step: &LoadStep) -> String {
             edit_logs.join(","),
             snapshots.join(",")
         ),
+        LoadStep::LoadVoxelAnnotations { artifacts } => {
+            format!("artifacts=[{}]", artifacts.join(","))
+        }
         LoadStep::BootstrapScene {
             scene,
             runtime_session,

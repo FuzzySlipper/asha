@@ -679,6 +679,7 @@ mod tests {
                 "projectBundle.LoadStep.loadSceneDocument",
                 "projectBundle.LoadStep.generateTerrain",
                 "projectBundle.LoadStep.applyVoxelEdits",
+                "projectBundle.LoadStep.loadVoxelAnnotations",
                 "projectBundle.LoadStep.bootstrapScene",
                 "projectBundle.LoadStep.restoreSessionState",
                 "projectBundle.LoadStep.validateFinalState",

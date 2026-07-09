@@ -92,6 +92,11 @@ mod tests {
                     ArtifactRole::VoxelEditLog,
                     b"edit-bytes",
                 ),
+                ArtifactEntry::durable(
+                    "annotations/semantic.avann.json",
+                    ArtifactRole::VoxelAnnotationLayer,
+                    b"annotation-bytes",
+                ),
                 ArtifactEntry::generated(
                     "voxel/chunk_0_0_0.snapshot",
                     ArtifactRole::VoxelChunkSnapshot,
@@ -228,6 +233,18 @@ mod tests {
             plan.steps.last(),
             Some(LoadStep::ValidateFinalState)
         ));
+        let annotation_artifacts = plan
+            .steps
+            .iter()
+            .find_map(|step| match step {
+                LoadStep::LoadVoxelAnnotations { artifacts } => Some(artifacts),
+                _ => None,
+            })
+            .expect("annotation load step");
+        assert_eq!(
+            annotation_artifacts,
+            &["annotations/semantic.avann.json".to_string()]
+        );
     }
 
     #[test]
@@ -281,6 +298,11 @@ mod tests {
                 b"c",
             ),
             ArtifactEntry::durable("voxel/recent.log", ArtifactRole::VoxelEditLog, b"e"),
+            ArtifactEntry::durable(
+                "annotations/semantic.avann.json",
+                ArtifactRole::VoxelAnnotationLayer,
+                b"a",
+            ),
             ArtifactEntry::cache("cache/mesh.bin", ArtifactRole::Cache),
         ];
         let plan = SavePlan::new(
@@ -292,7 +314,7 @@ mod tests {
             },
         );
         assert_eq!(plan.count(ArtifactClass::Cache), 1);
-        assert_eq!(plan.durable_writes().count(), 2);
+        assert_eq!(plan.durable_writes().count(), 3);
         let desc = plan.describe();
         assert!(desc.contains("fold 8 edits"));
         assert!(desc.contains("retain 2 recent edit"));

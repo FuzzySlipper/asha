@@ -26,6 +26,9 @@ use core_scene::{
     SpatialSessionHash, SpatialSessionState,
 };
 use core_space::{ChunkCoord, VoxelGridSpec};
+use protocol_voxel_annotation::{
+    VoxelAnnotationDiagnostic, VoxelAnnotationLayer, VoxelAnnotationLayerValidationRequest,
+};
 use svc_serialization::{LoadPlan, LoadPlanError, LoadStage, LoadStep};
 use svc_spatial::VoxelWorld;
 
@@ -54,6 +57,14 @@ pub trait ArtifactSource {
     fn voxel_grid_spec(&self) -> Option<VoxelGridSpec> {
         None
     }
+
+    /// The authority-visible voxel-data hash for a stored voxel-volume asset id,
+    /// if this bundle source has loaded or indexed that target. Annotation layers
+    /// fail closed when their target id is absent or their recorded target hash
+    /// is stale.
+    fn voxel_volume_data_hash(&self, _asset_id: &str) -> Option<&str> {
+        None
+    }
 }
 
 /// A simple in-memory artifact source: a map of bundle-relative path → text,
@@ -63,6 +74,7 @@ pub trait ArtifactSource {
 pub struct BundleArtifacts {
     texts: BTreeMap<String, String>,
     voxel_spec: Option<VoxelGridSpec>,
+    voxel_volume_data_hashes: BTreeMap<String, String>,
 }
 
 impl BundleArtifacts {
@@ -82,6 +94,18 @@ impl BundleArtifacts {
         self.voxel_spec = Some(spec);
         self
     }
+
+    /// Declare the authority-visible data hash for a stored voxel-volume asset
+    /// targeted by annotation layers.
+    pub fn with_voxel_volume_data_hash(
+        mut self,
+        asset_id: impl Into<String>,
+        voxel_data_hash: impl Into<String>,
+    ) -> Self {
+        self.voxel_volume_data_hashes
+            .insert(asset_id.into(), voxel_data_hash.into());
+        self
+    }
 }
 
 impl ArtifactSource for BundleArtifacts {
@@ -91,6 +115,12 @@ impl ArtifactSource for BundleArtifacts {
 
     fn voxel_grid_spec(&self) -> Option<VoxelGridSpec> {
         self.voxel_spec
+    }
+
+    fn voxel_volume_data_hash(&self, asset_id: &str) -> Option<&str> {
+        self.voxel_volume_data_hashes
+            .get(asset_id)
+            .map(String::as_str)
     }
 }
 
@@ -117,6 +147,10 @@ pub struct ProjectBundleLoadResult {
     pub runtime_entities: Option<EntityStore>,
     /// Voxel authority, when the bundle carried a voxel section.
     pub voxel: Option<VoxelWorld>,
+    /// Validated semantic annotation layers loaded from ProjectBundle artifacts.
+    /// These are stored metadata/readout layers over target voxel-volume assets;
+    /// they do not mutate voxel occupancy authority.
+    pub voxel_annotations: Vec<VoxelAnnotationLayer>,
     /// The atomic bootstrap record (carries the source trace).
     pub bootstrap: BootstrapRecord,
     /// Deterministic fingerprint of the bootstrapped scene/entity spatial session.
@@ -138,6 +172,10 @@ impl ProjectBundleLoadResult {
             self.spatial_session.entity_count(),
             self.voxel.is_some(),
             self.spatial_session_hash.0
+        ));
+        out.push_str(&format!(
+            "voxelAnnotations count={}\n",
+            self.voxel_annotations.len()
         ));
         match &self.runtime_entities {
             Some(store) => out.push_str(&format!(
@@ -187,6 +225,17 @@ pub enum LoadExecutionError {
     VoxelSpecMissing,
     /// Voxel replay/reconstruction rejected the edits.
     VoxelReplay { detail: String },
+    /// A voxel annotation artifact failed to decode structurally.
+    VoxelAnnotationDecode { path: String, detail: String },
+    /// A voxel annotation layer targets a voxel-volume asset this source did not
+    /// load or index.
+    VoxelAnnotationTargetMissing { path: String, asset_id: String },
+    /// A voxel annotation layer decoded but failed Rust authority validation.
+    VoxelAnnotationInvalid {
+        path: String,
+        layer_id: String,
+        diagnostics: Vec<VoxelAnnotationDiagnostic>,
+    },
     /// The session-state snapshot artifact failed to decode (fail closed before any
     /// runtime authority is restored). Carries the classified codec error, so a
     /// schema-version mismatch, malformed structure, and unknown discriminant stay
@@ -265,6 +314,7 @@ pub fn execute_load_plan(
     let mut stages = Vec::new();
     let mut scene_doc: Option<FlatSceneDocument> = None;
     let mut voxel_state: Option<VoxelWorld> = None;
+    let mut voxel_annotations: Vec<VoxelAnnotationLayer> = Vec::new();
     let mut spatial_session_and_record: Option<(SpatialSessionState, BootstrapRecord)> = None;
     let mut runtime_entities: Option<EntityStore> = None;
 
@@ -351,6 +401,22 @@ pub fn execute_load_plan(
                         "editLogs={} snapshots={} applied={applied}",
                         edit_logs.len(),
                         snapshots.len()
+                    ),
+                });
+            }
+            LoadStep::LoadVoxelAnnotations {
+                artifacts: annotation_artifacts,
+            } => {
+                voxel_annotations = load_voxel_annotations(artifacts, annotation_artifacts)?;
+                let region_count: usize = voxel_annotations
+                    .iter()
+                    .map(|layer| layer.regions.len())
+                    .sum();
+                stages.push(StageOutcome {
+                    stage: LoadStage::VoxelAnnotations,
+                    detail: format!(
+                        "artifacts={} regions={region_count}",
+                        voxel_annotations.len()
                     ),
                 });
             }
@@ -456,6 +522,7 @@ pub fn execute_load_plan(
         spatial_session,
         runtime_entities,
         voxel: voxel_state,
+        voxel_annotations,
         bootstrap,
         spatial_session_hash,
         stages,
@@ -539,6 +606,45 @@ fn apply_voxel_section(
         })?
     };
     Ok(Some(voxel_authority))
+}
+
+fn load_voxel_annotations(
+    artifacts: &dyn ArtifactSource,
+    annotation_artifacts: &[String],
+) -> Result<Vec<VoxelAnnotationLayer>, LoadExecutionError> {
+    let mut layers = Vec::with_capacity(annotation_artifacts.len());
+    for path in annotation_artifacts {
+        let text = read_required(artifacts, LoadStage::VoxelAnnotations, path)?;
+        let layer: VoxelAnnotationLayer =
+            serde_json::from_str(text).map_err(|e| LoadExecutionError::VoxelAnnotationDecode {
+                path: path.clone(),
+                detail: e.to_string(),
+            })?;
+        let target_hash = artifacts
+            .voxel_volume_data_hash(&layer.target_voxel_volume_asset_id)
+            .ok_or_else(|| LoadExecutionError::VoxelAnnotationTargetMissing {
+                path: path.clone(),
+                asset_id: layer.target_voxel_volume_asset_id.clone(),
+            })?;
+        let request = VoxelAnnotationLayerValidationRequest {
+            layer,
+            expected_target_voxel_volume_asset_id: None,
+            expected_target_voxel_data_hash: Some(target_hash.to_string()),
+            max_regions: svc_voxel_annotation::DEFAULT_MAX_REGIONS,
+            max_sparse_runs_per_region: svc_voxel_annotation::DEFAULT_MAX_SPARSE_RUNS_PER_REGION,
+            max_total_assigned_cells: svc_voxel_annotation::DEFAULT_MAX_TOTAL_ASSIGNED_CELLS,
+        };
+        let report = svc_voxel_annotation::validate_layer(&request);
+        if !report.valid {
+            return Err(LoadExecutionError::VoxelAnnotationInvalid {
+                path: path.clone(),
+                layer_id: report.layer_id,
+                diagnostics: report.diagnostics,
+            });
+        }
+        layers.push(request.layer);
+    }
+    Ok(layers)
 }
 
 /// The voxel grid spec, if the artifact source is a [`BundleArtifacts`] that

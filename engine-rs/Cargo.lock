@@ -676,10 +676,13 @@ dependencies = [
  "core-scene",
  "core-space",
  "core-voxel",
+ "protocol-voxel-annotation",
  "rule-voxel-edit",
+ "serde_json",
  "svc-serialization",
  "svc-spatial",
  "svc-volume",
+ "svc-voxel-annotation",
 ]
 
 [[package]]

@@ -3024,6 +3024,10 @@ pub fn project_bundle_module() -> Module {
                     ],
                 ),
                 v(
+                    "loadVoxelAnnotations",
+                    vec![f("artifacts", TsType::array(string()))],
+                ),
+                v(
                     "bootstrapScene",
                     vec![
                         f("scene", r("SceneId")),

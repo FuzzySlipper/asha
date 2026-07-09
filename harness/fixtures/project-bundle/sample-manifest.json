@@ -6,6 +6,7 @@
   "assetLock": { "artifact": "assets/lock.json", "assetCount": 1 },
   "generator": { "seed": 42, "version": 1, "params": "default" },
   "artifacts": [
+    { "path": "annotations/semantic.avann.json", "class": "durable", "role": "voxelAnnotationLayer", "contentHash": "c95f382cabb93d0a" },
     { "path": "assets/lock.json", "class": "durable", "role": "assetLock", "contentHash": "422f72d827e3137c" },
     { "path": "cache/mesh_0_0_0.bin", "class": "cache", "role": "cache", "contentHash": null },
     { "path": "scene/scene.json", "class": "durable", "role": "sceneDocument", "contentHash": "1723540f7db7a459" },

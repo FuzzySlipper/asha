@@ -117,6 +117,39 @@ pub fn composition_failure_diagnostic(err: &LoadExecutionError) -> DiagnosticRep
             RemedyAction::Regenerate,
             "pin the old generator or run dev regenerate-and-replay to resolve the conflict",
         ),
+        LoadExecutionError::VoxelAnnotationDecode { path, detail } => report(
+            DiagnosticCode::CorruptBundleArtifact,
+            "voxelAnnotations",
+            DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
+            format!("voxel annotation artifact `{path}` failed to decode: {detail}"),
+            RemedyAction::RestoreArtifact,
+            "restore the annotation layer artifact from a known-good copy",
+        ),
+        LoadExecutionError::VoxelAnnotationTargetMissing { path, asset_id } => report(
+            DiagnosticCode::LoadStageFailed,
+            "voxelAnnotations",
+            DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
+            format!(
+                "voxel annotation artifact `{path}` targets missing voxel-volume asset `{asset_id}`"
+            ),
+            RemedyAction::RestoreArtifact,
+            "restore or load the target voxel-volume asset before loading annotation layers",
+        ),
+        LoadExecutionError::VoxelAnnotationInvalid {
+            path,
+            layer_id,
+            diagnostics,
+        } => report(
+            DiagnosticCode::LoadStageFailed,
+            "voxelAnnotations",
+            DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
+            format!(
+                "voxel annotation layer `{layer_id}` failed validation with {} diagnostic(s)",
+                diagnostics.len()
+            ),
+            RemedyAction::Inspect,
+            "inspect the annotation layer diagnostics; stale target hashes and invalid region graphs fail closed",
+        ),
         LoadExecutionError::SessionStateDecode { path, error } => report(
             DiagnosticCode::CorruptBundleArtifact,
             "sessionStateSnapshot",

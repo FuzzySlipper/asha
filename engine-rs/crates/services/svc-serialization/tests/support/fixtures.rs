@@ -39,6 +39,11 @@ pub fn sample_manifest() -> ProjectBundleManifest {
             ),
             ArtifactEntry::durable("assets/lock.json", ArtifactRole::AssetLock, b"lock-bytes"),
             ArtifactEntry::durable("voxel/edits.log", ArtifactRole::VoxelEditLog, b"edit-bytes"),
+            ArtifactEntry::durable(
+                "annotations/semantic.avann.json",
+                ArtifactRole::VoxelAnnotationLayer,
+                b"annotation-bytes",
+            ),
             ArtifactEntry::generated(
                 "voxel/chunk_0_0_0.snapshot",
                 ArtifactRole::VoxelChunkSnapshot,

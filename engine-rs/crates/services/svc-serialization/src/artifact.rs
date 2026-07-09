@@ -68,6 +68,8 @@ pub enum ArtifactRole {
     VoxelChunkSnapshot,
     /// A voxel edit/replay log.
     VoxelEditLog,
+    /// A stored semantic annotation layer over a target voxel-volume asset.
+    VoxelAnnotationLayer,
     /// Replay records / diagnostics for a session.
     ReplayRecord,
     /// Terrain generation metadata (seed/version/params).
@@ -87,6 +89,7 @@ impl ArtifactRole {
             ArtifactRole::SessionStateSnapshot => "sessionStateSnapshot",
             ArtifactRole::VoxelChunkSnapshot => "voxelChunkSnapshot",
             ArtifactRole::VoxelEditLog => "voxelEditLog",
+            ArtifactRole::VoxelAnnotationLayer => "voxelAnnotationLayer",
             ArtifactRole::ReplayRecord => "replayRecord",
             ArtifactRole::GeneratedMetadata => "generatedMetadata",
             ArtifactRole::Cache => "cache",
@@ -102,6 +105,7 @@ impl ArtifactRole {
             "sessionStateSnapshot" => ArtifactRole::SessionStateSnapshot,
             "voxelChunkSnapshot" => ArtifactRole::VoxelChunkSnapshot,
             "voxelEditLog" => ArtifactRole::VoxelEditLog,
+            "voxelAnnotationLayer" => ArtifactRole::VoxelAnnotationLayer,
             "replayRecord" => ArtifactRole::ReplayRecord,
             "generatedMetadata" => ArtifactRole::GeneratedMetadata,
             "cache" => ArtifactRole::Cache,

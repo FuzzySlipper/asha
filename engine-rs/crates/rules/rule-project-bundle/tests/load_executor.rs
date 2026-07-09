@@ -100,6 +100,7 @@ fn stage_summary_matches_golden() {
          stage bootstrap runtimeSession=7 entities=2\n\
          stage finalValidation spatialSessionHash={spatial_session_hash:016x} ok\n\
          result entities=2 voxel=false spatialSessionHash={spatial_session_hash:016x}\n\
+         voxelAnnotations count=0\n\
          runtimeEntities none\n\
          sourceTrace count=2\n"
     );
@@ -266,6 +267,101 @@ fn voxel_section_without_spec_fails_closed() {
 }
 
 #[test]
+fn voxel_annotation_layer_survives_bundle_load_without_touching_voxel_authority() {
+    let annotation_text = sample_annotation_json("fnv1a64:target");
+    let mut plan = sample_plan();
+    plan.steps.insert(
+        3,
+        LoadStep::LoadVoxelAnnotations {
+            artifacts: vec!["annotations/semantic.avann.json".into()],
+        },
+    );
+
+    let artifacts = sample_artifacts()
+        .with_artifact("annotations/semantic.avann.json", annotation_text)
+        .with_voxel_volume_data_hash("voxel-volume/test-room", "fnv1a64:target");
+
+    let result = execute_load_plan(&plan, &artifacts).expect("annotation load succeeds");
+    assert!(
+        result.voxel.is_none(),
+        "annotations must not create voxel occupancy"
+    );
+    assert_eq!(result.voxel_annotations.len(), 1);
+    assert_eq!(
+        result.voxel_annotations[0].layer_id,
+        "voxel-annotation/test-room/semantic"
+    );
+    assert_eq!(result.voxel_annotations[0].regions.len(), 1);
+    let stages: Vec<LoadStage> = result.stages.iter().map(|s| s.stage).collect();
+    assert_eq!(
+        stages,
+        vec![
+            LoadStage::Versions,
+            LoadStage::AssetLock,
+            LoadStage::SceneDocument,
+            LoadStage::VoxelAnnotations,
+            LoadStage::Bootstrap,
+            LoadStage::FinalValidation,
+        ]
+    );
+}
+
+#[test]
+fn voxel_annotation_missing_target_volume_fails_closed() {
+    let mut plan = sample_plan();
+    plan.steps.insert(
+        3,
+        LoadStep::LoadVoxelAnnotations {
+            artifacts: vec!["annotations/semantic.avann.json".into()],
+        },
+    );
+    let artifacts = sample_artifacts().with_artifact(
+        "annotations/semantic.avann.json",
+        sample_annotation_json("fnv1a64:target"),
+    );
+
+    let err = execute_load_plan(&plan, &artifacts).unwrap_err();
+    match err {
+        LoadExecutionError::VoxelAnnotationTargetMissing { path, asset_id } => {
+            assert_eq!(path, "annotations/semantic.avann.json");
+            assert_eq!(asset_id, "voxel-volume/test-room");
+        }
+        other => panic!("expected missing annotation target, got {other:?}"),
+    }
+}
+
+#[test]
+fn voxel_annotation_stale_target_hash_fails_closed() {
+    let mut plan = sample_plan();
+    plan.steps.insert(
+        3,
+        LoadStep::LoadVoxelAnnotations {
+            artifacts: vec!["annotations/semantic.avann.json".into()],
+        },
+    );
+    let artifacts = sample_artifacts()
+        .with_artifact(
+            "annotations/semantic.avann.json",
+            sample_annotation_json("fnv1a64:old-target"),
+        )
+        .with_voxel_volume_data_hash("voxel-volume/test-room", "fnv1a64:new-target");
+
+    let err = execute_load_plan(&plan, &artifacts).unwrap_err();
+    match err {
+        LoadExecutionError::VoxelAnnotationInvalid {
+            path, diagnostics, ..
+        } => {
+            assert_eq!(path, "annotations/semantic.avann.json");
+            assert!(diagnostics.iter().any(|diagnostic| {
+                diagnostic.code
+                    == protocol_voxel_annotation::VoxelAnnotationDiagnosticCode::TargetVoxelHashMismatch
+            }));
+        }
+        other => panic!("expected stale annotation target hash, got {other:?}"),
+    }
+}
+
+#[test]
 fn staged_commit_swaps_only_on_success() {
     let mut stage = ProjectBundleStage::empty();
     // First load commits a live ProjectBundle load.
@@ -295,4 +391,66 @@ fn optional_cache_absence_does_not_block_load() {
     // that no cache path is required.
     let artifacts = sample_artifacts(); // no cache/* entries at all
     assert!(execute_load_plan(&sample_plan(), &artifacts).is_ok());
+}
+
+fn sample_annotation_json(target_hash: &str) -> String {
+    use protocol_voxel_annotation::{
+        VoxelAnnotationBounds, VoxelAnnotationContentHashes, VoxelAnnotationCoord,
+        VoxelAnnotationKind, VoxelAnnotationLayer, VoxelAnnotationProvenanceKind,
+        VoxelAnnotationProvenanceRef, VoxelAnnotationRegion, VoxelAnnotationSelection,
+        VoxelAnnotationSparseRun, VOXEL_ANNOTATION_MEDIA_TYPE, VOXEL_ANNOTATION_SCHEMA_VERSION,
+    };
+
+    fn coord(x: i64, y: i64, z: i64) -> VoxelAnnotationCoord {
+        VoxelAnnotationCoord { x, y, z }
+    }
+
+    fn bounds(
+        min_x: i64,
+        min_y: i64,
+        min_z: i64,
+        max_x: i64,
+        max_y: i64,
+        max_z: i64,
+    ) -> VoxelAnnotationBounds {
+        VoxelAnnotationBounds {
+            min: coord(min_x, min_y, min_z),
+            max: coord(max_x, max_y, max_z),
+        }
+    }
+
+    let layer = VoxelAnnotationLayer {
+        layer_id: "voxel-annotation/test-room/semantic".to_string(),
+        schema_version: VOXEL_ANNOTATION_SCHEMA_VERSION,
+        media_type: VOXEL_ANNOTATION_MEDIA_TYPE.to_string(),
+        target_voxel_volume_asset_id: "voxel-volume/test-room".to_string(),
+        target_voxel_data_hash: target_hash.to_string(),
+        target_bounds: bounds(0, 0, 0, 9, 9, 9),
+        regions: vec![VoxelAnnotationRegion {
+            region_id: "region/spawn".to_string(),
+            label: "Spawn".to_string(),
+            kind: VoxelAnnotationKind::SpawnArea,
+            tags: vec!["entry".to_string()],
+            parent_region_id: None,
+            bounds: bounds(1, 1, 1, 3, 1, 1),
+            selection: VoxelAnnotationSelection {
+                sparse_runs: vec![VoxelAnnotationSparseRun {
+                    start: coord(1, 1, 1),
+                    length: 3,
+                }],
+            },
+        }],
+        provenance: vec![VoxelAnnotationProvenanceRef {
+            kind: VoxelAnnotationProvenanceKind::Authored,
+            uri: "asha://fixture/annotation".to_string(),
+            content_hash: "fnv1a64:source".to_string(),
+        }],
+        content_hashes: VoxelAnnotationContentHashes {
+            canonical_json: String::new(),
+            membership_data: String::new(),
+        },
+        validation_diagnostics: Vec::new(),
+    };
+    let layer = svc_voxel_annotation::with_computed_hashes(&layer);
+    serde_json::to_string_pretty(&layer).expect("annotation layer serializes")
 }
