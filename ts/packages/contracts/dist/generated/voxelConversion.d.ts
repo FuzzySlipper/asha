@@ -44,6 +44,36 @@ export interface VoxelConversionMeshAssetRegistrationRequest {
     readonly source: VoxelConversionSourceRef;
     readonly meshAsset: VoxelConversionMeshAsset;
 }
+export interface VoxelConversionSourceMetadataRequest {
+    readonly source: VoxelConversionSourceRef;
+}
+export interface VoxelConversionSourceBounds {
+    readonly min: readonly [number, number, number];
+    readonly max: readonly [number, number, number];
+}
+export interface VoxelConversionSourceGroupMetadata {
+    readonly groupId: string;
+    readonly label: string | null;
+    readonly materialSlot: number;
+    readonly start: number;
+    readonly count: number;
+    readonly bounds: VoxelConversionSourceBounds | null;
+}
+export interface VoxelConversionSourceMetadataReadout {
+    readonly request: VoxelConversionSourceMetadataRequest;
+    readonly registered: boolean;
+    readonly source: VoxelConversionSourceRef | null;
+    readonly sourcePath: string | null;
+    readonly sourceBounds: VoxelConversionSourceBounds | null;
+    readonly vertexCount: number;
+    readonly triangleCount: number;
+    readonly groups: readonly VoxelConversionSourceGroupMetadata[];
+    readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+    readonly latestPlanId: string | null;
+    readonly latestPlanTransform: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] | null;
+    readonly diagnostics: readonly VoxelConversionDiagnostic[];
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
+}
 export interface VoxelConversionSourceRegistration {
     readonly source: VoxelConversionSourceRef;
     readonly registered: boolean;

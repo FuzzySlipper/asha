@@ -1281,6 +1281,56 @@ pub fn voxel_conversion_module() -> Module {
             ],
         ),
         iface(
+            "Request authority metadata for a registered conversion source.",
+            "VoxelConversionSourceMetadataRequest",
+            vec![f("source", r("VoxelConversionSourceRef"))],
+        ),
+        iface(
+            "Source-space float bounds for registered conversion source geometry.",
+            "VoxelConversionSourceBounds",
+            vec![f("min", vec3()), f("max", vec3())],
+        ),
+        iface(
+            "Metadata for one primitive/submesh/group inside a conversion source.",
+            "VoxelConversionSourceGroupMetadata",
+            vec![
+                f("groupId", string()),
+                f("label", TsType::nullable(string())),
+                f("materialSlot", num()),
+                f("start", num()),
+                f("count", num()),
+                f("bounds", TsType::nullable(r("VoxelConversionSourceBounds"))),
+            ],
+        ),
+        iface(
+            "Authority-owned metadata readout for a registered conversion source.",
+            "VoxelConversionSourceMetadataReadout",
+            vec![
+                f("request", r("VoxelConversionSourceMetadataRequest")),
+                f("registered", boolean()),
+                f("source", TsType::nullable(r("VoxelConversionSourceRef"))),
+                f("sourcePath", TsType::nullable(string())),
+                f(
+                    "sourceBounds",
+                    TsType::nullable(r("VoxelConversionSourceBounds")),
+                ),
+                f("vertexCount", num()),
+                f("triangleCount", num()),
+                f(
+                    "groups",
+                    TsType::array(r("VoxelConversionSourceGroupMetadata")),
+                ),
+                f(
+                    "materialSlots",
+                    TsType::array(r("VoxelConversionSourceMaterialSlot")),
+                ),
+                f("latestPlanId", TsType::nullable(string())),
+                f("latestPlanTransform", TsType::nullable(matrix4())),
+                f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
+                f("evidence", TsType::array(r("VoxelConversionEvidenceRef"))),
+            ],
+        ),
+        iface(
             "Result of registering a conversion source; rejected inputs carry diagnostics.",
             "VoxelConversionSourceRegistration",
             vec![

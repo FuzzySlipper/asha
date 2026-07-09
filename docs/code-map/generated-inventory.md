@@ -228,6 +228,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `read_render_diffs` — stable; output `protocol_render::RenderFrameDiffDescriptor`
 - `read_scene_object_snapshot` — stable; output `protocol_scene::SceneObjectSnapshot`
 - `read_voxel_annotation_query` — stable; output `protocol_voxel_annotation::VoxelAnnotationQueryReadout`
+- `read_voxel_conversion_source_metadata` — stable; output `protocol_voxel_conversion::VoxelConversionSourceMetadataReadout`
 - `read_voxel_edit_history` — stable; output `protocol_voxel_edit_history::VoxelEditHistorySummary`
 - `read_voxel_mesh_evidence` — stable; output `protocol_render::VoxelMeshEvidenceSnapshot`
 - `read_voxel_model_info` — stable; output `protocol_voxel_conversion::VoxelModelInfoReadout`

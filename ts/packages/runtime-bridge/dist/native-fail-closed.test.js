@@ -83,6 +83,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'plan_voxel_conversion',
     'register_voxel_conversion_source',
     'register_voxel_conversion_mesh_asset',
+    'read_voxel_conversion_source_metadata',
     'preview_voxel_conversion',
     'apply_voxel_conversion',
     'export_voxel_conversion_evidence',
@@ -798,6 +799,36 @@ function fakeAddon(calls = []) {
                     }],
             });
         },
+        readVoxelConversionSourceMetadata: (_handle, requestJson) => {
+            calls.push(`voxelSourceMetadata:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                request,
+                registered: true,
+                source: request.source,
+                sourcePath: 'assets/mesh/quad.mesh.json',
+                sourceBounds: { min: [0, 0, 0], max: [1, 1, 0] },
+                vertexCount: 3,
+                triangleCount: 1,
+                groups: [{
+                        groupId: 'group:0:material-slot:0',
+                        label: 'Group 0 / material slot 0',
+                        materialSlot: 0,
+                        start: 0,
+                        count: 3,
+                        bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+                    }],
+                materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'mat/a' }],
+                latestPlanId: null,
+                latestPlanTransform: null,
+                diagnostics: [],
+                evidence: [{
+                        kind: 'source_snapshot',
+                        uri: `asha://voxel-conversion/source/${request.source.assetId}`,
+                        contentHash: request.source.sourceHash,
+                    }],
+            });
+        },
         previewVoxelConversion: (_handle, requestJson) => {
             calls.push(`voxelPreview:${requestJson}`);
             const request = parseJsonFixture(requestJson);
@@ -1167,6 +1198,9 @@ const INVOKE = new Map([
     ['planVoxelConversion', (b) => b.planVoxelConversion(VOXEL_CONVERSION_PLAN_REQUEST)],
     ['registerVoxelConversionSource', (b) => b.registerVoxelConversionSource(VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST)],
     ['registerVoxelConversionMeshAsset', (b) => b.registerVoxelConversionMeshAsset(VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST)],
+    ['readVoxelConversionSourceMetadata', (b) => b.readVoxelConversionSourceMetadata({
+            source: VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST.source,
+        })],
     ['previewVoxelConversion', (b) => b.previewVoxelConversion({
             planId: 'fnv1a64:0000000000000101',
             expectedPlanHash: VOXEL_PLAN_HASH,

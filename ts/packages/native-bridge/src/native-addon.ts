@@ -250,6 +250,7 @@ export interface NativeAddon {
   planVoxelConversion(handle: number, requestJson: string): string;
   registerVoxelConversionSource(handle: number, requestJson: string): string;
   registerVoxelConversionMeshAsset(handle: number, requestJson: string): string;
+  readVoxelConversionSourceMetadata(handle: number, requestJson: string): string;
   previewVoxelConversion(handle: number, requestJson: string): string;
   applyVoxelConversion(handle: number, requestJson: string): string;
   exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
@@ -289,6 +290,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'planVoxelConversion',
   'registerVoxelConversionSource',
   'registerVoxelConversionMeshAsset',
+  'readVoxelConversionSourceMetadata',
   'previewVoxelConversion',
   'applyVoxelConversion',
   'exportVoxelConversionEvidence',

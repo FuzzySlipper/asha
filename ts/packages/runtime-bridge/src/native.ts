@@ -20,6 +20,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceMetadataReadout,
+  VoxelConversionSourceMetadataRequest,
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
@@ -136,6 +138,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'plan_voxel_conversion',
   'register_voxel_conversion_source',
   'register_voxel_conversion_mesh_asset',
+  'read_voxel_conversion_source_metadata',
   'preview_voxel_conversion',
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
@@ -699,6 +702,19 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       this.#addon.registerVoxelConversionMeshAsset(handle, JSON.stringify(request)),
     );
     return parseNativeJson<VoxelConversionSourceRegistration>(payload, 'voxel conversion mesh asset registration');
+  }
+
+  readVoxelConversionSourceMetadata(
+    request: VoxelConversionSourceMetadataRequest,
+  ): VoxelConversionSourceMetadataReadout {
+    const handle = this.#requireHandle('readVoxelConversionSourceMetadata');
+    const payload = callNative(() =>
+      this.#addon.readVoxelConversionSourceMetadata(handle, JSON.stringify(request)),
+    );
+    return parseNativeJson<VoxelConversionSourceMetadataReadout>(
+      payload,
+      'voxel conversion source metadata',
+    );
   }
 
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview {

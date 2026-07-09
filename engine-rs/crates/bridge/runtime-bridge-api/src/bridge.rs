@@ -55,6 +55,13 @@ pub trait RuntimeBridge {
         &mut self,
         request: VoxelConversionMeshAssetRegistrationRequest,
     ) -> BridgeResult<VoxelConversionSourceRegistration>;
+    /// Read authority-owned metadata for a registered conversion source. Unknown
+    /// sources return diagnostics instead of requiring Studio to infer catalog
+    /// metadata from paths or private state.
+    fn read_voxel_conversion_source_metadata(
+        &self,
+        request: VoxelConversionSourceMetadataRequest,
+    ) -> BridgeResult<VoxelConversionSourceMetadataReadout>;
     /// Preview the most recently planned conversion, guarded by the plan hash.
     fn preview_voxel_conversion(
         &mut self,

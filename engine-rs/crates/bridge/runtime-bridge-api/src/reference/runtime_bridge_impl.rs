@@ -30,7 +30,9 @@ impl RuntimeBridge for ReferenceBridge {
         self.game_rule_active_modifiers.clear();
         self.game_rule_recent_trace.clear();
         self.game_rule_recent_replay_hashes.clear();
-        self.voxel_conversion_sources = Self::seeded_voxel_conversion_sources()?;
+        let (sources, source_metadata) = Self::seeded_voxel_conversion_authority()?;
+        self.voxel_conversion_sources = sources;
+        self.voxel_conversion_source_metadata = source_metadata;
         self.voxel_conversion_targets = Self::seeded_voxel_conversion_targets();
         self.voxel_conversion_plan = None;
         self.voxel_conversion_evidence.clear();
@@ -335,6 +337,10 @@ impl RuntimeBridge for ReferenceBridge {
         };
         self.voxel_conversion_sources
             .insert(source.asset_id.clone(), source);
+        self.voxel_conversion_source_metadata.insert(
+            request.source.asset_id.clone(),
+            Self::source_metadata_from_registration(&request),
+        );
         self.voxel_conversion_plan = None;
         let evidence = vec![VoxelConversionEvidenceRef {
             kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
@@ -370,6 +376,10 @@ impl RuntimeBridge for ReferenceBridge {
         };
         self.voxel_conversion_sources
             .insert(source.asset_id.clone(), source);
+        self.voxel_conversion_source_metadata.insert(
+            request.source.asset_id.clone(),
+            Self::source_metadata_from_project_mesh_asset(&request),
+        );
         self.voxel_conversion_plan = None;
         let evidence = vec![VoxelConversionEvidenceRef {
             kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
@@ -386,6 +396,48 @@ impl RuntimeBridge for ReferenceBridge {
             material_slots: request.mesh_asset.material_slots,
             diagnostics: Vec::new(),
             evidence,
+        })
+    }
+
+    fn read_voxel_conversion_source_metadata(
+        &self,
+        request: VoxelConversionSourceMetadataRequest,
+    ) -> BridgeResult<VoxelConversionSourceMetadataReadout> {
+        self.require_initialized("read_voxel_conversion_source_metadata")?;
+        let Some(metadata) = self
+            .voxel_conversion_source_metadata
+            .get(&request.source.asset_id)
+        else {
+            return Ok(Self::missing_voxel_conversion_source_metadata(
+                request,
+                "voxel conversion source metadata is unavailable in current authority state",
+            ));
+        };
+        if metadata.source != request.source {
+            return Ok(Self::missing_voxel_conversion_source_metadata(
+                request,
+                "voxel conversion source metadata exists, but the requested source identity/hash does not match authority",
+            ));
+        }
+        let latest_plan = self
+            .voxel_conversion_plan
+            .as_ref()
+            .map(|planned| &planned.plan)
+            .filter(|plan| plan.source == metadata.source);
+        Ok(VoxelConversionSourceMetadataReadout {
+            request,
+            registered: true,
+            source: Some(metadata.source.clone()),
+            source_path: metadata.source_path.clone(),
+            source_bounds: metadata.source_bounds,
+            vertex_count: metadata.vertex_count,
+            triangle_count: metadata.triangle_count,
+            groups: metadata.groups.clone(),
+            material_slots: metadata.material_slots.clone(),
+            latest_plan_id: latest_plan.map(|plan| plan.plan_id.clone()),
+            latest_plan_transform: latest_plan.map(|plan| plan.settings.transform),
+            diagnostics: Vec::new(),
+            evidence: metadata.evidence.clone(),
         })
     }
 

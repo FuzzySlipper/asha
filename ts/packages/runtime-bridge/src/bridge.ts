@@ -36,6 +36,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceMetadataReadout,
+  VoxelConversionSourceMetadataRequest,
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelModelInfoReadout,
@@ -445,6 +447,7 @@ export interface RuntimeBridge {
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
   registerVoxelConversionSource(request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration;
   registerVoxelConversionMeshAsset(request: VoxelConversionMeshAssetRegistrationRequest): VoxelConversionSourceRegistration;
+  readVoxelConversionSourceMetadata(request: VoxelConversionSourceMetadataRequest): VoxelConversionSourceMetadataReadout;
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
   exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];

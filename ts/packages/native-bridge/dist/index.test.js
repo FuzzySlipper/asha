@@ -59,6 +59,7 @@ void test('native addon loader rejects stale modules missing encounter authority
     try {
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('planVoxelConversion'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('registerVoxelConversionSource'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelConversionSourceMetadata'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('previewVoxelConversion'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelConversion'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('exportVoxelConversionEvidence'));
@@ -70,6 +71,7 @@ void test('native addon loader rejects stale modules missing encounter authority
             error.message.includes('createCamera') &&
             error.message.includes('planVoxelConversion') &&
             error.message.includes('registerVoxelConversionSource') &&
+            error.message.includes('readVoxelConversionSourceMetadata') &&
             error.message.includes('exportVoxelConversionEvidence'));
     }
     finally {

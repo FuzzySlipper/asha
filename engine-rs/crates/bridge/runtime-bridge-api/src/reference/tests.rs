@@ -1731,6 +1731,83 @@ fn voxel_conversion_registers_project_mesh_asset_before_plan() {
         plan.settings.material_map.entries[0].source_material_slot,
         2
     );
+
+    let metadata = bridge
+        .read_voxel_conversion_source_metadata(
+            protocol_voxel_conversion::VoxelConversionSourceMetadataRequest {
+                source: registration_request.source.clone(),
+            },
+        )
+        .unwrap();
+    assert!(metadata.registered);
+    assert_eq!(
+        metadata.source.as_ref().unwrap(),
+        &registration_request.source
+    );
+    assert_eq!(
+        metadata.source_path.as_deref(),
+        Some("assets/meshes/project-quad.mesh.json")
+    );
+    assert_eq!(metadata.vertex_count, 4);
+    assert_eq!(metadata.triangle_count, 2);
+    assert_eq!(metadata.groups.len(), 1);
+    assert_eq!(metadata.groups[0].material_slot, 2);
+    assert_eq!(metadata.groups[0].start, 0);
+    assert_eq!(metadata.groups[0].count, 6);
+    assert_eq!(metadata.groups[0].bounds.unwrap().max, [1.0, 1.0, 0.0]);
+    assert_eq!(
+        metadata.material_slots[0].source_material_id.as_deref(),
+        Some("material/project-brick")
+    );
+    assert_eq!(
+        metadata.latest_plan_id.as_deref(),
+        Some(plan.plan_id.as_str())
+    );
+    assert_eq!(
+        metadata.latest_plan_transform,
+        Some(plan.settings.transform)
+    );
+    assert!(metadata.diagnostics.is_empty());
+    assert_eq!(
+        metadata.evidence[0].kind,
+        protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot
+    );
+}
+
+#[test]
+fn voxel_conversion_source_metadata_fails_closed_for_unknown_or_stale_source() {
+    let mut bridge = init_bridge();
+    let request = project_mesh_asset_registration_request();
+    let missing = bridge
+        .read_voxel_conversion_source_metadata(
+            protocol_voxel_conversion::VoxelConversionSourceMetadataRequest {
+                source: request.source.clone(),
+            },
+        )
+        .unwrap();
+    assert!(!missing.registered);
+    assert_eq!(
+        missing.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::VoxelConversionUnavailable
+    );
+
+    bridge
+        .register_voxel_conversion_mesh_asset(request.clone())
+        .unwrap();
+    let mut stale_source = request.source;
+    stale_source.source_hash = "sha256:stale".to_string();
+    let stale = bridge
+        .read_voxel_conversion_source_metadata(
+            protocol_voxel_conversion::VoxelConversionSourceMetadataRequest {
+                source: stale_source,
+            },
+        )
+        .unwrap();
+    assert!(!stale.registered);
+    assert_eq!(
+        stale.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::VoxelConversionUnavailable
+    );
 }
 
 #[test]

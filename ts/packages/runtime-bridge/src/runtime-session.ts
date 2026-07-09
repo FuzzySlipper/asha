@@ -20,6 +20,8 @@ import {
   type VoxelConversionPreview,
   type VoxelConversionPreviewRequest,
   type VoxelConversionReceipt,
+  type VoxelConversionSourceMetadataReadout,
+  type VoxelConversionSourceMetadataRequest,
   type VoxelConversionSourceRegistration,
   type VoxelConversionSourceRegistrationRequest,
   type VoxelModelInfoReadout, type VoxelModelInfoRequest,
@@ -829,6 +831,7 @@ export interface RuntimeSessionFacade {
   ): RuntimeSessionGeneratedTunnelOperationReceipt;
   registerVoxelConversionSource(request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration;
   registerVoxelConversionMeshAsset(request: VoxelConversionMeshAssetRegistrationRequest): VoxelConversionSourceRegistration;
+  readVoxelConversionSourceMetadata(request: VoxelConversionSourceMetadataRequest): VoxelConversionSourceMetadataReadout;
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
@@ -1538,6 +1541,8 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
   registerVoxelConversionSource(_request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration { void _request; return this.#unsupportedOperation('registerVoxelConversionSource', 'Voxel conversion source registration is not wired into the reference RuntimeSession'); }
 
   registerVoxelConversionMeshAsset(_request: VoxelConversionMeshAssetRegistrationRequest): VoxelConversionSourceRegistration { void _request; return this.#unsupportedOperation('registerVoxelConversionMeshAsset', 'Voxel conversion mesh asset registration is not wired into the reference RuntimeSession'); }
+
+  readVoxelConversionSourceMetadata(_request: VoxelConversionSourceMetadataRequest): VoxelConversionSourceMetadataReadout { void _request; return this.#unsupportedOperation('readVoxelConversionSourceMetadata', 'Voxel conversion source metadata is not wired into the reference RuntimeSession'); }
 
   previewVoxelConversion(_request: VoxelConversionPreviewRequest): VoxelConversionPreview { void _request; return this.#unsupportedOperation('previewVoxelConversion', 'Voxel conversion preview is not wired into the reference RuntimeSession'); }
 

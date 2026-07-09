@@ -40,6 +40,7 @@ pub struct ReferenceBridge {
     /// Last planned voxel conversion. This is bridge-owned authority state used
     /// by preview/apply hash guards; callers cannot provide their own output.
     voxel_conversion_sources: BTreeMap<String, StaticMeshSource>,
+    voxel_conversion_source_metadata: BTreeMap<String, VoxelConversionSourceMetadataAuthority>,
     voxel_conversion_targets: BTreeMap<(u64, Option<String>), VoxelConversionTargetAuthority>,
     voxel_conversion_plan: Option<PlannedConversion>,
     voxel_conversion_evidence: Vec<VoxelConversionEvidenceRef>,
@@ -71,6 +72,18 @@ const VOXEL_MODEL_WINDOW_MAX_SAMPLES: u64 = 4096;
 struct VoxelConversionTargetAuthority {
     spec: VoxelGridSpec,
     volume_asset_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct VoxelConversionSourceMetadataAuthority {
+    source: protocol_voxel_conversion::VoxelConversionSourceRef,
+    source_path: Option<String>,
+    source_bounds: Option<VoxelConversionSourceBounds>,
+    vertex_count: u32,
+    triangle_count: u32,
+    groups: Vec<VoxelConversionSourceGroupMetadata>,
+    material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+    evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -646,19 +659,50 @@ impl ReferenceBridge {
         }
     }
 
-    fn seeded_voxel_conversion_sources() -> BridgeResult<BTreeMap<String, StaticMeshSource>> {
+    fn seeded_voxel_conversion_authority() -> BridgeResult<(
+        BTreeMap<String, StaticMeshSource>,
+        BTreeMap<String, VoxelConversionSourceMetadataAuthority>,
+    )> {
         let mut sources = BTreeMap::new();
+        let mut metadata = BTreeMap::new();
         let fixture = Self::fixture_quad_source();
+        metadata.insert(
+            fixture.asset_id.clone(),
+            Self::source_metadata_from_static_source(
+                &fixture,
+                None,
+                vec![
+                    VoxelConversionSourceMaterialSlot {
+                        source_material_slot: 0,
+                        source_material_id: Some("mat/a".to_string()),
+                    },
+                    VoxelConversionSourceMaterialSlot {
+                        source_material_slot: 1,
+                        source_material_id: Some("mat/b".to_string()),
+                    },
+                ],
+                Self::material_group_metadata_from_source(&fixture),
+            ),
+        );
         sources.insert(fixture.asset_id.clone(), fixture);
 
+        let project_asset = Self::project_triangle_static_mesh_asset();
         let project_source = Self::static_mesh_source_from_asset(
-            &Self::project_triangle_static_mesh_asset(),
+            &project_asset,
             1,
             "sha256:import-fixture-a",
             Some("default".to_string()),
         )?;
+        metadata.insert(
+            project_source.asset_id.clone(),
+            Self::source_metadata_from_static_mesh_asset(
+                &project_source,
+                &project_asset,
+                Some("asha://fixture/mesh/import-fixture-a".to_string()),
+            ),
+        );
         sources.insert(project_source.asset_id.clone(), project_source);
-        Ok(sources)
+        Ok((sources, metadata))
     }
 
     fn seeded_voxel_conversion_targets(
@@ -698,6 +742,264 @@ impl ReferenceBridge {
             .get(&request.source.asset_id)
             .cloned()
             .unwrap_or_else(|| Self::empty_unsupported_source(&request.source))
+    }
+
+    fn source_metadata_from_registration(
+        request: &VoxelConversionSourceRegistrationRequest,
+    ) -> VoxelConversionSourceMetadataAuthority {
+        let source = StaticMeshSource {
+            asset_id: request.source.asset_id.clone(),
+            asset_kind: request.source.asset_kind.clone(),
+            asset_version: request.source.asset_version,
+            source_hash: request.source.source_hash.clone(),
+            mesh_primitive: request.source.mesh_primitive.clone(),
+            positions: request.positions.clone(),
+            triangles: request
+                .triangles
+                .iter()
+                .map(|triangle| MeshTriangle {
+                    indices: triangle.indices,
+                    source_material_slot: triangle.source_material_slot,
+                })
+                .collect(),
+        };
+        Self::source_metadata_from_static_source(
+            &source,
+            None,
+            request.material_slots.clone(),
+            Self::material_group_metadata_from_source(&source),
+        )
+    }
+
+    fn source_metadata_from_project_mesh_asset(
+        request: &VoxelConversionMeshAssetRegistrationRequest,
+    ) -> VoxelConversionSourceMetadataAuthority {
+        let source = StaticMeshSource {
+            asset_id: request.source.asset_id.clone(),
+            asset_kind: "mesh".to_string(),
+            asset_version: request.source.asset_version,
+            source_hash: request.source.source_hash.clone(),
+            mesh_primitive: request.source.mesh_primitive.clone(),
+            positions: request.mesh_asset.positions.clone(),
+            triangles: request
+                .mesh_asset
+                .groups
+                .iter()
+                .flat_map(|group| {
+                    let start = group.start as usize;
+                    let end = start + group.count as usize;
+                    request.mesh_asset.indices[start..end]
+                        .chunks_exact(3)
+                        .map(move |tri| MeshTriangle {
+                            indices: [tri[0], tri[1], tri[2]],
+                            source_material_slot: group.material_slot,
+                        })
+                })
+                .collect(),
+        };
+        let groups = Self::group_metadata_from_project_mesh_asset(&request.mesh_asset);
+        Self::source_metadata_from_static_source(
+            &source,
+            request.mesh_asset.source_path.clone(),
+            request.mesh_asset.material_slots.clone(),
+            groups,
+        )
+    }
+
+    fn source_metadata_from_static_mesh_asset(
+        source: &StaticMeshSource,
+        asset: &StaticMeshAsset,
+        source_path: Option<String>,
+    ) -> VoxelConversionSourceMetadataAuthority {
+        let material_slots = asset
+            .material_slots
+            .iter()
+            .map(|slot| VoxelConversionSourceMaterialSlot {
+                source_material_slot: slot.slot as u32,
+                source_material_id: Some(slot.material.clone()),
+            })
+            .collect();
+        let groups = Self::group_metadata_from_static_mesh_asset(source, asset);
+        Self::source_metadata_from_static_source(source, source_path, material_slots, groups)
+    }
+
+    fn source_metadata_from_static_source(
+        source: &StaticMeshSource,
+        source_path: Option<String>,
+        material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+        groups: Vec<VoxelConversionSourceGroupMetadata>,
+    ) -> VoxelConversionSourceMetadataAuthority {
+        let source_ref = protocol_voxel_conversion::VoxelConversionSourceRef {
+            asset_id: source.asset_id.clone(),
+            asset_kind: source.asset_kind.clone(),
+            asset_version: source.asset_version,
+            source_hash: source.source_hash.clone(),
+            mesh_primitive: source.mesh_primitive.clone(),
+        };
+        VoxelConversionSourceMetadataAuthority {
+            source: source_ref,
+            source_path,
+            source_bounds: Self::source_bounds(&source.positions),
+            vertex_count: Self::saturating_u32(source.positions.len()),
+            triangle_count: Self::saturating_u32(source.triangles.len()),
+            groups,
+            material_slots,
+            evidence: vec![VoxelConversionEvidenceRef {
+                kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
+                uri: format!("asha://voxel-conversion/source/{}", source.asset_id),
+                content_hash: source.source_hash.clone(),
+            }],
+        }
+    }
+
+    fn material_group_metadata_from_source(
+        source: &StaticMeshSource,
+    ) -> Vec<VoxelConversionSourceGroupMetadata> {
+        let mut by_slot: BTreeMap<u32, Vec<MeshTriangle>> = BTreeMap::new();
+        for triangle in &source.triangles {
+            by_slot
+                .entry(triangle.source_material_slot)
+                .or_default()
+                .push(*triangle);
+        }
+        let mut start = 0u32;
+        by_slot
+            .into_iter()
+            .map(|(slot, triangles)| {
+                let count = Self::saturating_u32(triangles.len().saturating_mul(3));
+                let bounds = Self::bounds_for_triangles(&source.positions, &triangles);
+                let group = VoxelConversionSourceGroupMetadata {
+                    group_id: format!("material-slot:{slot}"),
+                    label: Some(format!("Material slot {slot}")),
+                    material_slot: slot,
+                    start,
+                    count,
+                    bounds,
+                };
+                start = start.saturating_add(count);
+                group
+            })
+            .collect()
+    }
+
+    fn group_metadata_from_project_mesh_asset(
+        asset: &protocol_voxel_conversion::VoxelConversionMeshAsset,
+    ) -> Vec<VoxelConversionSourceGroupMetadata> {
+        asset
+            .groups
+            .iter()
+            .enumerate()
+            .map(|(index, group)| {
+                let start = group.start as usize;
+                let end = start + group.count as usize;
+                let triangles = asset.indices[start..end]
+                    .chunks_exact(3)
+                    .map(|tri| MeshTriangle {
+                        indices: [tri[0], tri[1], tri[2]],
+                        source_material_slot: group.material_slot,
+                    })
+                    .collect::<Vec<_>>();
+                VoxelConversionSourceGroupMetadata {
+                    group_id: format!("group:{index}:material-slot:{}", group.material_slot),
+                    label: Some(format!(
+                        "Group {index} / material slot {}",
+                        group.material_slot
+                    )),
+                    material_slot: group.material_slot,
+                    start: group.start,
+                    count: group.count,
+                    bounds: Self::bounds_for_triangles(&asset.positions, &triangles),
+                }
+            })
+            .collect()
+    }
+
+    fn group_metadata_from_static_mesh_asset(
+        source: &StaticMeshSource,
+        asset: &StaticMeshAsset,
+    ) -> Vec<VoxelConversionSourceGroupMetadata> {
+        asset
+            .payload
+            .groups
+            .iter()
+            .enumerate()
+            .map(|(index, group)| {
+                let triangles = source
+                    .triangles
+                    .iter()
+                    .filter(|triangle| triangle.source_material_slot == group.material_slot as u32)
+                    .copied()
+                    .collect::<Vec<_>>();
+                VoxelConversionSourceGroupMetadata {
+                    group_id: format!("group:{index}:material-slot:{}", group.material_slot),
+                    label: Some(format!(
+                        "Group {index} / material slot {}",
+                        group.material_slot
+                    )),
+                    material_slot: group.material_slot as u32,
+                    start: group.start,
+                    count: group.count,
+                    bounds: Self::bounds_for_triangles(&source.positions, &triangles),
+                }
+            })
+            .collect()
+    }
+
+    fn source_bounds(positions: &[[f32; 3]]) -> Option<VoxelConversionSourceBounds> {
+        let mut iter = positions.iter();
+        let first = *iter.next()?;
+        let mut min = first;
+        let mut max = first;
+        for position in iter {
+            for axis in 0..3 {
+                min[axis] = min[axis].min(position[axis]);
+                max[axis] = max[axis].max(position[axis]);
+            }
+        }
+        Some(VoxelConversionSourceBounds { min, max })
+    }
+
+    fn bounds_for_triangles(
+        positions: &[[f32; 3]],
+        triangles: &[MeshTriangle],
+    ) -> Option<VoxelConversionSourceBounds> {
+        let mut group_positions = Vec::new();
+        for triangle in triangles {
+            for index in triangle.indices {
+                let position = positions.get(index as usize)?;
+                group_positions.push(*position);
+            }
+        }
+        Self::source_bounds(&group_positions)
+    }
+
+    fn missing_voxel_conversion_source_metadata(
+        request: VoxelConversionSourceMetadataRequest,
+        message: impl Into<String>,
+    ) -> VoxelConversionSourceMetadataReadout {
+        VoxelConversionSourceMetadataReadout {
+            request,
+            registered: false,
+            source: None,
+            source_path: None,
+            source_bounds: None,
+            vertex_count: 0,
+            triangle_count: 0,
+            groups: Vec::new(),
+            material_slots: Vec::new(),
+            latest_plan_id: None,
+            latest_plan_transform: None,
+            diagnostics: vec![Self::voxel_conversion_diagnostic(
+                VoxelConversionDiagnosticCode::VoxelConversionUnavailable,
+                "source",
+                message,
+            )],
+            evidence: Vec::new(),
+        }
+    }
+
+    fn saturating_u32(value: usize) -> u32 {
+        u32::try_from(value).unwrap_or(u32::MAX)
     }
 
     fn target_for_voxel_conversion(

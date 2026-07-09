@@ -34,6 +34,8 @@ import type {
   VoxelConversionPreview,
   VoxelConversionPreviewRequest,
   VoxelConversionReceipt,
+  VoxelConversionSourceMetadataReadout,
+  VoxelConversionSourceMetadataRequest,
   VoxelConversionSourceRegistration,
   VoxelConversionSourceRegistrationRequest,
   VoxelSelectionSnapshot,
@@ -1288,6 +1290,16 @@ export class MockRuntimeBridge implements RuntimeBridge {
     void _request;
     if (this.#engine === null) {
       throw new RuntimeBridgeError('not_initialized', 'registerVoxelConversionMeshAsset before initializeEngine');
+    }
+    throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel conversion authority');
+  }
+
+  readVoxelConversionSourceMetadata(
+    _request: VoxelConversionSourceMetadataRequest,
+  ): VoxelConversionSourceMetadataReadout {
+    void _request;
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'readVoxelConversionSourceMetadata before initializeEngine');
     }
     throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel conversion authority');
   }

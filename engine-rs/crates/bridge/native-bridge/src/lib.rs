@@ -33,11 +33,13 @@ use runtime_bridge_api::{
     GameRuleModuleManifest, GameRuleResolutionRequest, ProjectBundleLoadRequest, ReferenceBridge,
     RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
     VoxelAnnotationEditRequest, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadRequest,
-    VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryRequest, VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
+    VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryRequest,
+    VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
-    VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
-    VoxelModelWindowRequest, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
-    VoxelVolumeAssetSaveRequest, WeaponEffectHookRequest,
+    VoxelConversionPreviewRequest, VoxelConversionSourceMetadataRequest,
+    VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest, VoxelModelWindowRequest,
+    VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest,
+    WeaponEffectHookRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1185,6 +1187,17 @@ fn parse_voxel_conversion_mesh_asset_registration_request(
     })
 }
 
+fn parse_voxel_conversion_source_metadata_request(
+    request_json: &str,
+) -> napi::Result<VoxelConversionSourceMetadataRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel conversion source metadata request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_voxel_conversion_preview_request(
     request_json: &str,
 ) -> napi::Result<VoxelConversionPreviewRequest> {
@@ -1762,6 +1775,20 @@ pub fn register_voxel_conversion_mesh_asset(
 }
 
 #[napi]
+pub fn read_voxel_conversion_source_metadata(
+    handle: i64,
+    request_json: String,
+) -> napi::Result<String> {
+    let request = parse_voxel_conversion_source_metadata_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let readout = bridge
+            .read_voxel_conversion_source_metadata(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&readout)
+    })
+}
+
+#[napi]
 pub fn preview_voxel_conversion(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_voxel_conversion_preview_request(&request_json)?;
     with_bridge(handle, |bridge| {
@@ -1926,6 +1953,7 @@ mod tests {
         "loadProjectBundle",
         "loadFpsRuntimeSession",
         "planVoxelConversion",
+        "readVoxelConversionSourceMetadata",
         "readVoxelAnnotationQuery",
         "readFpsEncounterDirector",
         "readRenderDiffs",
@@ -1964,6 +1992,7 @@ mod tests {
                 "loadProjectBundle",
                 "loadFpsRuntimeSession",
                 "planVoxelConversion",
+                "readVoxelConversionSourceMetadata",
                 "readVoxelAnnotationQuery",
                 "readFpsEncounterDirector",
                 "readRenderDiffs",

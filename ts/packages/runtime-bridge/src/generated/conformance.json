@@ -83,6 +83,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "read_voxel_conversion_source_metadata",
+      "facadeMethod": "readVoxelConversionSourceMetadata",
+      "surface": "stable",
+      "input": "protocol_voxel_conversion::VoxelConversionSourceMetadataRequest",
+      "output": "protocol_voxel_conversion::VoxelConversionSourceMetadataReadout",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "preview_voxel_conversion",
       "facadeMethod": "previewVoxelConversion",
       "surface": "stable",

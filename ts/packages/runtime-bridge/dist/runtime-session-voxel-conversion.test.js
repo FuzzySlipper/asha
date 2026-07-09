@@ -201,6 +201,34 @@ function createVoxelConversionBridge() {
             if (property === 'registerVoxelConversionMeshAsset') {
                 return (request) => voxelConversionMeshAssetRegistration(request);
             }
+            if (property === 'readVoxelConversionSourceMetadata') {
+                return (request) => ({
+                    request,
+                    registered: true,
+                    source: request.source,
+                    sourcePath: 'assets/mesh/quad.mesh.json',
+                    sourceBounds: { min: [0, 0, 0], max: [1, 1, 0] },
+                    vertexCount: 3,
+                    triangleCount: 1,
+                    groups: [{
+                            groupId: 'group:0:material-slot:0',
+                            label: 'Group 0 / material slot 0',
+                            materialSlot: 0,
+                            start: 0,
+                            count: 3,
+                            bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+                        }],
+                    materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'mat/a' }],
+                    latestPlanId: 'fnv1a64:plan',
+                    latestPlanTransform: voxelConversionPlanRequest().settings.transform,
+                    diagnostics: [],
+                    evidence: [{
+                            kind: 'source_snapshot',
+                            uri: `asha://voxel-conversion/source/${request.source.assetId}`,
+                            contentHash: request.source.sourceHash,
+                        }],
+                });
+            }
             if (property === 'planVoxelConversion') {
                 return (request) => {
                     const plan = voxelConversionPlan(request);
@@ -553,6 +581,19 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
     assert.equal(meshAssetRegistration.source.assetId, 'mesh/quad');
     assert.equal(meshAssetRegistration.registered, true);
     assert.deepEqual(meshAssetRegistration.materialSlots, meshAssetRegistrationRequest.meshAsset.materialSlots);
+    const metadata = rustSession.readVoxelConversionSourceMetadata({
+        source: meshAssetRegistrationRequest.source,
+    });
+    assert.equal(metadata.registered, true);
+    assert.equal(metadata.sourcePath, 'assets/mesh/quad.mesh.json');
+    assert.equal(metadata.vertexCount, 3);
+    assert.equal(metadata.triangleCount, 1);
+    assert.equal(metadata.groups[0]?.materialSlot, 0);
+    assert.deepEqual(metadata.groups[0]?.bounds?.max, [1, 1, 0]);
+    assert.equal(metadata.materialSlots[0]?.sourceMaterialId, 'mat/a');
+    assert.equal(metadata.latestPlanId, 'fnv1a64:plan');
+    assert.deepEqual(metadata.latestPlanTransform, request.settings.transform);
+    assert.equal(metadata.diagnostics.length, 0);
     const plan = rustSession.planVoxelConversion(request);
     assert.equal(plan.authorityVersion, 'svc-voxel-conversion.v0');
     assert.deepEqual(plan.source, request.source);

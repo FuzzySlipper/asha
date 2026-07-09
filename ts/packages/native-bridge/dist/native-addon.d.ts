@@ -203,6 +203,7 @@ export interface NativeAddon {
     planVoxelConversion(handle: number, requestJson: string): string;
     registerVoxelConversionSource(handle: number, requestJson: string): string;
     registerVoxelConversionMeshAsset(handle: number, requestJson: string): string;
+    readVoxelConversionSourceMetadata(handle: number, requestJson: string): string;
     previewVoxelConversion(handle: number, requestJson: string): string;
     applyVoxelConversion(handle: number, requestJson: string): string;
     exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
@@ -217,6 +218,6 @@ export interface NativeAddon {
     applyVoxelAnnotationEdit(handle: number, requestJson: string): string;
     exportVoxelAnnotationLayer(handle: number, requestJson: string): string;
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "createCamera", "applyCollisionConstrainedCameraInput", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "loadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "createCamera", "applyCollisionConstrainedCameraInput", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "readVoxelConversionSourceMetadata", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "loadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer"];
 export {};
 //# sourceMappingURL=native-addon.d.ts.map

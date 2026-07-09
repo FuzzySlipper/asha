@@ -166,6 +166,7 @@ function bridgeWith(overrides: Partial<RuntimeBridge>): RuntimeBridge {
     readVoxelMeshEvidence: base.readVoxelMeshEvidence.bind(base),
     registerVoxelConversionSource: base.registerVoxelConversionSource.bind(base),
     registerVoxelConversionMeshAsset: base.registerVoxelConversionMeshAsset.bind(base),
+    readVoxelConversionSourceMetadata: base.readVoxelConversionSourceMetadata.bind(base),
     planVoxelConversion: base.planVoxelConversion.bind(base),
     previewVoxelConversion: base.previewVoxelConversion.bind(base),
     applyVoxelConversion: base.applyVoxelConversion.bind(base),

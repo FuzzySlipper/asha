@@ -39,6 +39,7 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'plan_voxel_conversion',
     'register_voxel_conversion_source',
     'register_voxel_conversion_mesh_asset',
+    'read_voxel_conversion_source_metadata',
     'preview_voxel_conversion',
     'apply_voxel_conversion',
     'export_voxel_conversion_evidence',
@@ -480,6 +481,11 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('registerVoxelConversionMeshAsset');
         const payload = callNative(() => this.#addon.registerVoxelConversionMeshAsset(handle, JSON.stringify(request)));
         return parseNativeJson(payload, 'voxel conversion mesh asset registration');
+    }
+    readVoxelConversionSourceMetadata(request) {
+        const handle = this.#requireHandle('readVoxelConversionSourceMetadata');
+        const payload = callNative(() => this.#addon.readVoxelConversionSourceMetadata(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel conversion source metadata');
     }
     previewVoxelConversion(request) {
         const handle = this.#requireHandle('previewVoxelConversion');

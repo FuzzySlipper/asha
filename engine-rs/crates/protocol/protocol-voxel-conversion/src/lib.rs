@@ -294,6 +294,52 @@ pub struct VoxelConversionMeshAssetRegistrationRequest {
     pub mesh_asset: VoxelConversionMeshAsset,
 }
 
+/// Request authority metadata for a registered conversion source.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceMetadataRequest {
+    pub source: VoxelConversionSourceRef,
+}
+
+/// Source-space float bounds for registered conversion source geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceBounds {
+    pub min: [f32; 3],
+    pub max: [f32; 3],
+}
+
+/// Metadata for one primitive/submesh/group inside a conversion source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceGroupMetadata {
+    pub group_id: String,
+    pub label: Option<String>,
+    pub material_slot: u32,
+    pub start: u32,
+    pub count: u32,
+    pub bounds: Option<VoxelConversionSourceBounds>,
+}
+
+/// Authority-owned metadata readout for a registered conversion source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelConversionSourceMetadataReadout {
+    pub request: VoxelConversionSourceMetadataRequest,
+    pub registered: bool,
+    pub source: Option<VoxelConversionSourceRef>,
+    pub source_path: Option<String>,
+    pub source_bounds: Option<VoxelConversionSourceBounds>,
+    pub vertex_count: u32,
+    pub triangle_count: u32,
+    pub groups: Vec<VoxelConversionSourceGroupMetadata>,
+    pub material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+    pub latest_plan_id: Option<String>,
+    pub latest_plan_transform: Option<[f32; 16]>,
+    pub diagnostics: Vec<VoxelConversionDiagnostic>,
+    pub evidence: Vec<VoxelConversionEvidenceRef>,
+}
+
 /// Result of registering a conversion source; rejected inputs carry diagnostics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

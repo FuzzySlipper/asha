@@ -26,6 +26,8 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
   'applyEnemyDirectNavMovement',
   'planVoxelConversion',
   'registerVoxelConversionSource',
+  'registerVoxelConversionMeshAsset',
+  'readVoxelConversionSourceMetadata',
   'previewVoxelConversion',
   'applyVoxelConversion',
   'exportVoxelConversionEvidence',

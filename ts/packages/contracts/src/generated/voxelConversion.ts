@@ -77,6 +77,44 @@ export interface VoxelConversionMeshAssetRegistrationRequest {
   readonly meshAsset: VoxelConversionMeshAsset;
 }
 
+// Request authority metadata for a registered conversion source.
+export interface VoxelConversionSourceMetadataRequest {
+  readonly source: VoxelConversionSourceRef;
+}
+
+// Source-space float bounds for registered conversion source geometry.
+export interface VoxelConversionSourceBounds {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+
+// Metadata for one primitive/submesh/group inside a conversion source.
+export interface VoxelConversionSourceGroupMetadata {
+  readonly groupId: string;
+  readonly label: string | null;
+  readonly materialSlot: number;
+  readonly start: number;
+  readonly count: number;
+  readonly bounds: VoxelConversionSourceBounds | null;
+}
+
+// Authority-owned metadata readout for a registered conversion source.
+export interface VoxelConversionSourceMetadataReadout {
+  readonly request: VoxelConversionSourceMetadataRequest;
+  readonly registered: boolean;
+  readonly source: VoxelConversionSourceRef | null;
+  readonly sourcePath: string | null;
+  readonly sourceBounds: VoxelConversionSourceBounds | null;
+  readonly vertexCount: number;
+  readonly triangleCount: number;
+  readonly groups: readonly VoxelConversionSourceGroupMetadata[];
+  readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+  readonly latestPlanId: string | null;
+  readonly latestPlanTransform: readonly [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number] | null;
+  readonly diagnostics: readonly VoxelConversionDiagnostic[];
+  readonly evidence: readonly VoxelConversionEvidenceRef[];
+}
+
 // Result of registering a conversion source; rejected inputs carry diagnostics.
 export interface VoxelConversionSourceRegistration {
   readonly source: VoxelConversionSourceRef;
