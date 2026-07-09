@@ -97,6 +97,11 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'read_voxel_annotation_query',
     'apply_voxel_annotation_edit',
     'export_voxel_annotation_layer',
+    'read_voxel_edit_history',
+    'preview_voxel_edit_revert',
+    'apply_voxel_edit_revert',
+    'undo_voxel_edit',
+    'redo_voxel_edit',
     'read_render_diffs',
     'save_project_bundle',
     'get_project_bundle_composition_status',
@@ -381,6 +386,36 @@ const VOXEL_EDIT_HISTORY_REDO_REQUEST = {
 };
 function parseJsonFixture(payload) {
     return JSON.parse(payload);
+}
+function voxelHistoryRevertFixture(request, applied) {
+    const cursor = {
+        cursorId: 'cursor/native',
+        cursorKind: 'applied',
+        appliedTransactionId: null,
+        parentCursorId: null,
+        historyHash: applied ? 'fnv1a64:history-native-after' : 'fnv1a64:history-native',
+        voxelStateHash: 'fnv1a64:voxel-native',
+        materialCatalogHash: 'fnv1a64:materials-native',
+        undoDepth: applied ? 0 : 1,
+        redoDepth: applied ? 1 : 0,
+        entryCount: 1,
+        checkpointCount: 0,
+    };
+    return {
+        request,
+        applied,
+        preview: request.mode === 'preview_revert',
+        historyId: request.historyId,
+        cursorBefore: cursor,
+        cursorAfter: cursor,
+        durableEntry: null,
+        previewEvidence: null,
+        diffSummary: null,
+        replayHash: 'fnv1a64:replay-native',
+        historyHashBefore: 'fnv1a64:history-native',
+        historyHashAfter: cursor.historyHash,
+        diagnostics: [],
+    };
 }
 // A fake addon with sentinel return values distinct from MockRuntimeBridge, so a
 // silent mock fallback would be observable in the wired-op assertions below.
@@ -1117,6 +1152,46 @@ function fakeAddon(calls = []) {
                 canonicalJsonHash: layer.contentHashes.canonicalJson,
                 membershipDataHash: layer.contentHashes.membershipData,
                 diagnostics: [],
+            });
+        },
+        readVoxelEditHistory: (_handle, requestJson) => {
+            calls.push(`voxelHistoryRead:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                historyId: request.historyId,
+                schemaVersion: 1,
+                mediaType: 'application/vnd.asha.voxel-edit-history+json;version=1',
+                targetGrid: 1,
+                targetVoxelVolumeAssetId: 'voxel/generated',
+                baseVoxelHash: 'fnv1a64:base-native',
+                materialCatalogHash: 'fnv1a64:materials-native',
+                cursor: voxelHistoryRevertFixture({ ...VOXEL_EDIT_HISTORY_REVERT_REQUEST, historyId: request.historyId }, false).cursorBefore,
+                entries: [],
+                retainedRedoTransactionIds: [],
+                historyHash: 'fnv1a64:history-native',
+                diagnostics: [],
+            });
+        },
+        previewVoxelEditRevert: (_handle, requestJson) => {
+            calls.push(`voxelHistoryPreview:${requestJson}`);
+            return JSON.stringify(voxelHistoryRevertFixture(parseJsonFixture(requestJson), false));
+        },
+        applyVoxelEditRevert: (_handle, requestJson) => {
+            calls.push(`voxelHistoryApply:${requestJson}`);
+            return JSON.stringify(voxelHistoryRevertFixture(parseJsonFixture(requestJson), true));
+        },
+        undoVoxelEdit: (_handle, requestJson) => {
+            calls.push(`voxelHistoryUndo:${requestJson}`);
+            return JSON.stringify({
+                request: parseJsonFixture(requestJson),
+                receipt: voxelHistoryRevertFixture({ ...VOXEL_EDIT_HISTORY_REVERT_REQUEST, mode: 'undo' }, true),
+            });
+        },
+        redoVoxelEdit: (_handle, requestJson) => {
+            calls.push(`voxelHistoryRedo:${requestJson}`);
+            return JSON.stringify({
+                request: parseJsonFixture(requestJson),
+                receipt: voxelHistoryRevertFixture({ ...VOXEL_EDIT_HISTORY_REVERT_REQUEST, mode: 'redo' }, true),
             });
         },
     };

@@ -36,5 +36,10 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'readVoxelAnnotationQuery',
     'applyVoxelAnnotationEdit',
     'exportVoxelAnnotationLayer',
+    'readVoxelEditHistory',
+    'previewVoxelEditRevert',
+    'applyVoxelEditRevert',
+    'undoVoxelEdit',
+    'redoVoxelEdit',
 ];
 //# sourceMappingURL=native-addon.js.map

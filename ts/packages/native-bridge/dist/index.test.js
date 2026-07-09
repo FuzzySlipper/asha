@@ -65,6 +65,11 @@ void test('native addon loader rejects stale modules missing encounter authority
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('exportVoxelConversionEvidence'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelInfo'));
         assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelWindow'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelEditHistory'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('previewVoxelEditRevert'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelEditRevert'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('undoVoxelEdit'));
+        assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('redoVoxelEdit'));
         assert.throws(() => loadNativeAddon(modulePath), (error) => error instanceof NativeAddonUnavailable &&
             error.message.includes('readFpsEncounterDirector') &&
             error.message.includes('applyFpsEncounterTransition') &&
@@ -72,6 +77,8 @@ void test('native addon loader rejects stale modules missing encounter authority
             error.message.includes('planVoxelConversion') &&
             error.message.includes('registerVoxelConversionSource') &&
             error.message.includes('readVoxelConversionSourceMetadata') &&
+            error.message.includes('readVoxelEditHistory') &&
+            error.message.includes('redoVoxelEdit') &&
             error.message.includes('exportVoxelConversionEvidence'));
     }
     finally {

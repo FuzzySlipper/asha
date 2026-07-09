@@ -33,6 +33,11 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
   'exportVoxelConversionEvidence',
   'readVoxelModelInfo',
   'readVoxelModelWindow',
+  'readVoxelEditHistory',
+  'previewVoxelEditRevert',
+  'applyVoxelEditRevert',
+  'undoVoxelEdit',
+  'redoVoxelEdit',
   'unloadProjectBundle',
 ] as const;
 

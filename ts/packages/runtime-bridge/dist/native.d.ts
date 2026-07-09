@@ -54,11 +54,11 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     applyCollisionConstrainedCameraInput(envelope: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
     selectVoxel(): VoxelSelectionSnapshot;
     readVoxelMeshEvidence(): VoxelMeshEvidenceSnapshot;
-    readVoxelEditHistory(_request: VoxelEditHistoryReadRequest): VoxelEditHistorySummary;
-    previewVoxelEditRevert(_request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt;
-    applyVoxelEditRevert(_request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt;
-    undoVoxelEdit(_request: VoxelEditHistoryUndoRequest): VoxelEditHistoryUndoReceipt;
-    redoVoxelEdit(_request: VoxelEditHistoryRedoRequest): VoxelEditHistoryRedoReceipt;
+    readVoxelEditHistory(request: VoxelEditHistoryReadRequest): VoxelEditHistorySummary;
+    previewVoxelEditRevert(request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt;
+    applyVoxelEditRevert(request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt;
+    undoVoxelEdit(request: VoxelEditHistoryUndoRequest): VoxelEditHistoryUndoReceipt;
+    redoVoxelEdit(request: VoxelEditHistoryRedoRequest): VoxelEditHistoryRedoReceipt;
     createCamera(request: CameraCreateRequest): CameraSnapshot;
     applyFirstPersonCameraInput(): CameraSnapshot;
     readCameraProjection(): CameraProjectionSnapshot;

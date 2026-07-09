@@ -53,6 +53,11 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'read_voxel_annotation_query',
     'apply_voxel_annotation_edit',
     'export_voxel_annotation_layer',
+    'read_voxel_edit_history',
+    'preview_voxel_edit_revert',
+    'apply_voxel_edit_revert',
+    'undo_voxel_edit',
+    'redo_voxel_edit',
     'read_render_diffs',
     'save_project_bundle',
     'get_project_bundle_composition_status',
@@ -568,25 +573,30 @@ export class NativeRuntimeBridge {
     readVoxelMeshEvidence() {
         throw nativeUnimplemented('read_voxel_mesh_evidence');
     }
-    readVoxelEditHistory(_request) {
-        void _request;
-        throw nativeUnimplemented('read_voxel_edit_history');
+    readVoxelEditHistory(request) {
+        const handle = this.#requireHandle('readVoxelEditHistory');
+        const payload = callNative(() => this.#addon.readVoxelEditHistory(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel edit history summary');
     }
-    previewVoxelEditRevert(_request) {
-        void _request;
-        throw nativeUnimplemented('preview_voxel_edit_revert');
+    previewVoxelEditRevert(request) {
+        const handle = this.#requireHandle('previewVoxelEditRevert');
+        const payload = callNative(() => this.#addon.previewVoxelEditRevert(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel edit history revert preview');
     }
-    applyVoxelEditRevert(_request) {
-        void _request;
-        throw nativeUnimplemented('apply_voxel_edit_revert');
+    applyVoxelEditRevert(request) {
+        const handle = this.#requireHandle('applyVoxelEditRevert');
+        const payload = callNative(() => this.#addon.applyVoxelEditRevert(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel edit history revert apply');
     }
-    undoVoxelEdit(_request) {
-        void _request;
-        throw nativeUnimplemented('undo_voxel_edit');
+    undoVoxelEdit(request) {
+        const handle = this.#requireHandle('undoVoxelEdit');
+        const payload = callNative(() => this.#addon.undoVoxelEdit(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel edit history undo receipt');
     }
-    redoVoxelEdit(_request) {
-        void _request;
-        throw nativeUnimplemented('redo_voxel_edit');
+    redoVoxelEdit(request) {
+        const handle = this.#requireHandle('redoVoxelEdit');
+        const payload = callNative(() => this.#addon.redoVoxelEdit(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel edit history redo receipt');
     }
     createCamera(request) {
         const handle = this.#requireHandle('createCamera');

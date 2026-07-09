@@ -264,6 +264,11 @@ export interface NativeAddon {
   readVoxelAnnotationQuery(handle: number, requestJson: string): string;
   applyVoxelAnnotationEdit(handle: number, requestJson: string): string;
   exportVoxelAnnotationLayer(handle: number, requestJson: string): string;
+  readVoxelEditHistory(handle: number, requestJson: string): string;
+  previewVoxelEditRevert(handle: number, requestJson: string): string;
+  applyVoxelEditRevert(handle: number, requestJson: string): string;
+  undoVoxelEdit(handle: number, requestJson: string): string;
+  redoVoxelEdit(handle: number, requestJson: string): string;
 }
 
 export const REQUIRED_NATIVE_ADDON_EXPORTS = [
@@ -304,4 +309,9 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'readVoxelAnnotationQuery',
   'applyVoxelAnnotationEdit',
   'exportVoxelAnnotationLayer',
+  'readVoxelEditHistory',
+  'previewVoxelEditRevert',
+  'applyVoxelEditRevert',
+  'undoVoxelEdit',
+  'redoVoxelEdit',
 ] as const;
