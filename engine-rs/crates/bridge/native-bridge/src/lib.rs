@@ -22,8 +22,8 @@ use protocol_view::{
     CollisionAxis, CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInput,
 };
 use runtime_bridge_api::{
-    set_voxel_command, CameraCreateRequest, CameraPose, CommandBatch, EnemyDirectNavMovementRequest,
-    EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth,
+    set_voxel_command, CameraCreateRequest, CameraPose, CommandBatch,
+    EnemyDirectNavMovementRequest, EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth,
     FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
     FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsEncounterDirectorSnapshot,
     FpsEncounterLifecycleInput, FpsEncounterStateReadout, FpsEncounterTransitionRequest,
@@ -37,9 +37,10 @@ use runtime_bridge_api::{
     VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceMetadataRequest,
-    VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest, VoxelModelWindowRequest,
-    VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest,
-    WeaponEffectHookRequest,
+    VoxelConversionSourceRegistrationRequest, VoxelEditHistoryReadRequest,
+    VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertRequest, VoxelEditHistoryUndoRequest,
+    VoxelModelInfoRequest, VoxelModelWindowRequest, VoxelVolumeAssetExportRequest,
+    VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest, WeaponEffectHookRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -436,9 +437,7 @@ impl From<CameraCollisionPolicy> for NativeCameraCollisionPolicy {
     fn from(value: CameraCollisionPolicy) -> Self {
         Self {
             mode: match value.mode {
-                CameraCollisionPolicyMode::AxisSeparableSlide => {
-                    "axis_separable_slide".to_string()
-                }
+                CameraCollisionPolicyMode::AxisSeparableSlide => "axis_separable_slide".to_string(),
             },
             max_iterations: u32::from(value.max_iterations),
         }
@@ -1326,6 +1325,50 @@ fn parse_voxel_annotation_export_request(
     })
 }
 
+fn parse_voxel_edit_history_read_request(
+    request_json: &str,
+) -> napi::Result<VoxelEditHistoryReadRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel edit history read request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_edit_history_revert_request(
+    request_json: &str,
+) -> napi::Result<VoxelEditHistoryRevertRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel edit history revert request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_edit_history_undo_request(
+    request_json: &str,
+) -> napi::Result<VoxelEditHistoryUndoRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel edit history undo request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_edit_history_redo_request(
+    request_json: &str,
+) -> napi::Result<VoxelEditHistoryRedoRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel edit history redo request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_game_rule_module_manifests(
     manifests_json: &str,
 ) -> napi::Result<Vec<GameRuleModuleManifest>> {
@@ -1931,6 +1974,51 @@ pub fn export_voxel_annotation_layer(handle: i64, request_json: String) -> napi:
     })
 }
 
+#[napi]
+pub fn read_voxel_edit_history(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_edit_history_read_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let summary = bridge.read_voxel_edit_history(request).map_err(to_napi)?;
+        voxel_conversion_json(&summary)
+    })
+}
+
+#[napi]
+pub fn preview_voxel_edit_revert(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_edit_history_revert_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.preview_voxel_edit_revert(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn apply_voxel_edit_revert(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_edit_history_revert_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.apply_voxel_edit_revert(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn undo_voxel_edit(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_edit_history_undo_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.undo_voxel_edit(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn redo_voxel_edit(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_edit_history_redo_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.redo_voxel_edit(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1942,6 +2030,7 @@ mod tests {
         "applyFpsPrimaryFire",
         "applyVoxelConversion",
         "applyVoxelAnnotationEdit",
+        "applyVoxelEditRevert",
         "exportVoxelConversionEvidence",
         "exportVoxelAnnotationLayer",
         "exportVoxelVolumeAsset",
@@ -1953,13 +2042,16 @@ mod tests {
         "loadProjectBundle",
         "loadFpsRuntimeSession",
         "planVoxelConversion",
+        "previewVoxelEditRevert",
         "readVoxelConversionSourceMetadata",
         "readVoxelAnnotationQuery",
+        "readVoxelEditHistory",
         "readFpsEncounterDirector",
         "readRenderDiffs",
         "readFpsRuntimeSession",
         "readVoxelModelInfo",
         "readVoxelModelWindow",
+        "redoVoxelEdit",
         "registerVoxelConversionSource",
         "registerVoxelConversionMeshAsset",
         "restartFpsRuntimeSession",
@@ -1967,6 +2059,7 @@ mod tests {
         "saveVoxelVolumeAsset",
         "stepSimulation",
         "submitCommands",
+        "undoVoxelEdit",
         "validateVoxelAnnotationLayer",
     ];
 
@@ -1981,6 +2074,7 @@ mod tests {
                 "applyFpsPrimaryFire",
                 "applyVoxelConversion",
                 "applyVoxelAnnotationEdit",
+                "applyVoxelEditRevert",
                 "exportVoxelConversionEvidence",
                 "exportVoxelAnnotationLayer",
                 "exportVoxelVolumeAsset",
@@ -1992,13 +2086,16 @@ mod tests {
                 "loadProjectBundle",
                 "loadFpsRuntimeSession",
                 "planVoxelConversion",
+                "previewVoxelEditRevert",
                 "readVoxelConversionSourceMetadata",
                 "readVoxelAnnotationQuery",
+                "readVoxelEditHistory",
                 "readFpsEncounterDirector",
                 "readRenderDiffs",
                 "readFpsRuntimeSession",
                 "readVoxelModelInfo",
                 "readVoxelModelWindow",
+                "redoVoxelEdit",
                 "registerVoxelConversionSource",
                 "registerVoxelConversionMeshAsset",
                 "restartFpsRuntimeSession",
@@ -2006,6 +2103,7 @@ mod tests {
                 "saveVoxelVolumeAsset",
                 "stepSimulation",
                 "submitCommands",
+                "undoVoxelEdit",
                 "validateVoxelAnnotationLayer",
             ]
         );

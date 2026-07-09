@@ -101,6 +101,15 @@ const meshAssetRegistration = bridge.registerVoxelConversionMeshAsset(meshAssetR
 assert.equal(meshAssetRegistration.registered, true);
 assert.equal(meshAssetRegistration.source.assetVersion, 3);
 assert.equal(meshAssetRegistration.materialSlots[0]?.sourceMaterialId, 'material/surface-a');
+const meshMetadata = bridge.readVoxelConversionSourceMetadata({
+  source: meshAssetRegistrationRequest.source,
+});
+assert.equal(meshMetadata.registered, true);
+assert.equal(meshMetadata.sourcePath, 'assets/mesh/check-native-project-quad.mesh.json');
+assert.equal(meshMetadata.vertexCount, 4);
+assert.equal(meshMetadata.triangleCount, 2);
+assert.equal(meshMetadata.groups[0]?.count, 6);
+assert.equal(meshMetadata.materialSlots[0]?.sourceMaterialId, 'material/surface-a');
 
 const rejectedRegistration = bridge.registerVoxelConversionSource({
   ...registrationRequest,
