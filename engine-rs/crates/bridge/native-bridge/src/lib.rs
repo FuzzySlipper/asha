@@ -16,9 +16,14 @@ use std::collections::BTreeMap;
 use std::sync::{Mutex, OnceLock};
 
 use napi_derive::napi;
+use protocol_view::{
+    CameraCollisionEvidence, CameraCollisionPolicy, CameraCollisionPolicyMode,
+    CameraCollisionShape, CameraCollisionSnapshot, CameraHandle, CollisionAabbEvidence,
+    CollisionAxis, CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInput,
+};
 use runtime_bridge_api::{
-    set_voxel_command, CameraCreateRequest, CameraPose, CommandBatch,
-    EnemyDirectNavMovementRequest, EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth,
+    set_voxel_command, CameraCreateRequest, CameraPose, CommandBatch, EnemyDirectNavMovementRequest,
+    EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth,
     FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
     FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsEncounterDirectorSnapshot,
     FpsEncounterLifecycleInput, FpsEncounterStateReadout, FpsEncounterTransitionRequest,
@@ -28,8 +33,7 @@ use runtime_bridge_api::{
     GameRuleModuleManifest, GameRuleResolutionRequest, ProjectBundleLoadRequest, ReferenceBridge,
     RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
     VoxelAnnotationEditRequest, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadRequest,
-    VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryRequest,
-    VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
+    VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryRequest, VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
     VoxelModelWindowRequest, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
@@ -337,6 +341,209 @@ impl From<runtime_bridge_api::CameraSnapshot> for NativeCameraSnapshot {
 }
 
 #[napi(object)]
+pub struct NativeFirstPersonCameraInput {
+    pub move_forward: f64,
+    pub move_right: f64,
+    pub move_up: f64,
+    pub yaw_delta_degrees: f64,
+    pub pitch_delta_degrees: f64,
+    pub dt_seconds: f64,
+    pub move_speed_units_per_second: f64,
+}
+
+impl NativeFirstPersonCameraInput {
+    fn into_bridge(self, field: &str) -> napi::Result<FirstPersonCameraInput> {
+        let values = [
+            self.move_forward,
+            self.move_right,
+            self.move_up,
+            self.yaw_delta_degrees,
+            self.pitch_delta_degrees,
+            self.dt_seconds,
+            self.move_speed_units_per_second,
+        ];
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err(to_napi(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!("{field} must contain finite values"),
+            )));
+        }
+        Ok(FirstPersonCameraInput {
+            move_forward: self.move_forward as f32,
+            move_right: self.move_right as f32,
+            move_up: self.move_up as f32,
+            yaw_delta_degrees: self.yaw_delta_degrees as f32,
+            pitch_delta_degrees: self.pitch_delta_degrees as f32,
+            dt_seconds: self.dt_seconds as f32,
+            move_speed_units_per_second: self.move_speed_units_per_second as f32,
+        })
+    }
+}
+
+#[napi(object)]
+pub struct NativeCameraCollisionShape {
+    pub half_extents: Vec<f64>,
+}
+
+impl NativeCameraCollisionShape {
+    fn into_bridge(self, field: &str) -> napi::Result<CameraCollisionShape> {
+        let half_extents = native_f32x3(self.half_extents, &format!("{field}.half_extents"))?;
+        Ok(CameraCollisionShape { half_extents })
+    }
+}
+
+impl From<CameraCollisionShape> for NativeCameraCollisionShape {
+    fn from(value: CameraCollisionShape) -> Self {
+        Self {
+            half_extents: value.half_extents.into_iter().map(f64::from).collect(),
+        }
+    }
+}
+
+#[napi(object)]
+pub struct NativeCameraCollisionPolicy {
+    pub mode: String,
+    pub max_iterations: u32,
+}
+
+impl NativeCameraCollisionPolicy {
+    fn into_bridge(self, field: &str) -> napi::Result<CameraCollisionPolicy> {
+        let mode = match self.mode.as_str() {
+            "axis_separable_slide" => CameraCollisionPolicyMode::AxisSeparableSlide,
+            other => {
+                return Err(to_napi(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    format!("{field}.mode {other:?} is not supported"),
+                )));
+            }
+        };
+        let max_iterations = u8::try_from(self.max_iterations).map_err(|_| {
+            to_napi(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!("{field}.max_iterations must fit in u8"),
+            ))
+        })?;
+        Ok(CameraCollisionPolicy {
+            mode,
+            max_iterations,
+        })
+    }
+}
+
+impl From<CameraCollisionPolicy> for NativeCameraCollisionPolicy {
+    fn from(value: CameraCollisionPolicy) -> Self {
+        Self {
+            mode: match value.mode {
+                CameraCollisionPolicyMode::AxisSeparableSlide => {
+                    "axis_separable_slide".to_string()
+                }
+            },
+            max_iterations: u32::from(value.max_iterations),
+        }
+    }
+}
+
+#[napi(object)]
+pub struct NativeCollisionConstrainedCameraInputEnvelope {
+    pub camera: i64,
+    pub grid: i64,
+    pub input: NativeFirstPersonCameraInput,
+    pub tick: i64,
+    pub shape: NativeCameraCollisionShape,
+    pub policy: NativeCameraCollisionPolicy,
+}
+
+impl NativeCollisionConstrainedCameraInputEnvelope {
+    fn into_bridge(self) -> napi::Result<CollisionConstrainedCameraInputEnvelope> {
+        Ok(CollisionConstrainedCameraInputEnvelope {
+            camera: CameraHandle::new(u64_input(self.camera, "camera")?),
+            grid: u64_input(self.grid, "grid")?,
+            input: self.input.into_bridge("input")?,
+            tick: u64_input(self.tick, "tick")?,
+            shape: self.shape.into_bridge("shape")?,
+            policy: self.policy.into_bridge("policy")?,
+        })
+    }
+}
+
+#[napi(object)]
+pub struct NativeCollisionAabbEvidence {
+    pub min: Vec<f64>,
+    pub max: Vec<f64>,
+}
+
+impl From<CollisionAabbEvidence> for NativeCollisionAabbEvidence {
+    fn from(value: CollisionAabbEvidence) -> Self {
+        Self {
+            min: value.min.into_iter().map(f64::from).collect(),
+            max: value.max.into_iter().map(f64::from).collect(),
+        }
+    }
+}
+
+#[napi(object)]
+pub struct NativeCameraCollisionEvidence {
+    pub grid: i64,
+    pub shape: NativeCameraCollisionShape,
+    pub policy: NativeCameraCollisionPolicy,
+    pub collided: bool,
+    pub blocked_axes: Vec<String>,
+    pub correction: Vec<f64>,
+    pub queried_aabb: NativeCollisionAabbEvidence,
+    pub collision_source_hash: String,
+    pub collision_projection_hash: String,
+}
+
+impl From<CameraCollisionEvidence> for NativeCameraCollisionEvidence {
+    fn from(value: CameraCollisionEvidence) -> Self {
+        Self {
+            grid: value.grid as i64,
+            shape: value.shape.into(),
+            policy: value.policy.into(),
+            collided: value.collided,
+            blocked_axes: value
+                .blocked_axes
+                .into_iter()
+                .map(|axis| match axis {
+                    CollisionAxis::X => "x".to_string(),
+                    CollisionAxis::Y => "y".to_string(),
+                    CollisionAxis::Z => "z".to_string(),
+                })
+                .collect(),
+            correction: value.correction.into_iter().map(f64::from).collect(),
+            queried_aabb: value.queried_aabb.into(),
+            collision_source_hash: value.collision_source_hash,
+            collision_projection_hash: value.collision_projection_hash,
+        }
+    }
+}
+
+#[napi(object)]
+pub struct NativeCameraCollisionSnapshot {
+    pub camera: i64,
+    pub tick: i64,
+    pub before: NativeCameraSnapshot,
+    pub attempted: NativeCameraSnapshot,
+    pub after: NativeCameraSnapshot,
+    pub collision: NativeCameraCollisionEvidence,
+    pub movement_hash: String,
+}
+
+impl From<CameraCollisionSnapshot> for NativeCameraCollisionSnapshot {
+    fn from(value: CameraCollisionSnapshot) -> Self {
+        Self {
+            camera: value.camera.raw() as i64,
+            tick: value.tick as i64,
+            before: value.before.into(),
+            attempted: value.attempted.into(),
+            after: value.after.into(),
+            collision: value.collision.into(),
+            movement_hash: value.movement_hash,
+        }
+    }
+}
+
+#[napi(object)]
 pub struct NativeVec3 {
     pub x: f64,
     pub y: f64,
@@ -357,6 +564,16 @@ impl NativeVec3 {
             self.z as f32,
         ))
     }
+}
+
+fn native_f32x3(values: Vec<f64>, field: &str) -> napi::Result<[f32; 3]> {
+    if values.len() != 3 || values.iter().any(|value| !value.is_finite()) {
+        return Err(to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("{field} must contain exactly three finite values"),
+        )));
+    }
+    Ok([values[0] as f32, values[1] as f32, values[2] as f32])
 }
 
 #[napi(object)]
@@ -1279,6 +1496,20 @@ pub fn create_camera(
 }
 
 #[napi]
+pub fn apply_collision_constrained_camera_input(
+    handle: i64,
+    envelope: NativeCollisionConstrainedCameraInputEnvelope,
+) -> napi::Result<NativeCameraCollisionSnapshot> {
+    let envelope = envelope.into_bridge()?;
+    with_bridge(handle, |bridge| {
+        bridge
+            .apply_collision_constrained_camera_input(envelope)
+            .map(NativeCameraCollisionSnapshot::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
 pub fn load_fps_runtime_session(
     handle: i64,
     project_bundle: String,
@@ -1674,6 +1905,7 @@ mod tests {
     use super::*;
 
     const WIRED_NAPI_EXPORTS: &[&str] = &[
+        "applyCollisionConstrainedCameraInput",
         "applyEnemyDirectNavMovement",
         "applyFpsEncounterTransition",
         "applyFpsPrimaryFire",
@@ -1711,6 +1943,7 @@ mod tests {
         assert_eq!(
             WIRED_NAPI_EXPORTS,
             &[
+                "applyCollisionConstrainedCameraInput",
                 "applyEnemyDirectNavMovement",
                 "applyFpsEncounterTransition",
                 "applyFpsPrimaryFire",

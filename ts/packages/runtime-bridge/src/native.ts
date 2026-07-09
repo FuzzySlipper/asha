@@ -5,6 +5,7 @@ import type {
   CameraSnapshot,
   CommandBatch,
   CommandResult,
+  CollisionConstrainedCameraInputEnvelope,
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   PickResult,
@@ -120,6 +121,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'submit_commands',
   'step_simulation',
   'create_camera',
+  'apply_collision_constrained_camera_input',
   'apply_enemy_direct_nav_movement',
   'load_fps_runtime_session',
   'read_fps_runtime_session',
@@ -782,8 +784,9 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     throw nativeUnimplemented('pick_voxel');
   }
 
-  applyCollisionConstrainedCameraInput(): CameraCollisionSnapshot {
-    throw nativeUnimplemented('apply_collision_constrained_camera_input');
+  applyCollisionConstrainedCameraInput(envelope: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot {
+    const handle = this.#requireHandle('applyCollisionConstrainedCameraInput');
+    return callNative(() => this.#addon.applyCollisionConstrainedCameraInput(handle, envelope));
   }
 
   selectVoxel(): VoxelSelectionSnapshot {

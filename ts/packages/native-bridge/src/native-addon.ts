@@ -1,6 +1,8 @@
 import type {
+  CameraCollisionSnapshot,
   CameraCreateRequest,
   CameraSnapshot,
+  CollisionConstrainedCameraInputEnvelope,
   CommandResult,
   RenderFrameDiff,
 } from '@asha/contracts';
@@ -186,6 +188,10 @@ export interface NativeAddon {
   submitCommands(handle: number, commandsJson: string): CommandResult;
   stepSimulation(handle: number, tick: number): number;
   createCamera(handle: number, request: CameraCreateRequest): CameraSnapshot;
+  applyCollisionConstrainedCameraInput(
+    handle: number,
+    envelope: CollisionConstrainedCameraInputEnvelope,
+  ): CameraCollisionSnapshot;
   applyEnemyDirectNavMovement(
     handle: number,
     entity: number,
@@ -263,6 +269,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'submitCommands',
   'stepSimulation',
   'createCamera',
+  'applyCollisionConstrainedCameraInput',
   'applyEnemyDirectNavMovement',
   'loadFpsRuntimeSession',
   'readFpsRuntimeSession',

@@ -358,6 +358,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "protocol-view",
  "runtime-bridge-api",
  "serde",
  "serde_json",

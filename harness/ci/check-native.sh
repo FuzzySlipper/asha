@@ -170,6 +170,26 @@ assert.equal(receipt.applied, true);
 assert.equal(receipt.outputHash, preview.outputHash);
 assert.equal(receipt.diagnostics.length, 0);
 
+const constrainedCamera = bridge.applyCollisionConstrainedCameraInput({
+  camera: camera.camera,
+  grid: 1,
+  input: {
+    moveForward: 1,
+    moveRight: 0,
+    moveUp: 0,
+    yawDeltaDegrees: 0,
+    pitchDeltaDegrees: 0,
+    dtSeconds: 1 / 60,
+    moveSpeedUnitsPerSecond: 3,
+  },
+  tick: 1,
+  shape: { halfExtents: [0.2, 0.2, 0.2] },
+  policy: { mode: 'axis_separable_slide', maxIterations: 3 },
+});
+assert.equal(constrainedCamera.camera, camera.camera);
+assert.equal(constrainedCamera.collision.grid, 1);
+assert.match(constrainedCamera.movementHash, /^fnv1a64:[0-9a-f]{16}$/u);
+
 const exportedEvidence = bridge.exportVoxelConversionEvidence([
   ...plan.evidence,
   ...preview.evidence,

@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { entityId } from '@asha/contracts';
 import { MANIFEST_OPERATIONS, NATIVE_WIRED_OPERATIONS, NativeRuntimeBridge, RuntimeBridgeError, frameCursor, } from './index.js';
+import { fpsLoadRequest } from './native-fps-fixtures.test-fixture.js';
 const MODEL_MATERIAL_PREVIEW_REQUEST = {
     catalogEntry: {
         id: 'material.copper',
@@ -55,12 +56,19 @@ const CAMERA_INPUT = {
         moveSpeedUnitsPerSecond: 3,
     },
 };
+const COLLISION_CAMERA_INPUT = {
+    ...CAMERA_INPUT,
+    grid: 1,
+    shape: { halfExtents: [0.2, 0.2, 0.2] },
+    policy: { mode: 'axis_separable_slide', maxIterations: 3 },
+};
 const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'initialize_engine',
     'load_project_bundle',
     'submit_commands',
     'step_simulation',
     'create_camera',
+    'apply_collision_constrained_camera_input',
     'apply_enemy_direct_nav_movement',
     'load_fps_runtime_session',
     'read_fps_runtime_session',
@@ -373,51 +381,6 @@ const VOXEL_EDIT_HISTORY_REDO_REQUEST = {
 function parseJsonFixture(payload) {
     return JSON.parse(payload);
 }
-function fpsLoadRequest() {
-    return {
-        projectBundle: 'custom-demo',
-        definitions: [
-            {
-                entity: 101,
-                stableId: 'actor/custom-player',
-                displayName: 'Custom Player',
-                sourcePath: 'catalogs/actors/player.entity.json',
-                tags: ['player'],
-                role: 'player',
-                transform: { translation: [0, 1.5, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
-                bounds: { min: [2.2, 1, 1], max: [2.8, 2, 2] },
-                renderVisible: true,
-                staticCollider: false,
-                health: { current: 88, max: 88 },
-                weapon: { weaponId: 'weapon.custom.primary', damage: 75, rangeUnits: 16, ammo: 3, cooldownTicksAfterFire: 4 },
-                policyBinding: null,
-            },
-            {
-                entity: 777,
-                stableId: 'actor/custom-enemy',
-                displayName: 'Custom Enemy',
-                sourcePath: 'catalogs/actors/enemy.entity.json',
-                tags: ['enemy'],
-                role: 'enemy',
-                transform: { translation: [0, 1.5, 5.2], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
-                bounds: { min: [2.2, 1, 5], max: [2.8, 2, 5.8] },
-                renderVisible: true,
-                staticCollider: false,
-                health: { current: 75, max: 75 },
-                weapon: null,
-                policyBinding: {
-                    bindingId: 'binding.enemy.custom.v0',
-                    policyId: 'policy.enemy.custom.v0',
-                    viewKind: 'runtime_session.nav_policy_view.v0',
-                    viewVersion: 'v0',
-                    allowedIntents: ['runtime.intent.primary_fire.v0'],
-                    runtimeMoment: 'runtime.tick.enemy_policy.v0',
-                },
-            },
-        ],
-        gameRuleModules: [],
-    };
-}
 // A fake addon with sentinel return values distinct from MockRuntimeBridge, so a
 // silent mock fallback would be observable in the wired-op assertions below.
 function fakeAddon(calls = []) {
@@ -452,6 +415,50 @@ function fakeAddon(calls = []) {
                 },
                 projection: request.projection,
                 viewport: request.viewport,
+            };
+        },
+        applyCollisionConstrainedCameraInput: (_handle, envelope) => {
+            calls.push(`cameraCollision:${envelope.camera}:${envelope.grid}:${envelope.tick}`);
+            const before = {
+                camera: envelope.camera,
+                tick: envelope.tick - 1,
+                pose: CAMERA_CREATE_REQUEST.initialPose,
+                basis: {
+                    forward: [0, 0, -1],
+                    right: [1, 0, 0],
+                    up: [0, 1, 0],
+                },
+                projection: CAMERA_CREATE_REQUEST.projection,
+                viewport: CAMERA_CREATE_REQUEST.viewport,
+            };
+            const attempted = {
+                ...before,
+                tick: envelope.tick,
+                pose: { ...CAMERA_CREATE_REQUEST.initialPose, position: [0, 1.6, -0.05] },
+            };
+            const after = {
+                ...before,
+                tick: envelope.tick,
+                pose: { ...CAMERA_CREATE_REQUEST.initialPose, position: [0, 1.6, -0.04] },
+            };
+            return {
+                camera: envelope.camera,
+                tick: envelope.tick,
+                before,
+                attempted,
+                after,
+                collision: {
+                    grid: envelope.grid,
+                    shape: envelope.shape,
+                    policy: envelope.policy,
+                    collided: true,
+                    blockedAxes: ['z'],
+                    correction: [0, 0, 0.01],
+                    queriedAabb: { min: [-0.2, 1.4, -0.25], max: [0.2, 1.8, 0.15] },
+                    collisionSourceHash: 'fnv1a64:sentinel-collision-source',
+                    collisionProjectionHash: 'fnv1a64:sentinel-collision-projection',
+                },
+                movementHash: 'fnv1a64:sentinel-movement',
             };
         },
         applyEnemyDirectNavMovement: (_handle, entity, seedPosition, target, maxStepUnits) => {
@@ -1097,12 +1104,7 @@ const INVOKE = new Map([
     ],
     [
         'applyCollisionConstrainedCameraInput',
-        (b) => b.applyCollisionConstrainedCameraInput({
-            ...CAMERA_INPUT,
-            grid: 1,
-            shape: { halfExtents: [0.2, 0.2, 0.2] },
-            policy: { mode: 'axis_separable_slide', maxIterations: 3 },
-        }),
+        (b) => b.applyCollisionConstrainedCameraInput(COLLISION_CAMERA_INPUT),
     ],
     [
         'selectVoxel',
@@ -1278,6 +1280,12 @@ void test('native conformance sequence routes through the addon without mock fal
         projection: CAMERA_CREATE_REQUEST.projection,
         viewport: CAMERA_CREATE_REQUEST.viewport,
     });
+    const constrainedCamera = bridge.applyCollisionConstrainedCameraInput(COLLISION_CAMERA_INPUT);
+    assert.equal(constrainedCamera.camera, COLLISION_CAMERA_INPUT.camera);
+    assert.equal(constrainedCamera.tick, COLLISION_CAMERA_INPUT.tick);
+    assert.equal(constrainedCamera.collision.collided, true);
+    assert.deepEqual(constrainedCamera.collision.blockedAxes, ['z']);
+    assert.equal(constrainedCamera.movementHash, 'fnv1a64:sentinel-movement');
     assert.deepEqual(bridge.applyEnemyDirectNavMovement({
         entity: 777,
         seedPosition: [0, 0.5, -2.6],
@@ -1362,6 +1370,7 @@ void test('native conformance sequence routes through the addon without mock fal
         'submit:[{"op":"setVoxel","grid":1,"coord":{"x":0,"y":0,"z":0},"value":{"kind":"solid","material":1}}]',
         'step:6',
         'createCamera:0,1.6,0',
+        'cameraCollision:1:1:1',
         'enemyMove:777:0,0.5,-2.6:0,1.62,1.25:0.35',
         'fpsLoad:custom-demo:2:0',
         'fpsNativeShape:true:true:0',
