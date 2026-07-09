@@ -224,11 +224,11 @@ impl VoxelEditHistory {
 
         let cursor_before = self.cursor();
         let invalidated_redo_count = self.entries.len().saturating_sub(self.cursor_index);
-        self.entries.truncate(self.cursor_index);
 
-        apply_all(&mut self.current_world, &receipt.events)
+        let mut replayed_world = self.current_world.clone();
+        apply_all(&mut replayed_world, &receipt.events)
             .map_err(VoxelEditHistoryRejection::ReplayFailed)?;
-        let after_hash = voxel_world_hash(&self.current_world);
+        let after_hash = voxel_world_hash(&replayed_world);
         if receipt.after_hash != after_hash {
             return Err(VoxelEditHistoryRejection::StaleCursorHash {
                 expected: receipt.after_hash,
@@ -236,11 +236,17 @@ impl VoxelEditHistory {
             });
         }
 
-        let parent_transaction_id = self.entries.last().map(|entry| entry.transaction_id);
+        let parent_transaction_id = self
+            .cursor_index
+            .checked_sub(1)
+            .and_then(|index| self.entries.get(index))
+            .map(|entry| entry.transaction_id);
         let parent_cursor_id = cursor_id_for_index(self.cursor_index);
         let transaction_id = self.next_transaction_id;
         self.next_transaction_id = self.next_transaction_id.saturating_add(1);
+        self.entries.truncate(self.cursor_index);
         self.cursor_index = self.cursor_index.saturating_add(1);
+        self.current_world = replayed_world;
         let entry = VoxelEditHistoryEntry {
             transaction_id,
             parent_transaction_id,
@@ -1354,6 +1360,47 @@ mod tests {
 
         history.append_accepted(first).unwrap();
         assert_eq!(history.entries().len(), 1);
+    }
+
+    #[test]
+    fn rejected_append_with_bad_after_hash_does_not_mutate_history_state() {
+        let mut external = resident_world();
+        let mut history = VoxelEditHistory::new(resident_world());
+        let original_hash = history.current_world_hash();
+        let mut bad_first = applied_receipt(&mut external, set_command(1, 1));
+        bad_first.after_hash = bad_first.after_hash.wrapping_add(1);
+
+        assert!(matches!(
+            history.append_accepted(bad_first),
+            Err(VoxelEditHistoryRejection::StaleCursorHash { .. })
+        ));
+        assert_eq!(history.entries().len(), 0);
+        assert_eq!(history.cursor().index, 0);
+        assert_eq!(history.current_world_hash(), original_hash);
+
+        let mut external = resident_world();
+        let mut history = VoxelEditHistory::new(resident_world());
+        history
+            .append_accepted(applied_receipt(&mut external, set_command(1, 1)))
+            .unwrap();
+        history
+            .append_accepted(applied_receipt(&mut external, set_command(2, 2)))
+            .unwrap();
+        history.undo_one().unwrap();
+        let cursor_before = history.cursor();
+        let hash_before = history.current_world_hash();
+        let mut fork_external = history.current_world().clone();
+        let mut bad_fork = applied_receipt(&mut fork_external, set_command(3, 1));
+        bad_fork.after_hash = bad_fork.after_hash.wrapping_add(1);
+
+        assert!(matches!(
+            history.append_accepted(bad_fork),
+            Err(VoxelEditHistoryRejection::StaleCursorHash { .. })
+        ));
+        assert_eq!(history.entries().len(), 2);
+        assert_eq!(history.cursor().index, cursor_before.index);
+        assert_eq!(history.cursor().redo_depth, cursor_before.redo_depth);
+        assert_eq!(history.current_world_hash(), hash_before);
     }
 
     #[test]
