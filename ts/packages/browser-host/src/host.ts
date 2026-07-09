@@ -178,7 +178,11 @@ export async function startNativeBrowserHost(
   const port = options.port ?? 5173;
   const uiRoot = resolve(options.uiRoot);
   const server = createServer((request, response) => {
-    void handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridge);
+    void handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridge).catch(
+      (error: unknown) => {
+        handleNativeBrowserHostRequestFailure(response, error);
+      },
+    );
   });
   await listen(server, port, host);
   const selectedPort = readSelectedPort(server, port);
@@ -190,6 +194,21 @@ export async function startNativeBrowserHost(
     provider,
     close: () => closeServer(server),
   };
+}
+
+function handleNativeBrowserHostRequestFailure(response: ServerResponse, error: unknown): void {
+  if (response.destroyed || response.writableEnded) {
+    return;
+  }
+  if (response.headersSent) {
+    response.end();
+    return;
+  }
+  sendJson(response, 500, {
+    error: {
+      message: error instanceof Error ? error.message : String(error),
+    },
+  });
 }
 
 async function handleNativeBrowserHostRequest(

@@ -163,7 +163,70 @@ void test('browser host preserves native RuntimeBridge receiver binding over HTT
                 projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
                 viewport: { width: 1280, height: 720 },
             });
-            assert.deepEqual(calls, ['initialize:23', 'createCamera']);
+            const compositionInvocation = await fetch(`${host.url}/asha/browser-host/runtime-bridge/getProjectBundleCompositionStatus`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: [] }),
+            });
+            assert.equal(compositionInvocation.status, 200);
+            assert.deepEqual(await compositionInvocation.json(), {
+                result: {
+                    loadedProjectBundle: 4103,
+                    fatalCount: 0,
+                    totalCount: 0,
+                    blocksLoad: false,
+                },
+            });
+            assert.deepEqual(calls, ['initialize:23', 'createCamera', 'compositionStatus']);
+        }
+        finally {
+            await host.close();
+        }
+    }
+    finally {
+        await rm(tempRoot, { recursive: true, force: true });
+    }
+});
+void test('browser host contains native RuntimeBridge invocation failures', async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
+    const calls = [];
+    try {
+        await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA demo</title>');
+        const host = await launchNativeBrowserHost({
+            uiRoot: tempRoot,
+            host: '127.0.0.1',
+            port: 0,
+            provider: {
+                globalScope: {},
+                createRuntimeBridge: () => createFakeNativeRuntimeBridge(calls, true),
+            },
+        });
+        try {
+            const initializeInvocation = await fetch(`${host.url}/asha/browser-host/runtime-bridge/initializeEngine`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: [{ seed: 23 }] }),
+            });
+            assert.equal(initializeInvocation.status, 200);
+            const failedInvocation = await fetch(`${host.url}/asha/browser-host/runtime-bridge/getProjectBundleCompositionStatus`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ args: [] }),
+            });
+            assert.equal(failedInvocation.status, 500);
+            assert.deepEqual(await failedInvocation.json(), {
+                error: {
+                    message: 'runtime bridge error [internal]: native composition status failed',
+                },
+            });
+            assert.deepEqual(calls, ['initialize:23', 'compositionStatus']);
+            const health = await fetch(`${host.url}/health`);
+            assert.equal(health.status, 200);
+            assert.deepEqual(await health.json(), {
+                ok: true,
+                project: 'asha-game-project',
+                compatibilityVersion: ASHA_BROWSER_HOST_COMPATIBILITY_VERSION,
+            });
         }
         finally {
             await host.close();
@@ -293,7 +356,7 @@ function createFakeRuntimeBridge() {
         runReplayStep: operation,
     };
 }
-function createFakeNativeRuntimeBridge(calls) {
+function createFakeNativeRuntimeBridge(calls, failCompositionStatus = false) {
     const addon = {
         initializeEngine: (seed) => {
             calls.push(`initialize:${seed}`);
@@ -312,6 +375,19 @@ function createFakeNativeRuntimeBridge(calls) {
                 },
                 projection: request.projection,
                 viewport: request.viewport,
+            };
+        },
+        getProjectBundleCompositionStatus: (handle) => {
+            void handle;
+            calls.push('compositionStatus');
+            if (failCompositionStatus) {
+                throw new Error('native composition status failed');
+            }
+            return {
+                loadedProjectBundle: 4103,
+                fatalCount: 0,
+                totalCount: 0,
+                blocksLoad: false,
             };
         },
     };
