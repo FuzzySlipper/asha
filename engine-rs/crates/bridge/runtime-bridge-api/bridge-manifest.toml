@@ -168,6 +168,46 @@ errors = "RuntimeBridgeError"
 summary = "Load a validated Asha-native stored voxel-volume asset into runtime authority with explicit stored-to-runtime diagnostics and readback evidence."
 
 [[operation]]
+name = "validate_voxel_annotation_layer"
+surface = "stable"
+input = "protocol_voxel_annotation::VoxelAnnotationLayerValidationRequest"
+output = "protocol_voxel_annotation::VoxelAnnotationLayerValidationReport"
+errors = "RuntimeBridgeError"
+summary = "Validate and hash an Asha-native stored voxel annotation layer through Rust authority before runtime load."
+
+[[operation]]
+name = "load_voxel_annotation_layer"
+surface = "stable"
+input = "protocol_voxel_annotation::VoxelAnnotationLayerLoadRequest"
+output = "protocol_voxel_annotation::VoxelAnnotationLayerLoadReceipt"
+errors = "RuntimeBridgeError"
+summary = "Load a validated stored voxel annotation layer against a resident voxel-volume model with explicit hash/session guards."
+
+[[operation]]
+name = "read_voxel_annotation_query"
+surface = "stable"
+input = "protocol_voxel_annotation::VoxelAnnotationQueryRequest"
+output = "protocol_voxel_annotation::VoxelAnnotationQueryReadout"
+errors = "RuntimeBridgeError"
+summary = "Read quota-guarded cell/bounds/region/summary data from a loaded runtime voxel annotation layer."
+
+[[operation]]
+name = "apply_voxel_annotation_edit"
+surface = "stable"
+input = "protocol_voxel_annotation::VoxelAnnotationEditRequest"
+output = "protocol_voxel_annotation::VoxelAnnotationEditReceipt"
+errors = "RuntimeBridgeError"
+summary = "Apply a typed hash-guarded edit to a loaded runtime voxel annotation layer and return deterministic receipt evidence."
+
+[[operation]]
+name = "export_voxel_annotation_layer"
+surface = "stable"
+input = "protocol_voxel_annotation::VoxelAnnotationLayerExportRequest"
+output = "protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt"
+errors = "RuntimeBridgeError"
+summary = "Export a loaded runtime voxel annotation layer back to the stored annotation DTO shape with authority hashes."
+
+[[operation]]
 name = "load_fps_runtime_session"
 surface = "stable"
 input = "protocol_runtime::FpsRuntimeSessionLoadRequest"

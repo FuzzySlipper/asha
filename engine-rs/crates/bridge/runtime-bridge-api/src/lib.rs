@@ -69,6 +69,17 @@ pub(crate) use protocol_view::{
     FirstPersonCameraInput, FirstPersonCameraInputEnvelope, PickRaySnapshot, ScreenPoint,
     ScreenPointSpace, ScreenPointToPickRayRequest, VoxelSelectionOutcome, VoxelSelectionSnapshot,
 };
+pub(crate) use protocol_voxel_annotation::{
+    VoxelAnnotationDiagnostic, VoxelAnnotationDiagnosticCode, VoxelAnnotationEditOperation,
+};
+pub use protocol_voxel_annotation::{
+    VoxelAnnotationEditReceipt, VoxelAnnotationEditRequest, VoxelAnnotationLayer,
+    VoxelAnnotationLayerExportReceipt, VoxelAnnotationLayerExportRequest,
+    VoxelAnnotationLayerLoadReceipt, VoxelAnnotationLayerLoadRequest,
+    VoxelAnnotationLayerValidationReport, VoxelAnnotationLayerValidationRequest,
+    VoxelAnnotationQueryReadout, VoxelAnnotationQueryRequest, VoxelAnnotationRegion,
+    VoxelAnnotationSelection, VoxelAnnotationSparseRun,
+};
 pub(crate) use protocol_voxel_asset::{
     VoxelAssetAuthoringMetadata, VoxelAssetBounds, VoxelAssetContentHashes, VoxelAssetCoord,
     VoxelAssetDiagnostic, VoxelAssetDiagnosticCode, VoxelAssetGrid, VoxelAssetMaterialBinding,

@@ -61,6 +61,7 @@ PROTOCOL_MODULE_TO_GENERATED_FILE = {
     "protocol_scene": "scene.ts",
     "protocol_view": "view.ts",
     "protocol_voxel": "voxel.ts",
+    "protocol_voxel_annotation": "voxelAnnotation.ts",
     "protocol_voxel_asset": "voxelAsset.ts",
     "protocol_voxel_conversion": "voxelConversion.ts",
     "protocol_project_bundle": "projectBundle.ts",

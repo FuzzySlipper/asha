@@ -740,6 +740,7 @@ dependencies = [
  "protocol-game-rules",
  "protocol-render",
  "protocol-view",
+ "protocol-voxel-annotation",
  "protocol-voxel-asset",
  "protocol-voxel-conversion",
  "rule-lifecycle",
@@ -753,6 +754,7 @@ dependencies = [
  "svc-serialization",
  "svc-spatial",
  "svc-volume",
+ "svc-voxel-annotation",
  "svc-voxel-asset",
  "svc-voxel-conversion",
 ]

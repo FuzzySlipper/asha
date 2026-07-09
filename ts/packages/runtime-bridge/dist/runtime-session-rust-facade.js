@@ -603,6 +603,26 @@ export class RustBackedRuntimeSessionFacade {
         this.#requireInitialized('loadVoxelVolumeAsset');
         return this.#bridge.loadVoxelVolumeAsset(request);
     }
+    validateVoxelAnnotationLayer(request) {
+        this.#requireInitialized('validateVoxelAnnotationLayer');
+        return this.#bridge.validateVoxelAnnotationLayer(request);
+    }
+    loadVoxelAnnotationLayer(request) {
+        this.#requireInitialized('loadVoxelAnnotationLayer');
+        return this.#bridge.loadVoxelAnnotationLayer(request);
+    }
+    readVoxelAnnotationQuery(request) {
+        this.#requireInitialized('readVoxelAnnotationQuery');
+        return this.#bridge.readVoxelAnnotationQuery(request);
+    }
+    applyVoxelAnnotationEdit(request) {
+        this.#requireInitialized('applyVoxelAnnotationEdit');
+        return this.#bridge.applyVoxelAnnotationEdit(request);
+    }
+    exportVoxelAnnotationLayer(request) {
+        this.#requireInitialized('exportVoxelAnnotationLayer');
+        return this.#bridge.exportVoxelAnnotationLayer(request);
+    }
     readEcrpRuntimeReadout() {
         const identity = this.#requireInitialized('readEcrpRuntimeReadout');
         const snapshot = this.#requireSnapshot();

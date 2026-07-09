@@ -29,5 +29,10 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'exportVoxelVolumeAsset',
     'saveVoxelVolumeAsset',
     'loadVoxelVolumeAsset',
+    'validateVoxelAnnotationLayer',
+    'loadVoxelAnnotationLayer',
+    'readVoxelAnnotationQuery',
+    'applyVoxelAnnotationEdit',
+    'exportVoxelAnnotationLayer',
 ];
 //# sourceMappingURL=native-addon.js.map

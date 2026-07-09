@@ -105,6 +105,34 @@ pub trait RuntimeBridge {
         &mut self,
         request: VoxelVolumeAssetLoadRequest,
     ) -> BridgeResult<VoxelVolumeAssetLoadReceipt>;
+    /// Validate and canonicalize a stored voxel annotation layer through Rust
+    /// authority without mutating runtime state.
+    fn validate_voxel_annotation_layer(
+        &self,
+        request: VoxelAnnotationLayerValidationRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerValidationReport>;
+    /// Load a validated annotation layer into runtime annotation state. This
+    /// attaches semantic metadata to a target voxel-volume asset id/hash; it does
+    /// not mutate voxel occupancy.
+    fn load_voxel_annotation_layer(
+        &mut self,
+        request: VoxelAnnotationLayerLoadRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerLoadReceipt>;
+    /// Query a loaded annotation layer through bounded Rust-owned query helpers.
+    fn read_voxel_annotation_query(
+        &self,
+        request: VoxelAnnotationQueryRequest,
+    ) -> BridgeResult<VoxelAnnotationQueryReadout>;
+    /// Apply a hash-guarded runtime annotation edit and revalidate before commit.
+    fn apply_voxel_annotation_edit(
+        &mut self,
+        request: VoxelAnnotationEditRequest,
+    ) -> BridgeResult<VoxelAnnotationEditReceipt>;
+    /// Explicitly export a runtime annotation layer back to stored DTO form.
+    fn export_voxel_annotation_layer(
+        &self,
+        request: VoxelAnnotationLayerExportRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerExportReceipt>;
     /// Load an FPS/ECRP ProjectBundle-shaped session through Rust authority.
     /// Stored definitions are validated/bootstraped by rule-lifecycle and
     /// svc-entity-authoring; failure leaves any prior FPS session untouched.

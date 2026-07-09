@@ -34,6 +34,10 @@ class ReferenceRuntimeSessionFacade {
     constructor(bridge) {
         this.#bridge = bridge;
     }
+    #unsupportedOperation(method, message) {
+        this.#requireInitialized(method);
+        throw new RuntimeBridgeError('operation_unimplemented', message);
+    }
     initialize(input) {
         validateInitializeInput(input);
         const engine = this.#bridge.initializeEngine({ seed: input.seed });
@@ -576,57 +580,22 @@ class ReferenceRuntimeSessionFacade {
             sessionHashAfter: this.#sessionHash(),
         };
     }
-    planVoxelConversion(_request) {
-        void _request;
-        this.#requireInitialized('planVoxelConversion');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion authority is not wired into the reference RuntimeSession');
-    }
-    registerVoxelConversionSource(_request) {
-        void _request;
-        this.#requireInitialized('registerVoxelConversionSource');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion source registration is not wired into the reference RuntimeSession');
-    }
-    registerVoxelConversionMeshAsset(_request) {
-        void _request;
-        this.#requireInitialized('registerVoxelConversionMeshAsset');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion mesh asset registration is not wired into the reference RuntimeSession');
-    }
-    previewVoxelConversion(_request) {
-        void _request;
-        this.#requireInitialized('previewVoxelConversion');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion preview is not wired into the reference RuntimeSession');
-    }
-    applyVoxelConversion(_request) {
-        void _request;
-        this.#requireInitialized('applyVoxelConversion');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion apply is not wired into the reference RuntimeSession');
-    }
-    exportVoxelConversionEvidence(_evidence) {
-        void _evidence;
-        this.#requireInitialized('exportVoxelConversionEvidence');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel conversion evidence export is not wired into the reference RuntimeSession');
-    }
-    readVoxelModelInfo(_request) {
-        void _request;
-        this.#requireInitialized('readVoxelModelInfo');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model info is not wired into the reference RuntimeSession');
-    }
-    readVoxelModelWindow(_request) { void _request; this.#requireInitialized('readVoxelModelWindow'); throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model window is not wired into the reference RuntimeSession'); }
-    exportVoxelVolumeAsset(_request) {
-        void _request;
-        this.#requireInitialized('exportVoxelVolumeAsset');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset export is not wired into the reference RuntimeSession');
-    }
-    saveVoxelVolumeAsset(_request) {
-        void _request;
-        this.#requireInitialized('saveVoxelVolumeAsset');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset save is not wired into the reference RuntimeSession');
-    }
-    loadVoxelVolumeAsset(_request) {
-        void _request;
-        this.#requireInitialized('loadVoxelVolumeAsset');
-        throw new RuntimeBridgeError('operation_unimplemented', 'Voxel volume asset load is not wired into the reference RuntimeSession');
-    }
+    planVoxelConversion(_request) { void _request; return this.#unsupportedOperation('planVoxelConversion', 'Voxel conversion authority is not wired into the reference RuntimeSession'); }
+    registerVoxelConversionSource(_request) { void _request; return this.#unsupportedOperation('registerVoxelConversionSource', 'Voxel conversion source registration is not wired into the reference RuntimeSession'); }
+    registerVoxelConversionMeshAsset(_request) { void _request; return this.#unsupportedOperation('registerVoxelConversionMeshAsset', 'Voxel conversion mesh asset registration is not wired into the reference RuntimeSession'); }
+    previewVoxelConversion(_request) { void _request; return this.#unsupportedOperation('previewVoxelConversion', 'Voxel conversion preview is not wired into the reference RuntimeSession'); }
+    applyVoxelConversion(_request) { void _request; return this.#unsupportedOperation('applyVoxelConversion', 'Voxel conversion apply is not wired into the reference RuntimeSession'); }
+    exportVoxelConversionEvidence(_evidence) { void _evidence; return this.#unsupportedOperation('exportVoxelConversionEvidence', 'Voxel conversion evidence export is not wired into the reference RuntimeSession'); }
+    readVoxelModelInfo(_request) { void _request; return this.#unsupportedOperation('readVoxelModelInfo', 'Voxel model info is not wired into the reference RuntimeSession'); }
+    readVoxelModelWindow(_request) { void _request; return this.#unsupportedOperation('readVoxelModelWindow', 'Voxel model window is not wired into the reference RuntimeSession'); }
+    exportVoxelVolumeAsset(_request) { void _request; return this.#unsupportedOperation('exportVoxelVolumeAsset', 'Voxel volume asset export is not wired into the reference RuntimeSession'); }
+    saveVoxelVolumeAsset(_request) { void _request; return this.#unsupportedOperation('saveVoxelVolumeAsset', 'Voxel volume asset save is not wired into the reference RuntimeSession'); }
+    loadVoxelVolumeAsset(_request) { void _request; return this.#unsupportedOperation('loadVoxelVolumeAsset', 'Voxel volume asset load is not wired into the reference RuntimeSession'); }
+    validateVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedOperation('validateVoxelAnnotationLayer', 'Voxel annotation validation is not wired into the reference RuntimeSession'); }
+    loadVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedOperation('loadVoxelAnnotationLayer', 'Voxel annotation load is not wired into the reference RuntimeSession'); }
+    readVoxelAnnotationQuery(_request) { void _request; return this.#unsupportedOperation('readVoxelAnnotationQuery', 'Voxel annotation query is not wired into the reference RuntimeSession'); }
+    applyVoxelAnnotationEdit(_request) { void _request; return this.#unsupportedOperation('applyVoxelAnnotationEdit', 'Voxel annotation edit is not wired into the reference RuntimeSession'); }
+    exportVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedOperation('exportVoxelAnnotationLayer', 'Voxel annotation export is not wired into the reference RuntimeSession'); }
     readEcrpRuntimeReadout() {
         const identity = this.#requireInitialized('readEcrpRuntimeReadout');
         return buildEcrpRuntimeReadout({

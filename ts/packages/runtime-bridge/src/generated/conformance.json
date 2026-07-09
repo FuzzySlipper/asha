@@ -147,6 +147,46 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "validate_voxel_annotation_layer",
+      "facadeMethod": "validateVoxelAnnotationLayer",
+      "surface": "stable",
+      "input": "protocol_voxel_annotation::VoxelAnnotationLayerValidationRequest",
+      "output": "protocol_voxel_annotation::VoxelAnnotationLayerValidationReport",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "load_voxel_annotation_layer",
+      "facadeMethod": "loadVoxelAnnotationLayer",
+      "surface": "stable",
+      "input": "protocol_voxel_annotation::VoxelAnnotationLayerLoadRequest",
+      "output": "protocol_voxel_annotation::VoxelAnnotationLayerLoadReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_voxel_annotation_query",
+      "facadeMethod": "readVoxelAnnotationQuery",
+      "surface": "stable",
+      "input": "protocol_voxel_annotation::VoxelAnnotationQueryRequest",
+      "output": "protocol_voxel_annotation::VoxelAnnotationQueryReadout",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_voxel_annotation_edit",
+      "facadeMethod": "applyVoxelAnnotationEdit",
+      "surface": "stable",
+      "input": "protocol_voxel_annotation::VoxelAnnotationEditRequest",
+      "output": "protocol_voxel_annotation::VoxelAnnotationEditReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "export_voxel_annotation_layer",
+      "facadeMethod": "exportVoxelAnnotationLayer",
+      "surface": "stable",
+      "input": "protocol_voxel_annotation::VoxelAnnotationLayerExportRequest",
+      "output": "protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "load_fps_runtime_session",
       "facadeMethod": "loadFpsRuntimeSession",
       "surface": "stable",

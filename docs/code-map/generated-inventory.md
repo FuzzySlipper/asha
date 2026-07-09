@@ -199,8 +199,10 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `apply_fps_encounter_transition` — stable; output `protocol_runtime::FpsEncounterTransitionResult`
 - `apply_fps_primary_fire` — stable; output `protocol_runtime::FpsPrimaryFireResult`
 - `apply_scene_object_command` — stable; output `protocol_scene::SceneObjectCommandResult`
+- `apply_voxel_annotation_edit` — stable; output `protocol_voxel_annotation::VoxelAnnotationEditReceipt`
 - `apply_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionReceipt`
 - `create_camera` — stable; output `protocol_view::CameraSnapshot`
+- `export_voxel_annotation_layer` — stable; output `protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt`
 - `export_voxel_conversion_evidence` — stable; output `protocol_voxel_conversion::VoxelConversionEvidenceRef[]`
 - `export_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetExportReceipt`
 - `get_buffer` — stable; output `RuntimeBufferView`
@@ -210,6 +212,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `load_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
 - `load_project_bundle` — stable; output `protocol_diagnostics::DiagnosticReportSet`
 - `load_replay_fixture` — quarantined; output `ReplaySessionHandle`
+- `load_voxel_annotation_layer` — stable; output `protocol_voxel_annotation::VoxelAnnotationLayerLoadReceipt`
 - `load_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetLoadReceipt`
 - `pick_voxel` — stable; output `protocol_voxel::PickResult`
 - `plan_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionPlan`
@@ -221,6 +224,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `read_model_material_preview` — stable; output `protocol_render::ModelMaterialPreviewSnapshot`
 - `read_render_diffs` — stable; output `protocol_render::RenderFrameDiffDescriptor`
 - `read_scene_object_snapshot` — stable; output `protocol_scene::SceneObjectSnapshot`
+- `read_voxel_annotation_query` — stable; output `protocol_voxel_annotation::VoxelAnnotationQueryReadout`
 - `read_voxel_mesh_evidence` — stable; output `protocol_render::VoxelMeshEvidenceSnapshot`
 - `read_voxel_model_info` — stable; output `protocol_voxel_conversion::VoxelModelInfoReadout`
 - `read_voxel_model_window` — stable; output `protocol_voxel_conversion::VoxelModelWindowReadout`
@@ -237,6 +241,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `submit_game_rule_effect_intent` — stable; output `protocol_game_rules::GameRuleResolutionReceipt`
 - `unload_project_bundle` — stable; output `Unit`
 - `validate_game_rule_catalog` — stable; output `protocol_runtime::GameRuleCatalogValidationReceipt`
+- `validate_voxel_annotation_layer` — stable; output `protocol_voxel_annotation::VoxelAnnotationLayerValidationReport`
 
 ## Evidence Entrypoints
 

@@ -35,6 +35,7 @@ impl RuntimeBridge for ReferenceBridge {
         self.voxel_conversion_plan = None;
         self.voxel_conversion_evidence.clear();
         self.voxel_model_infos.clear();
+        self.voxel_annotation_layers.clear();
 
         Ok(handle)
     }
@@ -974,6 +975,41 @@ impl RuntimeBridge for ReferenceBridge {
             info,
         );
         Ok(receipt)
+    }
+
+    fn validate_voxel_annotation_layer(
+        &self,
+        request: VoxelAnnotationLayerValidationRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerValidationReport> {
+        self.validate_voxel_annotation_layer_reference(request)
+    }
+
+    fn load_voxel_annotation_layer(
+        &mut self,
+        request: VoxelAnnotationLayerLoadRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerLoadReceipt> {
+        self.load_voxel_annotation_layer_reference(request)
+    }
+
+    fn read_voxel_annotation_query(
+        &self,
+        request: VoxelAnnotationQueryRequest,
+    ) -> BridgeResult<VoxelAnnotationQueryReadout> {
+        self.read_voxel_annotation_query_reference(request)
+    }
+
+    fn apply_voxel_annotation_edit(
+        &mut self,
+        request: VoxelAnnotationEditRequest,
+    ) -> BridgeResult<VoxelAnnotationEditReceipt> {
+        self.apply_voxel_annotation_edit_reference(request)
+    }
+
+    fn export_voxel_annotation_layer(
+        &self,
+        request: VoxelAnnotationLayerExportRequest,
+    ) -> BridgeResult<VoxelAnnotationLayerExportReceipt> {
+        self.export_voxel_annotation_layer_reference(request)
     }
 
     fn load_fps_runtime_session(

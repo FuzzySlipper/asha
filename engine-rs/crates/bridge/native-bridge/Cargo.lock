@@ -500,6 +500,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-voxel-annotation"
+version = "0.1.0"
+dependencies = [
+ "protocol-diagnostics",
+ "serde",
+]
+
+[[package]]
 name = "protocol-voxel-asset"
 version = "0.1.0"
 dependencies = [
@@ -615,6 +623,7 @@ dependencies = [
  "protocol-game-rules",
  "protocol-render",
  "protocol-view",
+ "protocol-voxel-annotation",
  "protocol-voxel-asset",
  "protocol-voxel-conversion",
  "rule-lifecycle",
@@ -628,6 +637,7 @@ dependencies = [
  "svc-serialization",
  "svc-spatial",
  "svc-volume",
+ "svc-voxel-annotation",
  "svc-voxel-asset",
  "svc-voxel-conversion",
 ]
@@ -818,6 +828,16 @@ version = "0.1.0"
 dependencies = [
  "core-space",
  "core-voxel",
+]
+
+[[package]]
+name = "svc-voxel-annotation"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "protocol-diagnostics",
+ "protocol-voxel-annotation",
+ "serde_json",
 ]
 
 [[package]]

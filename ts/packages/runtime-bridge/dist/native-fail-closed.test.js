@@ -83,6 +83,11 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'export_voxel_volume_asset',
     'save_voxel_volume_asset',
     'load_voxel_volume_asset',
+    'validate_voxel_annotation_layer',
+    'load_voxel_annotation_layer',
+    'read_voxel_annotation_query',
+    'apply_voxel_annotation_edit',
+    'export_voxel_annotation_layer',
     'read_render_diffs',
     'save_project_bundle',
     'get_project_bundle_composition_status',
@@ -257,6 +262,76 @@ const VOXEL_VOLUME_ASSET_SAVE_REQUEST = {
     expectedExistingCanonicalJsonHash: null,
     expectedCanonicalJsonHash: 'fnv1a64:0000000000000108',
     expectedVoxelDataHash: 'fnv1a64:0000000000000109',
+};
+const VOXEL_ANNOTATION_LAYER = {
+    layerId: 'voxel-annotation/native-fixture',
+    schemaVersion: 1,
+    mediaType: 'application/vnd.asha.voxel-annotation+json;version=1',
+    targetVoxelVolumeAssetId: 'voxel/generated',
+    targetVoxelDataHash: 'fnv1a64:0000000000000109',
+    targetBounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+    regions: [{
+            regionId: 'region/native-room',
+            label: 'Native room',
+            kind: 'room',
+            tags: ['fixture'],
+            parentRegionId: null,
+            bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+            selection: { sparseRuns: [{ start: { x: 0, y: 0, z: 0 }, length: 1 }] },
+        }],
+    provenance: [{
+            kind: 'authored',
+            uri: 'asha://runtime-bridge/native-fail-closed/annotation',
+            contentHash: 'fnv1a64:0000000000000112',
+        }],
+    contentHashes: {
+        canonicalJson: 'fnv1a64:0000000000000113',
+        membershipData: 'fnv1a64:0000000000000114',
+    },
+    validationDiagnostics: [],
+};
+const VOXEL_ANNOTATION_VALIDATION_REQUEST = {
+    layer: VOXEL_ANNOTATION_LAYER,
+    expectedTargetVoxelVolumeAssetId: 'voxel/generated',
+    expectedTargetVoxelDataHash: 'fnv1a64:0000000000000109',
+    maxRegions: 16,
+    maxSparseRunsPerRegion: 16,
+    maxTotalAssignedCells: 16,
+};
+const VOXEL_ANNOTATION_LOAD_REQUEST = {
+    layer: VOXEL_ANNOTATION_LAYER,
+    targetGrid: 1,
+    replaceExisting: true,
+    expectedSessionHash: 'fnv1a64:0000000000000110',
+};
+const VOXEL_ANNOTATION_QUERY_REQUEST = {
+    runtimeLayerId: 'runtime-annotation/voxel-annotation/native-fixture',
+    layerId: VOXEL_ANNOTATION_LAYER.layerId,
+    mode: 'cell',
+    cell: { x: 0, y: 0, z: 0 },
+    bounds: null,
+    regionId: null,
+    maxRegions: 4,
+    expectedLayerHash: VOXEL_ANNOTATION_LAYER.contentHashes.canonicalJson,
+};
+const VOXEL_ANNOTATION_EDIT_REQUEST = {
+    runtimeLayerId: 'runtime-annotation/voxel-annotation/native-fixture',
+    layerId: VOXEL_ANNOTATION_LAYER.layerId,
+    expectedLayerHash: VOXEL_ANNOTATION_LAYER.contentHashes.canonicalJson,
+    operation: 'set_label',
+    regionId: 'region/native-room',
+    region: null,
+    sparseRuns: [],
+    tags: [],
+    label: 'Native room edited',
+    kind: null,
+    parentRegionId: null,
+};
+const VOXEL_ANNOTATION_EXPORT_REQUEST = {
+    runtimeLayerId: 'runtime-annotation/voxel-annotation/native-fixture',
+    layerId: VOXEL_ANNOTATION_LAYER.layerId,
+    expectedLayerHash: 'fnv1a64:0000000000000115',
+    includeDiagnostics: true,
 };
 function parseJsonFixture(payload) {
     return JSON.parse(payload);
@@ -872,6 +947,91 @@ function fakeAddon(calls = []) {
                 diagnostics: [],
             });
         },
+        validateVoxelAnnotationLayer: (_handle, requestJson) => {
+            calls.push(`voxelAnnotationValidate:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                layerId: request.layer.layerId,
+                valid: true,
+                canonicalJsonHash: request.layer.contentHashes.canonicalJson,
+                membershipDataHash: request.layer.contentHashes.membershipData,
+                regionCount: request.layer.regions.length,
+                sparseRunCount: 1,
+                assignedCellCount: 1,
+                diagnostics: [],
+            });
+        },
+        loadVoxelAnnotationLayer: (_handle, requestJson) => {
+            calls.push(`voxelAnnotationLoad:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                requestLayerId: request.layer.layerId,
+                loaded: true,
+                runtimeLayerId: `runtime-annotation/${request.layer.layerId}`,
+                targetVoxelVolumeAssetId: request.layer.targetVoxelVolumeAssetId,
+                targetVoxelDataHash: request.layer.targetVoxelDataHash,
+                regionCount: request.layer.regions.length,
+                assignedCellCount: 1,
+                layerHash: request.layer.contentHashes.canonicalJson,
+                sessionHash: 'fnv1a64:0000000000000110',
+                replayHash: 'fnv1a64:0000000000000116',
+                diagnostics: [],
+            });
+        },
+        readVoxelAnnotationQuery: (_handle, requestJson) => {
+            calls.push(`voxelAnnotationQuery:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                request,
+                matchedRegions: [{
+                        regionId: 'region/native-room',
+                        label: 'Native room',
+                        kind: 'room',
+                        tags: ['fixture'],
+                        parentRegionId: null,
+                        bounds: VOXEL_ANNOTATION_LAYER.targetBounds,
+                        assignedCellCount: 1,
+                    }],
+                regionCount: 1,
+                truncated: false,
+                layerHash: request.expectedLayerHash,
+                diagnostics: [],
+            });
+        },
+        applyVoxelAnnotationEdit: (_handle, requestJson) => {
+            calls.push(`voxelAnnotationEdit:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                request,
+                edited: true,
+                layerHashBefore: request.expectedLayerHash,
+                layerHashAfter: 'fnv1a64:0000000000000115',
+                regionCount: 1,
+                assignedCellCount: 1,
+                diagnostics: [],
+                replayHash: 'fnv1a64:0000000000000117',
+            });
+        },
+        exportVoxelAnnotationLayer: (_handle, requestJson) => {
+            calls.push(`voxelAnnotationExport:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            const layer = {
+                ...VOXEL_ANNOTATION_LAYER,
+                contentHashes: {
+                    canonicalJson: request.expectedLayerHash,
+                    membershipData: VOXEL_ANNOTATION_LAYER.contentHashes.membershipData,
+                },
+            };
+            return JSON.stringify({
+                request,
+                exported: true,
+                layer,
+                canonicalJson: `${JSON.stringify(layer)}\n`,
+                canonicalJsonHash: layer.contentHashes.canonicalJson,
+                membershipDataHash: layer.contentHashes.membershipData,
+                diagnostics: [],
+            });
+        },
     };
 }
 // One invocation per facade method. The native bridge is fully initialized first
@@ -971,6 +1131,11 @@ const INVOKE = new Map([
     ['exportVoxelVolumeAsset', (b) => b.exportVoxelVolumeAsset(VOXEL_VOLUME_ASSET_EXPORT_REQUEST)],
     ['saveVoxelVolumeAsset', (b) => b.saveVoxelVolumeAsset(VOXEL_VOLUME_ASSET_SAVE_REQUEST)],
     ['loadVoxelVolumeAsset', (b) => b.loadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_LOAD_REQUEST)],
+    ['validateVoxelAnnotationLayer', (b) => b.validateVoxelAnnotationLayer(VOXEL_ANNOTATION_VALIDATION_REQUEST)],
+    ['loadVoxelAnnotationLayer', (b) => b.loadVoxelAnnotationLayer(VOXEL_ANNOTATION_LOAD_REQUEST)],
+    ['readVoxelAnnotationQuery', (b) => b.readVoxelAnnotationQuery(VOXEL_ANNOTATION_QUERY_REQUEST)],
+    ['applyVoxelAnnotationEdit', (b) => b.applyVoxelAnnotationEdit(VOXEL_ANNOTATION_EDIT_REQUEST)],
+    ['exportVoxelAnnotationLayer', (b) => b.exportVoxelAnnotationLayer(VOXEL_ANNOTATION_EXPORT_REQUEST)],
     ['readModelMaterialPreview', (b) => b.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST)],
     ['readSceneObjectSnapshot', (b) => b.readSceneObjectSnapshot()],
     [

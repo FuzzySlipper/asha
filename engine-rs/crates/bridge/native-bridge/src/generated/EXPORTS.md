@@ -25,6 +25,11 @@ operations are replay/devtools-only.
 | `export_voxel_volume_asset` | stable | `protocol_voxel_asset::VoxelVolumeAssetExportRequest` | `protocol_voxel_asset::VoxelVolumeAssetExportReceipt` | `RuntimeBridgeError` |
 | `save_voxel_volume_asset` | stable | `protocol_voxel_asset::VoxelVolumeAssetSaveRequest` | `protocol_voxel_asset::VoxelVolumeAssetSaveReceipt` | `RuntimeBridgeError` |
 | `load_voxel_volume_asset` | stable | `protocol_voxel_asset::VoxelVolumeAssetLoadRequest` | `protocol_voxel_asset::VoxelVolumeAssetLoadReceipt` | `RuntimeBridgeError` |
+| `validate_voxel_annotation_layer` | stable | `protocol_voxel_annotation::VoxelAnnotationLayerValidationRequest` | `protocol_voxel_annotation::VoxelAnnotationLayerValidationReport` | `RuntimeBridgeError` |
+| `load_voxel_annotation_layer` | stable | `protocol_voxel_annotation::VoxelAnnotationLayerLoadRequest` | `protocol_voxel_annotation::VoxelAnnotationLayerLoadReceipt` | `RuntimeBridgeError` |
+| `read_voxel_annotation_query` | stable | `protocol_voxel_annotation::VoxelAnnotationQueryRequest` | `protocol_voxel_annotation::VoxelAnnotationQueryReadout` | `RuntimeBridgeError` |
+| `apply_voxel_annotation_edit` | stable | `protocol_voxel_annotation::VoxelAnnotationEditRequest` | `protocol_voxel_annotation::VoxelAnnotationEditReceipt` | `RuntimeBridgeError` |
+| `export_voxel_annotation_layer` | stable | `protocol_voxel_annotation::VoxelAnnotationLayerExportRequest` | `protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt` | `RuntimeBridgeError` |
 | `load_fps_runtime_session` | stable | `protocol_runtime::FpsRuntimeSessionLoadRequest` | `protocol_runtime::FpsRuntimeSessionSnapshot` | `RuntimeBridgeError` |
 | `read_fps_runtime_session` | stable | `Unit` | `protocol_runtime::FpsRuntimeSessionSnapshot` | `RuntimeBridgeError` |
 | `apply_fps_primary_fire` | stable | `protocol_runtime::FpsPrimaryFireRequest` | `protocol_runtime::FpsPrimaryFireResult` | `RuntimeBridgeError` |

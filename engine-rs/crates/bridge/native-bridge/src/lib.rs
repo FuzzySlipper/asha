@@ -27,6 +27,8 @@ use runtime_bridge_api::{
     GameExtensionWeaponEffectInvocationRequest, GameRuleCatalog, GameRuleEffectIntentRequest,
     GameRuleModuleManifest, GameRuleResolutionRequest, ProjectBundleLoadRequest, ReferenceBridge,
     RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind, StepInputEnvelope,
+    VoxelAnnotationEditRequest, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadRequest,
+    VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryRequest,
     VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
@@ -1039,6 +1041,61 @@ fn parse_voxel_volume_asset_load_request(
     })
 }
 
+fn parse_voxel_annotation_validation_request(
+    request_json: &str,
+) -> napi::Result<VoxelAnnotationLayerValidationRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel annotation validation request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_annotation_load_request(
+    request_json: &str,
+) -> napi::Result<VoxelAnnotationLayerLoadRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel annotation load request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_annotation_query_request(
+    request_json: &str,
+) -> napi::Result<VoxelAnnotationQueryRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel annotation query request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_annotation_edit_request(
+    request_json: &str,
+) -> napi::Result<VoxelAnnotationEditRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel annotation edit request JSON: {err}"),
+        ))
+    })
+}
+
+fn parse_voxel_annotation_export_request(
+    request_json: &str,
+) -> napi::Result<VoxelAnnotationLayerExportRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel annotation export request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_game_rule_module_manifests(
     manifests_json: &str,
 ) -> napi::Result<Vec<GameRuleModuleManifest>> {
@@ -1557,6 +1614,61 @@ pub fn load_voxel_volume_asset(handle: i64, request_json: String) -> napi::Resul
     })
 }
 
+#[napi]
+pub fn validate_voxel_annotation_layer(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_annotation_validation_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let report = bridge
+            .validate_voxel_annotation_layer(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&report)
+    })
+}
+
+#[napi]
+pub fn load_voxel_annotation_layer(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_annotation_load_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge
+            .load_voxel_annotation_layer(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn read_voxel_annotation_query(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_annotation_query_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let readout = bridge
+            .read_voxel_annotation_query(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&readout)
+    })
+}
+
+#[napi]
+pub fn apply_voxel_annotation_edit(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_annotation_edit_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge
+            .apply_voxel_annotation_edit(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
+#[napi]
+pub fn export_voxel_annotation_layer(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_annotation_export_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge
+            .export_voxel_annotation_layer(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1566,15 +1678,19 @@ mod tests {
         "applyFpsEncounterTransition",
         "applyFpsPrimaryFire",
         "applyVoxelConversion",
+        "applyVoxelAnnotationEdit",
         "exportVoxelConversionEvidence",
+        "exportVoxelAnnotationLayer",
         "exportVoxelVolumeAsset",
         "getProjectBundleCompositionStatus",
         "initializeEngine",
         "invokeGameExtensionWeaponEffect",
+        "loadVoxelAnnotationLayer",
         "loadVoxelVolumeAsset",
         "loadProjectBundle",
         "loadFpsRuntimeSession",
         "planVoxelConversion",
+        "readVoxelAnnotationQuery",
         "readFpsEncounterDirector",
         "readRenderDiffs",
         "readFpsRuntimeSession",
@@ -1587,6 +1703,7 @@ mod tests {
         "saveVoxelVolumeAsset",
         "stepSimulation",
         "submitCommands",
+        "validateVoxelAnnotationLayer",
     ];
 
     #[test]
@@ -1598,15 +1715,19 @@ mod tests {
                 "applyFpsEncounterTransition",
                 "applyFpsPrimaryFire",
                 "applyVoxelConversion",
+                "applyVoxelAnnotationEdit",
                 "exportVoxelConversionEvidence",
+                "exportVoxelAnnotationLayer",
                 "exportVoxelVolumeAsset",
                 "getProjectBundleCompositionStatus",
                 "initializeEngine",
                 "invokeGameExtensionWeaponEffect",
+                "loadVoxelAnnotationLayer",
                 "loadVoxelVolumeAsset",
                 "loadProjectBundle",
                 "loadFpsRuntimeSession",
                 "planVoxelConversion",
+                "readVoxelAnnotationQuery",
                 "readFpsEncounterDirector",
                 "readRenderDiffs",
                 "readFpsRuntimeSession",
@@ -1619,6 +1740,7 @@ mod tests {
                 "saveVoxelVolumeAsset",
                 "stepSimulation",
                 "submitCommands",
+                "validateVoxelAnnotationLayer",
             ]
         );
     }

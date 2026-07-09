@@ -426,6 +426,12 @@ export class MockRuntimeBridge {
     #fpsEncounter = initialFpsEncounterState();
     #fpsEpoch = 0;
     #gameRules = new MockGameRuleRuntime();
+    #unsupportedAfterInit(method, message) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', `${method} before initializeEngine`);
+        }
+        throw new RuntimeBridgeError('operation_unimplemented', message);
+    }
     initializeEngine(config) {
         if (!Number.isInteger(config.seed) || config.seed < 0) {
             throw new RuntimeBridgeError('invalid_input', `seed must be a non-negative integer`);
@@ -1084,41 +1090,16 @@ export class MockRuntimeBridge {
         }
         throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel conversion authority');
     }
-    readVoxelModelInfo(_request) {
-        void _request;
-        if (this.#engine === null) {
-            throw new RuntimeBridgeError('not_initialized', 'readVoxelModelInfo before initializeEngine');
-        }
-        throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel model authority');
-    }
-    readVoxelModelWindow(_request) {
-        void _request;
-        if (this.#engine === null) {
-            throw new RuntimeBridgeError('not_initialized', 'readVoxelModelWindow before initializeEngine');
-        }
-        throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel model authority');
-    }
-    exportVoxelVolumeAsset(_request) {
-        void _request;
-        if (this.#engine === null) {
-            throw new RuntimeBridgeError('not_initialized', 'exportVoxelVolumeAsset before initializeEngine');
-        }
-        throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel volume asset export authority');
-    }
-    saveVoxelVolumeAsset(_request) {
-        void _request;
-        if (this.#engine === null) {
-            throw new RuntimeBridgeError('not_initialized', 'saveVoxelVolumeAsset before initializeEngine');
-        }
-        throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel volume asset save authority');
-    }
-    loadVoxelVolumeAsset(_request) {
-        void _request;
-        if (this.#engine === null) {
-            throw new RuntimeBridgeError('not_initialized', 'loadVoxelVolumeAsset before initializeEngine');
-        }
-        throw new RuntimeBridgeError('operation_unimplemented', 'mock bridge does not own voxel volume asset load authority');
-    }
+    readVoxelModelInfo(_request) { void _request; return this.#unsupportedAfterInit('readVoxelModelInfo', 'mock bridge does not own voxel model authority'); }
+    readVoxelModelWindow(_request) { void _request; return this.#unsupportedAfterInit('readVoxelModelWindow', 'mock bridge does not own voxel model authority'); }
+    exportVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('exportVoxelVolumeAsset', 'mock bridge does not own voxel volume asset export authority'); }
+    saveVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('saveVoxelVolumeAsset', 'mock bridge does not own voxel volume asset save authority'); }
+    loadVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('loadVoxelVolumeAsset', 'mock bridge does not own voxel volume asset load authority'); }
+    validateVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedAfterInit('validateVoxelAnnotationLayer', 'mock bridge does not own voxel annotation validation authority'); }
+    loadVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedAfterInit('loadVoxelAnnotationLayer', 'mock bridge does not own voxel annotation load authority'); }
+    readVoxelAnnotationQuery(_request) { void _request; return this.#unsupportedAfterInit('readVoxelAnnotationQuery', 'mock bridge does not own voxel annotation query authority'); }
+    applyVoxelAnnotationEdit(_request) { void _request; return this.#unsupportedAfterInit('applyVoxelAnnotationEdit', 'mock bridge does not own voxel annotation edit authority'); }
+    exportVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedAfterInit('exportVoxelAnnotationLayer', 'mock bridge does not own voxel annotation export authority'); }
     readModelMaterialPreview(request) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'readModelMaterialPreview before initializeEngine');

@@ -18,6 +18,16 @@ import type {
   VoxelModelInfoRequest,
   VoxelModelWindowReadout,
   VoxelModelWindowRequest,
+  VoxelAnnotationEditReceipt,
+  VoxelAnnotationEditRequest,
+  VoxelAnnotationLayerExportReceipt,
+  VoxelAnnotationLayerExportRequest,
+  VoxelAnnotationLayerLoadReceipt,
+  VoxelAnnotationLayerLoadRequest,
+  VoxelAnnotationLayerValidationReport,
+  VoxelAnnotationLayerValidationRequest,
+  VoxelAnnotationQueryReadout,
+  VoxelAnnotationQueryRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
@@ -838,6 +848,33 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt {
     this.#requireInitialized('loadVoxelVolumeAsset');
     return this.#bridge.loadVoxelVolumeAsset(request);
+  }
+
+  validateVoxelAnnotationLayer(
+    request: VoxelAnnotationLayerValidationRequest,
+  ): VoxelAnnotationLayerValidationReport {
+    this.#requireInitialized('validateVoxelAnnotationLayer');
+    return this.#bridge.validateVoxelAnnotationLayer(request);
+  }
+
+  loadVoxelAnnotationLayer(request: VoxelAnnotationLayerLoadRequest): VoxelAnnotationLayerLoadReceipt {
+    this.#requireInitialized('loadVoxelAnnotationLayer');
+    return this.#bridge.loadVoxelAnnotationLayer(request);
+  }
+
+  readVoxelAnnotationQuery(request: VoxelAnnotationQueryRequest): VoxelAnnotationQueryReadout {
+    this.#requireInitialized('readVoxelAnnotationQuery');
+    return this.#bridge.readVoxelAnnotationQuery(request);
+  }
+
+  applyVoxelAnnotationEdit(request: VoxelAnnotationEditRequest): VoxelAnnotationEditReceipt {
+    this.#requireInitialized('applyVoxelAnnotationEdit');
+    return this.#bridge.applyVoxelAnnotationEdit(request);
+  }
+
+  exportVoxelAnnotationLayer(request: VoxelAnnotationLayerExportRequest): VoxelAnnotationLayerExportReceipt {
+    this.#requireInitialized('exportVoxelAnnotationLayer');
+    return this.#bridge.exportVoxelAnnotationLayer(request);
   }
 
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout {

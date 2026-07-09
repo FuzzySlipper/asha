@@ -42,6 +42,16 @@ import type {
   VoxelModelInfoRequest,
   VoxelModelWindowReadout,
   VoxelModelWindowRequest,
+  VoxelAnnotationEditReceipt,
+  VoxelAnnotationEditRequest,
+  VoxelAnnotationLayerExportReceipt,
+  VoxelAnnotationLayerExportRequest,
+  VoxelAnnotationLayerLoadReceipt,
+  VoxelAnnotationLayerLoadRequest,
+  VoxelAnnotationLayerValidationReport,
+  VoxelAnnotationLayerValidationRequest,
+  VoxelAnnotationQueryReadout,
+  VoxelAnnotationQueryRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
@@ -435,6 +445,11 @@ export interface RuntimeBridge {
   exportVoxelVolumeAsset(request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt;
   saveVoxelVolumeAsset(request: VoxelVolumeAssetSaveRequest): VoxelVolumeAssetSaveReceipt;
   loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt;
+  validateVoxelAnnotationLayer(request: VoxelAnnotationLayerValidationRequest): VoxelAnnotationLayerValidationReport;
+  loadVoxelAnnotationLayer(request: VoxelAnnotationLayerLoadRequest): VoxelAnnotationLayerLoadReceipt;
+  readVoxelAnnotationQuery(request: VoxelAnnotationQueryRequest): VoxelAnnotationQueryReadout;
+  applyVoxelAnnotationEdit(request: VoxelAnnotationEditRequest): VoxelAnnotationEditReceipt;
+  exportVoxelAnnotationLayer(request: VoxelAnnotationLayerExportRequest): VoxelAnnotationLayerExportReceipt;
   loadFpsRuntimeSession(request: FpsRuntimeSessionLoadRequest): FpsRuntimeSessionSnapshot;
   readFpsRuntimeSession(): FpsRuntimeSessionSnapshot;
   applyFpsPrimaryFire(request: FpsPrimaryFireRequest): FpsPrimaryFireResult;

@@ -210,7 +210,12 @@ export interface NativeAddon {
     exportVoxelVolumeAsset(handle: number, requestJson: string): string;
     saveVoxelVolumeAsset(handle: number, requestJson: string): string;
     loadVoxelVolumeAsset(handle: number, requestJson: string): string;
+    validateVoxelAnnotationLayer(handle: number, requestJson: string): string;
+    loadVoxelAnnotationLayer(handle: number, requestJson: string): string;
+    readVoxelAnnotationQuery(handle: number, requestJson: string): string;
+    applyVoxelAnnotationEdit(handle: number, requestJson: string): string;
+    exportVoxelAnnotationLayer(handle: number, requestJson: string): string;
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "createCamera", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "loadVoxelVolumeAsset"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "createCamera", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "loadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer"];
 export {};
 //# sourceMappingURL=native-addon.d.ts.map

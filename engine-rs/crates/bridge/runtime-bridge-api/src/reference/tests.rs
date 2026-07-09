@@ -513,6 +513,48 @@ fn hand_authored_voxel_volume_asset() -> VoxelVolumeAsset {
     svc_voxel_asset::with_computed_hashes(&asset)
 }
 
+fn hand_authored_voxel_annotation_layer(asset: &VoxelVolumeAsset) -> VoxelAnnotationLayer {
+    let layer = VoxelAnnotationLayer {
+        layer_id: "voxel-annotation/hand-authored-room".to_string(),
+        schema_version: protocol_voxel_annotation::VOXEL_ANNOTATION_SCHEMA_VERSION,
+        media_type: protocol_voxel_annotation::VOXEL_ANNOTATION_MEDIA_TYPE.to_string(),
+        target_voxel_volume_asset_id: asset.asset_id.clone(),
+        target_voxel_data_hash: asset.content_hashes.voxel_data.clone(),
+        target_bounds: protocol_voxel_annotation::VoxelAnnotationBounds {
+            min: protocol_voxel_annotation::VoxelAnnotationCoord { x: 0, y: 0, z: 0 },
+            max: protocol_voxel_annotation::VoxelAnnotationCoord { x: 1, y: 0, z: 0 },
+        },
+        regions: vec![VoxelAnnotationRegion {
+            region_id: "region/entry-room".to_string(),
+            label: "Entry room".to_string(),
+            kind: protocol_voxel_annotation::VoxelAnnotationKind::Room,
+            tags: vec!["entry".to_string(), "runtime".to_string()],
+            parent_region_id: None,
+            bounds: protocol_voxel_annotation::VoxelAnnotationBounds {
+                min: protocol_voxel_annotation::VoxelAnnotationCoord { x: 0, y: 0, z: 0 },
+                max: protocol_voxel_annotation::VoxelAnnotationCoord { x: 1, y: 0, z: 0 },
+            },
+            selection: VoxelAnnotationSelection {
+                sparse_runs: vec![VoxelAnnotationSparseRun {
+                    start: protocol_voxel_annotation::VoxelAnnotationCoord { x: 0, y: 0, z: 0 },
+                    length: 2,
+                }],
+            },
+        }],
+        provenance: vec![protocol_voxel_annotation::VoxelAnnotationProvenanceRef {
+            kind: protocol_voxel_annotation::VoxelAnnotationProvenanceKind::Authored,
+            uri: "asha://runtime-bridge-api/tests/hand-authored-room.annotation".to_string(),
+            content_hash: "fnv1a64:annotation-source".to_string(),
+        }],
+        content_hashes: protocol_voxel_annotation::VoxelAnnotationContentHashes {
+            canonical_json: String::new(),
+            membership_data: String::new(),
+        },
+        validation_diagnostics: Vec::new(),
+    };
+    svc_voxel_annotation::with_computed_hashes(&layer)
+}
+
 pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadRequest {
     FpsRuntimeSessionLoadRequest {
         project_bundle: "custom-demo".to_string(),
@@ -1414,6 +1456,144 @@ fn voxel_volume_asset_load_accepts_hand_authored_asset_and_rejects_invalid_asset
         rejected_material.diagnostics[0].code,
         protocol_voxel_asset::VoxelAssetDiagnosticCode::InvalidMaterialReference
     );
+}
+
+#[test]
+fn voxel_annotation_layer_runtime_bridge_validates_loads_queries_edits_and_exports() {
+    let asset = hand_authored_voxel_volume_asset();
+    let layer = hand_authored_voxel_annotation_layer(&asset);
+    let mut bridge = init_bridge();
+    let volume_load = bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: asset.clone(),
+            target_grid: 7,
+            target_volume_asset_id: Some(asset.asset_id.clone()),
+            replace_existing: true,
+            include_material_counts: false,
+        })
+        .unwrap();
+    assert!(volume_load.loaded);
+
+    let validation = bridge
+        .validate_voxel_annotation_layer(VoxelAnnotationLayerValidationRequest {
+            layer: layer.clone(),
+            expected_target_voxel_volume_asset_id: Some(asset.asset_id.clone()),
+            expected_target_voxel_data_hash: Some(asset.content_hashes.voxel_data.clone()),
+            max_regions: 16,
+            max_sparse_runs_per_region: 16,
+            max_total_assigned_cells: 16,
+        })
+        .unwrap();
+    assert!(validation.valid);
+    assert_eq!(validation.assigned_cell_count, 2);
+    assert_eq!(
+        validation.canonical_json_hash.as_deref(),
+        Some(layer.content_hashes.canonical_json.as_str())
+    );
+
+    let stale_load = bridge
+        .load_voxel_annotation_layer(VoxelAnnotationLayerLoadRequest {
+            layer: layer.clone(),
+            target_grid: 7,
+            replace_existing: true,
+            expected_session_hash: Some("fnv1a64:stale".to_string()),
+        })
+        .unwrap();
+    assert!(!stale_load.loaded);
+    assert_eq!(
+        stale_load.diagnostics[0].code,
+        protocol_voxel_annotation::VoxelAnnotationDiagnosticCode::TargetVoxelHashMismatch
+    );
+
+    let load = bridge
+        .load_voxel_annotation_layer(VoxelAnnotationLayerLoadRequest {
+            layer: layer.clone(),
+            target_grid: 7,
+            replace_existing: true,
+            expected_session_hash: Some(volume_load.session_hash.clone()),
+        })
+        .unwrap();
+    assert!(load.loaded);
+    assert_eq!(load.region_count, 1);
+    assert_eq!(load.assigned_cell_count, 2);
+    assert_eq!(
+        load.layer_hash.as_deref(),
+        Some(layer.content_hashes.canonical_json.as_str())
+    );
+    let runtime_layer_id = load.runtime_layer_id.clone();
+
+    let query = bridge
+        .read_voxel_annotation_query(VoxelAnnotationQueryRequest {
+            runtime_layer_id: runtime_layer_id.clone(),
+            layer_id: layer.layer_id.clone(),
+            mode: protocol_voxel_annotation::VoxelAnnotationQueryMode::Cell,
+            cell: Some(protocol_voxel_annotation::VoxelAnnotationCoord { x: 1, y: 0, z: 0 }),
+            bounds: None,
+            region_id: None,
+            max_regions: 4,
+            expected_layer_hash: Some(layer.content_hashes.canonical_json.clone()),
+        })
+        .unwrap();
+    assert!(query.diagnostics.is_empty());
+    assert_eq!(query.matched_regions.len(), 1);
+    assert_eq!(query.matched_regions[0].region_id, "region/entry-room");
+
+    let stale_edit = bridge
+        .apply_voxel_annotation_edit(VoxelAnnotationEditRequest {
+            runtime_layer_id: runtime_layer_id.clone(),
+            layer_id: layer.layer_id.clone(),
+            expected_layer_hash: "fnv1a64:stale".to_string(),
+            operation: protocol_voxel_annotation::VoxelAnnotationEditOperation::SetLabel,
+            region_id: Some("region/entry-room".to_string()),
+            region: None,
+            sparse_runs: Vec::new(),
+            tags: Vec::new(),
+            label: Some("Edited room".to_string()),
+            kind: None,
+            parent_region_id: None,
+        })
+        .unwrap();
+    assert!(!stale_edit.edited);
+    assert_eq!(
+        stale_edit.diagnostics[0].code,
+        protocol_voxel_annotation::VoxelAnnotationDiagnosticCode::StaleLayerHash
+    );
+
+    let edit = bridge
+        .apply_voxel_annotation_edit(VoxelAnnotationEditRequest {
+            runtime_layer_id: runtime_layer_id.clone(),
+            layer_id: layer.layer_id.clone(),
+            expected_layer_hash: layer.content_hashes.canonical_json.clone(),
+            operation: protocol_voxel_annotation::VoxelAnnotationEditOperation::SetLabel,
+            region_id: Some("region/entry-room".to_string()),
+            region: None,
+            sparse_runs: Vec::new(),
+            tags: Vec::new(),
+            label: Some("Edited room".to_string()),
+            kind: None,
+            parent_region_id: None,
+        })
+        .unwrap();
+    assert!(edit.edited);
+    let edited_hash = edit.layer_hash_after.clone().expect("edited hash");
+    assert_ne!(edited_hash, layer.content_hashes.canonical_json);
+    assert!(edit.replay_hash.starts_with("fnv1a64:"));
+
+    let export = bridge
+        .export_voxel_annotation_layer(VoxelAnnotationLayerExportRequest {
+            runtime_layer_id,
+            layer_id: layer.layer_id,
+            expected_layer_hash: edited_hash,
+            include_diagnostics: true,
+        })
+        .unwrap();
+    assert!(export.exported);
+    assert!(export.canonical_json.is_some());
+    assert_eq!(
+        export.layer.as_ref().unwrap().regions[0].label,
+        "Edited room"
+    );
+    assert!(export.diagnostics.is_empty());
 }
 
 #[test]

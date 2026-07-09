@@ -46,6 +46,11 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'export_voxel_volume_asset',
     'save_voxel_volume_asset',
     'load_voxel_volume_asset',
+    'validate_voxel_annotation_layer',
+    'load_voxel_annotation_layer',
+    'read_voxel_annotation_query',
+    'apply_voxel_annotation_edit',
+    'export_voxel_annotation_layer',
     'read_render_diffs',
     'save_project_bundle',
     'get_project_bundle_composition_status',
@@ -508,6 +513,31 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('loadVoxelVolumeAsset');
         const payload = callNative(() => this.#addon.loadVoxelVolumeAsset(handle, JSON.stringify(request)));
         return parseNativeJson(payload, 'voxel volume asset load receipt');
+    }
+    validateVoxelAnnotationLayer(request) {
+        const handle = this.#requireHandle('validateVoxelAnnotationLayer');
+        const payload = callNative(() => this.#addon.validateVoxelAnnotationLayer(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel annotation validation report');
+    }
+    loadVoxelAnnotationLayer(request) {
+        const handle = this.#requireHandle('loadVoxelAnnotationLayer');
+        const payload = callNative(() => this.#addon.loadVoxelAnnotationLayer(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel annotation load receipt');
+    }
+    readVoxelAnnotationQuery(request) {
+        const handle = this.#requireHandle('readVoxelAnnotationQuery');
+        const payload = callNative(() => this.#addon.readVoxelAnnotationQuery(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel annotation query readout');
+    }
+    applyVoxelAnnotationEdit(request) {
+        const handle = this.#requireHandle('applyVoxelAnnotationEdit');
+        const payload = callNative(() => this.#addon.applyVoxelAnnotationEdit(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel annotation edit receipt');
+    }
+    exportVoxelAnnotationLayer(request) {
+        const handle = this.#requireHandle('exportVoxelAnnotationLayer');
+        const payload = callNative(() => this.#addon.exportVoxelAnnotationLayer(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel annotation export receipt');
     }
     // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
     // Replace each body with its real native call (and add the manifest name to

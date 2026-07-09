@@ -26,6 +26,16 @@ import type {
   VoxelModelInfoRequest,
   VoxelModelWindowReadout,
   VoxelModelWindowRequest,
+  VoxelAnnotationEditReceipt,
+  VoxelAnnotationEditRequest,
+  VoxelAnnotationLayerExportReceipt,
+  VoxelAnnotationLayerExportRequest,
+  VoxelAnnotationLayerLoadReceipt,
+  VoxelAnnotationLayerLoadRequest,
+  VoxelAnnotationLayerValidationReport,
+  VoxelAnnotationLayerValidationRequest,
+  VoxelAnnotationQueryReadout,
+  VoxelAnnotationQueryRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
@@ -124,6 +134,11 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'export_voxel_volume_asset',
   'save_voxel_volume_asset',
   'load_voxel_volume_asset',
+  'validate_voxel_annotation_layer',
+  'load_voxel_annotation_layer',
+  'read_voxel_annotation_query',
+  'apply_voxel_annotation_edit',
+  'export_voxel_annotation_layer',
   'read_render_diffs',
   'save_project_bundle',
   'get_project_bundle_composition_status',
@@ -718,6 +733,38 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('loadVoxelVolumeAsset');
     const payload = callNative(() => this.#addon.loadVoxelVolumeAsset(handle, JSON.stringify(request)));
     return parseNativeJson<VoxelVolumeAssetLoadReceipt>(payload, 'voxel volume asset load receipt');
+  }
+
+  validateVoxelAnnotationLayer(
+    request: VoxelAnnotationLayerValidationRequest,
+  ): VoxelAnnotationLayerValidationReport {
+    const handle = this.#requireHandle('validateVoxelAnnotationLayer');
+    const payload = callNative(() => this.#addon.validateVoxelAnnotationLayer(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelAnnotationLayerValidationReport>(payload, 'voxel annotation validation report');
+  }
+
+  loadVoxelAnnotationLayer(request: VoxelAnnotationLayerLoadRequest): VoxelAnnotationLayerLoadReceipt {
+    const handle = this.#requireHandle('loadVoxelAnnotationLayer');
+    const payload = callNative(() => this.#addon.loadVoxelAnnotationLayer(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelAnnotationLayerLoadReceipt>(payload, 'voxel annotation load receipt');
+  }
+
+  readVoxelAnnotationQuery(request: VoxelAnnotationQueryRequest): VoxelAnnotationQueryReadout {
+    const handle = this.#requireHandle('readVoxelAnnotationQuery');
+    const payload = callNative(() => this.#addon.readVoxelAnnotationQuery(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelAnnotationQueryReadout>(payload, 'voxel annotation query readout');
+  }
+
+  applyVoxelAnnotationEdit(request: VoxelAnnotationEditRequest): VoxelAnnotationEditReceipt {
+    const handle = this.#requireHandle('applyVoxelAnnotationEdit');
+    const payload = callNative(() => this.#addon.applyVoxelAnnotationEdit(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelAnnotationEditReceipt>(payload, 'voxel annotation edit receipt');
+  }
+
+  exportVoxelAnnotationLayer(request: VoxelAnnotationLayerExportRequest): VoxelAnnotationLayerExportReceipt {
+    const handle = this.#requireHandle('exportVoxelAnnotationLayer');
+    const payload = callNative(() => this.#addon.exportVoxelAnnotationLayer(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelAnnotationLayerExportReceipt>(payload, 'voxel annotation export receipt');
   }
 
   // ── Unwired operations: fail-closed, never mock-backed ─────────────────────
