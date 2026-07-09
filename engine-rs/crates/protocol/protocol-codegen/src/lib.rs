@@ -137,6 +137,8 @@ mod tests {
     mod game_extension_tests;
     #[path = "game_rules_tests.rs"]
     mod game_rules_tests;
+    #[path = "voxel_edit_history_tests.rs"]
+    mod voxel_edit_history_tests;
 
     #[test]
     fn generation_is_deterministic() {
@@ -161,6 +163,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/voxelConversion.ts"),
                 format!("{OUTPUT_DIR}/voxelAsset.ts"),
                 format!("{OUTPUT_DIR}/voxelAnnotation.ts"),
+                format!("{OUTPUT_DIR}/voxelEditHistory.ts"),
                 format!("{OUTPUT_DIR}/gameRules.ts"),
                 format!("{OUTPUT_DIR}/gameExtension.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
@@ -399,6 +402,24 @@ mod tests {
             interface_coverage_key("voxelAnnotation", "VoxelAnnotationEditReceipt"),
             interface_coverage_key("voxelAnnotation", "VoxelAnnotationLayerExportRequest"),
             interface_coverage_key("voxelAnnotation", "VoxelAnnotationLayerExportReceipt"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryCoord"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryBounds"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryMaterialDelta"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryCheckpointRef"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryDiagnostic"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryDiffSummary"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryEntry"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryCursor"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistorySummary"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryReadRequest"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRevertTarget"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRevertRequest"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryUndoRequest"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRedoRequest"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryPreviewEvidence"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRevertReceipt"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryUndoReceipt"),
+            interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRedoReceipt"),
         ]
         .into_iter()
         .collect()

@@ -191,6 +191,15 @@ lane = "contract-steward"
 may_depend_on = ["protocol-diagnostics"]
 may_not_depend_on = ["core-state", "core-voxel", "core-scene", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
 
+# Asha-native voxel edit history border (#5280): durable history/cursor DTOs,
+# closed vocabularies, bounded diff summaries, preview evidence, and
+# revert/undo/redo request/receipt shapes. Timeline authority, replay,
+# checkpointing, and persistence stay in Rust services/rules.
+[crate."engine-rs/crates/protocol/protocol-voxel-edit-history"]
+lane = "contract-steward"
+may_depend_on = ["protocol-diagnostics"]
+may_not_depend_on = ["core-state", "core-voxel", "core-scene", "sim-kernel", "protocol-render", "wasm-api", "render-bridge"]
+
 [crate."engine-rs/crates/protocol/protocol-game-rules"]
 lane = "contract-steward"
 may_depend_on = ["core-ids", "protocol-diagnostics"]
@@ -203,7 +212,7 @@ may_not_depend_on = ["core-state", "core-game-rules", "svc-game-rules", "runtime
 
 [crate."engine-rs/crates/protocol/protocol-codegen"]
 lane = "contract-steward"
-may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-project-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-voxel-asset", "protocol-voxel-annotation", "protocol-game-rules", "protocol-game-extension", "protocol-view"]
+may_depend_on = ["core-ids", "protocol-ids", "protocol-script", "protocol-render", "protocol-replay", "protocol-telemetry", "protocol-diagnostics", "protocol-scene", "protocol-project-bundle", "protocol-assets", "protocol-policy-view", "protocol-entity-authoring", "protocol-voxel-conversion", "protocol-voxel-asset", "protocol-voxel-annotation", "protocol-voxel-edit-history", "protocol-game-rules", "protocol-game-extension", "protocol-view"]
 
 [crate."engine-rs/crates/services/svc-game-rules"]
 lane = "rust-service"

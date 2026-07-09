@@ -422,6 +422,7 @@ dependencies = [
  "protocol-voxel-annotation",
  "protocol-voxel-asset",
  "protocol-voxel-conversion",
+ "protocol-voxel-edit-history",
  "serde_json",
 ]
 
@@ -561,6 +562,14 @@ dependencies = [
  "protocol-diagnostics",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "protocol-voxel-edit-history"
+version = "0.1.0"
+dependencies = [
+ "protocol-diagnostics",
+ "serde",
 ]
 
 [[package]]

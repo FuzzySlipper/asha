@@ -22,6 +22,8 @@ export * from './voxelAsset.js';
 
 export * from './voxelAnnotation.js';
 
+export * from './voxelEditHistory.js';
+
 export * from './gameRules.js';
 
 export * from './gameExtension.js';

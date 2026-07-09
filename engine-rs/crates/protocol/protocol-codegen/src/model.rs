@@ -2056,6 +2056,340 @@ pub fn voxel_annotation_module() -> Module {
     }
 }
 
+// ── voxelEditHistory.ts — durable voxel edit history DTOs ───────────────────
+//
+// Mirrors the border-only `protocol-voxel-edit-history` crate. Runtime services
+// own timeline mutation, replay, checkpointing, and persistence; this generated
+// surface only carries typed history, cursor, diff, request, and receipt DTOs.
+
+pub fn voxel_edit_history_module() -> Module {
+    let imports = vec![import("./diagnostics.js", &["DiagnosticSeverity"])];
+
+    let items = vec![
+        Item::Const {
+            doc: "Current supported ASHA voxel edit history schema.".to_string(),
+            name: "VOXEL_EDIT_HISTORY_SCHEMA_VERSION".to_string(),
+            value: protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_SCHEMA_VERSION.to_string(),
+        },
+        Item::Const {
+            doc: "Canonical media type for the JSON voxel edit history envelope.".to_string(),
+            name: "VOXEL_EDIT_HISTORY_MEDIA_TYPE".to_string(),
+            value: format!(
+                "{:?}",
+                protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_MEDIA_TYPE
+            ),
+        },
+        Item::Const {
+            doc: "Canonical filename extension for this JSON envelope.".to_string(),
+            name: "VOXEL_EDIT_HISTORY_EXTENSION".to_string(),
+            value: format!(
+                "{:?}",
+                protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_EXTENSION
+            ),
+        },
+        string_enum(
+            "Durable history entry kind.",
+            "VoxelEditHistoryEntryKind",
+            protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_ENTRY_KINDS,
+        ),
+        string_enum(
+            "Cursor kind for applied history or non-durable preview evidence.",
+            "VoxelEditHistoryCursorKind",
+            protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_CURSOR_KINDS,
+        ),
+        string_enum(
+            "Revert/undo/redo request mode.",
+            "VoxelEditHistoryRevertMode",
+            protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_REVERT_MODES,
+        ),
+        string_enum(
+            "Bounded-diff detail level.",
+            "VoxelEditHistoryDiffLevel",
+            protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_DIFF_LEVELS,
+        ),
+        string_enum(
+            "Classified voxel edit history diagnostic code.",
+            "VoxelEditHistoryDiagnosticCode",
+            protocol_voxel_edit_history::VOXEL_EDIT_HISTORY_DIAGNOSTIC_CODES,
+        ),
+        iface(
+            "Integer coordinate in stored voxel space.",
+            "VoxelEditHistoryCoord",
+            vec![f("x", num()), f("y", num()), f("z", num())],
+        ),
+        iface(
+            "Inclusive stored voxel-space bounds.",
+            "VoxelEditHistoryBounds",
+            vec![
+                f("min", r("VoxelEditHistoryCoord")),
+                f("max", r("VoxelEditHistoryCoord")),
+            ],
+        ),
+        iface(
+            "Material count change in a bounded diff summary.",
+            "VoxelEditHistoryMaterialDelta",
+            vec![
+                f("material", num()),
+                f("beforeCount", num()),
+                f("afterCount", num()),
+                f("delta", num()),
+            ],
+        ),
+        iface(
+            "Checkpoint reference that can accelerate replay without changing authority.",
+            "VoxelEditHistoryCheckpointRef",
+            vec![
+                f("checkpointId", string()),
+                f("cursorId", string()),
+                f("transactionId", TsType::nullable(string())),
+                f("voxelStateHash", string()),
+                f("replayHash", string()),
+                f("uri", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "One classified validation/runtime diagnostic for voxel edit history.",
+            "VoxelEditHistoryDiagnostic",
+            vec![
+                f("code", r("VoxelEditHistoryDiagnosticCode")),
+                f("severity", r("DiagnosticSeverity")),
+                f("reference", string()),
+                f("message", string()),
+            ],
+        ),
+        iface(
+            "Bounded summary of the cells affected by a preview or applied revert.",
+            "VoxelEditHistoryDiffSummary",
+            vec![
+                f("diffLevel", r("VoxelEditHistoryDiffLevel")),
+                f("partial", boolean()),
+                f("changedVoxelCount", num()),
+                f(
+                    "touchedBounds",
+                    TsType::nullable(r("VoxelEditHistoryBounds")),
+                ),
+                f(
+                    "materialDeltas",
+                    TsType::array(r("VoxelEditHistoryMaterialDelta")),
+                ),
+                f("includedTransactionIds", TsType::array(string())),
+                f("beforeVoxelHash", string()),
+                f("currentVoxelHash", string()),
+                f("targetVoxelHash", string()),
+                f("projectedVoxelHash", TsType::nullable(string())),
+                f("sampleWindowRef", TsType::nullable(string())),
+                f(
+                    "diagnostics",
+                    TsType::array(r("VoxelEditHistoryDiagnostic")),
+                ),
+            ],
+        ),
+        iface(
+            "One accepted durable history transaction or checkpoint record.",
+            "VoxelEditHistoryEntry",
+            vec![
+                f("transactionId", string()),
+                f("parentTransactionId", TsType::nullable(string())),
+                f("cursorId", string()),
+                f("parentCursorId", TsType::nullable(string())),
+                f("entryKind", r("VoxelEditHistoryEntryKind")),
+                f("operationLabel", string()),
+                f("provenance", string()),
+                f("commandHash", string()),
+                f("receiptHash", string()),
+                f("beforeVoxelHash", string()),
+                f("afterVoxelHash", string()),
+                f("projectedVoxelHash", TsType::nullable(string())),
+                f("materialCatalogHash", string()),
+                f("commandCount", num()),
+                f("eventCount", num()),
+                f(
+                    "touchedBounds",
+                    TsType::nullable(r("VoxelEditHistoryBounds")),
+                ),
+                f("touchedVoxelCount", num()),
+                f(
+                    "checkpoint",
+                    TsType::nullable(r("VoxelEditHistoryCheckpointRef")),
+                ),
+                f(
+                    "diffSummary",
+                    TsType::nullable(r("VoxelEditHistoryDiffSummary")),
+                ),
+                f(
+                    "diagnostics",
+                    TsType::array(r("VoxelEditHistoryDiagnostic")),
+                ),
+            ],
+        ),
+        iface(
+            "Cursor readout for the applied history head or a preview target.",
+            "VoxelEditHistoryCursor",
+            vec![
+                f("cursorId", string()),
+                f("cursorKind", r("VoxelEditHistoryCursorKind")),
+                f("appliedTransactionId", TsType::nullable(string())),
+                f("parentCursorId", TsType::nullable(string())),
+                f("historyHash", string()),
+                f("voxelStateHash", string()),
+                f("materialCatalogHash", string()),
+                f("undoDepth", num()),
+                f("redoDepth", num()),
+                f("entryCount", num()),
+                f("checkpointCount", num()),
+            ],
+        ),
+        iface(
+            "Compact durable timeline readout.",
+            "VoxelEditHistorySummary",
+            vec![
+                f("historyId", string()),
+                f("schemaVersion", num()),
+                f("mediaType", string()),
+                f("targetGrid", num()),
+                f("targetVoxelVolumeAssetId", TsType::nullable(string())),
+                f("baseVoxelHash", string()),
+                f("materialCatalogHash", string()),
+                f("cursor", r("VoxelEditHistoryCursor")),
+                f("entries", TsType::array(r("VoxelEditHistoryEntry"))),
+                f("retainedRedoTransactionIds", TsType::array(string())),
+                f("historyHash", string()),
+                f(
+                    "diagnostics",
+                    TsType::array(r("VoxelEditHistoryDiagnostic")),
+                ),
+            ],
+        ),
+        iface(
+            "Request to read bounded durable history around a cursor.",
+            "VoxelEditHistoryReadRequest",
+            vec![
+                f("historyId", string()),
+                f("cursorId", TsType::nullable(string())),
+                f("maxEntries", num()),
+                f("includeRedoTail", boolean()),
+                f("expectedHistoryHash", TsType::nullable(string())),
+            ],
+        ),
+        iface(
+            "Target cursor/transaction for revert-like operations.",
+            "VoxelEditHistoryRevertTarget",
+            vec![
+                f("transactionId", TsType::nullable(string())),
+                f("cursorId", TsType::nullable(string())),
+                f("cursorIndex", TsType::nullable(num())),
+            ],
+        ),
+        iface(
+            "Request to preview or apply a revert against the durable timeline.",
+            "VoxelEditHistoryRevertRequest",
+            vec![
+                f("historyId", string()),
+                f("mode", r("VoxelEditHistoryRevertMode")),
+                f("target", r("VoxelEditHistoryRevertTarget")),
+                f("expectedHistoryHash", string()),
+                f("expectedCursorHash", string()),
+                f("maxReplaySteps", num()),
+                f("maxDiffVoxels", num()),
+                f("includeSampleWindow", boolean()),
+            ],
+        ),
+        iface(
+            "Request to undo one accepted transaction from the applied cursor.",
+            "VoxelEditHistoryUndoRequest",
+            vec![
+                f("historyId", string()),
+                f("expectedHistoryHash", string()),
+                f("expectedCursorHash", string()),
+                f("maxReplaySteps", num()),
+                f("maxDiffVoxels", num()),
+            ],
+        ),
+        iface(
+            "Request to redo one retained transaction from the redo tail.",
+            "VoxelEditHistoryRedoRequest",
+            vec![
+                f("historyId", string()),
+                f("expectedHistoryHash", string()),
+                f("expectedCursorHash", string()),
+                f("maxReplaySteps", num()),
+                f("maxDiffVoxels", num()),
+            ],
+        ),
+        iface(
+            "Non-durable preview/rejected diagnostic evidence from Rust authority.",
+            "VoxelEditHistoryPreviewEvidence",
+            vec![
+                f("requestMode", r("VoxelEditHistoryRevertMode")),
+                f("target", r("VoxelEditHistoryRevertTarget")),
+                f(
+                    "projectedCursor",
+                    TsType::nullable(r("VoxelEditHistoryCursor")),
+                ),
+                f(
+                    "diffSummary",
+                    TsType::nullable(r("VoxelEditHistoryDiffSummary")),
+                ),
+                f("replayHash", TsType::nullable(string())),
+                f(
+                    "diagnostics",
+                    TsType::array(r("VoxelEditHistoryDiagnostic")),
+                ),
+            ],
+        ),
+        iface(
+            "Receipt for a previewed, applied, or rejected revert-like operation.",
+            "VoxelEditHistoryRevertReceipt",
+            vec![
+                f("request", r("VoxelEditHistoryRevertRequest")),
+                f("applied", boolean()),
+                f("preview", boolean()),
+                f("historyId", string()),
+                f("cursorBefore", r("VoxelEditHistoryCursor")),
+                f("cursorAfter", TsType::nullable(r("VoxelEditHistoryCursor"))),
+                f("durableEntry", TsType::nullable(r("VoxelEditHistoryEntry"))),
+                f(
+                    "previewEvidence",
+                    TsType::nullable(r("VoxelEditHistoryPreviewEvidence")),
+                ),
+                f(
+                    "diffSummary",
+                    TsType::nullable(r("VoxelEditHistoryDiffSummary")),
+                ),
+                f("replayHash", TsType::nullable(string())),
+                f("historyHashBefore", string()),
+                f("historyHashAfter", TsType::nullable(string())),
+                f(
+                    "diagnostics",
+                    TsType::array(r("VoxelEditHistoryDiagnostic")),
+                ),
+            ],
+        ),
+        iface(
+            "Receipt for undoing one accepted transaction.",
+            "VoxelEditHistoryUndoReceipt",
+            vec![
+                f("request", r("VoxelEditHistoryUndoRequest")),
+                f("receipt", r("VoxelEditHistoryRevertReceipt")),
+            ],
+        ),
+        iface(
+            "Receipt for redoing one retained transaction.",
+            "VoxelEditHistoryRedoReceipt",
+            vec![
+                f("request", r("VoxelEditHistoryRedoRequest")),
+                f("receipt", r("VoxelEditHistoryRevertReceipt")),
+            ],
+        ),
+    ];
+
+    Module {
+        name: "voxelEditHistory",
+        imports,
+        items,
+    }
+}
+
 // ── gameRules.ts — generic effect/modifier catalog DTOs ──────────────────────
 //
 // Mirrors the border-only `protocol-game-rules` crate. Game rules authority and
@@ -4004,6 +4338,9 @@ pub fn index_module() -> Module {
                 from: "./voxelAnnotation.js".to_string(),
             },
             Item::ReExport {
+                from: "./voxelEditHistory.js".to_string(),
+            },
+            Item::ReExport {
                 from: "./gameRules.js".to_string(),
             },
             Item::ReExport {
@@ -4048,6 +4385,7 @@ pub fn all_modules() -> Vec<Module> {
         voxel_conversion_module(),
         voxel_asset_module(),
         voxel_annotation_module(),
+        voxel_edit_history_module(),
         game_rules_module(),
         game_extension_module(),
         scene_module(),

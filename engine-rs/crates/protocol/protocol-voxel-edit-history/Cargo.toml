@@ -1,0 +1,16 @@
+[package]
+name    = "protocol-voxel-edit-history"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "protocol_voxel_edit_history"
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+protocol-diagnostics = { path = "../protocol-diagnostics" }
+serde = { version = "1", features = ["derive"] }
