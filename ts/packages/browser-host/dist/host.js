@@ -2,53 +2,12 @@ import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
-import { createNativeRuntimeBridge, installNativeRustRuntimeBridgeProvider, resolveNativeRustRuntimeBridgeProvider, } from '@asha/runtime-bridge';
+import { createNativeRuntimeBridge, installNativeRustRuntimeBridgeProvider, MANIFEST_OPERATIONS, resolveNativeRustRuntimeBridgeProvider, } from '@asha/runtime-bridge';
 export const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = 'browser-host.v0';
 export const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = 'ashaRuntimeBridge';
 export const ASHA_BROWSER_HOST_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
 export const ASHA_BROWSER_HOST_COMMAND = 'asha-browser-host --ui-root dist/ui --host 0.0.0.0 --port 5173';
-export const ASHA_BROWSER_HOST_BRIDGE_METHODS = [
-    'initializeEngine',
-    'stepSimulation',
-    'submitCommands',
-    'pickVoxel',
-    'applyCollisionConstrainedCameraInput',
-    'selectVoxel',
-    'readVoxelMeshEvidence',
-    'planVoxelConversion',
-    'registerVoxelConversionSource',
-    'previewVoxelConversion',
-    'applyVoxelConversion',
-    'exportVoxelConversionEvidence',
-    'readVoxelModelInfo',
-    'readVoxelModelWindow',
-    'loadFpsRuntimeSession',
-    'readFpsRuntimeSession',
-    'applyFpsPrimaryFire',
-    'invokeGameExtensionWeaponEffect',
-    'validateGameRuleCatalog',
-    'submitGameRuleEffectIntent',
-    'readGameRuleRuntimeReadout',
-    'restartFpsRuntimeSession',
-    'readFpsEncounterDirector',
-    'applyFpsEncounterTransition',
-    'readModelMaterialPreview',
-    'readSceneObjectSnapshot',
-    'applySceneObjectCommand',
-    'readRenderDiffs',
-    'createCamera',
-    'applyFirstPersonCameraInput',
-    'applyEnemyDirectNavMovement',
-    'readCameraProjection',
-    'getBuffer',
-    'releaseBuffer',
-    'loadProjectBundle', // vocab-allow: browser host must forward the legacy RuntimeBridge operation.
-    'saveProjectBundle',
-    'getProjectBundleCompositionStatus',
-    'unloadProjectBundle',
-    'loadReplayFixture',
-    'runReplayStep',
-];
+export const ASHA_BROWSER_HOST_BRIDGE_METHODS = MANIFEST_OPERATIONS.map(({ facadeMethod }) => facadeMethod);
 export function describeNativeBrowserHostCommand() {
     return {
         command: ASHA_BROWSER_HOST_COMMAND,

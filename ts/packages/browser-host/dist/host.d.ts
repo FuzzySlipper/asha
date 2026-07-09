@@ -50,10 +50,12 @@ export interface NativeBrowserHostCommandShape {
     readonly referenceFallback: false;
     readonly privateImportsRequired: false;
 }
-export declare const ASHA_BROWSER_HOST_BRIDGE_METHODS: readonly ["initializeEngine", "stepSimulation", "submitCommands", "pickVoxel", "applyCollisionConstrainedCameraInput", "selectVoxel", "readVoxelMeshEvidence", "planVoxelConversion", "registerVoxelConversionSource", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readModelMaterialPreview", "readSceneObjectSnapshot", "applySceneObjectCommand", "readRenderDiffs", "createCamera", "applyFirstPersonCameraInput", "applyEnemyDirectNavMovement", "readCameraProjection", "getBuffer", "releaseBuffer", "loadProjectBundle", "saveProjectBundle", "getProjectBundleCompositionStatus", "unloadProjectBundle", "loadReplayFixture", "runReplayStep"];
+type NativeBrowserHostBridgeMethod = Extract<keyof RuntimeBridge, string>;
+export declare const ASHA_BROWSER_HOST_BRIDGE_METHODS: readonly NativeBrowserHostBridgeMethod[];
 export declare function describeNativeBrowserHostCommand(): NativeBrowserHostCommandShape;
 export declare function installNativeBrowserHostProvider(options?: NativeBrowserHostProviderInstallOptions): NativeRustRuntimeBridgeProviderInstallation;
 export declare function readNativeBrowserHostProviderStatus(globalScope?: NativeBrowserHostProviderScope): Promise<NativeBrowserHostProviderStatus>;
 export declare function launchNativeBrowserHost(options: NativeBrowserHostLaunchOptions): Promise<NativeBrowserHostServer>;
 export declare function startNativeBrowserHost(options: NativeBrowserHostServeOptions, provider: NativeBrowserHostProviderStatus, bridge?: RuntimeBridge): Promise<NativeBrowserHostServer>;
+export {};
 //# sourceMappingURL=host.d.ts.map

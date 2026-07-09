@@ -3,9 +3,10 @@ import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import assert from 'node:assert/strict';
-import { NativeRuntimeBridge } from '@asha/runtime-bridge';
-import { ASHA_BROWSER_HOST_COMMAND, ASHA_BROWSER_HOST_COMPATIBILITY_VERSION, describeNativeBrowserHostCommand, installNativeBrowserHostProvider, launchNativeBrowserHost, readNativeBrowserHostProviderStatus, } from './index.js';
+import { MANIFEST_OPERATIONS, NativeRuntimeBridge, } from '@asha/runtime-bridge';
+import { ASHA_BROWSER_HOST_BRIDGE_METHODS, ASHA_BROWSER_HOST_COMMAND, ASHA_BROWSER_HOST_COMPATIBILITY_VERSION, describeNativeBrowserHostCommand, installNativeBrowserHostProvider, launchNativeBrowserHost, readNativeBrowserHostProviderStatus, } from './index.js';
 void test('browser host command shape documents public native provider boot', () => {
     assert.deepEqual(describeNativeBrowserHostCommand(), {
         command: ASHA_BROWSER_HOST_COMMAND,
@@ -18,6 +19,9 @@ void test('browser host command shape documents public native provider boot', ()
         referenceFallback: false,
         privateImportsRequired: false,
     });
+});
+void test('browser host RPC surface follows every generated RuntimeBridge manifest operation', () => {
+    assert.deepEqual(ASHA_BROWSER_HOST_BRIDGE_METHODS, MANIFEST_OPERATIONS.map(({ facadeMethod }) => facadeMethod));
 });
 void test('browser host installs a public native provider and reports rust authority status', async () => {
     const globalScope = {};
@@ -86,7 +90,15 @@ void test('browser host serves a downstream UI root with provider status evidenc
             assert.match(html, /\/asha\/browser-host\/native-provider\.js/);
             const script = await fetch(`${host.url}/asha/browser-host/native-provider.js`);
             assert.equal(script.status, 200);
-            assert.match(await script.text(), /globalThis\.ashaRuntimeBridge/);
+            const scriptText = await script.text();
+            assert.match(scriptText, /globalThis\.ashaRuntimeBridge/);
+            const browserScope = {};
+            runInNewContext(scriptText, browserScope);
+            const browserProvider = browserScope['ashaRuntimeBridge'];
+            const browserBridge = browserProvider.createRuntimeBridge();
+            for (const { facadeMethod } of MANIFEST_OPERATIONS) {
+                assert.equal(typeof browserBridge[facadeMethod], 'function', `served native provider must install ${facadeMethod}`);
+            }
             const invocation = await fetch(`${host.url}/asha/browser-host/runtime-bridge/initializeEngine`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -6,6 +6,7 @@ import { extname, isAbsolute, relative, resolve } from 'node:path';
 import {
   createNativeRuntimeBridge,
   installNativeRustRuntimeBridgeProvider,
+  MANIFEST_OPERATIONS,
   resolveNativeRustRuntimeBridgeProvider,
   type NativeRustRuntimeBridgeProviderCandidate,
   type NativeRustRuntimeBridgeProviderDiagnostic,
@@ -78,50 +79,12 @@ export interface NativeBrowserHostCommandShape {
   readonly privateImportsRequired: false;
 }
 
-export const ASHA_BROWSER_HOST_BRIDGE_METHODS = [
-  'initializeEngine',
-  'stepSimulation',
-  'submitCommands',
-  'pickVoxel',
-  'applyCollisionConstrainedCameraInput',
-  'selectVoxel',
-  'readVoxelMeshEvidence',
-  'planVoxelConversion',
-  'registerVoxelConversionSource',
-  'previewVoxelConversion',
-  'applyVoxelConversion',
-  'exportVoxelConversionEvidence',
-  'readVoxelModelInfo',
-  'readVoxelModelWindow',
-  'loadFpsRuntimeSession',
-  'readFpsRuntimeSession',
-  'applyFpsPrimaryFire',
-  'invokeGameExtensionWeaponEffect',
-  'validateGameRuleCatalog',
-  'submitGameRuleEffectIntent',
-  'readGameRuleRuntimeReadout',
-  'restartFpsRuntimeSession',
-  'readFpsEncounterDirector',
-  'applyFpsEncounterTransition',
-  'readModelMaterialPreview',
-  'readSceneObjectSnapshot',
-  'applySceneObjectCommand',
-  'readRenderDiffs',
-  'createCamera',
-  'applyFirstPersonCameraInput',
-  'applyEnemyDirectNavMovement',
-  'readCameraProjection',
-  'getBuffer',
-  'releaseBuffer',
-  'loadProjectBundle', // vocab-allow: browser host must forward the legacy RuntimeBridge operation.
-  'saveProjectBundle',
-  'getProjectBundleCompositionStatus',
-  'unloadProjectBundle',
-  'loadReplayFixture',
-  'runReplayStep',
-] as const satisfies readonly (keyof RuntimeBridge)[];
+type NativeBrowserHostBridgeMethod = Extract<keyof RuntimeBridge, string>;
 
-type NativeBrowserHostBridgeMethod = typeof ASHA_BROWSER_HOST_BRIDGE_METHODS[number];
+export const ASHA_BROWSER_HOST_BRIDGE_METHODS: readonly NativeBrowserHostBridgeMethod[] =
+  MANIFEST_OPERATIONS.map(
+    ({ facadeMethod }) => facadeMethod as NativeBrowserHostBridgeMethod,
+  );
 
 interface NativeBrowserHostBridgeInvocation {
   readonly args?: readonly unknown[];
