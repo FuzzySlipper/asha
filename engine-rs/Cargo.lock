@@ -1073,6 +1073,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc-voxel-annotation"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "protocol-diagnostics",
+ "protocol-voxel-annotation",
+ "serde_json",
+]
+
+[[package]]
 name = "svc-voxel-asset"
 version = "0.1.0"
 dependencies = [

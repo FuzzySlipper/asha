@@ -64,7 +64,7 @@ Source metadata:
 - [`rule-state-machine`](../../engine-rs/crates/rules/rule-state-machine/Cargo.toml) — active
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
 
-### rust-service (15)
+### rust-service (16)
 
 - [`svc-collision`](../../engine-rs/crates/services/svc-collision/Cargo.toml) — active
 - [`svc-combat`](../../engine-rs/crates/services/svc-combat/Cargo.toml) — active
@@ -79,6 +79,7 @@ Source metadata:
 - [`svc-serialization`](../../engine-rs/crates/services/svc-serialization/Cargo.toml) — active
 - [`svc-spatial`](../../engine-rs/crates/services/svc-spatial/Cargo.toml) — active
 - [`svc-volume`](../../engine-rs/crates/services/svc-volume/Cargo.toml) — active
+- [`svc-voxel-annotation`](../../engine-rs/crates/services/svc-voxel-annotation/Cargo.toml) — active
 - [`svc-voxel-asset`](../../engine-rs/crates/services/svc-voxel-asset/Cargo.toml) — active
 - [`svc-voxel-conversion`](../../engine-rs/crates/services/svc-voxel-conversion/Cargo.toml) — active
 

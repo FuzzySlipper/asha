@@ -60,6 +60,7 @@ members = [
     "crates/services/svc-mesh",
     "crates/services/svc-voxel-conversion",
     "crates/services/svc-voxel-asset",
+    "crates/services/svc-voxel-annotation",
     "crates/services/svc-policy-view",
     "crates/services/svc-entity-authoring",
     "crates/services/svc-levelgen",

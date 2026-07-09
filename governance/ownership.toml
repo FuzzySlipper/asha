@@ -305,6 +305,13 @@ lane = "rust-service"
 may_depend_on = ["core-assets", "protocol-diagnostics", "protocol-voxel-asset"]
 may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "ts/packages"]
 
+# Rust authority validation/canonicalization/query service for Asha-native
+# voxel annotation layers (#5275). No Studio, renderer, bridge, or TS authority.
+[crate."engine-rs/crates/services/svc-voxel-annotation"]
+lane = "rust-service"
+may_depend_on = ["core-assets", "protocol-diagnostics", "protocol-voxel-annotation"]
+may_not_depend_on = ["protocol-render", "wasm-api", "render-bridge", "ts/packages"]
+
 # Deterministic policy world-layer service (policy-integration super, #2391/#2392/
 # #2394): projects authority state into the read-only PolicyWorldView, validates
 # proposed PolicyWorldCommands into events or classified rejections, and records the

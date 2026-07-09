@@ -247,6 +247,7 @@ impl VoxelAnnotationQueryMode {
 
 /// Integer coordinate in stored voxel space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationCoord {
     pub x: i64,
     pub y: i64,
@@ -256,6 +257,7 @@ pub struct VoxelAnnotationCoord {
 /// Inclusive stored voxel-space bounds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationBounds {
     pub min: VoxelAnnotationCoord,
     pub max: VoxelAnnotationCoord,
@@ -264,6 +266,7 @@ pub struct VoxelAnnotationBounds {
 /// One annotation membership run along +X. Absence means not selected.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationSparseRun {
     pub start: VoxelAnnotationCoord,
     pub length: u32,
@@ -272,6 +275,7 @@ pub struct VoxelAnnotationSparseRun {
 /// Compact annotation membership payload.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationSelection {
     pub sparse_runs: Vec<VoxelAnnotationSparseRun>,
 }
@@ -279,6 +283,7 @@ pub struct VoxelAnnotationSelection {
 /// Provenance/evidence reference for stored annotation layers.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationProvenanceRef {
     pub kind: VoxelAnnotationProvenanceKind,
     pub uri: String,
@@ -288,6 +293,7 @@ pub struct VoxelAnnotationProvenanceRef {
 /// Canonical hashes recorded with an annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationContentHashes {
     pub canonical_json: String,
     pub membership_data: String,
@@ -296,6 +302,7 @@ pub struct VoxelAnnotationContentHashes {
 /// One classified validation/runtime diagnostic for voxel annotations.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationDiagnostic {
     pub code: VoxelAnnotationDiagnosticCode,
     pub severity: DiagnosticSeverity,
@@ -306,6 +313,7 @@ pub struct VoxelAnnotationDiagnostic {
 /// One semantic region inside a voxel annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationRegion {
     pub region_id: String,
     pub label: String,
@@ -319,6 +327,7 @@ pub struct VoxelAnnotationRegion {
 /// A complete ASHA-native stored voxel annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayer {
     pub layer_id: String,
     pub schema_version: u32,
@@ -335,6 +344,7 @@ pub struct VoxelAnnotationLayer {
 /// Request to validate and canonicalize a stored annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerValidationRequest {
     pub layer: VoxelAnnotationLayer,
     pub expected_target_voxel_volume_asset_id: Option<String>,
@@ -347,6 +357,7 @@ pub struct VoxelAnnotationLayerValidationRequest {
 /// Validation and canonicalization report for a stored annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerValidationReport {
     pub layer_id: String,
     pub valid: bool,
@@ -361,6 +372,7 @@ pub struct VoxelAnnotationLayerValidationReport {
 /// Explicit request to load a validated annotation layer into runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerLoadRequest {
     pub layer: VoxelAnnotationLayer,
     pub target_grid: u64,
@@ -371,6 +383,7 @@ pub struct VoxelAnnotationLayerLoadRequest {
 /// Receipt/readback for loading an annotation layer into runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerLoadReceipt {
     pub request_layer_id: String,
     pub loaded: bool,
@@ -388,6 +401,7 @@ pub struct VoxelAnnotationLayerLoadReceipt {
 /// Request to query a loaded runtime annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationQueryRequest {
     pub runtime_layer_id: Option<String>,
     pub layer_id: String,
@@ -402,6 +416,7 @@ pub struct VoxelAnnotationQueryRequest {
 /// Compact region readout returned by annotation queries.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationRegionReadout {
     pub region_id: String,
     pub label: String,
@@ -415,6 +430,7 @@ pub struct VoxelAnnotationRegionReadout {
 /// Query readout for a loaded runtime annotation layer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationQueryReadout {
     pub request: VoxelAnnotationQueryRequest,
     pub matched_regions: Vec<VoxelAnnotationRegionReadout>,
@@ -427,6 +443,7 @@ pub struct VoxelAnnotationQueryReadout {
 /// Typed runtime annotation edit request.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationEditRequest {
     pub runtime_layer_id: Option<String>,
     pub layer_id: String,
@@ -444,6 +461,7 @@ pub struct VoxelAnnotationEditRequest {
 /// Receipt for an accepted/rejected runtime annotation edit.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationEditReceipt {
     pub request: VoxelAnnotationEditRequest,
     pub edited: bool,
@@ -458,6 +476,7 @@ pub struct VoxelAnnotationEditReceipt {
 /// Request to export a runtime annotation layer back to stored DTO form.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerExportRequest {
     pub runtime_layer_id: Option<String>,
     pub layer_id: String,
@@ -468,6 +487,7 @@ pub struct VoxelAnnotationLayerExportRequest {
 /// Receipt for explicit runtime-to-stored annotation layer export.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 pub struct VoxelAnnotationLayerExportReceipt {
     pub request: VoxelAnnotationLayerExportRequest,
     pub exported: bool,
