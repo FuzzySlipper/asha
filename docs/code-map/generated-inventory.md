@@ -251,7 +251,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Evidence Entrypoints
 
-### harness/fixtures (33 groups)
+### harness/fixtures (34 groups)
 
 - [`harness/fixtures/asset-catalog`](../../harness/fixtures/asset-catalog) — 4 files
 - [`harness/fixtures/asset-import`](../../harness/fixtures/asset-import) — 4 files
@@ -267,6 +267,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/gameplay-presets`](../../harness/fixtures/gameplay-presets) — 1 files
 - [`harness/fixtures/generated-levels`](../../harness/fixtures/generated-levels) — 1 files
 - [`harness/fixtures/materials`](../../harness/fixtures/materials) — 1 files
+- [`harness/fixtures/mesh-animation`](../../harness/fixtures/mesh-animation) — 4 files
 - [`harness/fixtures/nav`](../../harness/fixtures/nav) — 1 files
 - [`harness/fixtures/policy`](../../harness/fixtures/policy) — 1 files
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files

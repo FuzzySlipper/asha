@@ -1,0 +1,90 @@
+{
+  "assetId": "mesh-animation/kenney-retro-character-medium",
+  "sourcePackage": "Kenney Animated Characters Retro 1.1",
+  "sourceLicense": "CC0",
+  "sourceAttribution": "Created/distributed by Kenney (www.kenney.nl)",
+  "runtimeFormat": "glb",
+  "fixturePath": "harness/fixtures/mesh-animation/kenney-retro-character-medium.glb",
+  "contentHashSha256": "c71255a41c0373f0d2ef52593369d5fd9d2f6220ae548aff8cd6bf5edb403674",
+  "sourceRoot": "/home/stash/mesh-resources",
+  "sourceHashes": {
+    "model": {
+      "path": "Model/characterMedium.fbx",
+      "sha256": "18835fef534eede635b081ee7fe647d01a885550a591d2e6bf071010906167d8"
+    },
+    "idle": {
+      "path": "Animations/idle.fbx",
+      "sha256": "c8a24e0294376ee5a195c56752a13310e1c0b5f8588a4db50e094120e3e4cc74"
+    },
+    "run": {
+      "path": "Animations/run.fbx",
+      "sha256": "e635461fc8dace85ec67a7f7941e949a7c3f108b51ae4d2da1557e6e01749df8"
+    },
+    "jump": {
+      "path": "Animations/jump.fbx",
+      "sha256": "b88429077a7a1af5d3f55f43cfd8ce0f7441b4f6f7bb15a8070d7ed15d275f74"
+    },
+    "texture": {
+      "path": "Skins/humanMaleA.png",
+      "sha256": "1590e08cea37f5aecbacabb40a57c176e389e9a95d5b2a4de00086604ef23e1c"
+    },
+    "license": {
+      "path": "License.txt",
+      "sha256": "eaa916e20df30c26f18a752290f93ab0e5d95c3dd1057e6887d11aa4acc0e74b"
+    }
+  },
+  "clipIds": [
+    "idle",
+    "run",
+    "jump"
+  ],
+  "primaryProofClipId": "run",
+  "scaleHint": 1,
+  "boundsHint": {
+    "min": [
+      -0.0180905014276505,
+      -0.00514235720038414,
+      0.00000684113911120221
+    ],
+    "max": [
+      0.018095325678587,
+      0.00533908000215888,
+      0.0376536995172501
+    ]
+  },
+  "clips": [
+    {
+      "id": "idle",
+      "durationSeconds": 1.04166662693024,
+      "channelCount": 16,
+      "samplerCount": 16
+    },
+    {
+      "id": "run",
+      "durationSeconds": 0.666666686534882,
+      "channelCount": 28,
+      "samplerCount": 28
+    },
+    {
+      "id": "jump",
+      "durationSeconds": 0.5,
+      "channelCount": 12,
+      "samplerCount": 12
+    }
+  ],
+  "meshCount": 1,
+  "skinCount": 1,
+  "nodeCount": 61,
+  "imageCount": 1,
+  "materialCount": 1,
+  "externalUris": [],
+  "conversion": {
+    "converterPackage": "fbx2gltf",
+    "converterVersion": "0.9.7-p1",
+    "notes": [
+      "FBX source files are source/import material only; runtime consumers load the committed GLB fixture.",
+      "Animation targets are remapped from the separate animation FBX rigs to the model rig by node name.",
+      "Clip ids are normalized to lowercase ASHA ids: idle, run, jump."
+    ]
+  }
+}
