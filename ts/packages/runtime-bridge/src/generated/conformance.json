@@ -115,6 +115,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "read_voxel_model_window",
+      "facadeMethod": "readVoxelModelWindow",
+      "surface": "stable",
+      "input": "protocol_voxel_conversion::VoxelModelWindowRequest",
+      "output": "protocol_voxel_conversion::VoxelModelWindowReadout",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "export_voxel_volume_asset",
       "facadeMethod": "exportVoxelVolumeAsset",
       "surface": "stable",

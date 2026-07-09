@@ -79,6 +79,7 @@ const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'apply_voxel_conversion',
     'export_voxel_conversion_evidence',
     'read_voxel_model_info',
+    'read_voxel_model_window',
     'export_voxel_volume_asset',
     'save_voxel_volume_asset',
     'load_voxel_volume_asset',
@@ -192,6 +193,14 @@ const VOXEL_MODEL_INFO_REQUEST = {
     grid: 1,
     volumeAssetId: 'voxel/generated',
     includeMaterialCounts: true,
+};
+const VOXEL_MODEL_WINDOW_REQUEST = {
+    grid: 1,
+    volumeAssetId: 'voxel/generated',
+    bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+    includeEmpty: false,
+    materialFilter: [],
+    maxSamples: 1,
 };
 const VOXEL_VOLUME_ASSET_EXPORT_REQUEST = {
     grid: 1,
@@ -721,6 +730,25 @@ function fakeAddon(calls = []) {
                 diagnostics: [],
             });
         },
+        readVoxelModelWindow: (_handle, requestJson) => {
+            calls.push(`voxelModelWindow:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                request,
+                resident: true,
+                modelId: 'voxel-model:grid:1:volume:voxel/generated',
+                volumeAssetId: 'voxel/generated',
+                grid: 1,
+                requestedBounds: request.bounds,
+                modelBounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+                scannedVoxelCount: 1,
+                returnedSampleCount: 1,
+                samples: [{ coord: { x: 0, y: 0, z: 0 }, occupied: true, material: 3 }],
+                sessionHash: 'fnv1a64:0000000000000107',
+                replayHash: 'fnv1a64:0000000000000108',
+                diagnostics: [],
+            });
+        },
         exportVoxelVolumeAsset: (_handle, requestJson) => {
             calls.push(`voxelVolumeAssetExport:${requestJson}`);
             const request = parseJsonFixture(requestJson);
@@ -939,6 +967,7 @@ const INVOKE = new Map([
         })],
     ['exportVoxelConversionEvidence', (b) => b.exportVoxelConversionEvidence(VOXEL_CONVERSION_EVIDENCE)],
     ['readVoxelModelInfo', (b) => b.readVoxelModelInfo(VOXEL_MODEL_INFO_REQUEST)],
+    ['readVoxelModelWindow', (b) => b.readVoxelModelWindow(VOXEL_MODEL_WINDOW_REQUEST)],
     ['exportVoxelVolumeAsset', (b) => b.exportVoxelVolumeAsset(VOXEL_VOLUME_ASSET_EXPORT_REQUEST)],
     ['saveVoxelVolumeAsset', (b) => b.saveVoxelVolumeAsset(VOXEL_VOLUME_ASSET_SAVE_REQUEST)],
     ['loadVoxelVolumeAsset', (b) => b.loadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_LOAD_REQUEST)],

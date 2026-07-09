@@ -611,6 +611,7 @@ class ReferenceRuntimeSessionFacade {
         this.#requireInitialized('readVoxelModelInfo');
         throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model info is not wired into the reference RuntimeSession');
     }
+    readVoxelModelWindow(_request) { void _request; this.#requireInitialized('readVoxelModelWindow'); throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model window is not wired into the reference RuntimeSession'); }
     exportVoxelVolumeAsset(_request) {
         void _request;
         this.#requireInitialized('exportVoxelVolumeAsset');

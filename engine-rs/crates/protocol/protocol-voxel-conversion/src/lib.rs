@@ -42,6 +42,8 @@ pub const VOXEL_CONVERSION_EVIDENCE_KINDS: &[&str] = &[
 pub const VOXEL_CONVERSION_DIAGNOSTIC_CODES: &[&str] = &[
     "voxel_conversion_unavailable",
     "operation_unimplemented",
+    "invalid_query_bounds",
+    "query_quota_exceeded",
     "unsupported_source_asset",
     "source_hash_mismatch",
     "invalid_material_map",
@@ -160,6 +162,8 @@ impl VoxelConversionEvidenceKind {
 pub enum VoxelConversionDiagnosticCode {
     VoxelConversionUnavailable,
     OperationUnimplemented,
+    InvalidQueryBounds,
+    QueryQuotaExceeded,
     UnsupportedSourceAsset,
     SourceHashMismatch,
     InvalidMaterialMap,
@@ -182,6 +186,8 @@ impl VoxelConversionDiagnosticCode {
                 "voxel_conversion_unavailable"
             }
             VoxelConversionDiagnosticCode::OperationUnimplemented => "operation_unimplemented",
+            VoxelConversionDiagnosticCode::InvalidQueryBounds => "invalid_query_bounds",
+            VoxelConversionDiagnosticCode::QueryQuotaExceeded => "query_quota_exceeded",
             VoxelConversionDiagnosticCode::UnsupportedSourceAsset => "unsupported_source_asset",
             VoxelConversionDiagnosticCode::SourceHashMismatch => "source_hash_mismatch",
             VoxelConversionDiagnosticCode::InvalidMaterialMap => "invalid_material_map",
@@ -519,6 +525,46 @@ pub struct VoxelModelInfoReadout {
     pub diagnostics: Vec<VoxelConversionDiagnostic>,
 }
 
+/// Request for a bounded voxel-space window readback.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelWindowRequest {
+    pub grid: u64,
+    pub volume_asset_id: Option<String>,
+    pub bounds: VoxelConversionBounds,
+    pub include_empty: bool,
+    pub material_filter: Vec<u16>,
+    pub max_samples: u32,
+}
+
+/// One sampled voxel cell from an authority-owned model window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelWindowSample {
+    pub coord: VoxelConversionCoord,
+    pub occupied: bool,
+    pub material: Option<u16>,
+}
+
+/// Bounded model-window readback for Studio and agents.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoxelModelWindowReadout {
+    pub request: VoxelModelWindowRequest,
+    pub resident: bool,
+    pub model_id: String,
+    pub volume_asset_id: Option<String>,
+    pub grid: u64,
+    pub requested_bounds: VoxelConversionBounds,
+    pub model_bounds: Option<VoxelConversionBounds>,
+    pub scanned_voxel_count: u64,
+    pub returned_sample_count: u32,
+    pub samples: Vec<VoxelModelWindowSample>,
+    pub session_hash: String,
+    pub replay_hash: String,
+    pub diagnostics: Vec<VoxelConversionDiagnostic>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -564,6 +610,8 @@ mod tests {
             &[
                 VoxelConversionDiagnosticCode::VoxelConversionUnavailable.as_str(),
                 VoxelConversionDiagnosticCode::OperationUnimplemented.as_str(),
+                VoxelConversionDiagnosticCode::InvalidQueryBounds.as_str(),
+                VoxelConversionDiagnosticCode::QueryQuotaExceeded.as_str(),
                 VoxelConversionDiagnosticCode::UnsupportedSourceAsset.as_str(),
                 VoxelConversionDiagnosticCode::SourceHashMismatch.as_str(),
                 VoxelConversionDiagnosticCode::InvalidMaterialMap.as_str(),
@@ -741,6 +789,57 @@ mod tests {
         assert_eq!(serialized["latestOutputHash"], "sha256:output");
         assert_eq!(serialized["evidence"][0]["kind"], "output_snapshot");
         assert_eq!(serialized["diagnostics"][0]["severity"], "warning");
+    }
+
+    #[test]
+    fn model_window_readout_round_trips_with_camel_case_fields() {
+        let request = VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("volume/demo-cave".to_string()),
+            bounds: VoxelConversionBounds {
+                min: VoxelConversionCoord { x: 1, y: 2, z: 3 },
+                max: VoxelConversionCoord { x: 4, y: 2, z: 3 },
+            },
+            include_empty: true,
+            material_filter: vec![11],
+            max_samples: 16,
+        };
+        let sample = VoxelModelWindowSample {
+            coord: VoxelConversionCoord { x: 1, y: 2, z: 3 },
+            occupied: true,
+            material: Some(11),
+        };
+        let readout = VoxelModelWindowReadout {
+            request: request.clone(),
+            resident: true,
+            model_id: "model/voxel-cave".to_string(),
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            requested_bounds: request.bounds,
+            model_bounds: Some(request.bounds),
+            scanned_voxel_count: 4,
+            returned_sample_count: 1,
+            samples: vec![sample.clone()],
+            session_hash: "sha256:session".to_string(),
+            replay_hash: "sha256:replay".to_string(),
+            diagnostics: vec![VoxelConversionDiagnostic {
+                code: VoxelConversionDiagnosticCode::QueryQuotaExceeded,
+                severity: DiagnosticSeverity::Warning,
+                reference: "bounds".to_string(),
+                message: "sample warning".to_string(),
+            }],
+        };
+
+        assert_round_trip(&request);
+        assert_round_trip(&sample);
+        assert_round_trip(&readout);
+
+        let serialized = serde_json::to_value(&readout).unwrap();
+        assert_eq!(serialized["request"]["includeEmpty"], true);
+        assert_eq!(serialized["request"]["materialFilter"][0], 11);
+        assert_eq!(serialized["requestedBounds"]["min"]["x"], 1);
+        assert_eq!(serialized["returnedSampleCount"], 1);
+        assert_eq!(serialized["samples"][0]["material"], 11);
     }
 
     fn assert_round_trip<T>(sample: &T)

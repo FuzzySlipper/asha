@@ -356,6 +356,9 @@ mod tests {
             interface_coverage_key("voxelConversion", "VoxelModelInfoRequest"),
             interface_coverage_key("voxelConversion", "VoxelModelMaterialCount"),
             interface_coverage_key("voxelConversion", "VoxelModelInfoReadout"),
+            interface_coverage_key("voxelConversion", "VoxelModelWindowRequest"),
+            interface_coverage_key("voxelConversion", "VoxelModelWindowSample"),
+            interface_coverage_key("voxelConversion", "VoxelModelWindowReadout"),
             interface_coverage_key("voxelAsset", "VoxelAssetCoord"),
             interface_coverage_key("voxelAsset", "VoxelAssetBounds"),
             interface_coverage_key("voxelAsset", "VoxelAssetGrid"),
@@ -590,6 +593,9 @@ mod tests {
                 "voxelConversion.VoxelConversionPreview",
                 "voxelConversion.VoxelConversionApplyRequest",
                 "voxelConversion.VoxelConversionReceipt",
+                "voxelConversion.VoxelModelWindowRequest",
+                "voxelConversion.VoxelModelWindowSample",
+                "voxelConversion.VoxelModelWindowReadout",
             ],
             LEGACY_GAP_REASON,
         );
@@ -982,6 +988,8 @@ mod tests {
         assert!(vc.contains("export interface VoxelConversionApplyRequest {"));
         assert!(vc.contains("export interface VoxelConversionReceipt {"));
         assert!(vc.contains("export interface VoxelConversionEvidenceRef {"));
+        assert!(vc.contains("export interface VoxelModelWindowRequest {"));
+        assert!(vc.contains("export interface VoxelModelWindowReadout {"));
         assert!(vc.contains("export interface VoxelConversionTextureSourceRef {"));
         assert!(
             vc.contains("readonly textureAssets: readonly VoxelConversionTextureSampleAsset[];")

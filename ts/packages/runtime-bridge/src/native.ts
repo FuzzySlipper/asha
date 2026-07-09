@@ -24,6 +24,8 @@ import type {
   VoxelSelectionSnapshot,
   VoxelModelInfoReadout,
   VoxelModelInfoRequest,
+  VoxelModelWindowReadout,
+  VoxelModelWindowRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
@@ -118,6 +120,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'apply_voxel_conversion',
   'export_voxel_conversion_evidence',
   'read_voxel_model_info',
+  'read_voxel_model_window',
   'export_voxel_volume_asset',
   'save_voxel_volume_asset',
   'load_voxel_volume_asset',
@@ -691,6 +694,12 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('readVoxelModelInfo');
     const payload = callNative(() => this.#addon.readVoxelModelInfo(handle, JSON.stringify(request)));
     return parseNativeJson<VoxelModelInfoReadout>(payload, 'voxel model info');
+  }
+
+  readVoxelModelWindow(request: VoxelModelWindowRequest): VoxelModelWindowReadout {
+    const handle = this.#requireHandle('readVoxelModelWindow');
+    const payload = callNative(() => this.#addon.readVoxelModelWindow(handle, JSON.stringify(request)));
+    return parseNativeJson<VoxelModelWindowReadout>(payload, 'voxel model window');
   }
 
   exportVoxelVolumeAsset(request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt {

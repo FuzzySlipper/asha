@@ -21,6 +21,7 @@ export const ASHA_BROWSER_HOST_BRIDGE_METHODS = [
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',
     'readVoxelModelInfo',
+    'readVoxelModelWindow',
     'loadFpsRuntimeSession',
     'readFpsRuntimeSession',
     'applyFpsPrimaryFire',

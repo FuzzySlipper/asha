@@ -259,6 +259,7 @@ function createFakeRuntimeBridge() {
         applyVoxelConversion: operation,
         exportVoxelConversionEvidence: operation,
         readVoxelModelInfo: operation,
+        readVoxelModelWindow: operation,
         exportVoxelVolumeAsset: operation,
         saveVoxelVolumeAsset: operation,
         loadVoxelVolumeAsset: operation,

@@ -42,6 +42,7 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'apply_voxel_conversion',
     'export_voxel_conversion_evidence',
     'read_voxel_model_info',
+    'read_voxel_model_window',
     'export_voxel_volume_asset',
     'save_voxel_volume_asset',
     'load_voxel_volume_asset',
@@ -487,6 +488,11 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('readVoxelModelInfo');
         const payload = callNative(() => this.#addon.readVoxelModelInfo(handle, JSON.stringify(request)));
         return parseNativeJson(payload, 'voxel model info');
+    }
+    readVoxelModelWindow(request) {
+        const handle = this.#requireHandle('readVoxelModelWindow');
+        const payload = callNative(() => this.#addon.readVoxelModelWindow(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel model window');
     }
     exportVoxelVolumeAsset(request) {
         const handle = this.#requireHandle('exportVoxelVolumeAsset');

@@ -246,6 +246,7 @@ export interface NativeAddon {
   applyVoxelConversion(handle: number, requestJson: string): string;
   exportVoxelConversionEvidence(handle: number, evidenceJson: string): string;
   readVoxelModelInfo(handle: number, requestJson: string): string;
+  readVoxelModelWindow(handle: number, requestJson: string): string;
   exportVoxelVolumeAsset(handle: number, requestJson: string): string;
   saveVoxelVolumeAsset(handle: number, requestJson: string): string;
   loadVoxelVolumeAsset(handle: number, requestJson: string): string;
@@ -278,6 +279,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'applyVoxelConversion',
   'exportVoxelConversionEvidence',
   'readVoxelModelInfo',
+  'readVoxelModelWindow',
   'exportVoxelVolumeAsset',
   'saveVoxelVolumeAsset',
   'loadVoxelVolumeAsset',

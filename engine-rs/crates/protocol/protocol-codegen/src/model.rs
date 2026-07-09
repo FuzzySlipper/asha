@@ -1436,6 +1436,46 @@ pub fn voxel_conversion_module() -> Module {
                 f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
             ],
         ),
+        iface(
+            "Quota-guarded voxel-space window read request for an authority-owned model.",
+            "VoxelModelWindowRequest",
+            vec![
+                f("grid", num()),
+                f("volumeAssetId", TsType::nullable(string())),
+                f("bounds", r("VoxelConversionBounds")),
+                f("includeEmpty", boolean()),
+                f("materialFilter", TsType::array(num())),
+                f("maxSamples", num()),
+            ],
+        ),
+        iface(
+            "One sampled voxel cell returned by a bounded authority-owned model window.",
+            "VoxelModelWindowSample",
+            vec![
+                f("coord", r("VoxelCoord")),
+                f("occupied", boolean()),
+                f("material", TsType::nullable(num())),
+            ],
+        ),
+        iface(
+            "Bounded authority-owned voxel-space window readout for Studio and agents.",
+            "VoxelModelWindowReadout",
+            vec![
+                f("request", r("VoxelModelWindowRequest")),
+                f("resident", boolean()),
+                f("modelId", string()),
+                f("volumeAssetId", TsType::nullable(string())),
+                f("grid", num()),
+                f("requestedBounds", r("VoxelConversionBounds")),
+                f("modelBounds", TsType::nullable(r("VoxelConversionBounds"))),
+                f("scannedVoxelCount", num()),
+                f("returnedSampleCount", num()),
+                f("samples", TsType::array(r("VoxelModelWindowSample"))),
+                f("sessionHash", string()),
+                f("replayHash", string()),
+                f("diagnostics", TsType::array(r("VoxelConversionDiagnostic"))),
+            ],
+        ),
     ];
 
     Module {

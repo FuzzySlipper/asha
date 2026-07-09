@@ -22,8 +22,8 @@ import {
   type VoxelConversionReceipt,
   type VoxelConversionSourceRegistration,
   type VoxelConversionSourceRegistrationRequest,
-  type VoxelModelInfoReadout,
-  type VoxelModelInfoRequest,
+  type VoxelModelInfoReadout, type VoxelModelInfoRequest,
+  type VoxelModelWindowReadout, type VoxelModelWindowRequest,
   type VoxelVolumeAssetExportReceipt,
   type VoxelVolumeAssetExportRequest,
   type VoxelVolumeAssetLoadReceipt,
@@ -824,6 +824,7 @@ export interface RuntimeSessionFacade {
   applyVoxelConversion(request: VoxelConversionApplyRequest): VoxelConversionReceipt;
   exportVoxelConversionEvidence(evidence: readonly VoxelConversionEvidenceRef[]): readonly VoxelConversionEvidenceRef[];
   readVoxelModelInfo(request: VoxelModelInfoRequest): VoxelModelInfoReadout;
+  readVoxelModelWindow(request: VoxelModelWindowRequest): VoxelModelWindowReadout;
   exportVoxelVolumeAsset(request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt;
   saveVoxelVolumeAsset(request: VoxelVolumeAssetSaveRequest): VoxelVolumeAssetSaveReceipt;
   loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt;
@@ -1550,6 +1551,8 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
     this.#requireInitialized('readVoxelModelInfo');
     throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model info is not wired into the reference RuntimeSession');
   }
+
+  readVoxelModelWindow(_request: VoxelModelWindowRequest): VoxelModelWindowReadout { void _request; this.#requireInitialized('readVoxelModelWindow'); throw new RuntimeBridgeError('operation_unimplemented', 'Voxel model window is not wired into the reference RuntimeSession'); }
 
   exportVoxelVolumeAsset(_request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt {
     void _request;

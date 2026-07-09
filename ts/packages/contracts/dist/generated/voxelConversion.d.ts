@@ -3,7 +3,7 @@ import type { VoxelCoord } from './voxel.js';
 export type VoxelConversionMode = 'surface' | 'solid';
 export type VoxelConversionFitPolicy = 'contain' | 'cover' | 'stretch';
 export type VoxelConversionOriginPolicy = 'source_origin' | 'target_min' | 'centered';
-export type VoxelConversionDiagnosticCode = 'voxel_conversion_unavailable' | 'operation_unimplemented' | 'unsupported_source_asset' | 'source_hash_mismatch' | 'invalid_material_map' | 'missing_texture_source' | 'texture_hash_mismatch' | 'missing_uv_attribute' | 'unsupported_texture_format' | 'unsupported_sampling_policy' | 'invalid_texture_material_rule' | 'output_limit_exceeded' | 'non_manifold_or_ambiguous_solid' | 'stale_authority_snapshot' | 'conversion_replay_mismatch';
+export type VoxelConversionDiagnosticCode = 'voxel_conversion_unavailable' | 'operation_unimplemented' | 'invalid_query_bounds' | 'query_quota_exceeded' | 'unsupported_source_asset' | 'source_hash_mismatch' | 'invalid_material_map' | 'missing_texture_source' | 'texture_hash_mismatch' | 'missing_uv_attribute' | 'unsupported_texture_format' | 'unsupported_sampling_policy' | 'invalid_texture_material_rule' | 'output_limit_exceeded' | 'non_manifold_or_ambiguous_solid' | 'stale_authority_snapshot' | 'conversion_replay_mismatch';
 export type VoxelConversionEvidenceKind = 'plan' | 'preview' | 'apply_receipt' | 'diagnostics' | 'source_snapshot' | 'output_snapshot';
 export interface VoxelConversionSourceRef {
     readonly assetId: string;
@@ -192,6 +192,34 @@ export interface VoxelModelInfoReadout {
     readonly sessionHash: string;
     readonly replayHash: string;
     readonly evidence: readonly VoxelConversionEvidenceRef[];
+    readonly diagnostics: readonly VoxelConversionDiagnostic[];
+}
+export interface VoxelModelWindowRequest {
+    readonly grid: number;
+    readonly volumeAssetId: string | null;
+    readonly bounds: VoxelConversionBounds;
+    readonly includeEmpty: boolean;
+    readonly materialFilter: readonly number[];
+    readonly maxSamples: number;
+}
+export interface VoxelModelWindowSample {
+    readonly coord: VoxelCoord;
+    readonly occupied: boolean;
+    readonly material: number | null;
+}
+export interface VoxelModelWindowReadout {
+    readonly request: VoxelModelWindowRequest;
+    readonly resident: boolean;
+    readonly modelId: string;
+    readonly volumeAssetId: string | null;
+    readonly grid: number;
+    readonly requestedBounds: VoxelConversionBounds;
+    readonly modelBounds: VoxelConversionBounds | null;
+    readonly scannedVoxelCount: number;
+    readonly returnedSampleCount: number;
+    readonly samples: readonly VoxelModelWindowSample[];
+    readonly sessionHash: string;
+    readonly replayHash: string;
     readonly diagnostics: readonly VoxelConversionDiagnostic[];
 }
 //# sourceMappingURL=voxelConversion.d.ts.map

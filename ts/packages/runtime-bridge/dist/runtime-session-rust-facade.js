@@ -587,6 +587,10 @@ export class RustBackedRuntimeSessionFacade {
         this.#requireInitialized('readVoxelModelInfo');
         return this.#bridge.readVoxelModelInfo(request);
     }
+    readVoxelModelWindow(request) {
+        this.#requireInitialized('readVoxelModelWindow');
+        return this.#bridge.readVoxelModelWindow(request);
+    }
     exportVoxelVolumeAsset(request) {
         this.#requireInitialized('exportVoxelVolumeAsset');
         return this.#bridge.exportVoxelVolumeAsset(request);

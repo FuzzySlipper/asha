@@ -30,8 +30,8 @@ use runtime_bridge_api::{
     VoxelConversionApplyRequest, VoxelConversionEvidenceRef,
     VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlanRequest,
     VoxelConversionPreviewRequest, VoxelConversionSourceRegistrationRequest, VoxelModelInfoRequest,
-    VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetSaveRequest,
-    WeaponEffectHookRequest,
+    VoxelModelWindowRequest, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
+    VoxelVolumeAssetSaveRequest, WeaponEffectHookRequest,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1008,6 +1008,15 @@ fn parse_voxel_model_info_request(request_json: &str) -> napi::Result<VoxelModel
     })
 }
 
+fn parse_voxel_model_window_request(request_json: &str) -> napi::Result<VoxelModelWindowRequest> {
+    serde_json::from_str(request_json).map_err(|err| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!("invalid voxel model window request JSON: {err}"),
+        ))
+    })
+}
+
 fn parse_voxel_volume_asset_export_request(
     request_json: &str,
 ) -> napi::Result<VoxelVolumeAssetExportRequest> {
@@ -1501,6 +1510,15 @@ pub fn read_voxel_model_info(handle: i64, request_json: String) -> napi::Result<
     })
 }
 
+#[napi]
+pub fn read_voxel_model_window(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_voxel_model_window_request(&request_json)?;
+    with_bridge(handle, |bridge| {
+        let readout = bridge.read_voxel_model_window(request).map_err(to_napi)?;
+        voxel_conversion_json(&readout)
+    })
+}
+
 fn parse_voxel_volume_asset_save_request(
     request_json: &str,
 ) -> napi::Result<VoxelVolumeAssetSaveRequest> {
@@ -1561,6 +1579,7 @@ mod tests {
         "readRenderDiffs",
         "readFpsRuntimeSession",
         "readVoxelModelInfo",
+        "readVoxelModelWindow",
         "registerVoxelConversionSource",
         "registerVoxelConversionMeshAsset",
         "restartFpsRuntimeSession",
@@ -1592,6 +1611,7 @@ mod tests {
                 "readRenderDiffs",
                 "readFpsRuntimeSession",
                 "readVoxelModelInfo",
+                "readVoxelModelWindow",
                 "registerVoxelConversionSource",
                 "registerVoxelConversionMeshAsset",
                 "restartFpsRuntimeSession",

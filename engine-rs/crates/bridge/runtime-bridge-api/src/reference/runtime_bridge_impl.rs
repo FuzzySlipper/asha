@@ -537,6 +537,84 @@ impl RuntimeBridge for ReferenceBridge {
         })
     }
 
+    fn read_voxel_model_window(
+        &self,
+        request: VoxelModelWindowRequest,
+    ) -> BridgeResult<VoxelModelWindowReadout> {
+        self.require_initialized("read_voxel_model_window")?;
+        let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
+        if !self.voxel_conversion_targets.contains_key(&key) {
+            return Ok(Self::voxel_model_window_missing_readout(
+                request,
+                "voxel model window request targets an unknown conversion target",
+            ));
+        }
+        let Some(info) = self.voxel_model_infos.get(&key) else {
+            return Ok(Self::voxel_model_window_missing_readout(
+                request,
+                "voxel model is not resident in current authority state; apply a conversion first",
+            ));
+        };
+        let Some(world) = self
+            .voxel
+            .as_ref()
+            .filter(|world| world.grid().id().raw() as u64 == request.grid)
+        else {
+            return Ok(Self::voxel_model_window_missing_readout(
+                request,
+                "voxel authority has no resident grid for the requested model window",
+            ));
+        };
+        let diagnostics = Self::voxel_model_window_request_diagnostics(&request);
+        if !diagnostics.is_empty() {
+            return Ok(Self::voxel_model_window_readout(
+                request,
+                info,
+                0,
+                Vec::new(),
+                diagnostics,
+            ));
+        }
+        let scanned_voxel_count =
+            Self::voxel_model_window_volume(request.bounds).expect("validated window volume");
+        let material_filter = request
+            .material_filter
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let mut samples = Vec::new();
+        for z in request.bounds.min.z..=request.bounds.max.z {
+            for y in request.bounds.min.y..=request.bounds.max.y {
+                for x in request.bounds.min.x..=request.bounds.max.x {
+                    let coord = VoxelCoord::new(x, y, z);
+                    let value = Self::voxel_value_at(world, coord);
+                    let material = value.material().map(|material| material.raw());
+                    if !material_filter.is_empty()
+                        && !material.is_some_and(|material| material_filter.contains(&material))
+                    {
+                        continue;
+                    }
+                    if material.is_none() && (!request.include_empty || !material_filter.is_empty())
+                    {
+                        continue;
+                    }
+                    samples.push(VoxelModelWindowSample {
+                        coord: Self::protocol_voxel_coord(coord),
+                        occupied: value.is_solid(),
+                        material,
+                    });
+                }
+            }
+        }
+        Ok(Self::voxel_model_window_readout(
+            request,
+            info,
+            scanned_voxel_count,
+            samples,
+            Vec::new(),
+        ))
+    }
+
     fn export_voxel_volume_asset(
         &self,
         request: VoxelVolumeAssetExportRequest,

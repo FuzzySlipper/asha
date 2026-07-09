@@ -72,6 +72,7 @@ void test('native addon loader rejects stale modules missing encounter authority
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelConversion'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('exportVoxelConversionEvidence'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelInfo'));
+    assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelWindow'));
     assert.throws(
       () => loadNativeAddon(modulePath),
       (error: unknown) =>

@@ -25,6 +25,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'applyVoxelConversion',
     'exportVoxelConversionEvidence',
     'readVoxelModelInfo',
+    'readVoxelModelWindow',
     'exportVoxelVolumeAsset',
     'saveVoxelVolumeAsset',
     'loadVoxelVolumeAsset',

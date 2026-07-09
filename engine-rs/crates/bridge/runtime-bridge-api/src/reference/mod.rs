@@ -64,6 +64,7 @@ const GAME_RULE_DETERMINISTIC_REQUIREMENTS: &[&str] = &[
     "no-network",
     "no-ts-callback",
 ];
+const VOXEL_MODEL_WINDOW_MAX_SAMPLES: u64 = 4096;
 
 #[derive(Debug, Clone, PartialEq)]
 struct VoxelConversionTargetAuthority {
@@ -960,6 +961,146 @@ impl ReferenceBridge {
             replay_hash,
             evidence: Vec::new(),
             diagnostics: vec![diagnostic],
+        }
+    }
+
+    fn voxel_model_window_missing_readout(
+        request: VoxelModelWindowRequest,
+        message: impl Into<String>,
+    ) -> VoxelModelWindowReadout {
+        let model_id = Self::voxel_model_id(request.grid, &request.volume_asset_id);
+        let diagnostic = Self::voxel_conversion_diagnostic(
+            VoxelConversionDiagnosticCode::VoxelConversionUnavailable,
+            model_id.clone(),
+            message,
+        );
+        let info = Self::missing_voxel_model_info(model_id);
+        Self::voxel_model_window_readout(request, &info, 0, Vec::new(), vec![diagnostic])
+    }
+
+    fn missing_voxel_model_info(model_id: String) -> VoxelModelInfoAuthority {
+        VoxelModelInfoAuthority {
+            model_id,
+            volume_asset_id: None,
+            grid: 0,
+            bounds: None,
+            voxel_count: 0,
+            material_counts: Vec::new(),
+            source: protocol_voxel_conversion::VoxelConversionSourceRef {
+                asset_id: "missing".to_string(),
+                asset_kind: "voxel_model".to_string(),
+                asset_version: 0,
+                source_hash: "fnv1a64:missing".to_string(),
+                mesh_primitive: None,
+            },
+            latest_plan_id: "missing".to_string(),
+            latest_output_hash: "fnv1a64:missing".to_string(),
+            session_hash: "fnv1a64:missing".to_string(),
+            replay_hash: "fnv1a64:missing".to_string(),
+            evidence: Vec::new(),
+        }
+    }
+
+    fn voxel_model_window_readout(
+        request: VoxelModelWindowRequest,
+        info: &VoxelModelInfoAuthority,
+        scanned_voxel_count: u64,
+        samples: Vec<VoxelModelWindowSample>,
+        diagnostics: Vec<VoxelConversionDiagnostic>,
+    ) -> VoxelModelWindowReadout {
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-window|session|{:?}|{}|{}|{:?}",
+                request, info.session_hash, scanned_voxel_count, samples
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-window|replay|{}|{}|{:?}",
+                session_hash, info.replay_hash, diagnostics
+            ))
+        );
+        let returned_sample_count = samples.len() as u32;
+        VoxelModelWindowReadout {
+            request: request.clone(),
+            resident: diagnostics.iter().all(|diagnostic| {
+                diagnostic.code != VoxelConversionDiagnosticCode::VoxelConversionUnavailable
+            }),
+            model_id: info.model_id.clone(),
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            requested_bounds: request.bounds,
+            model_bounds: info.bounds,
+            scanned_voxel_count,
+            returned_sample_count,
+            samples,
+            session_hash,
+            replay_hash,
+            diagnostics,
+        }
+    }
+
+    fn voxel_model_window_request_diagnostics(
+        request: &VoxelModelWindowRequest,
+    ) -> Vec<VoxelConversionDiagnostic> {
+        let mut diagnostics = Vec::new();
+        let Some(volume) = Self::voxel_model_window_volume(request.bounds) else {
+            diagnostics.push(Self::voxel_conversion_diagnostic(
+                VoxelConversionDiagnosticCode::InvalidQueryBounds,
+                "bounds",
+                "voxel model window bounds must be ordered and finite",
+            ));
+            return diagnostics;
+        };
+        if request.max_samples == 0 {
+            diagnostics.push(Self::voxel_conversion_diagnostic(
+                VoxelConversionDiagnosticCode::QueryQuotaExceeded,
+                "maxSamples",
+                "voxel model window maxSamples must be greater than zero",
+            ));
+        }
+        let effective_limit = VOXEL_MODEL_WINDOW_MAX_SAMPLES.min(u64::from(request.max_samples));
+        if volume > effective_limit {
+            diagnostics.push(Self::voxel_conversion_diagnostic(
+                VoxelConversionDiagnosticCode::QueryQuotaExceeded,
+                "bounds",
+                format!("voxel model window scans {volume} cells; limit is {effective_limit}"),
+            ));
+        }
+        diagnostics
+    }
+
+    fn voxel_model_window_volume(
+        bounds: protocol_voxel_conversion::VoxelConversionBounds,
+    ) -> Option<u64> {
+        let dx = Self::inclusive_axis_len(bounds.min.x, bounds.max.x)?;
+        let dy = Self::inclusive_axis_len(bounds.min.y, bounds.max.y)?;
+        let dz = Self::inclusive_axis_len(bounds.min.z, bounds.max.z)?;
+        dx.checked_mul(dy)?.checked_mul(dz)
+    }
+
+    fn inclusive_axis_len(min: i64, max: i64) -> Option<u64> {
+        if max < min {
+            return None;
+        }
+        u64::try_from(max.checked_sub(min)?.checked_add(1)?).ok()
+    }
+
+    fn voxel_value_at(world: &VoxelWorld, coord: VoxelCoord) -> VoxelValue {
+        let (chunk, local) = world.grid().voxel_to_chunk_local(coord);
+        world
+            .get(chunk)
+            .and_then(|chunk| chunk.get(local))
+            .unwrap_or(VoxelValue::EMPTY)
+    }
+
+    fn protocol_voxel_coord(coord: VoxelCoord) -> protocol_voxel_conversion::VoxelConversionCoord {
+        protocol_voxel_conversion::VoxelConversionCoord {
+            x: coord.x,
+            y: coord.y,
+            z: coord.z,
         }
     }
 

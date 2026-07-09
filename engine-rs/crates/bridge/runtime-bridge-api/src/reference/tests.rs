@@ -958,6 +958,53 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
         .unwrap();
     assert!(compact_info.material_counts.is_empty());
 
+    let window = bridge
+        .read_voxel_model_window(VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            bounds: protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord { x: 0, y: 0, z: 0 },
+                max: protocol_voxel_conversion::VoxelConversionCoord { x: 3, y: 3, z: 0 },
+            },
+            include_empty: false,
+            material_filter: Vec::new(),
+            max_samples: 16,
+        })
+        .unwrap();
+    assert!(window.resident);
+    assert_eq!(window.scanned_voxel_count, 16);
+    assert_eq!(window.returned_sample_count, 3);
+    assert_eq!(
+        window
+            .samples
+            .iter()
+            .map(|sample| sample.material)
+            .collect::<Vec<_>>(),
+        vec![Some(3), Some(3), Some(3)]
+    );
+    assert_eq!(window.model_bounds, model_info.bounds);
+    assert!(window.session_hash.starts_with("fnv1a64:"));
+    assert!(window.replay_hash.starts_with("fnv1a64:"));
+    assert!(window.diagnostics.is_empty());
+
+    let filtered_window = bridge
+        .read_voxel_model_window(VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            bounds: protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord { x: 0, y: 0, z: 0 },
+                max: protocol_voxel_conversion::VoxelConversionCoord { x: 3, y: 3, z: 0 },
+            },
+            include_empty: true,
+            material_filter: vec![99],
+            max_samples: 16,
+        })
+        .unwrap();
+    assert!(filtered_window.resident);
+    assert_eq!(filtered_window.scanned_voxel_count, 16);
+    assert_eq!(filtered_window.returned_sample_count, 0);
+    assert!(filtered_window.samples.is_empty());
+
     let exported = bridge
         .export_voxel_volume_asset(VoxelVolumeAssetExportRequest {
             grid: 7,
@@ -1208,6 +1255,83 @@ fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
     assert_eq!(
         reloaded_info.source.as_ref().unwrap().asset_id,
         "voxel-volume/generated-crate"
+    );
+}
+
+#[test]
+fn voxel_model_window_fails_closed_for_invalid_bounds_and_query_quota() {
+    let asset = hand_authored_voxel_volume_asset();
+    let mut bridge = init_bridge();
+    let load_receipt = bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset,
+            target_grid: 7,
+            target_volume_asset_id: Some("voxel/window-test".to_string()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(load_receipt.loaded);
+
+    let invalid_bounds = bridge
+        .read_voxel_model_window(VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/window-test".to_string()),
+            bounds: protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord { x: 3, y: 0, z: 0 },
+                max: protocol_voxel_conversion::VoxelConversionCoord { x: 1, y: 0, z: 0 },
+            },
+            include_empty: true,
+            material_filter: Vec::new(),
+            max_samples: 16,
+        })
+        .unwrap();
+    assert!(invalid_bounds.resident);
+    assert_eq!(invalid_bounds.scanned_voxel_count, 0);
+    assert!(invalid_bounds.samples.is_empty());
+    assert_eq!(
+        invalid_bounds.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::InvalidQueryBounds
+    );
+
+    let over_quota = bridge
+        .read_voxel_model_window(VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/window-test".to_string()),
+            bounds: protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord { x: 0, y: 0, z: 0 },
+                max: protocol_voxel_conversion::VoxelConversionCoord { x: 4, y: 0, z: 0 },
+            },
+            include_empty: true,
+            material_filter: Vec::new(),
+            max_samples: 4,
+        })
+        .unwrap();
+    assert!(over_quota.resident);
+    assert_eq!(over_quota.scanned_voxel_count, 0);
+    assert!(over_quota.samples.is_empty());
+    assert_eq!(
+        over_quota.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::QueryQuotaExceeded
+    );
+
+    let missing = bridge
+        .read_voxel_model_window(VoxelModelWindowRequest {
+            grid: 7,
+            volume_asset_id: Some("voxel/missing".to_string()),
+            bounds: protocol_voxel_conversion::VoxelConversionBounds {
+                min: protocol_voxel_conversion::VoxelConversionCoord { x: 0, y: 0, z: 0 },
+                max: protocol_voxel_conversion::VoxelConversionCoord { x: 0, y: 0, z: 0 },
+            },
+            include_empty: true,
+            material_filter: Vec::new(),
+            max_samples: 1,
+        })
+        .unwrap();
+    assert!(!missing.resident);
+    assert_eq!(
+        missing.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::VoxelConversionUnavailable
     );
 }
 

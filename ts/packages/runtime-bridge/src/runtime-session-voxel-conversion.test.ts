@@ -14,6 +14,8 @@ import type {
   VoxelConversionSourceRegistrationRequest,
   VoxelModelInfoReadout,
   VoxelModelInfoRequest,
+  VoxelModelWindowReadout,
+  VoxelModelWindowRequest,
   VoxelVolumeAssetExportReceipt,
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
@@ -316,6 +318,47 @@ function createVoxelConversionBridge(): RuntimeBridge {
           };
         };
       }
+      if (property === 'readVoxelModelWindow') {
+        return (request: VoxelModelWindowRequest): VoxelModelWindowReadout => {
+          if (request.grid !== 1 || request.volumeAssetId !== 'voxel/generated') {
+            return {
+              request,
+              resident: false,
+              modelId: `voxel-model:grid:${request.grid}:volume:${request.volumeAssetId ?? 'none'}`,
+              volumeAssetId: request.volumeAssetId,
+              grid: request.grid,
+              requestedBounds: request.bounds,
+              modelBounds: null,
+              scannedVoxelCount: 0,
+              returnedSampleCount: 0,
+              samples: [],
+              sessionHash: 'fnv1a64:0000000000000205',
+              replayHash: 'fnv1a64:0000000000000206',
+              diagnostics: [{
+                code: 'voxel_conversion_unavailable',
+                severity: 'error',
+                reference: 'model',
+                message: 'voxel model is not resident in current authority state',
+              }],
+            };
+          }
+          return {
+            request,
+            resident: true,
+            modelId: 'voxel-model:grid:1:volume:voxel/generated',
+            volumeAssetId: 'voxel/generated',
+            grid: 1,
+            requestedBounds: request.bounds,
+            modelBounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+            scannedVoxelCount: 1,
+            returnedSampleCount: 1,
+            samples: [{ coord: { x: 0, y: 0, z: 0 }, occupied: true, material: 3 }],
+            sessionHash: 'fnv1a64:0000000000000207',
+            replayHash: 'fnv1a64:0000000000000208',
+            diagnostics: [],
+          };
+        };
+      }
       if (property === 'exportVoxelVolumeAsset') {
         return (request: VoxelVolumeAssetExportRequest): VoxelVolumeAssetExportReceipt => {
           if (request.grid !== 1 || request.volumeAssetId !== 'voxel/generated') {
@@ -514,6 +557,18 @@ void test('reference RuntimeSession voxel conversion facade methods remain typed
   );
   assert.throws(
     () =>
+      referenceSession.readVoxelModelWindow({
+        grid: 1,
+        volumeAssetId: 'voxel/generated',
+        bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+        includeEmpty: false,
+        materialFilter: [],
+        maxSamples: 1,
+      }),
+    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented',
+  );
+  assert.throws(
+    () =>
       referenceSession.exportVoxelVolumeAsset({
         grid: 1,
         volumeAssetId: 'voxel/generated',
@@ -635,6 +690,20 @@ void test('Rust-backed RuntimeSession delegates voxel conversion to the bridge a
   assert.equal(modelInfo.voxelCount, 1);
   assert.deepEqual(modelInfo.materialCounts, [{ material: 3, voxelCount: 1 }]);
   assert.equal(modelInfo.source?.assetId, 'mesh/quad');
+
+  const modelWindow = rustSession.readVoxelModelWindow({
+    grid: 1,
+    volumeAssetId: 'voxel/generated',
+    bounds: { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+    includeEmpty: false,
+    materialFilter: [],
+    maxSamples: 1,
+  });
+  assert.equal(modelWindow.resident, true);
+  assert.equal(modelWindow.scannedVoxelCount, 1);
+  assert.deepEqual(modelWindow.samples, [
+    { coord: { x: 0, y: 0, z: 0 }, occupied: true, material: 3 },
+  ]);
 
   const exportedAsset = rustSession.exportVoxelVolumeAsset({
     grid: 1,

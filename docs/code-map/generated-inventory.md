@@ -221,6 +221,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `read_scene_object_snapshot` — stable; output `protocol_scene::SceneObjectSnapshot`
 - `read_voxel_mesh_evidence` — stable; output `protocol_render::VoxelMeshEvidenceSnapshot`
 - `read_voxel_model_info` — stable; output `protocol_voxel_conversion::VoxelModelInfoReadout`
+- `read_voxel_model_window` — stable; output `protocol_voxel_conversion::VoxelModelWindowReadout`
 - `register_voxel_conversion_mesh_asset` — stable; output `protocol_voxel_conversion::VoxelConversionSourceRegistration`
 - `register_voxel_conversion_source` — stable; output `protocol_voxel_conversion::VoxelConversionSourceRegistration`
 - `release_buffer` — stable; output `Unit`

@@ -136,6 +136,14 @@ errors = "RuntimeBridgeError"
 summary = "Read bounded authority-owned voxel model information for an applied conversion target; missing/unknown models return typed diagnostics."
 
 [[operation]]
+name = "read_voxel_model_window"
+surface = "stable"
+input = "protocol_voxel_conversion::VoxelModelWindowRequest"
+output = "protocol_voxel_conversion::VoxelModelWindowReadout"
+errors = "RuntimeBridgeError"
+summary = "Read a quota-guarded voxel-space sample window from an authority-owned model so agents can inspect cells/cross-sections without dumping full volumes."
+
+[[operation]]
 name = "export_voxel_volume_asset"
 surface = "stable"
 input = "protocol_voxel_asset::VoxelVolumeAssetExportRequest"

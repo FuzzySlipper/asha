@@ -78,6 +78,13 @@ pub trait RuntimeBridge {
         &self,
         request: VoxelModelInfoRequest,
     ) -> BridgeResult<VoxelModelInfoReadout>;
+    /// Read a bounded voxel-space window from an authority-owned model. The
+    /// request is quota-guarded so agents can inspect cells/cross-sections
+    /// without dumping full volumes or bypassing Rust authority.
+    fn read_voxel_model_window(
+        &self,
+        request: VoxelModelWindowRequest,
+    ) -> BridgeResult<VoxelModelWindowReadout>;
     /// Export a complete resident runtime voxel model as an Asha-native stored
     /// voxel-volume asset proposal. Rust owns the sparse-run representation,
     /// material palette validation, canonical JSON, and content hashes.
