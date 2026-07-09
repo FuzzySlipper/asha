@@ -8,6 +8,13 @@
 use core_events::VoxelEditEvent;
 use svc_spatial::VoxelWorld;
 
+mod diff;
+use diff::{summarize_world_diff, VoxelEditHistoryDiffContext};
+pub use diff::{
+    VoxelEditHistoryBounds, VoxelEditHistoryDiffDiagnostic, VoxelEditHistoryDiffOptions,
+    VoxelEditHistoryDiffSummary, VoxelEditHistoryMaterialDelta,
+};
+
 use crate::{
     apply_all,
     persist::{decode_edit_log, encode_edit_log},
@@ -23,6 +30,7 @@ pub struct VoxelEditHistoryLimits {
     pub max_entries: usize,
     pub max_retained_events: usize,
     pub max_replay_steps: usize,
+    pub max_diff_voxels: usize,
 }
 
 impl VoxelEditHistoryLimits {
@@ -35,7 +43,13 @@ impl VoxelEditHistoryLimits {
             max_entries,
             max_retained_events,
             max_replay_steps,
+            max_diff_voxels: 4096,
         }
+    }
+
+    pub const fn with_diff_voxels(mut self, max_diff_voxels: usize) -> Self {
+        self.max_diff_voxels = max_diff_voxels;
+        self
     }
 }
 
@@ -65,15 +79,6 @@ pub struct VoxelEditHistoryCursor {
     pub redo_depth: usize,
     pub world_hash: u64,
     pub history_hash: u64,
-}
-
-/// Bounded diff readout for a replayed target cursor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct VoxelEditHistoryDiffSummary {
-    pub before_hash: u64,
-    pub target_hash: u64,
-    pub changed_transaction_count: usize,
-    pub replayed_transaction_count: usize,
 }
 
 /// Receipt for appending an accepted transaction.
@@ -259,7 +264,15 @@ impl VoxelEditHistory {
         &self,
         cursor_index: usize,
     ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
-        self.revert_receipt_for_cursor(cursor_index, false)
+        self.preview_revert_to_cursor_with_options(cursor_index, self.default_diff_options())
+    }
+
+    pub fn preview_revert_to_cursor_with_options(
+        &self,
+        cursor_index: usize,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        self.revert_receipt_for_cursor(cursor_index, false, diff_options)
             .map(|(receipt, _)| receipt)
     }
 
@@ -268,7 +281,16 @@ impl VoxelEditHistory {
         &mut self,
         cursor_index: usize,
     ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
-        let (receipt, target_world) = self.revert_receipt_for_cursor(cursor_index, true)?;
+        self.apply_revert_to_cursor_with_options(cursor_index, self.default_diff_options())
+    }
+
+    pub fn apply_revert_to_cursor_with_options(
+        &mut self,
+        cursor_index: usize,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        let (receipt, target_world) =
+            self.revert_receipt_for_cursor(cursor_index, true, diff_options)?;
         self.current_world = target_world;
         self.cursor_index = cursor_index;
         Ok(receipt)
@@ -283,6 +305,15 @@ impl VoxelEditHistory {
         self.preview_revert_to_cursor(cursor_index)
     }
 
+    pub fn preview_revert_to_transaction_with_options(
+        &self,
+        transaction_id: u64,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        let cursor_index = self.cursor_index_after_transaction(transaction_id)?;
+        self.preview_revert_to_cursor_with_options(cursor_index, diff_options)
+    }
+
     /// Apply a revert to the cursor immediately after `transaction_id`.
     pub fn apply_revert_to_transaction(
         &mut self,
@@ -290,6 +321,15 @@ impl VoxelEditHistory {
     ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
         let cursor_index = self.cursor_index_after_transaction(transaction_id)?;
         self.apply_revert_to_cursor(cursor_index)
+    }
+
+    pub fn apply_revert_to_transaction_with_options(
+        &mut self,
+        transaction_id: u64,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        let cursor_index = self.cursor_index_after_transaction(transaction_id)?;
+        self.apply_revert_to_cursor_with_options(cursor_index, diff_options)
     }
 
     /// Undo one accepted transaction.
@@ -300,6 +340,16 @@ impl VoxelEditHistory {
         self.apply_revert_to_cursor(self.cursor_index - 1)
     }
 
+    pub fn undo_one_with_options(
+        &mut self,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        if self.cursor_index == 0 {
+            return Err(VoxelEditHistoryRejection::EmptyUndoStack);
+        }
+        self.apply_revert_to_cursor_with_options(self.cursor_index - 1, diff_options)
+    }
+
     /// Redo one retained transaction from the redo tail.
     pub fn redo_one(&mut self) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
         if self.cursor_index >= self.entries.len() {
@@ -308,23 +358,35 @@ impl VoxelEditHistory {
         self.apply_revert_to_cursor(self.cursor_index + 1)
     }
 
+    pub fn redo_one_with_options(
+        &mut self,
+        diff_options: VoxelEditHistoryDiffOptions,
+    ) -> Result<VoxelEditHistoryRevertReceipt, VoxelEditHistoryRejection> {
+        if self.cursor_index >= self.entries.len() {
+            return Err(VoxelEditHistoryRejection::EmptyRedoStack);
+        }
+        self.apply_revert_to_cursor_with_options(self.cursor_index + 1, diff_options)
+    }
+
     fn revert_receipt_for_cursor(
         &self,
         cursor_index: usize,
         apply: bool,
+        diff_options: VoxelEditHistoryDiffOptions,
     ) -> Result<(VoxelEditHistoryRevertReceipt, VoxelWorld), VoxelEditHistoryRejection> {
         let cursor_before = self.cursor();
         let before_hash = cursor_before.world_hash;
         let target_world = self.replay_to_cursor(cursor_index)?;
         let target_hash = voxel_world_hash(&target_world);
         let cursor_after = self.cursor_at(cursor_index, target_hash);
-        let changed_transaction_count = cursor_before.index.abs_diff(cursor_index);
-        let diff = VoxelEditHistoryDiffSummary {
+        let diff = self.diff_summary_for_target(
+            &target_world,
+            cursor_before.index,
+            cursor_index,
             before_hash,
             target_hash,
-            changed_transaction_count,
-            replayed_transaction_count: cursor_index,
-        };
+            diff_options,
+        );
         let receipt = VoxelEditHistoryRevertReceipt {
             applied: apply,
             preview: !apply,
@@ -334,6 +396,48 @@ impl VoxelEditHistory {
             replay_hash: replay_hash(cursor_index, target_hash, &self.entries),
         };
         Ok((receipt, target_world))
+    }
+
+    fn diff_summary_for_target(
+        &self,
+        target_world: &VoxelWorld,
+        before_cursor_index: usize,
+        target_cursor_index: usize,
+        before_hash: u64,
+        target_hash: u64,
+        options: VoxelEditHistoryDiffOptions,
+    ) -> VoxelEditHistoryDiffSummary {
+        let changed_transaction_count = before_cursor_index.abs_diff(target_cursor_index);
+        let (start, end) = if before_cursor_index <= target_cursor_index {
+            (before_cursor_index, target_cursor_index)
+        } else {
+            (target_cursor_index, before_cursor_index)
+        };
+        let included_transaction_ids = self.entries[start..end]
+            .iter()
+            .map(|entry| entry.transaction_id)
+            .collect();
+        let mut summary = summarize_world_diff(
+            &self.current_world,
+            target_world,
+            VoxelEditHistoryDiffContext {
+                current_hash: self.current_world_hash(),
+                before_hash,
+                target_hash,
+                included_transaction_ids,
+                changed_transaction_count,
+                replayed_transaction_count: target_cursor_index,
+                options,
+            },
+        );
+        if before_cursor_index == target_cursor_index {
+            summary.projected_hash = Some(before_hash);
+        }
+        summary
+    }
+
+    fn default_diff_options(&self) -> VoxelEditHistoryDiffOptions {
+        VoxelEditHistoryDiffOptions::new(self.limits.max_diff_voxels, false)
     }
 
     fn replay_to_cursor(
@@ -997,6 +1101,15 @@ mod tests {
         }
     }
 
+    fn fill_command(min_x: i64, max_x: i64, material: u16) -> VoxelCommand {
+        VoxelCommand::FillRegion {
+            grid: GridId::new(0),
+            min: VoxelCoord::new(min_x, 0, 0),
+            max: VoxelCoord::new(max_x, 1, 1),
+            value: VoxelValue::solid_raw(material),
+        }
+    }
+
     fn applied_receipt(
         world: &mut VoxelWorld,
         command: VoxelCommand,
@@ -1115,6 +1228,116 @@ mod tests {
         assert_eq!(redo.cursor_after.index, 2);
         assert_eq!(history.cursor().redo_depth, 0);
         assert_eq!(history.current_world_hash(), after_two);
+    }
+
+    #[test]
+    fn revert_diff_reports_material_deltas_bounds_and_transactions() {
+        let mut external = resident_world();
+        let mut history = VoxelEditHistory::new(resident_world());
+        history
+            .append_accepted(applied_receipt(&mut external, set_command(1, 1)))
+            .unwrap();
+        history
+            .append_accepted(applied_receipt(&mut external, set_command(1, 2)))
+            .unwrap();
+
+        let preview = history
+            .preview_revert_to_cursor_with_options(1, VoxelEditHistoryDiffOptions::new(8, true))
+            .unwrap();
+        let bounds = preview.diff.touched_bounds.expect("changed bounds");
+
+        assert_eq!(preview.diff.changed_voxel_count, 1);
+        assert_eq!(preview.diff.changed_transaction_count, 1);
+        assert_eq!(preview.diff.replayed_transaction_count, 1);
+        assert_eq!(preview.diff.included_transaction_ids, vec![2]);
+        assert_eq!(bounds.min, VoxelCoord::new(1, 0, 0));
+        assert_eq!(bounds.max, VoxelCoord::new(1, 0, 0));
+        assert_eq!(
+            preview.diff.material_deltas,
+            vec![
+                VoxelEditHistoryMaterialDelta {
+                    material: Some(1),
+                    before_count: 0,
+                    target_count: 1,
+                    delta: 1,
+                },
+                VoxelEditHistoryMaterialDelta {
+                    material: Some(2),
+                    before_count: 1,
+                    target_count: 0,
+                    delta: -1,
+                },
+            ]
+        );
+        assert!(preview
+            .diff
+            .sample_window_ref
+            .as_ref()
+            .is_some_and(|value| value.contains("min=1,0,0&max=1,0,0")));
+        assert!(!preview.diff.partial);
+        assert!(preview.diff.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn empty_revert_diff_has_no_materials_bounds_or_samples() {
+        let mut external = resident_world();
+        let mut history = VoxelEditHistory::new(resident_world());
+        history
+            .append_accepted(applied_receipt(&mut external, set_command(1, 1)))
+            .unwrap();
+
+        let preview = history
+            .preview_revert_to_cursor_with_options(1, VoxelEditHistoryDiffOptions::new(8, true))
+            .unwrap();
+
+        assert_eq!(preview.diff.changed_voxel_count, 0);
+        assert_eq!(preview.diff.changed_transaction_count, 0);
+        assert_eq!(preview.diff.included_transaction_ids, Vec::<u64>::new());
+        assert_eq!(preview.diff.touched_bounds, None);
+        assert!(preview.diff.material_deltas.is_empty());
+        assert_eq!(preview.diff.sample_window_ref, None);
+        assert!(!preview.diff.partial);
+    }
+
+    #[test]
+    fn large_revert_diff_returns_partial_summary_at_changed_voxel_quota() {
+        let mut external = resident_world();
+        let mut history = VoxelEditHistory::new(resident_world());
+        history
+            .append_accepted(applied_receipt(&mut external, fill_command(0, 6, 1)))
+            .unwrap();
+
+        let preview = history
+            .preview_revert_to_cursor_with_options(0, VoxelEditHistoryDiffOptions::new(3, false))
+            .unwrap();
+
+        assert!(preview.diff.partial);
+        assert_eq!(preview.diff.changed_voxel_count, 4);
+        assert_eq!(
+            preview.diff.diagnostics,
+            vec![VoxelEditHistoryDiffDiagnostic::DiffTruncated {
+                limit: 3,
+                observed: 4,
+            }]
+        );
+        assert_eq!(
+            preview.diff.material_deltas,
+            vec![
+                VoxelEditHistoryMaterialDelta {
+                    material: None,
+                    before_count: 0,
+                    target_count: 3,
+                    delta: 3,
+                },
+                VoxelEditHistoryMaterialDelta {
+                    material: Some(1),
+                    before_count: 3,
+                    target_count: 0,
+                    delta: -3,
+                },
+            ]
+        );
+        assert_eq!(preview.diff.sample_window_ref, None);
     }
 
     #[test]

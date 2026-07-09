@@ -97,6 +97,16 @@ summaries:
 Large diffs must fail closed or summarize under explicit quotas. They should not
 return unbounded cell arrays to UI packages.
 
+Studio should display diff previews as summaries, not as a local copy of the
+changed cells. When Rust marks a summary `partial`, the changed voxel count and
+material deltas are quota-bounded evidence rather than a complete diff; the UI
+should label the preview as partial, show the typed diagnostic, and avoid
+offering per-cell actions that require cells Rust did not return. When a
+`sample_window_ref` is present, Studio may issue the bounded voxel window query
+for that window and render those samples as inspection evidence. It must not
+expand the ref into an unbounded cell dump or infer hidden changed cells from
+renderer state.
+
 ## Bulk Edits
 
 Bulk transactions from `rule_voxel_edit::execute_transaction` should append one
