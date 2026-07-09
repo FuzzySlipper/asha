@@ -7,13 +7,19 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { renderHandle, entityId, type RenderDiff, type RenderNode } from '@asha/contracts';
+import { renderHandle, entityId, type AnimatedMeshAsset, type RenderDiff, type RenderNode } from '@asha/contracts';
 import {
   RuntimeBridgeError,
   type RuntimeBufferHandle,
   type RuntimeBufferView,
 } from '@asha/runtime-bridge';
-import { RenderApplyError, ThreeRenderer, type MeshBufferSource } from './backend.js';
+import {
+  MapAnimatedMeshAssetSource,
+  RenderApplyError,
+  ThreeRenderer,
+  loadAnimatedMeshGlbResource,
+  type MeshBufferSource,
+} from './backend.js';
 
 function cubeNode(label = 'cube'): RenderNode {
   return {
@@ -829,23 +835,109 @@ void test('instance of an undefined asset, and redefine while in use, are classi
   assert.throws(() => r.applyDiff({ op: 'defineStaticMesh', asset: crateAsset() }), RenderApplyError);
 });
 
-void test('animated mesh ops fail closed until the renderer adapter implements playback', () => {
-  const r = new ThreeRenderer();
+function animatedMeshAsset(over: Partial<AnimatedMeshAsset> = {}): AnimatedMeshAsset {
+  return {
+    asset: 'mesh-animation/kenney-retro-character-medium',
+    runtimeFormat: 'glb',
+    contentHash: 'sha256:c71255a41c0373f0d2ef52593369d5fd9d2f6220ae548aff8cd6bf5edb403674',
+    clips: [
+      { id: 'idle', name: 'Idle', durationSeconds: 1.04166662693024 },
+      { id: 'run', name: 'Run', durationSeconds: 0.666666686534882 },
+    ],
+    defaultClip: 'idle',
+    materialSlots: [],
+    bounds: { min: [-0.5, 0, -0.5], max: [0.5, 1.8, 0.5] },
+    ...over,
+  };
+}
+
+function testAnimatedMeshSource(asset = animatedMeshAsset()): MapAnimatedMeshAssetSource {
+  const scene = new THREE.Group();
+  scene.name = 'animated-fixture-root';
+  const clips = asset.clips.map((clip) => new THREE.AnimationClip(clip.id, clip.durationSeconds ?? 1, []));
+  return new MapAnimatedMeshAssetSource([{ asset: asset.asset, scene, clips }]);
+}
+
+void test('loads the committed animated GLB fixture and exposes named clips', async () => {
+  const testGlobal = globalThis as unknown as { self: unknown };
+  const priorSelf = testGlobal.self;
+  testGlobal.self = globalThis;
+  const priorWarn = console.warn;
+  const priorError = console.error;
+  console.warn = () => undefined;
+  console.error = () => undefined;
+  try {
+    const bytes = readFileSync(
+      resolve(import.meta.dirname, '../../../../harness/fixtures/mesh-animation/kenney-retro-character-medium.glb'),
+    );
+    const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const resource = await loadAnimatedMeshGlbResource('mesh-animation/kenney-retro-character-medium', data);
+    assert.deepEqual(
+      resource.clips.map((clip) => clip.name).sort(),
+      ['idle', 'jump', 'run'],
+    );
+  } finally {
+    console.warn = priorWarn;
+    console.error = priorError;
+    testGlobal.self = priorSelf;
+  }
+});
+
+void test('animated mesh playback is command-selected and advances through renderer ticks only', () => {
+  const asset = animatedMeshAsset();
+  const r = new ThreeRenderer({ animatedMeshSource: testAnimatedMeshSource(asset) });
+  const handle = renderHandle(4100);
+  r.applyDiff({ op: 'defineAnimatedMesh', asset });
+  r.applyDiff({
+    op: 'createAnimatedMeshInstance',
+    handle,
+    parent: null,
+    instance: {
+      asset: asset.asset,
+      transform: { translation: [0, 0, -2], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      materialOverrides: [],
+      playback: null,
+      metadata: { source: null, tags: [], label: 'animated character' },
+    },
+  });
+
+  assert.equal(r.animatedMeshPlayback(handle)?.currentClip, null);
+  assert.equal(r.animatedMeshPlayback(handle)?.commandSelected, false);
+
+  r.applyDiff({
+    op: 'setAnimatedMeshPlayback',
+    handle,
+    playback: { action: 'play', clip: 'run', loop: 'repeat', speed: 1, weight: 1, restart: true, fadeSeconds: null },
+  });
+  const selected = r.animatedMeshPlayback(handle);
+  assert.equal(selected?.currentClip, 'run');
+  assert.equal(selected?.commandSelected, true);
+  assert.equal(selected?.loop, 'repeat');
+
+  r.advanceAnimation(0.25);
+  const advanced = r.animatedMeshPlayback(handle);
+  assert.equal(advanced?.currentClip, 'run');
+  assert.equal(advanced?.running, true);
+  assert.ok((advanced?.mixerTimeSeconds ?? 0) > 0);
+  assert.ok((advanced?.actionTimeSeconds ?? 0) > 0);
+});
+
+void test('animated mesh adapter fails closed for missing resources and clips', () => {
+  const asset = animatedMeshAsset();
+  const missingResource = new ThreeRenderer();
   assert.throws(
-    () =>
-      r.applyDiff({
-        op: 'defineAnimatedMesh',
-        asset: {
-          asset: 'mesh-animation/kenney-retro-character-medium',
-          runtimeFormat: 'glb',
-          contentHash: 'sha256-fixture-pending',
-          clips: [{ id: 'run', name: 'Run', durationSeconds: 0.8 }],
-          defaultClip: null,
-          materialSlots: [],
-          bounds: { min: [-0.5, 0, -0.5], max: [0.5, 1.8, 0.5] },
-        },
-      }),
-    /animated mesh playback is not implemented/,
+    () => missingResource.applyDiff({ op: 'defineAnimatedMesh', asset }),
+    /missing animated mesh resource/,
+  );
+
+  const wrongClips = new ThreeRenderer({
+    animatedMeshSource: new MapAnimatedMeshAssetSource([
+      { asset: asset.asset, scene: new THREE.Group(), clips: [new THREE.AnimationClip('idle', 1, [])] },
+    ]),
+  });
+  assert.throws(
+    () => wrongClips.applyDiff({ op: 'defineAnimatedMesh', asset }),
+    /does not contain clip run/,
   );
 });
 

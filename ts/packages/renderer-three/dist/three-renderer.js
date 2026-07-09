@@ -1,6 +1,7 @@
 // Retained Three.js scene projector for ASHA render diffs.
 import * as THREE from 'three';
 import { decodeRenderFrameDiff, RuntimeBridgeError, } from '@asha/runtime-bridge';
+import { AnimatedMeshApplyError, AnimatedMeshRegistry, } from './animated-mesh.js';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export class RenderApplyError extends Error {
     constructor(message) {
@@ -41,8 +42,10 @@ export class ThreeRenderer {
      * handle sources fail closed (the inline fixture path still works for goldens).
      */
     #meshBufferSource;
+    #animatedMeshes;
     constructor(options = {}) {
         this.#meshBufferSource = options.meshBufferSource;
+        this.#animatedMeshes = new AnimatedMeshRegistry(options.animatedMeshSource);
         this.#sceneGroup.name = 'scene';
         this.#debugGroup.name = 'debug';
         this.scene.add(this.#sceneGroup, this.#debugGroup);
@@ -88,9 +91,14 @@ export class ThreeRenderer {
                 this.#defineStaticMesh(diff.asset);
                 break;
             case 'defineAnimatedMesh':
+                this.#defineAnimatedMesh(diff);
+                break;
             case 'createAnimatedMeshInstance':
+                this.#createAnimatedMeshInstance(diff);
+                break;
             case 'setAnimatedMeshPlayback':
-                throw new RenderApplyError(`${diff.op}: animated mesh playback is not implemented by renderer-three yet`);
+                this.#setAnimatedMeshPlayback(diff);
+                break;
             case 'createStaticMeshInstance':
                 this.#createStaticMeshInstance(diff);
                 break;
@@ -131,6 +139,24 @@ export class ThreeRenderer {
     /** The Three.js object for a handle, for inspection/tests. */
     objectFor(handle) {
         return this.#handles.get(handle)?.object;
+    }
+    /** Advance projection-only animation mixers by an explicit renderer frame delta. */
+    advanceAnimation(deltaSeconds) {
+        try {
+            this.#animatedMeshes.advance(deltaSeconds);
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+        for (const [handle, entry] of this.#handles.entries()) {
+            if (entry.kind === 'animatedMesh') {
+                this.#syncAnimatedMeshPlayback(handle, entry);
+            }
+        }
+    }
+    /** Projection/debug readback for animated mesh playback; never authority. */
+    animatedMeshPlayback(handle) {
+        return this.#animatedMeshes.playback(handle);
     }
     /**
      * A deterministic textual snapshot of the rendered scene — one line per live
@@ -188,6 +214,10 @@ export class ThreeRenderer {
             // its last instance is gone (reference-safe — never while another shares it).
             disposeInstanceOverrides(entry.object);
             this.#releaseStaticMesh(entry.asset);
+        }
+        else if (entry.kind === 'animatedMesh') {
+            this.#animatedMeshes.release(diff.handle);
+            disposeObjectRecursive(entry.object);
         }
         else {
             disposeObject(entry.object);
@@ -281,6 +311,52 @@ export class ThreeRenderer {
             def.materials.forEach((m) => m.dispose());
             this.#staticMeshes.delete(asset);
         }
+    }
+    // ── Animated mesh assets + named playback (projection-only) ────────────────
+    #defineAnimatedMesh(diff) {
+        try {
+            this.#animatedMeshes.define(diff.asset);
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+    }
+    #createAnimatedMeshInstance(diff) {
+        if (this.#handles.has(diff.handle)) {
+            throw new RenderApplyError(`createAnimatedMeshInstance: handle ${diff.handle} already exists`);
+        }
+        let record;
+        try {
+            record = this.#animatedMeshes.create(diff.handle, diff.instance);
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+        applyTransform(record.object, diff.instance.transform);
+        applyMetadata(record.object, diff.instance.metadata);
+        const parent = diff.parent === null ? this.#sceneGroup : this.#require(diff.parent, 'createAnimatedMeshInstance.parent').object;
+        parent.add(record.object);
+        this.#handles.set(diff.handle, {
+            object: record.object,
+            kind: 'animatedMesh',
+            shape: 'quad',
+            asset: diff.instance.asset,
+            ownsGeometry: true,
+        });
+        this.#syncAnimatedMeshPlayback(diff.handle, this.#require(diff.handle, 'createAnimatedMeshInstance'));
+    }
+    #setAnimatedMeshPlayback(diff) {
+        const entry = this.#require(diff.handle, 'setAnimatedMeshPlayback');
+        try {
+            this.#animatedMeshes.setPlayback(diff.handle, diff.playback);
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+        this.#syncAnimatedMeshPlayback(diff.handle, entry);
+    }
+    #syncAnimatedMeshPlayback(handle, entry) {
+        entry.object.userData['animatedMeshPlayback'] = this.#animatedMeshes.playback(handle);
     }
     /** How many live instances reference a defined static mesh asset (0 if undefined). */
     instanceCountFor(asset) {
@@ -577,6 +653,20 @@ function snapshotLine(handle, entry) {
             `label ${JSON.stringify(o.name)}`,
         ].join('  ');
     }
+    if (entry.kind === 'animatedMesh') {
+        const playback = o.userData['animatedMeshPlayback'] ?? null;
+        return [
+            head,
+            `kind animatedMesh`,
+            `asset ${entry.asset}`,
+            `clip ${playback?.currentClip ?? '-'}`,
+            `time ${fmtNum(playback?.actionTimeSeconds ?? 0)}`,
+            `pos ${fmtVec(o.position)}`,
+            `scale ${fmtVec(o.scale)}`,
+            `visible ${o.visible}`,
+            `label ${JSON.stringify(o.name)}`,
+        ].join('  ');
+    }
     return [
         head,
         `shape ${entry.shape}`,
@@ -841,5 +931,14 @@ function disposeObject(object) {
     else {
         disposable.material?.dispose();
     }
+}
+function disposeObjectRecursive(object) {
+    object.traverse((child) => disposeObject(child));
+}
+function animatedMeshError(cause) {
+    if (cause instanceof AnimatedMeshApplyError) {
+        return new RenderApplyError(cause.message);
+    }
+    throw cause;
 }
 //# sourceMappingURL=three-renderer.js.map

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { type RuntimeBufferHandle, type RuntimeBufferView } from '@asha/runtime-bridge';
 import type { MeshPickHit, RenderDiff, RenderFrameDiff, RenderHandle, RenderMaterialDescriptor, SpriteAtlasDescriptor, SpritePickHit, TextureDescriptor } from '@asha/contracts';
+import { type AnimatedMeshAssetSource, type AnimatedMeshPlaybackReadout } from './animated-mesh.js';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export declare class RenderApplyError extends Error {
     constructor(message: string);
@@ -33,6 +34,7 @@ export declare class ThreeRenderer {
     readonly scene: THREE.Scene<THREE.Object3DEventMap>;
     constructor(options?: {
         meshBufferSource?: MeshBufferSource;
+        animatedMeshSource?: AnimatedMeshAssetSource;
     });
     /** Apply a whole frame of diffs in order. */
     applyFrame(frame: RenderFrameDiff): void;
@@ -52,6 +54,10 @@ export declare class ThreeRenderer {
     get handleCount(): number;
     /** The Three.js object for a handle, for inspection/tests. */
     objectFor(handle: RenderHandle): THREE.Object3D | undefined;
+    /** Advance projection-only animation mixers by an explicit renderer frame delta. */
+    advanceAnimation(deltaSeconds: number): void;
+    /** Projection/debug readback for animated mesh playback; never authority. */
+    animatedMeshPlayback(handle: RenderHandle): AnimatedMeshPlaybackReadout | undefined;
     /**
      * A deterministic textual snapshot of the rendered scene — one line per live
      * handle (sorted), capturing layer, shape, transform, visibility, and colour.
