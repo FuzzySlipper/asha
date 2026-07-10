@@ -743,7 +743,7 @@ impl RuntimeBridge for EngineBridge {
                 )],
             ));
         }
-        let sparse_runs = Self::sparse_runs_for_conversion_output(output);
+        let sparse_runs = Self::sparse_runs_for_resident_voxels(&info.resident_voxels);
         if request.max_sparse_runs == 0 || sparse_runs.len() as u64 > request.max_sparse_runs {
             let message = format!(
                 "export requires {} sparse run(s), exceeding request limit {}",
@@ -759,16 +759,17 @@ impl RuntimeBridge for EngineBridge {
                 )],
             ));
         }
-        let material_palette = match Self::material_palette_for_conversion_export(planned, output) {
-            Ok(palette) => palette,
-            Err(diagnostics) => {
-                return Ok(Self::rejected_voxel_volume_asset_export(
-                    request,
-                    diagnostics,
-                ));
-            }
-        };
-        let Some(bounds) = output.bounds else {
+        let material_palette =
+            match Self::material_palette_for_model_export(planned, &info.resident_voxels) {
+                Ok(palette) => palette,
+                Err(diagnostics) => {
+                    return Ok(Self::rejected_voxel_volume_asset_export(
+                        request,
+                        diagnostics,
+                    ));
+                }
+            };
+        let Some(bounds) = info.bounds else {
             return Ok(Self::rejected_voxel_volume_asset_export(
                 request,
                 vec![Self::voxel_asset_diagnostic(

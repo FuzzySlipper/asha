@@ -90,7 +90,7 @@ impl EngineBridge {
             return Ok(result);
         }
 
-        let mut next_world = current_world;
+        let mut next_world = current_world.clone();
         let transaction = VoxelEditTransaction::apply(&accepted_commands);
         let receipt = execute_transaction(&mut next_world, &self.materials, &transaction);
         if !receipt.applied
@@ -115,6 +115,7 @@ impl EngineBridge {
             ));
         }
 
+        self.remember_active_voxel_model_edits(&accepted_commands, &current_world, &next_world);
         self.voxel = Some(next_world);
         self.voxel_edit_history = Some(next_history);
         Ok(result)

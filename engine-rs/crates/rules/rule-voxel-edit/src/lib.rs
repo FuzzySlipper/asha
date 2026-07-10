@@ -152,7 +152,7 @@ pub fn validate(
     match *cmd {
         VoxelCommand::SetVoxel { grid, coord, value } => {
             check_material(materials, value)?;
-            require_resident(world, spec.voxel_to_chunk(coord))?;
+            require_resident_or_adjacent(world, spec.voxel_to_chunk(coord))?;
             Ok(vec![VoxelEditEvent::VoxelSet { grid, coord, value }])
         }
         VoxelCommand::FillRegion {
@@ -516,7 +516,16 @@ fn command_touched_voxels(command: &VoxelCommand, spec: VoxelGridSpec) -> u64 {
 }
 
 fn command_preflight_touched_voxels(command: &VoxelCommand, spec: VoxelGridSpec) -> u64 {
-    command_touched_voxels_without_grid(command).unwrap_or(spec.chunk_dims().volume())
+    match command {
+        // A set may create one adjacent empty chunk. Charge its full allocation
+        // before cloning or mutation even when the target is already resident.
+        VoxelCommand::SetVoxel { .. } | VoxelCommand::GenerateChunk { .. } => {
+            spec.chunk_dims().volume()
+        }
+        VoxelCommand::FillRegion { .. } => {
+            command_touched_voxels_without_grid(command).unwrap_or(u64::MAX)
+        }
+    }
 }
 
 /// Expanded touched-voxel cost that does not require an active grid. Generated
@@ -752,6 +761,28 @@ fn require_resident(world: &VoxelWorld, chunk: ChunkCoord) -> Result<(), VoxelEd
     }
 }
 
+fn require_resident_or_adjacent(
+    world: &VoxelWorld,
+    chunk: ChunkCoord,
+) -> Result<(), VoxelEditRejection> {
+    if world.state(chunk) == ChunkState::Resident || has_resident_face_neighbor(world, chunk) {
+        Ok(())
+    } else {
+        Err(VoxelEditRejection::ChunkNotResident { chunk })
+    }
+}
+
+fn has_resident_face_neighbor(world: &VoxelWorld, chunk: ChunkCoord) -> bool {
+    world.resident_chunks().any(|(resident, _)| {
+        let distance = resident
+            .x
+            .abs_diff(chunk.x)
+            .saturating_add(resident.y.abs_diff(chunk.y))
+            .saturating_add(resident.z.abs_diff(chunk.z));
+        distance == 1
+    })
+}
+
 /// The inclusive chunk span a voxel region overlaps, as a half-open [`ChunkRegion`].
 fn chunk_span(spec: &VoxelGridSpec, region: VoxelRegion) -> ChunkRegion {
     let min_chunk = spec.voxel_to_chunk(region.min);
@@ -773,6 +804,10 @@ pub fn apply(world: &mut VoxelWorld, event: &VoxelEditEvent) -> Result<(), Voxel
     match *event {
         VoxelEditEvent::VoxelSet { coord, value, .. } => {
             let (chunk, local) = spec.voxel_to_chunk_local(coord);
+            if world.state(chunk) != ChunkState::Resident {
+                require_resident_or_adjacent(world, chunk)?;
+                world.insert(chunk, VoxelChunk::from_spec(&spec));
+            }
             let c = world
                 .get_mut(chunk)
                 .ok_or(VoxelEditRejection::ChunkNotResident { chunk })?;
@@ -925,6 +960,69 @@ mod tests {
             Err(VoxelEditRejection::ChunkNotResident {
                 chunk: ChunkCoord::new(0, 0, 0)
             }),
+        );
+    }
+
+    #[test]
+    fn set_creates_one_face_adjacent_empty_chunk() {
+        let mut world = resident_world();
+        let coord = VoxelCoord::new(8, 0, 0);
+        let cmd = VoxelCommand::SetVoxel {
+            grid: GridId::new(0),
+            coord,
+            value: VoxelValue::solid_raw(2),
+        };
+
+        let events = validate(&cmd, &world, &materials()).unwrap();
+        apply_all(&mut world, &events).unwrap();
+
+        let created = world.get(ChunkCoord::new(1, 0, 0)).unwrap();
+        assert_eq!(
+            created.get(LocalVoxelCoord::new(0, 0, 0)),
+            Some(VoxelValue::solid_raw(2))
+        );
+        assert_eq!(
+            created.get(LocalVoxelCoord::new(1, 0, 0)),
+            Some(VoxelValue::EMPTY),
+            "adjacent residency starts empty outside the authored cell"
+        );
+    }
+
+    #[test]
+    fn sequential_sets_can_expand_a_bounded_adjacent_chain() {
+        let mut world = resident_world();
+        let commands = [8, 16].map(|x| VoxelCommand::SetVoxel {
+            grid: GridId::new(0),
+            coord: VoxelCoord::new(x, 0, 0),
+            value: VoxelValue::solid_raw(1),
+        });
+
+        let receipt = execute_transaction(
+            &mut world,
+            &materials(),
+            &VoxelEditTransaction::apply(&commands),
+        );
+
+        assert!(receipt.applied);
+        assert_eq!(receipt.accepted, 2);
+        assert!(world.get(ChunkCoord::new(1, 0, 0)).is_some());
+        assert!(world.get(ChunkCoord::new(2, 0, 0)).is_some());
+    }
+
+    #[test]
+    fn set_cannot_skip_over_a_non_resident_chunk() {
+        let world = resident_world();
+        let cmd = VoxelCommand::SetVoxel {
+            grid: GridId::new(0),
+            coord: VoxelCoord::new(16, 0, 0),
+            value: VoxelValue::solid_raw(1),
+        };
+
+        assert_eq!(
+            validate(&cmd, &world, &materials()),
+            Err(VoxelEditRejection::ChunkNotResident {
+                chunk: ChunkCoord::new(2, 0, 0)
+            })
         );
     }
 
@@ -1246,12 +1344,12 @@ mod tests {
         let exact = preflight_transaction(
             &exact_commands,
             spec(),
-            VoxelEditTransactionLimits::new(2, 2, 2),
+            VoxelEditTransactionLimits::new(2, 2, 1_024),
         )
         .expect("exact command/event/touched limits pass");
         assert_eq!(exact.command_count, 2);
         assert_eq!(exact.event_upper_bound, 2);
-        assert_eq!(exact.touched_voxels, 2);
+        assert_eq!(exact.touched_voxels, 1_024);
 
         assert!(matches!(
             preflight_transaction(

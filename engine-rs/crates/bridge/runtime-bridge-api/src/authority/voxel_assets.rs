@@ -292,7 +292,7 @@ impl EngineBridge {
         );
         let material_counts = Self::resident_voxel_material_counts(&resident_voxels);
         let bounds = Self::resident_voxel_bounds(&resident_voxels);
-        let voxel_count = resident_voxels.len() as u64;
+        let voxel_count = material_counts.iter().map(|count| count.voxel_count).sum();
         let footprint_hash = Self::voxel_model_footprint_hash(&resident_voxels, &prior_voxels);
         let session_hash = format!(
             "fnv1a64:{}",
@@ -331,6 +331,104 @@ impl EngineBridge {
                 resident_voxels,
                 prior_voxels,
             },
+        );
+    }
+
+    pub(super) fn remember_active_voxel_model_edits(
+        &mut self,
+        commands: &[VoxelCommand],
+        prior_world: &VoxelWorld,
+        current_world: &VoxelWorld,
+    ) {
+        let Some(target) = self
+            .voxel_conversion_plan
+            .as_ref()
+            .map(|planned| planned.plan.target.clone())
+        else {
+            return;
+        };
+        let key = Self::voxel_model_key(target.grid, &target.volume_asset_id);
+        let Some(info) = self.voxel_model_infos.get_mut(&key) else {
+            return;
+        };
+
+        for command in commands {
+            if u64::from(command.grid().raw()) != info.grid {
+                continue;
+            }
+            match *command {
+                VoxelCommand::SetVoxel { coord, .. } => {
+                    Self::remember_voxel_model_coord(info, coord, prior_world, current_world);
+                }
+                VoxelCommand::FillRegion { min, max, .. } => {
+                    for z in min.z..max.z {
+                        for y in min.y..max.y {
+                            for x in min.x..max.x {
+                                Self::remember_voxel_model_coord(
+                                    info,
+                                    VoxelCoord::new(x, y, z),
+                                    prior_world,
+                                    current_world,
+                                );
+                            }
+                        }
+                    }
+                }
+                VoxelCommand::GenerateChunk { chunk, .. } => {
+                    let Some(current_chunk) = current_world.get(chunk) else {
+                        continue;
+                    };
+                    for (local, _) in current_chunk.iter() {
+                        let coord = current_world.grid().chunk_local_to_voxel(chunk, local);
+                        Self::remember_voxel_model_coord(info, coord, prior_world, current_world);
+                    }
+                }
+            }
+        }
+        Self::refresh_voxel_model_info(info);
+    }
+
+    fn remember_voxel_model_coord(
+        info: &mut VoxelModelInfoAuthority,
+        coord: VoxelCoord,
+        prior_world: &VoxelWorld,
+        current_world: &VoxelWorld,
+    ) {
+        info.prior_voxels
+            .entry(coord)
+            .or_insert_with(|| Self::voxel_value_at(prior_world, coord));
+        info.resident_voxels
+            .insert(coord, Self::voxel_value_at(current_world, coord));
+    }
+
+    fn refresh_voxel_model_info(info: &mut VoxelModelInfoAuthority) {
+        info.material_counts = Self::resident_voxel_material_counts(&info.resident_voxels);
+        info.bounds = Self::resident_voxel_bounds(&info.resident_voxels);
+        info.voxel_count = info
+            .material_counts
+            .iter()
+            .map(|count| count.voxel_count)
+            .sum();
+        let footprint_hash =
+            Self::voxel_model_footprint_hash(&info.resident_voxels, &info.prior_voxels);
+        info.session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-info|session|{}|{}|{}|{}|{:?}|{}",
+                info.model_id,
+                info.latest_plan_id,
+                info.latest_output_hash,
+                info.voxel_count,
+                info.material_counts,
+                footprint_hash
+            ))
+        );
+        info.replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-model-info|replay|{}|{}|{}|{:?}",
+                info.latest_plan_id, info.latest_output_hash, info.session_hash, info.evidence
+            ))
         );
     }
 
@@ -549,7 +647,9 @@ impl EngineBridge {
     pub(super) fn resident_voxel_bounds(
         resident_voxels: &BTreeMap<VoxelCoord, VoxelValue>,
     ) -> Option<protocol_voxel_conversion::VoxelConversionBounds> {
-        let mut coords = resident_voxels.keys();
+        let mut coords = resident_voxels
+            .iter()
+            .filter_map(|(coord, value)| value.is_solid().then_some(coord));
         let first = *coords.next()?;
         let mut min = first;
         let mut max = first;
@@ -742,42 +842,34 @@ impl EngineBridge {
         }
     }
 
-    pub(super) fn sparse_runs_for_conversion_output(
-        output: &svc_voxel_conversion::ConversionOutput,
+    pub(super) fn sparse_runs_for_resident_voxels(
+        resident_voxels: &BTreeMap<VoxelCoord, VoxelValue>,
     ) -> Vec<VoxelAssetSparseRun> {
-        let mut voxels = output.voxels.clone();
-        voxels.sort_by_key(|voxel| {
-            (
-                voxel.coord.z,
-                voxel.coord.y,
-                voxel.coord.x,
-                voxel
-                    .value
-                    .material()
-                    .expect("converted voxels are solid")
-                    .raw(),
-            )
-        });
+        let mut voxels = resident_voxels
+            .iter()
+            .filter_map(|(coord, value)| value.material().map(|material| (*coord, material)))
+            .collect::<Vec<_>>();
+        voxels.sort_by_key(|(coord, material)| (coord.z, coord.y, coord.x, material.raw()));
         let mut runs: Vec<VoxelAssetSparseRun> = Vec::new();
-        for voxel in voxels {
-            let material = voxel
-                .value
-                .material()
-                .expect("converted voxels are solid")
-                .raw();
+        for (coord, material) in voxels {
+            let material = material.raw();
             if let Some(last) = runs.last_mut() {
                 let next_x = last.start.x + i64::from(last.length);
-                if last.start.y == voxel.coord.y
-                    && last.start.z == voxel.coord.z
+                if last.start.y == coord.y
+                    && last.start.z == coord.z
                     && last.material == material
-                    && next_x == voxel.coord.x
+                    && next_x == coord.x
                 {
                     last.length += 1;
                     continue;
                 }
             }
             runs.push(VoxelAssetSparseRun {
-                start: Self::voxel_asset_coord(voxel.coord),
+                start: VoxelAssetCoord {
+                    x: coord.x,
+                    y: coord.y,
+                    z: coord.z,
+                },
                 length: 1,
                 material,
             });
@@ -785,13 +877,13 @@ impl EngineBridge {
         runs
     }
 
-    pub(super) fn material_palette_for_conversion_export(
+    pub(super) fn material_palette_for_model_export(
         planned: &PlannedConversion,
-        output: &svc_voxel_conversion::ConversionOutput,
+        resident_voxels: &BTreeMap<VoxelCoord, VoxelValue>,
     ) -> Result<Vec<VoxelAssetMaterialBinding>, Vec<VoxelAssetDiagnostic>> {
         let mut used_materials = BTreeSet::new();
-        for voxel in &output.voxels {
-            if let Some(material) = voxel.value.material() {
+        for value in resident_voxels.values() {
+            if let Some(material) = value.material() {
                 used_materials.insert(material.raw());
             }
         }
@@ -1041,7 +1133,7 @@ impl EngineBridge {
             Self::cumulative_voxel_model_footprint(existing, latest_resident_voxels, prior_world);
         let material_counts = Self::resident_voxel_material_counts(&resident_voxels);
         let bounds = Self::resident_voxel_bounds(&resident_voxels);
-        let voxel_count = resident_voxels.len() as u64;
+        let voxel_count = material_counts.iter().map(|count| count.voxel_count).sum();
         let footprint_hash = Self::voxel_model_footprint_hash(&resident_voxels, &prior_voxels);
         let session_hash = format!(
             "fnv1a64:{}",
@@ -1216,7 +1308,7 @@ impl EngineBridge {
             self.voxel_annotation_layers
                 .retain(|_, layer| layer.target_voxel_volume_asset_id != *volume_asset_id);
         }
-        let removed_voxel_count = info.resident_voxels.len() as u64;
+        let removed_voxel_count = info.voxel_count;
         let session_hash = format!(
             "fnv1a64:{}",
             Self::fnv1a64(&format!(

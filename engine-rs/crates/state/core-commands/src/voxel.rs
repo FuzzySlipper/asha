@@ -17,7 +17,9 @@ use core_voxel::VoxelValue;
 /// A proposed change to voxel data, awaiting validation by `rule-voxel-edit`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VoxelCommand {
-    /// Set a single voxel cell.
+    /// Set a single voxel cell. Authority may create an empty target chunk when
+    /// it is face-adjacent to resident storage; skipped non-resident chunks are
+    /// rejected so authored expansion stays contiguous and bounded.
     SetVoxel {
         grid: GridId,
         coord: VoxelCoord,
