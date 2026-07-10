@@ -355,6 +355,8 @@ name = "native-bridge"
 version = "0.1.0"
 dependencies = [
  "core-math",
+ "core-space",
+ "core-voxel",
  "napi",
  "napi-build",
  "napi-derive",

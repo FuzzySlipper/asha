@@ -1,5 +1,83 @@
-use super::voxel_rejections::NativeVoxelEditRejection;
+use core_space::{ChunkCoord, VoxelCoord};
+use core_voxel::VoxelMaterialId;
+use runtime_bridge_api::{CommandResult, VoxelEditRejection};
+
+use super::voxel_rejections::{NativeCommandResult, NativeVoxelEditRejection};
 use super::{initialize_engine, submit_commands};
+
+#[test]
+fn every_authoritative_voxel_rejection_converts_to_its_exact_native_dto() {
+    let native = NativeCommandResult::from(CommandResult {
+        accepted: 2,
+        rejected: 4,
+        rejections: vec![
+            VoxelEditRejection::UnknownMaterial(VoxelMaterialId::new(65535)),
+            VoxelEditRejection::EmptyRegion {
+                min: VoxelCoord::new(-3, 5, 8),
+                max: VoxelCoord::new(-1, 5, 13),
+            },
+            VoxelEditRejection::ChunkNotResident {
+                chunk: ChunkCoord::new(21, -34, 55),
+            },
+            VoxelEditRejection::GenerationDivergence {
+                chunk: ChunkCoord::new(-89, 144, -233),
+                expected: 377,
+                actual: 610,
+            },
+        ],
+    });
+
+    assert_eq!(native.accepted, 2);
+    assert_eq!(native.rejected, 4);
+    assert_eq!(native.rejections.len(), 4);
+
+    let NativeVoxelEditRejection::A(unknown_material) = &native.rejections[0] else {
+        panic!("unknown material must be the first native rejection DTO");
+    };
+    assert_eq!(unknown_material.reason, "unknownMaterial");
+    assert_eq!(unknown_material.material, 65535);
+
+    let NativeVoxelEditRejection::B(empty_region) = &native.rejections[1] else {
+        panic!("empty region must be the second native rejection DTO");
+    };
+    assert_eq!(empty_region.reason, "emptyRegion");
+    assert_eq!(
+        [empty_region.min.x, empty_region.min.y, empty_region.min.z],
+        [-3, 5, 8]
+    );
+    assert_eq!(
+        [empty_region.max.x, empty_region.max.y, empty_region.max.z],
+        [-1, 5, 13]
+    );
+
+    let NativeVoxelEditRejection::C(chunk_not_resident) = &native.rejections[2] else {
+        panic!("non-resident chunk must be the third native rejection DTO");
+    };
+    assert_eq!(chunk_not_resident.reason, "chunkNotResident");
+    assert_eq!(
+        [
+            chunk_not_resident.chunk.x,
+            chunk_not_resident.chunk.y,
+            chunk_not_resident.chunk.z,
+        ],
+        [21, -34, 55]
+    );
+
+    let NativeVoxelEditRejection::D(generation_divergence) = &native.rejections[3] else {
+        panic!("generation divergence must be the fourth native rejection DTO");
+    };
+    assert_eq!(generation_divergence.reason, "generationDivergence");
+    assert_eq!(
+        [
+            generation_divergence.chunk.x,
+            generation_divergence.chunk.y,
+            generation_divergence.chunk.z,
+        ],
+        [-89, 144, -233]
+    );
+    assert_eq!(generation_divergence.expected, 377.0);
+    assert_eq!(generation_divergence.actual, 610.0);
+}
 
 #[test]
 fn native_voxel_rejections_use_generated_tagged_shapes() {

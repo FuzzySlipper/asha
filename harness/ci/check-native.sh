@@ -9,6 +9,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CRATE_DIR="$REPO_ROOT/engine-rs/crates/bridge/native-bridge"
 DEST="$REPO_ROOT/ts/packages/native-bridge/dist/native-bridge.node"
 
+echo "==> Running native-bridge Rust tests"
+( cd "$CRATE_DIR" && cargo test --lib )
+
 echo "==> Building native-bridge cdylib (release)"
 ( cd "$CRATE_DIR" && cargo build --release )
 
