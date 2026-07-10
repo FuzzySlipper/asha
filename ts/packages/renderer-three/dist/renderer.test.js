@@ -665,7 +665,7 @@ function testAnimatedMeshSource(asset = animatedMeshAsset()) {
         const tracks = clip.id === 'run' ? [new THREE.VectorKeyframeTrack('.position', [0, duration], [0, 0, 0, 1, 0, 0])] : [];
         return new THREE.AnimationClip(clip.id, duration, tracks);
     });
-    return new MapAnimatedMeshAssetSource([{ asset: asset.asset, scene, clips }]);
+    return new MapAnimatedMeshAssetSource([{ asset: asset.asset, contentHash: asset.contentHash, scene, clips }]);
 }
 void test('loads the committed animated GLB fixture and exposes named clips', async () => {
     const testGlobal = globalThis;
@@ -745,6 +745,8 @@ void test('animated mesh adapter fails closed for missing resources and clips', 
         ]),
     });
     assert.throws(() => wrongClips.applyDiff({ op: 'defineAnimatedMesh', asset }), /does not contain clip run/);
+    const wrongHash = new ThreeRenderer({ animatedMeshSource: testAnimatedMeshSource(asset) });
+    assert.throws(() => wrongHash.applyDiff({ op: 'defineAnimatedMesh', asset: animatedMeshAsset({ contentHash: 'sha256:wrong' }) }), /content hash mismatch/);
 });
 // ── sprites / billboards + picking (render-asset-05/06 / #2328-2329) ──────────
 function sparkSprite(over = {}) {

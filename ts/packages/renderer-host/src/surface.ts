@@ -1,6 +1,6 @@
 // Backend-neutral browser render surface host.
 
-import type { CameraBasis, RenderFrameDiff } from '@asha/contracts';
+import type { CameraBasis, RenderFrameDiff, RenderHandle } from '@asha/contracts';
 import {
   createGeneratedTunnelRoomFrame,
   RenderProjection,
@@ -12,8 +12,17 @@ import {
 import {
   createAshaRendererBrowserSurfaceFrame as createBackendBrowserSurfaceFrame,
   mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface,
+  type AnimatedMeshAssetSource,
 } from '@asha/renderer-three/backend';
 import { BrowserFpsInputCollector } from '@asha/runtime-bridge';
+import {
+  animationPlaybackReadout,
+  loadRendererAnimatedMeshSource,
+  type AshaRendererAnimatedMeshFrameReceipt,
+  type AshaRendererAnimatedMeshPlaybackReadout,
+  type AshaRendererAnimatedMeshResourceManifest,
+  type AshaRendererAnimatedMeshResourceResolver,
+} from './animated-mesh-host.js';
 
 export const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = 'renderer-host.v0';
 
@@ -31,6 +40,11 @@ export interface AshaRendererSurfaceOptions {
   readonly controls?: AshaRendererSurfaceControlsOptions;
   readonly frame?: RenderFrameDiff;
   readonly pixelRatio?: number;
+}
+
+export interface AshaRendererAnimatedMeshSurfaceOptions extends AshaRendererSurfaceOptions {
+  readonly animatedMeshManifest: AshaRendererAnimatedMeshResourceManifest;
+  readonly resolveAnimatedMeshResource?: AshaRendererAnimatedMeshResourceResolver;
 }
 
 export interface AshaRendererSurfaceControlsOptions {
@@ -145,6 +159,8 @@ export interface AshaRendererSurface {
   readonly backend: AshaRendererBackendDiagnostics;
   readonly canvas: HTMLCanvasElement;
   readonly frame: RenderFrameDiff;
+  readonly animatedMeshPlayback: (handle: RenderHandle) => AshaRendererAnimatedMeshPlaybackReadout;
+  readonly applyFrame: (frame: RenderFrameDiff) => AshaRendererAnimatedMeshFrameReceipt;
   readonly projectionSnapshot: () => RenderProjectionSnapshot;
   readonly cameraPose: () => AshaRendererSurfaceCameraPose;
   readonly firePrimary: () => AshaRendererSurfaceFireResult;
@@ -211,6 +227,25 @@ export function mountAshaRendererSurface(
   canvas: HTMLCanvasElement,
   options: AshaRendererSurfaceOptions = {},
 ): AshaRendererSurface {
+  return mountPreparedAshaRendererSurface(canvas, options);
+}
+
+export async function mountAshaRendererAnimatedMeshSurface(
+  canvas: HTMLCanvasElement,
+  options: AshaRendererAnimatedMeshSurfaceOptions,
+): Promise<AshaRendererSurface> {
+  const source = await loadRendererAnimatedMeshSource(
+    options.animatedMeshManifest,
+    options.resolveAnimatedMeshResource,
+  );
+  return mountPreparedAshaRendererSurface(canvas, options, source as AnimatedMeshAssetSource);
+}
+
+function mountPreparedAshaRendererSurface(
+  canvas: HTMLCanvasElement,
+  options: AshaRendererSurfaceOptions,
+  animatedMeshSource?: AnimatedMeshAssetSource,
+): AshaRendererSurface {
   const frame = options.frame ?? createAshaRendererDefaultSurfaceFrame();
   const projection = new RenderProjection();
   projection.applyFrame(frame);
@@ -219,6 +254,7 @@ export function mountAshaRendererSurface(
 
   const backendSurface = mountThreeBackedBrowserSurface(canvas, {
     autoStart: false,
+    ...(animatedMeshSource === undefined ? {} : { animatedMeshSource }),
     camera: { initialPose: controls.cameraPose() },
     ...(options.clearColor === undefined ? {} : { clearColor: options.clearColor }),
     ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
@@ -267,6 +303,24 @@ export function mountAshaRendererSurface(
     renderOnce(0);
   };
 
+  const applyFrame = (nextFrame: RenderFrameDiff): AshaRendererAnimatedMeshFrameReceipt => {
+    try {
+      backendSurface.applyFrame(nextFrame);
+      projection.applyFrame(nextFrame);
+      return { applied: true, diagnostics: [] };
+    } catch (cause) {
+      return {
+        applied: false,
+        diagnostics: [{
+          code: 'animated_mesh_frame_rejected',
+          message: cause instanceof Error ? cause.message : String(cause),
+          asset: null,
+          handle: null,
+        }],
+      };
+    }
+  };
+
   renderOnce(0);
   if (options.autoStart !== false) {
     start();
@@ -277,6 +331,8 @@ export function mountAshaRendererSurface(
     backend: THREE_BACKEND_DIAGNOSTICS,
     canvas,
     frame,
+    animatedMeshPlayback: (handle) => animationPlaybackReadout(handle, backendSurface.animatedMeshPlayback(handle)),
+    applyFrame,
     projectionSnapshot: () => projection.snapshot(),
     cameraPose: () => controls.cameraPose(),
     firePrimary: () =>

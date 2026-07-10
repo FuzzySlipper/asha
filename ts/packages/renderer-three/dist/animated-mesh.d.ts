@@ -5,6 +5,7 @@ export declare class AnimatedMeshApplyError extends Error {
 }
 export interface AnimatedMeshResource {
     readonly asset: string;
+    readonly contentHash?: string | null;
     readonly scene: THREE.Object3D;
     readonly clips: readonly THREE.AnimationClip[];
 }
@@ -31,6 +32,10 @@ export interface AnimatedMeshPoseSample {
     readonly rootTranslation: readonly [number, number, number];
     readonly rootRotation: readonly [number, number, number, number];
     readonly rootScale: readonly [number, number, number];
+    readonly hierarchyNodeCount: number;
+    readonly hierarchyTranslationSum: readonly [number, number, number];
+    readonly hierarchyRotationSum: readonly [number, number, number, number];
+    readonly hierarchyScaleSum: readonly [number, number, number];
 }
 interface AnimatedMeshInstanceRecord {
     readonly handle: RenderHandle;
@@ -50,7 +55,7 @@ export declare class MapAnimatedMeshAssetSource implements AnimatedMeshAssetSour
     constructor(resources: readonly AnimatedMeshResource[]);
     getAnimatedMeshResource(asset: AnimatedMeshAsset): AnimatedMeshResource | undefined;
 }
-export declare function loadAnimatedMeshGlbResource(asset: string, data: ArrayBuffer): Promise<AnimatedMeshResource>;
+export declare function loadAnimatedMeshGlbResource(asset: string, data: ArrayBuffer, contentHash?: string): Promise<AnimatedMeshResource>;
 export declare class AnimatedMeshRegistry {
     #private;
     constructor(assetSource: AnimatedMeshAssetSource | undefined);

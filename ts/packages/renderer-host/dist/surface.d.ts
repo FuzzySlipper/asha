@@ -1,5 +1,6 @@
-import type { CameraBasis, RenderFrameDiff } from '@asha/contracts';
+import type { CameraBasis, RenderFrameDiff, RenderHandle } from '@asha/contracts';
 import { type GeneratedTunnelFrameReadout, type RenderProjectionInstruction, type RenderProjectionSnapshot, type TunnelViewportMaterialPalette } from '@asha/render-projection';
+import { type AshaRendererAnimatedMeshFrameReceipt, type AshaRendererAnimatedMeshPlaybackReadout, type AshaRendererAnimatedMeshResourceManifest, type AshaRendererAnimatedMeshResourceResolver } from './animated-mesh-host.js';
 export declare const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = "renderer-host.v0";
 export type AshaRendererBackendFamily = 'threejs';
 export interface AshaRendererBackendDiagnostics {
@@ -13,6 +14,10 @@ export interface AshaRendererSurfaceOptions {
     readonly controls?: AshaRendererSurfaceControlsOptions;
     readonly frame?: RenderFrameDiff;
     readonly pixelRatio?: number;
+}
+export interface AshaRendererAnimatedMeshSurfaceOptions extends AshaRendererSurfaceOptions {
+    readonly animatedMeshManifest: AshaRendererAnimatedMeshResourceManifest;
+    readonly resolveAnimatedMeshResource?: AshaRendererAnimatedMeshResourceResolver;
 }
 export interface AshaRendererSurfaceControlsOptions {
     readonly enabled?: boolean;
@@ -106,6 +111,8 @@ export interface AshaRendererSurface {
     readonly backend: AshaRendererBackendDiagnostics;
     readonly canvas: HTMLCanvasElement;
     readonly frame: RenderFrameDiff;
+    readonly animatedMeshPlayback: (handle: RenderHandle) => AshaRendererAnimatedMeshPlaybackReadout;
+    readonly applyFrame: (frame: RenderFrameDiff) => AshaRendererAnimatedMeshFrameReceipt;
     readonly projectionSnapshot: () => RenderProjectionSnapshot;
     readonly cameraPose: () => AshaRendererSurfaceCameraPose;
     readonly firePrimary: () => AshaRendererSurfaceFireResult;
@@ -133,4 +140,5 @@ export declare function surfaceTargetProjectionFromRenderTarget(target: AshaRend
     readonly label: string;
 };
 export declare function mountAshaRendererSurface(canvas: HTMLCanvasElement, options?: AshaRendererSurfaceOptions): AshaRendererSurface;
+export declare function mountAshaRendererAnimatedMeshSurface(canvas: HTMLCanvasElement, options: AshaRendererAnimatedMeshSurfaceOptions): Promise<AshaRendererSurface>;
 //# sourceMappingURL=surface.d.ts.map

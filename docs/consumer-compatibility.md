@@ -539,6 +539,10 @@ Consumer behavior:
 - Backend identity is diagnostic metadata only. The current implementation uses the engine-owned Three.js backend internally, but downstream call sites should not change if ASHA later swaps to Babylon.js or a native Rust renderer host.
 - The host does not own gameplay, collision, combat, runtime authority, or command validation. Runtime intents still go through `@asha/runtime-bridge` and Rust authority surfaces.
 
+Additive notes under `renderer-host.v0`:
+
+- #5537 adds the browser-safe animated-mesh resource and playback path. `mountAshaRendererAnimatedMeshSurface` accepts a typed resource manifest/resolver, verifies SHA-256 and named clips, mounts the engine-owned backend, applies subsequent `RenderFrameDiff` values, advances projection-only mixers from render-frame deltas, and exposes bounded playback diagnostics/readback. `createAshaRendererAnimatedMeshProjection` provides the same path without a canvas for integration tests. The package ships the CC0 Kenney GLB and license behind `ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST`; consumers do not use `harness/` paths or import the concrete backend. The compatibility marker remains `renderer-host.v0` because existing surface callers are unaffected.
+
 ## Renderer Three unstable status
 
 `@asha/renderer-three` is explicit but unstable. It is an engine-owned Three.js implementation package for smoke/testing and the internal backend used by `@asha/renderer-host`; it should not be treated as the cross-repo renderer contract. Studio and demos should prefer `@asha/render-projection` for renderer-neutral ASHA semantics and `@asha/renderer-host` when they need a browser render surface.

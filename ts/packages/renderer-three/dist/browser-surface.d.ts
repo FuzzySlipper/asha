@@ -1,6 +1,7 @@
 import { RenderProjection, type FirstPersonTunnelViewportInput, type FirstPersonTunnelViewportSummary, type TunnelViewportVec3 } from '@asha/render-projection';
 import { type CameraBasis, type RenderFrameDiff } from '@asha/contracts';
 import { ThreeRenderer } from './three-renderer.js';
+import type { AnimatedMeshAssetSource, AnimatedMeshPlaybackReadout } from './animated-mesh.js';
 export interface ProjectedThreeRenderResult {
     readonly projection: RenderProjection;
     readonly renderer: ThreeRenderer;
@@ -11,6 +12,7 @@ export interface FirstPersonTunnelViewportRenderResult extends ProjectedThreeRen
     readonly summary: FirstPersonTunnelViewportSummary;
 }
 export interface AshaRendererBrowserSurfaceOptions {
+    readonly animatedMeshSource?: AnimatedMeshAssetSource;
     readonly autoStart?: boolean;
     readonly camera?: AshaRendererBrowserSurfaceCameraOptions;
     readonly clearColor?: number;
@@ -48,6 +50,8 @@ export interface AshaRendererBrowserSurface {
     readonly renderer: ThreeRenderer;
     readonly frame: RenderFrameDiff;
     readonly cameraPose: () => AshaRendererBrowserSurfaceCameraPose;
+    readonly animatedMeshPlayback: (handle: import('@asha/contracts').RenderHandle) => AnimatedMeshPlaybackReadout | undefined;
+    readonly applyFrame: (frame: RenderFrameDiff) => void;
     readonly pickCenterObject: (request: AshaRendererBrowserSurfacePickRequest) => AshaRendererBrowserSurfacePickResult | null;
     readonly projectObjectProjection: (projection: AshaRendererBrowserSurfaceObjectProjection) => void;
     readonly snapshot: () => string;

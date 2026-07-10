@@ -11,6 +11,7 @@ import {
 } from '@asha/render-projection';
 import { renderHandle, type CameraBasis, type Geometry, type RenderFrameDiff, type RenderNode, type Transform } from '@asha/contracts';
 import { ThreeRenderer } from './three-renderer.js';
+import type { AnimatedMeshAssetSource, AnimatedMeshPlaybackReadout } from './animated-mesh.js';
 
 export interface ProjectedThreeRenderResult {
   readonly projection: RenderProjection;
@@ -24,6 +25,7 @@ export interface FirstPersonTunnelViewportRenderResult extends ProjectedThreeRen
 }
 
 export interface AshaRendererBrowserSurfaceOptions {
+  readonly animatedMeshSource?: AnimatedMeshAssetSource;
   readonly autoStart?: boolean;
   readonly camera?: AshaRendererBrowserSurfaceCameraOptions;
   readonly clearColor?: number;
@@ -68,6 +70,8 @@ export interface AshaRendererBrowserSurface {
   readonly renderer: ThreeRenderer;
   readonly frame: RenderFrameDiff;
   readonly cameraPose: () => AshaRendererBrowserSurfaceCameraPose;
+  readonly animatedMeshPlayback: (handle: import('@asha/contracts').RenderHandle) => AnimatedMeshPlaybackReadout | undefined;
+  readonly applyFrame: (frame: RenderFrameDiff) => void;
   readonly pickCenterObject: (request: AshaRendererBrowserSurfacePickRequest) => AshaRendererBrowserSurfacePickResult | null;
   readonly projectObjectProjection: (projection: AshaRendererBrowserSurfaceObjectProjection) => void;
   readonly snapshot: () => string;
@@ -130,7 +134,9 @@ export function mountAshaRendererBrowserSurface(
   canvas: HTMLCanvasElement,
   options: AshaRendererBrowserSurfaceOptions = {},
 ): AshaRendererBrowserSurface {
-  const renderer = new ThreeRenderer();
+  const renderer = new ThreeRenderer(
+    options.animatedMeshSource === undefined ? {} : { animatedMeshSource: options.animatedMeshSource },
+  );
   const frame = options.frame ?? createAshaRendererBrowserSurfaceFrame();
   renderer.applyFrame(frame);
 
@@ -194,7 +200,7 @@ export function mountAshaRendererBrowserSurface(
         ? 0
         : Math.min(0.05, Math.max(0, (timeMs - lastRenderTimeMs) / 1000));
     lastRenderTimeMs = timeMs;
-    void deltaSeconds;
+    renderer.advanceAnimation(deltaSeconds);
     webgl.render(renderer.scene, camera);
   };
 
@@ -234,6 +240,8 @@ export function mountAshaRendererBrowserSurface(
     canvas,
     renderer,
     frame,
+    animatedMeshPlayback: (handle) => renderer.animatedMeshPlayback(handle),
+    applyFrame: (nextFrame) => renderer.applyFrame(nextFrame),
     cameraPose: () => currentCameraPose,
     pickCenterObject: (request) => pickCenterObject(renderer.scene, camera, raycaster, center, request),
     projectObjectProjection: (projection) => projectObjectProjection(renderer.scene, projection),

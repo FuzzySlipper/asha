@@ -17,6 +17,7 @@ export class AnimatedMeshApplyError extends Error {
 
 export interface AnimatedMeshResource {
   readonly asset: string;
+  readonly contentHash?: string | null;
   readonly scene: THREE.Object3D;
   readonly clips: readonly THREE.AnimationClip[];
 }
@@ -46,6 +47,10 @@ export interface AnimatedMeshPoseSample {
   readonly rootTranslation: readonly [number, number, number];
   readonly rootRotation: readonly [number, number, number, number];
   readonly rootScale: readonly [number, number, number];
+  readonly hierarchyNodeCount: number;
+  readonly hierarchyTranslationSum: readonly [number, number, number];
+  readonly hierarchyRotationSum: readonly [number, number, number, number];
+  readonly hierarchyScaleSum: readonly [number, number, number];
 }
 
 interface AnimatedMeshAssetRecord {
@@ -85,12 +90,18 @@ export class MapAnimatedMeshAssetSource implements AnimatedMeshAssetSource {
 export async function loadAnimatedMeshGlbResource(
   asset: string,
   data: ArrayBuffer,
+  contentHash?: string,
 ): Promise<AnimatedMeshResource> {
   const loader = new GLTFLoader();
   const gltf = await new Promise<GLTF>((resolve, reject) => {
     loader.parse(data, '', resolve, reject);
   });
-  return { asset, scene: gltf.scene, clips: gltf.animations };
+  return {
+    asset,
+    ...(contentHash === undefined ? {} : { contentHash }),
+    scene: gltf.scene,
+    clips: gltf.animations,
+  };
 }
 
 export class AnimatedMeshRegistry {
@@ -115,6 +126,11 @@ export class AnimatedMeshRegistry {
     const resource = this.#assetSource?.getAnimatedMeshResource(asset);
     if (!resource) {
       throw new AnimatedMeshApplyError(`defineAnimatedMesh: missing animated mesh resource ${asset.asset}`);
+    }
+    if (resource.contentHash !== undefined && resource.contentHash !== asset.contentHash) {
+      throw new AnimatedMeshApplyError(
+        `defineAnimatedMesh: content hash mismatch for ${asset.asset}; expected ${resource.contentHash}, received ${asset.contentHash}`,
+      );
     }
     assertClipDescriptors(asset, resource);
     this.#assets.set(asset.asset, { asset, resource, refCount: 0 });
@@ -334,10 +350,31 @@ function toThreeLoop(loop: 'once' | 'repeat' | 'pingPong'): THREE.AnimationActio
 }
 
 function poseSample(object: THREE.Object3D): AnimatedMeshPoseSample {
+  const translation = [0, 0, 0] as [number, number, number];
+  const rotation = [0, 0, 0, 0] as [number, number, number, number];
+  const scale = [0, 0, 0] as [number, number, number];
+  let nodeCount = 0;
+  object.traverse((node) => {
+    nodeCount += 1;
+    translation[0] += node.position.x;
+    translation[1] += node.position.y;
+    translation[2] += node.position.z;
+    rotation[0] += node.quaternion.x;
+    rotation[1] += node.quaternion.y;
+    rotation[2] += node.quaternion.z;
+    rotation[3] += node.quaternion.w;
+    scale[0] += node.scale.x;
+    scale[1] += node.scale.y;
+    scale[2] += node.scale.z;
+  });
   return {
     rootTranslation: [object.position.x, object.position.y, object.position.z],
     rootRotation: [object.quaternion.x, object.quaternion.y, object.quaternion.z, object.quaternion.w],
     rootScale: [object.scale.x, object.scale.y, object.scale.z],
+    hierarchyNodeCount: nodeCount,
+    hierarchyTranslationSum: translation,
+    hierarchyRotationSum: rotation,
+    hierarchyScaleSum: scale,
   };
 }
 

@@ -41,7 +41,7 @@ export function renderFirstPersonTunnelViewport(input, renderer = new ThreeRende
  * stay inside `@asha/renderer-three`.
  */
 export function mountAshaRendererBrowserSurface(canvas, options = {}) {
-    const renderer = new ThreeRenderer();
+    const renderer = new ThreeRenderer(options.animatedMeshSource === undefined ? {} : { animatedMeshSource: options.animatedMeshSource });
     const frame = options.frame ?? createAshaRendererBrowserSurfaceFrame();
     renderer.applyFrame(frame);
     const webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -90,7 +90,7 @@ export function mountAshaRendererBrowserSurface(canvas, options = {}) {
             ? 0
             : Math.min(0.05, Math.max(0, (timeMs - lastRenderTimeMs) / 1000));
         lastRenderTimeMs = timeMs;
-        void deltaSeconds;
+        renderer.advanceAnimation(deltaSeconds);
         webgl.render(renderer.scene, camera);
     };
     const tick = (timeMs) => {
@@ -124,6 +124,8 @@ export function mountAshaRendererBrowserSurface(canvas, options = {}) {
         canvas,
         renderer,
         frame,
+        animatedMeshPlayback: (handle) => renderer.animatedMeshPlayback(handle),
+        applyFrame: (nextFrame) => renderer.applyFrame(nextFrame),
         cameraPose: () => currentCameraPose,
         pickCenterObject: (request) => pickCenterObject(renderer.scene, camera, raycaster, center, request),
         projectObjectProjection: (projection) => projectObjectProjection(renderer.scene, projection),

@@ -18,12 +18,17 @@ export class MapAnimatedMeshAssetSource {
         return this.#resources.get(asset.asset);
     }
 }
-export async function loadAnimatedMeshGlbResource(asset, data) {
+export async function loadAnimatedMeshGlbResource(asset, data, contentHash) {
     const loader = new GLTFLoader();
     const gltf = await new Promise((resolve, reject) => {
         loader.parse(data, '', resolve, reject);
     });
-    return { asset, scene: gltf.scene, clips: gltf.animations };
+    return {
+        asset,
+        ...(contentHash === undefined ? {} : { contentHash }),
+        scene: gltf.scene,
+        clips: gltf.animations,
+    };
 }
 export class AnimatedMeshRegistry {
     #assetSource;
@@ -43,6 +48,9 @@ export class AnimatedMeshRegistry {
         const resource = this.#assetSource?.getAnimatedMeshResource(asset);
         if (!resource) {
             throw new AnimatedMeshApplyError(`defineAnimatedMesh: missing animated mesh resource ${asset.asset}`);
+        }
+        if (resource.contentHash !== undefined && resource.contentHash !== asset.contentHash) {
+            throw new AnimatedMeshApplyError(`defineAnimatedMesh: content hash mismatch for ${asset.asset}; expected ${resource.contentHash}, received ${asset.contentHash}`);
         }
         assertClipDescriptors(asset, resource);
         this.#assets.set(asset.asset, { asset, resource, refCount: 0 });
@@ -238,10 +246,31 @@ function toThreeLoop(loop) {
     }
 }
 function poseSample(object) {
+    const translation = [0, 0, 0];
+    const rotation = [0, 0, 0, 0];
+    const scale = [0, 0, 0];
+    let nodeCount = 0;
+    object.traverse((node) => {
+        nodeCount += 1;
+        translation[0] += node.position.x;
+        translation[1] += node.position.y;
+        translation[2] += node.position.z;
+        rotation[0] += node.quaternion.x;
+        rotation[1] += node.quaternion.y;
+        rotation[2] += node.quaternion.z;
+        rotation[3] += node.quaternion.w;
+        scale[0] += node.scale.x;
+        scale[1] += node.scale.y;
+        scale[2] += node.scale.z;
+    });
     return {
         rootTranslation: [object.position.x, object.position.y, object.position.z],
         rootRotation: [object.quaternion.x, object.quaternion.y, object.quaternion.z, object.quaternion.w],
         rootScale: [object.scale.x, object.scale.y, object.scale.z],
+        hierarchyNodeCount: nodeCount,
+        hierarchyTranslationSum: translation,
+        hierarchyRotationSum: rotation,
+        hierarchyScaleSum: scale,
     };
 }
 function playbackDiagnostics(instance, action) {
