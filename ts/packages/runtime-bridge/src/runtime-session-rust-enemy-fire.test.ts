@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { cameraHandle } from '@asha/contracts';
 import {
   RuntimeBridgeError,
+  createNativeRuntimeBridge,
   createRuntimeSessionFacade,
   readRuntimeSessionPlayableLoopState,
   type EnemyDirectNavMovementRequest,
@@ -63,7 +64,7 @@ function snapshot(input: {
       policyId: 'policy.enemy.custom.v0',
       viewKind: 'runtime_session.fps.policy_view.v0',
       viewVersion: 'v0',
-      allowedIntents: ['enemy_policy.move_toward_target.v0', 'enemy_policy.primary_fire_intent.v0'],
+      allowedIntents: ['runtime.intent.move_direct_nav.v0', 'runtime.intent.primary_fire.v0'],
       runtimeMoment: 'autonomous_policy_tick',
     }],
     replayRecords: [{
@@ -229,4 +230,45 @@ void test('Rust-backed RuntimeSession autonomous enemy fire can defeat the playe
   assert.equal(playable.counters.shotsFired, 0);
   assert.equal(playable.counters.actionTick, 0);
   assert.equal(playable.health.player.dead, true);
+});
+
+void test('native Rust facade maps ECRP enemy policy to authorized movement and replay evidence', (t) => {
+  let bridge: RuntimeBridge;
+  try {
+    bridge = createNativeRuntimeBridge();
+  } catch (error) {
+    if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
+      t.skip('native addon not built (run harness/ci/check-native.sh)');
+      return;
+    }
+    throw error;
+  }
+
+  const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
+  session.initialize(sessionInput());
+  const before = bridge.readFpsRuntimeSession();
+  const applied = session.requestGeneratedTunnelOperation({
+    operation: 'apply_to_runtime_world',
+    presetId: 'tiny-enclosed',
+    seed: 17,
+  });
+  assert.equal(applied.status, 'applied');
+
+  const tick = session.runAutonomousPolicyTick({
+    targetCamera: cameraHandle(1),
+    tick: 1,
+    enemy: { position: [3, 1, 7] },
+    target: { position: [1, 1, 1] },
+  });
+  assert.equal(tick.movementSummary?.status, 'accepted');
+  assert.equal(tick.movementSummary?.authoritySource, 'rust_entity_store');
+
+  const after = bridge.readFpsRuntimeSession();
+  assert.notEqual(after.entityHash, before.entityHash);
+  assert.ok(after.replayRecords.length > before.replayRecords.length);
+  assert.ok(
+    after.replayRecords.some(
+      (record) => record.replayUnit === 'runtime_session.fps.autonomous_movement.v0',
+    ),
+  );
 });

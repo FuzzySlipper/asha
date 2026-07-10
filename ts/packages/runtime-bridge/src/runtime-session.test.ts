@@ -556,6 +556,10 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
     calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.policyBinding?.policyId,
     'policy.enemy.custom.v0',
   );
+  assert.deepEqual(
+    calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.policyBinding?.allowedIntents,
+    ['runtime.intent.move_direct_nav.v0', 'runtime.intent.primary_fire.v0'],
+  );
   const rustReadout = session.readEcrpRuntimeReadout();
   assert.equal(rustReadout.authority.mode, 'rust');
   assert.equal(rustReadout.authority.source, 'rust_bridge');

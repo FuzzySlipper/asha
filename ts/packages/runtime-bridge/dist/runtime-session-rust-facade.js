@@ -976,7 +976,7 @@ function fpsStoredEntityDefinition(entity) {
                 policyId: policyBinding.policyId,
                 viewKind: 'runtime_session.fps.policy_view.v0',
                 viewVersion: 'v0',
-                allowedIntents: ['enemy_policy.move_toward_target.v0', 'enemy_policy.primary_fire_intent.v0'],
+                allowedIntents: ['runtime.intent.move_direct_nav.v0', 'runtime.intent.primary_fire.v0'],
                 runtimeMoment: 'autonomous_policy_tick',
             }
             : null,
