@@ -380,6 +380,8 @@ mod tests {
             interface_coverage_key("voxelConversion", "VoxelModelWindowRequest"),
             interface_coverage_key("voxelConversion", "VoxelModelWindowSample"),
             interface_coverage_key("voxelConversion", "VoxelModelWindowReadout"),
+            interface_coverage_key("voxelConversion", "VoxelConversionMeshSourceImportRequest"),
+            interface_coverage_key("voxelConversion", "VoxelConversionMeshSourceImportReceipt"),
             interface_coverage_key("voxelAsset", "VoxelAssetCoord"),
             interface_coverage_key("voxelAsset", "VoxelAssetBounds"),
             interface_coverage_key("voxelAsset", "VoxelAssetGrid"),
@@ -1068,6 +1070,10 @@ mod tests {
         assert!(vc.contains("export interface VoxelConversionPreview {"));
         assert!(vc.contains("export interface VoxelConversionApplyRequest {"));
         assert!(vc.contains("export interface VoxelConversionReceipt {"));
+        assert!(vc.contains("export type VoxelConversionMeshSourceFormat = 'glb';"));
+        assert!(vc.contains("export interface VoxelConversionMeshSourceImportRequest {"));
+        assert!(vc.contains("readonly sourceBytes: readonly number[];"));
+        assert!(vc.contains("export interface VoxelConversionMeshSourceImportReceipt {"));
         assert!(vc.contains("export interface VoxelConversionEvidenceRef {"));
         assert!(vc.contains("export interface VoxelModelWindowRequest {"));
         assert!(vc.contains("export interface VoxelModelWindowReadout {"));

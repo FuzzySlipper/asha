@@ -103,14 +103,17 @@ pub use protocol_voxel_asset::{
 };
 pub use protocol_voxel_conversion::{
     VoxelConversionApplyRequest, VoxelConversionDiagnostic, VoxelConversionDiagnosticCode,
-    VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest, VoxelConversionPlan,
-    VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest,
-    VoxelConversionReceipt, VoxelConversionSourceBounds, VoxelConversionSourceGroupMetadata,
+    VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest,
+    VoxelConversionMeshSourceFormat, VoxelConversionMeshSourceImportReceipt,
+    VoxelConversionMeshSourceImportRequest, VoxelConversionPlan, VoxelConversionPlanRequest,
+    VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt,
+    VoxelConversionSourceBounds, VoxelConversionSourceGroupMetadata,
     VoxelConversionSourceMaterialSlot, VoxelConversionSourceMetadataReadout,
     VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration,
     VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest,
     VoxelModelMaterialCount, VoxelModelWindowReadout, VoxelModelWindowRequest,
-    VoxelModelWindowSample,
+    VoxelModelWindowSample, VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
 };
 pub use protocol_voxel_edit_history::{
     VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest,

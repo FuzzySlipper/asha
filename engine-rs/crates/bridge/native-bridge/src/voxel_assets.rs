@@ -77,6 +77,21 @@ pub fn unload_voxel_volume_asset(handle: i64, request_json: String) -> napi::Res
     })
 }
 
+#[napi]
+pub fn import_voxel_conversion_mesh_source(
+    handle: i64,
+    request_json: String,
+) -> napi::Result<String> {
+    let request =
+        parse_request::<VoxelConversionMeshSourceImportRequest>(&request_json, "mesh import")?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge
+            .import_voxel_conversion_mesh_source(request)
+            .map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

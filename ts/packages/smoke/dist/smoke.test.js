@@ -137,6 +137,7 @@ function bridgeWith(overrides) {
         readVoxelMeshEvidence: base.readVoxelMeshEvidence.bind(base),
         registerVoxelConversionSource: base.registerVoxelConversionSource.bind(base),
         registerVoxelConversionMeshAsset: base.registerVoxelConversionMeshAsset.bind(base),
+        importVoxelConversionMeshSource: base.importVoxelConversionMeshSource.bind(base),
         readVoxelConversionSourceMetadata: base.readVoxelConversionSourceMetadata.bind(base),
         planVoxelConversion: base.planVoxelConversion.bind(base),
         previewVoxelConversion: base.previewVoxelConversion.bind(base),

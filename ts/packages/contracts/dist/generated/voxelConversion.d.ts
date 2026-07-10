@@ -1,6 +1,10 @@
 import type { DiagnosticSeverity } from './diagnostics.js';
 import type { VoxelCoord } from './voxel.js';
+export declare const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES = 67108864;
+export declare const VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES = 2000000;
+export declare const VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES = 6000000;
 export type VoxelConversionMode = 'surface' | 'solid';
+export type VoxelConversionMeshSourceFormat = 'glb';
 export type VoxelConversionFitPolicy = 'contain' | 'cover' | 'stretch';
 export type VoxelConversionOriginPolicy = 'source_origin' | 'target_min' | 'centered';
 export type VoxelConversionDiagnosticCode = 'voxel_conversion_unavailable' | 'operation_unimplemented' | 'invalid_query_bounds' | 'query_quota_exceeded' | 'unsupported_source_asset' | 'source_hash_mismatch' | 'invalid_material_map' | 'missing_texture_source' | 'texture_hash_mismatch' | 'missing_uv_attribute' | 'unsupported_texture_format' | 'unsupported_sampling_policy' | 'invalid_texture_material_rule' | 'output_limit_exceeded' | 'non_manifold_or_ambiguous_solid' | 'stale_authority_snapshot' | 'conversion_replay_mismatch';
@@ -43,6 +47,29 @@ export interface VoxelConversionMeshAsset {
 export interface VoxelConversionMeshAssetRegistrationRequest {
     readonly source: VoxelConversionSourceRef;
     readonly meshAsset: VoxelConversionMeshAsset;
+}
+export interface VoxelConversionMeshSourceImportRequest {
+    readonly sourceAssetId: string;
+    readonly assetVersion: number;
+    readonly sourcePath: string;
+    readonly format: VoxelConversionMeshSourceFormat;
+    readonly sourceBytes: readonly number[];
+    readonly meshPrimitive: string | null;
+}
+export interface VoxelConversionMeshSourceImportReceipt {
+    readonly source: VoxelConversionSourceRef;
+    readonly imported: boolean;
+    readonly sourcePath: string;
+    readonly format: VoxelConversionMeshSourceFormat;
+    readonly sourceByteCount: number;
+    readonly meshAsset: VoxelConversionMeshAsset | null;
+    readonly sourceBounds: VoxelConversionSourceBounds | null;
+    readonly vertexCount: number;
+    readonly triangleCount: number;
+    readonly groups: readonly VoxelConversionSourceGroupMetadata[];
+    readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+    readonly diagnostics: readonly VoxelConversionDiagnostic[];
+    readonly evidence: readonly VoxelConversionEvidenceRef[];
 }
 export interface VoxelConversionSourceMetadataRequest {
     readonly source: VoxelConversionSourceRef;

@@ -59,6 +59,7 @@ members = [
     "crates/services/svc-serialization",
     "crates/services/svc-volume",
     "crates/services/svc-mesh",
+    "crates/services/svc-mesh-import",
     "crates/services/svc-voxel-conversion",
     "crates/services/svc-voxel-asset",
     "crates/services/svc-voxel-annotation",

@@ -19,6 +19,7 @@ export const REQUIRED_NATIVE_CONFORMANCE_OPS = [
     'plan_voxel_conversion',
     'register_voxel_conversion_source',
     'register_voxel_conversion_mesh_asset',
+    'import_voxel_conversion_mesh_source',
     'read_voxel_conversion_source_metadata',
     'preview_voxel_conversion',
     'apply_voxel_conversion',

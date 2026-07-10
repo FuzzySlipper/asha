@@ -331,6 +331,7 @@ function createFakeRuntimeBridge() {
         planVoxelConversion: operation,
         registerVoxelConversionSource: operation,
         registerVoxelConversionMeshAsset: operation,
+        importVoxelConversionMeshSource: operation,
         readVoxelConversionSourceMetadata: operation,
         previewVoxelConversion: operation,
         applyVoxelConversion: operation,

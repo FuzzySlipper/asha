@@ -42,7 +42,7 @@ For multi-repo checkout, consumer setup, and deployment-viable repo roles, see
 ## Repository layout
 
 <!-- workspace-counts:start -->
-Workspace inventory: **77 default Cargo workspace members, 1 explicit-build excluded crate (78 governed Rust crates total), and 24 pnpm workspace packages (workspace root excluded).**
+Workspace inventory: **78 default Cargo workspace members, 1 explicit-build excluded crate (79 governed Rust crates total), and 24 pnpm workspace packages (workspace root excluded).**
 <!-- workspace-counts:end -->
 
 ```text

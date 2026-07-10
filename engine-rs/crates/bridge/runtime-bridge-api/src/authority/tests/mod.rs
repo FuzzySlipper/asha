@@ -362,5 +362,6 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
 
 mod core;
 mod fps;
+mod mesh_import;
 mod runtime;
 mod voxel;

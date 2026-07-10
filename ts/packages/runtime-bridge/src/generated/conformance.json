@@ -91,6 +91,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "import_voxel_conversion_mesh_source",
+      "facadeMethod": "importVoxelConversionMeshSource",
+      "surface": "stable",
+      "input": "protocol_voxel_conversion::VoxelConversionMeshSourceImportRequest",
+      "output": "protocol_voxel_conversion::VoxelConversionMeshSourceImportReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "read_voxel_conversion_source_metadata",
       "facadeMethod": "readVoxelConversionSourceMetadata",
       "surface": "stable",

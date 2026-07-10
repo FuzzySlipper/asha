@@ -23,6 +23,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
     'planVoxelConversion',
     'registerVoxelConversionSource',
     'registerVoxelConversionMeshAsset',
+    'importVoxelConversionMeshSource',
     'readVoxelConversionSourceMetadata',
     'previewVoxelConversion',
     'applyVoxelConversion',

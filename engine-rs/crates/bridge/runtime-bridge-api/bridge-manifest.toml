@@ -112,6 +112,14 @@ errors = "RuntimeBridgeError"
 summary = "Register a ProjectBundle/catalog static-mesh asset as an authority-visible voxel conversion source; Rust validates mesh geometry, primitive identity, and material slots."
 
 [[operation]]
+name = "import_voxel_conversion_mesh_source"
+surface = "stable"
+input = "protocol_voxel_conversion::VoxelConversionMeshSourceImportRequest"
+output = "protocol_voxel_conversion::VoxelConversionMeshSourceImportReceipt"
+errors = "RuntimeBridgeError"
+summary = "Parse host-provided static mesh bytes through Rust authority, register canonical conversion geometry, and return bounded provenance, primitive, material, and bounds evidence."
+
+[[operation]]
 name = "read_voxel_conversion_source_metadata"
 surface = "stable"
 input = "protocol_voxel_conversion::VoxelConversionSourceMetadataRequest"

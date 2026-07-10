@@ -33,6 +33,7 @@ echo "==> Building TS bridge packages used by the native smoke"
 echo "==> Native addon smoke (required exports, facade load, voxel conversion path)"
 node --input-type=module -e "
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createNativeRuntimeBridge, createRuntimeSessionFacade } from '$REPO_ROOT/ts/packages/runtime-bridge/dist/index.js';
 import { REQUIRED_NATIVE_ADDON_EXPORTS, loadNativeAddon } from '$REPO_ROOT/ts/packages/native-bridge/dist/index.js';
@@ -188,6 +189,70 @@ assert.equal(meshMetadata.vertexCount, 4);
 assert.equal(meshMetadata.triangleCount, 2);
 assert.equal(meshMetadata.groups[0]?.count, 6);
 assert.equal(meshMetadata.materialSlots[0]?.sourceMaterialId, 'material/surface-a');
+
+const referenceMeshImport = bridge.importVoxelConversionMeshSource({
+  sourceAssetId: 'mesh/kenney-wall-a',
+  assetVersion: 1,
+  sourcePath: 'assets/reference/kenney-wall-a.glb',
+  format: 'glb',
+  sourceBytes: [...readFileSync('$REPO_ROOT/harness/fixtures/voxel-conversion/kenney-wall-a.glb')],
+  meshPrimitive: null,
+});
+assert.equal(referenceMeshImport.imported, true);
+assert.equal(referenceMeshImport.sourceByteCount, 3352);
+assert.equal(referenceMeshImport.source.sourceHash, 'sha256:6fceda24c30d2c22694f232f03fe2115fb1a462046fbbf719a90eea10dc9af00');
+assert.equal(referenceMeshImport.vertexCount, 48);
+assert.equal(referenceMeshImport.triangleCount, 12);
+assert.equal(referenceMeshImport.groups.length, 2);
+assert.equal(referenceMeshImport.materialSlots.length, 2);
+assert.deepEqual(referenceMeshImport.sourceBounds, { min: [-0.5, 0, -0.5], max: [0.5, 1, 0.5] });
+const referencePlan = bridge.planVoxelConversion({
+  source: referenceMeshImport.source,
+  target: { grid: 1, volumeAssetId: 'voxel/generated', origin: { x: 0, y: 0, z: 0 } },
+  settings: {
+    mode: 'surface',
+    fitPolicy: 'contain',
+    originPolicy: 'target_min',
+    resolution: [8, 8, 8],
+    voxelSize: 0.25,
+    maxOutputVoxels: 512,
+    transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    materialMap: {
+      entries: referenceMeshImport.materialSlots.map((slot, index) => ({
+        sourceMaterialSlot: slot.sourceMaterialSlot,
+        sourceMaterialId: slot.sourceMaterialId,
+        voxelMaterial: index + 1,
+      })),
+      textureAssets: [],
+      textureBindings: [],
+      defaultVoxelMaterial: null,
+    },
+  },
+});
+assert.equal(referencePlan.diagnostics.length, 0);
+const referencePreview = bridge.previewVoxelConversion({
+  planId: referencePlan.planId,
+  expectedPlanHash: referencePlan.planHash,
+});
+assert.ok(referencePreview.outputVoxelCount > 0);
+const referenceApply = bridge.applyVoxelConversion({
+  planId: referencePlan.planId,
+  expectedPlanHash: referencePlan.planHash,
+  expectedPreviewHash: referencePreview.outputHash,
+});
+assert.equal(referenceApply.applied, true);
+assert.ok(referenceApply.outputVoxelCount > 0);
+const referenceMetadata = bridge.readVoxelConversionSourceMetadata({ source: referenceMeshImport.source });
+assert.equal(referenceMetadata.vertexCount, 48);
+assert.equal(referenceMetadata.triangleCount, 12);
+assert.equal(referenceMetadata.groups.length, 2);
+const referenceModel = bridge.readVoxelModelInfo({
+  grid: 1,
+  volumeAssetId: 'voxel/generated',
+  includeMaterialCounts: true,
+});
+assert.equal(referenceModel.resident, true);
+assert.equal(referenceModel.voxelCount, referenceApply.outputVoxelCount);
 
 const rejectedRegistration = bridge.registerVoxelConversionSource({
   ...registrationRequest,

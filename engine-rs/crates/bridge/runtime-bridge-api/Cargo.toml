@@ -37,6 +37,7 @@ svc-spatial     = { path = "../../services/svc-spatial" }
 svc-volume      = { path = "../../services/svc-volume" }
 # Runtime evidence over authority state (mesh summaries/hashes, world hashes).
 svc-mesh        = { path = "../../services/svc-mesh" }
+svc-mesh-import = { path = "../../services/svc-mesh-import" }
 svc-serialization = { path = "../../services/svc-serialization" }
 svc-pathfinding = { path = "../../services/svc-pathfinding" }
 svc-voxel-asset = { path = "../../services/svc-voxel-asset" }

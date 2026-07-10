@@ -21,6 +21,18 @@ use serde::{Deserialize, Serialize};
 /// Stable supported conversion modes.
 pub const VOXEL_CONVERSION_MODES: &[&str] = &["surface", "solid"];
 
+/// Stable authority-owned static mesh import formats.
+pub const VOXEL_CONVERSION_MESH_SOURCE_FORMATS: &[&str] = &["glb"];
+
+/// Hard source-byte ceiling for one mesh import request.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES: u64 = 67_108_864;
+
+/// Hard canonical vertex ceiling for one mesh import request.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES: u64 = 2_000_000;
+
+/// Hard canonical index ceiling for one mesh import request.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES: u64 = 6_000_000;
+
 /// Stable target-fit policies.
 pub const VOXEL_CONVERSION_FIT_POLICIES: &[&str] = &["contain", "cover", "stretch"];
 
@@ -82,6 +94,21 @@ pub enum VoxelConversionMode {
     Surface,
     /// Occupy a closed solid volume. Ambiguous/non-manifold inputs fail closed.
     Solid,
+}
+
+/// Authority-owned source format selected for static mesh ingestion.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VoxelConversionMeshSourceFormat {
+    Glb,
+}
+
+impl VoxelConversionMeshSourceFormat {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            VoxelConversionMeshSourceFormat::Glb => "glb",
+        }
+    }
 }
 
 impl VoxelConversionMode {
@@ -292,6 +319,41 @@ pub struct VoxelConversionMeshAsset {
 pub struct VoxelConversionMeshAssetRegistrationRequest {
     pub source: VoxelConversionSourceRef,
     pub mesh_asset: VoxelConversionMeshAsset,
+}
+
+/// Import host-provided static mesh bytes through Rust parser authority and
+/// register the resulting canonical geometry for voxel conversion.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct VoxelConversionMeshSourceImportRequest {
+    pub source_asset_id: String,
+    pub asset_version: u64,
+    pub source_path: String,
+    pub format: VoxelConversionMeshSourceFormat,
+    pub source_bytes: Vec<u8>,
+    pub mesh_primitive: Option<String>,
+}
+
+/// Receipt/readback for one authority-owned static mesh import and registration.
+/// Source bytes are intentionally not echoed in the receipt.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct VoxelConversionMeshSourceImportReceipt {
+    pub source: VoxelConversionSourceRef,
+    pub imported: bool,
+    pub source_path: String,
+    pub format: VoxelConversionMeshSourceFormat,
+    pub source_byte_count: u64,
+    pub mesh_asset: Option<VoxelConversionMeshAsset>,
+    pub source_bounds: Option<VoxelConversionSourceBounds>,
+    pub vertex_count: u32,
+    pub triangle_count: u32,
+    pub groups: Vec<VoxelConversionSourceGroupMetadata>,
+    pub material_slots: Vec<VoxelConversionSourceMaterialSlot>,
+    pub diagnostics: Vec<VoxelConversionDiagnostic>,
+    pub evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
 /// Request authority metadata for a registered conversion source.
@@ -617,6 +679,10 @@ mod tests {
 
     #[test]
     fn vocabulary_tables_match_enum_strings() {
+        assert_eq!(
+            VOXEL_CONVERSION_MESH_SOURCE_FORMATS,
+            &[VoxelConversionMeshSourceFormat::Glb.as_str()]
+        );
         assert_eq!(
             VOXEL_CONVERSION_MODES,
             &[

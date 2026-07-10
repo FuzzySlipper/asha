@@ -19,6 +19,8 @@ import type {
   VoxelConversionApplyRequest,
   VoxelConversionEvidenceRef,
   VoxelConversionMeshAssetRegistrationRequest,
+  VoxelConversionMeshSourceImportReceipt,
+  VoxelConversionMeshSourceImportRequest,
   VoxelConversionPlan,
   VoxelConversionPlanRequest,
   VoxelConversionPreview,
@@ -150,6 +152,7 @@ export interface RuntimeSessionFacade {
   ): RuntimeSessionGeneratedTunnelOperationReceipt;
   registerVoxelConversionSource(request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration;
   registerVoxelConversionMeshAsset(request: VoxelConversionMeshAssetRegistrationRequest): VoxelConversionSourceRegistration;
+  importVoxelConversionMeshSource(request: VoxelConversionMeshSourceImportRequest): VoxelConversionMeshSourceImportReceipt;
   readVoxelConversionSourceMetadata(request: VoxelConversionSourceMetadataRequest): VoxelConversionSourceMetadataReadout;
   planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
   previewVoxelConversion(request: VoxelConversionPreviewRequest): VoxelConversionPreview;

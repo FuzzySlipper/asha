@@ -19,6 +19,8 @@ export type {
   VoxelConversionMeshAsset,
   VoxelConversionMeshAssetGroup,
   VoxelConversionMeshAssetRegistrationRequest,
+  VoxelConversionMeshSourceImportReceipt,
+  VoxelConversionMeshSourceImportRequest,
   VoxelConversionPlan,
   VoxelConversionPlanRequest,
   VoxelConversionPreview,

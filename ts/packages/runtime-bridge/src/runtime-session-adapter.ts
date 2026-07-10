@@ -8,6 +8,8 @@ import {
   type VoxelConversionApplyRequest,
   type VoxelConversionEvidenceRef,
   type VoxelConversionMeshAssetRegistrationRequest,
+  type VoxelConversionMeshSourceImportReceipt,
+  type VoxelConversionMeshSourceImportRequest,
   type VoxelConversionPlan,
   type VoxelConversionPlanRequest,
   type VoxelConversionPreview,
@@ -837,6 +839,8 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
   registerVoxelConversionSource(_request: VoxelConversionSourceRegistrationRequest): VoxelConversionSourceRegistration { void _request; return this.#unsupportedOperation('registerVoxelConversionSource', 'Voxel conversion source registration is not wired into the reference RuntimeSession'); }
 
   registerVoxelConversionMeshAsset(_request: VoxelConversionMeshAssetRegistrationRequest): VoxelConversionSourceRegistration { void _request; return this.#unsupportedOperation('registerVoxelConversionMeshAsset', 'Voxel conversion mesh asset registration is not wired into the reference RuntimeSession'); }
+
+  importVoxelConversionMeshSource(_request: VoxelConversionMeshSourceImportRequest): VoxelConversionMeshSourceImportReceipt { void _request; return this.#unsupportedOperation('importVoxelConversionMeshSource', 'Voxel conversion mesh source import is not wired into the reference RuntimeSession'); }
 
   readVoxelConversionSourceMetadata(_request: VoxelConversionSourceMetadataRequest): VoxelConversionSourceMetadataReadout { void _request; return this.#unsupportedOperation('readVoxelConversionSourceMetadata', 'Voxel conversion source metadata is not wired into the reference RuntimeSession'); }
 

@@ -50,6 +50,7 @@ void test('native addon loader accepts current ProjectBundle export vocabulary',
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('saveProjectBundle'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('getProjectBundleCompositionStatus'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('createCamera'));
+    assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('importVoxelConversionMeshSource'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('unloadVoxelVolumeAsset'));
     assert.equal((REQUIRED_NATIVE_ADDON_EXPORTS as readonly string[]).includes(`load${retiredRuntimeContainerTerm()}Bundle`), false);
     assert.equal((REQUIRED_NATIVE_ADDON_EXPORTS as readonly string[]).includes(`saveCurrent${retiredRuntimeContainerTerm()}`), false);
@@ -59,6 +60,7 @@ void test('native addon loader accepts current ProjectBundle export vocabulary',
     assert.equal(typeof addon.loadProjectBundle, 'function');
     assert.equal(typeof addon.saveProjectBundle, 'function');
     assert.equal(typeof addon.getProjectBundleCompositionStatus, 'function');
+    assert.equal(typeof addon.importVoxelConversionMeshSource, 'function');
     assert.equal(typeof addon.unloadVoxelVolumeAsset, 'function');
   } finally {
     rmSync(dirname(modulePath), { recursive: true, force: true });
@@ -70,6 +72,7 @@ void test('native addon loader rejects stale modules missing encounter authority
   try {
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('planVoxelConversion'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('registerVoxelConversionSource'));
+    assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('importVoxelConversionMeshSource'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelConversionSourceMetadata'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('previewVoxelConversion'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelConversion'));

@@ -1,0 +1,15 @@
+[package]
+name = "svc-mesh-import"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Rust-owned parser/normalizer for bounded static reference-mesh ingestion.
+# Hosts provide bytes; this service performs no filesystem or network access.
+[dependencies]
+gltf = { version = "1.4", default-features = false, features = ["utils", "names", "KHR_materials_unlit"] }
+protocol-voxel-conversion = { path = "../../protocol/protocol-voxel-conversion" }
+sha2 = "0.10"
+
+[lints]
+workspace = true

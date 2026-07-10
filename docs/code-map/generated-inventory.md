@@ -65,7 +65,7 @@ Source metadata:
 - [`rule-state-machine`](../../engine-rs/crates/rules/rule-state-machine/Cargo.toml) — active
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
 
-### rust-service (16)
+### rust-service (17)
 
 - [`svc-collision`](../../engine-rs/crates/services/svc-collision/Cargo.toml) — active
 - [`svc-combat`](../../engine-rs/crates/services/svc-combat/Cargo.toml) — active
@@ -73,6 +73,7 @@ Source metadata:
 - [`svc-game-rules`](../../engine-rs/crates/services/svc-game-rules/Cargo.toml) — active
 - [`svc-levelgen`](../../engine-rs/crates/services/svc-levelgen/Cargo.toml) — active
 - [`svc-mesh`](../../engine-rs/crates/services/svc-mesh/Cargo.toml) — active
+- [`svc-mesh-import`](../../engine-rs/crates/services/svc-mesh-import/Cargo.toml) — active
 - [`svc-pathfinding`](../../engine-rs/crates/services/svc-pathfinding/Cargo.toml) — active
 - [`svc-physics`](../../engine-rs/crates/services/svc-physics/Cargo.toml) — active
 - [`svc-policy-view`](../../engine-rs/crates/services/svc-policy-view/Cargo.toml) — active
@@ -210,6 +211,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `export_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetExportReceipt`
 - `get_buffer` — stable; output `RuntimeBufferView`
 - `get_project_bundle_composition_status` — stable; output `protocol_diagnostics::DiagnosticReportSet`
+- `import_voxel_conversion_mesh_source` — stable; output `protocol_voxel_conversion::VoxelConversionMeshSourceImportReceipt`
 - `initialize_engine` — stable; output `EngineHandle`
 - `invoke_game_extension_weapon_effect` — stable; output `protocol_runtime::GameExtensionWeaponEffectInvocationResult`
 - `load_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
@@ -284,7 +286,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/session-state`](../../harness/fixtures/session-state) — 3 files
 - [`harness/fixtures/smoke`](../../harness/fixtures/smoke) — 2 files
 - [`harness/fixtures/states`](../../harness/fixtures/states) — 1 files
-- [`harness/fixtures/voxel-conversion`](../../harness/fixtures/voxel-conversion) — 1 files
+- [`harness/fixtures/voxel-conversion`](../../harness/fixtures/voxel-conversion) — 3 files
 - [`harness/fixtures/voxel-diagnostics`](../../harness/fixtures/voxel-diagnostics) — 1 files
 - [`harness/fixtures/voxel-edits`](../../harness/fixtures/voxel-edits) — 1 files
 - [`harness/fixtures/voxel-interaction`](../../harness/fixtures/voxel-interaction) — 2 files

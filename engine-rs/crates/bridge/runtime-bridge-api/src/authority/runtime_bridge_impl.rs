@@ -391,39 +391,14 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelConversionMeshAssetRegistrationRequest,
     ) -> BridgeResult<VoxelConversionSourceRegistration> {
-        self.require_initialized("register_voxel_conversion_mesh_asset")?;
-        let source = match Self::static_mesh_source_from_project_mesh_asset(&request) {
-            Ok(source) => source,
-            Err(message) => {
-                return Ok(Self::source_registration_diagnostic(
-                    &request.source,
-                    message,
-                ));
-            }
-        };
-        self.voxel_conversion_sources
-            .insert(source.asset_id.clone(), source);
-        self.voxel_conversion_source_metadata.insert(
-            request.source.asset_id.clone(),
-            Self::source_metadata_from_project_mesh_asset(&request),
-        );
-        self.voxel_conversion_plan = None;
-        let evidence = vec![VoxelConversionEvidenceRef {
-            kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
-            uri: format!(
-                "asha://voxel-conversion/source/{}",
-                request.source.asset_id.as_str()
-            ),
-            content_hash: request.source.source_hash.clone(),
-        }];
-        self.remember_voxel_conversion_evidence(evidence.clone());
-        Ok(VoxelConversionSourceRegistration {
-            source: request.source,
-            registered: true,
-            material_slots: request.mesh_asset.material_slots,
-            diagnostics: Vec::new(),
-            evidence,
-        })
+        self.register_voxel_conversion_mesh_asset_authority(request)
+    }
+
+    fn import_voxel_conversion_mesh_source(
+        &mut self,
+        request: VoxelConversionMeshSourceImportRequest,
+    ) -> BridgeResult<VoxelConversionMeshSourceImportReceipt> {
+        self.import_voxel_conversion_mesh_source_authority(request)
     }
 
     fn read_voxel_conversion_source_metadata(

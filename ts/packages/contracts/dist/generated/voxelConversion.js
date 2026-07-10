@@ -5,5 +5,10 @@
 //
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
-export {};
+// Hard source-byte ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES = 67108864;
+// Hard canonical vertex ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES = 2000000;
+// Hard canonical index ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES = 6000000;
 //# sourceMappingURL=voxelConversion.js.map

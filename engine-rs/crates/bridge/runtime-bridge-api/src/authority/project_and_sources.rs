@@ -1,6 +1,145 @@
 use super::*;
 
 impl EngineBridge {
+    pub(super) fn register_voxel_conversion_mesh_asset_authority(
+        &mut self,
+        request: VoxelConversionMeshAssetRegistrationRequest,
+    ) -> BridgeResult<VoxelConversionSourceRegistration> {
+        self.require_initialized("register_voxel_conversion_mesh_asset")?;
+        let source = match Self::static_mesh_source_from_project_mesh_asset(&request) {
+            Ok(source) => source,
+            Err(message) => {
+                return Ok(Self::source_registration_diagnostic(
+                    &request.source,
+                    message,
+                ));
+            }
+        };
+        self.voxel_conversion_sources
+            .insert(source.asset_id.clone(), source);
+        self.voxel_conversion_source_metadata.insert(
+            request.source.asset_id.clone(),
+            Self::source_metadata_from_project_mesh_asset(&request),
+        );
+        self.voxel_conversion_plan = None;
+        let evidence = vec![VoxelConversionEvidenceRef {
+            kind: protocol_voxel_conversion::VoxelConversionEvidenceKind::SourceSnapshot,
+            uri: format!(
+                "asha://voxel-conversion/source/{}",
+                request.source.asset_id.as_str()
+            ),
+            content_hash: request.source.source_hash.clone(),
+        }];
+        self.remember_voxel_conversion_evidence(evidence.clone());
+        Ok(VoxelConversionSourceRegistration {
+            source: request.source,
+            registered: true,
+            material_slots: request.mesh_asset.material_slots,
+            diagnostics: Vec::new(),
+            evidence,
+        })
+    }
+
+    pub(super) fn import_voxel_conversion_mesh_source_authority(
+        &mut self,
+        request: VoxelConversionMeshSourceImportRequest,
+    ) -> BridgeResult<VoxelConversionMeshSourceImportReceipt> {
+        self.require_initialized("import_voxel_conversion_mesh_source")?;
+        let source_byte_count = request.source_bytes.len() as u64;
+        let source_hash = svc_mesh_import::source_sha256(&request.source_bytes);
+        let rejected_source = protocol_voxel_conversion::VoxelConversionSourceRef {
+            asset_id: request.source_asset_id.clone(),
+            asset_kind: "mesh".to_string(),
+            asset_version: request.asset_version,
+            source_hash,
+            mesh_primitive: request.mesh_primitive.clone(),
+        };
+        let imported = match svc_mesh_import::import_static_mesh(&request) {
+            Ok(imported) => imported,
+            Err(error) => {
+                let code = match error.kind {
+                    svc_mesh_import::MeshImportErrorKind::QuotaExceeded => {
+                        VoxelConversionDiagnosticCode::OutputLimitExceeded
+                    }
+                    svc_mesh_import::MeshImportErrorKind::InvalidRequest
+                    | svc_mesh_import::MeshImportErrorKind::UnsupportedFeature
+                    | svc_mesh_import::MeshImportErrorKind::InvalidGeometry => {
+                        VoxelConversionDiagnosticCode::UnsupportedSourceAsset
+                    }
+                };
+                return Ok(VoxelConversionMeshSourceImportReceipt {
+                    source: rejected_source,
+                    imported: false,
+                    source_path: request.source_path,
+                    format: request.format,
+                    source_byte_count,
+                    mesh_asset: None,
+                    source_bounds: None,
+                    vertex_count: 0,
+                    triangle_count: 0,
+                    groups: Vec::new(),
+                    material_slots: Vec::new(),
+                    diagnostics: vec![Self::voxel_conversion_diagnostic(
+                        code,
+                        "sourceBytes",
+                        error.message,
+                    )],
+                    evidence: Vec::new(),
+                });
+            }
+        };
+        let registration_request = VoxelConversionMeshAssetRegistrationRequest {
+            source: imported.source.clone(),
+            mesh_asset: imported.mesh_asset.clone(),
+        };
+        let source = match Self::static_mesh_source_from_project_mesh_asset(&registration_request) {
+            Ok(source) => source,
+            Err(message) => {
+                return Ok(VoxelConversionMeshSourceImportReceipt {
+                    source: imported.source,
+                    imported: false,
+                    source_path: request.source_path,
+                    format: request.format,
+                    source_byte_count,
+                    mesh_asset: None,
+                    source_bounds: None,
+                    vertex_count: 0,
+                    triangle_count: 0,
+                    groups: Vec::new(),
+                    material_slots: Vec::new(),
+                    diagnostics: vec![Self::voxel_conversion_diagnostic(
+                        VoxelConversionDiagnosticCode::UnsupportedSourceAsset,
+                        "canonicalGeometry",
+                        message,
+                    )],
+                    evidence: Vec::new(),
+                });
+            }
+        };
+        let metadata = Self::source_metadata_from_project_mesh_asset(&registration_request);
+        self.voxel_conversion_sources
+            .insert(source.asset_id.clone(), source);
+        self.voxel_conversion_source_metadata
+            .insert(imported.source.asset_id.clone(), metadata.clone());
+        self.voxel_conversion_plan = None;
+        self.remember_voxel_conversion_evidence(metadata.evidence.clone());
+        Ok(VoxelConversionMeshSourceImportReceipt {
+            source: imported.source,
+            imported: true,
+            source_path: request.source_path,
+            format: request.format,
+            source_byte_count,
+            mesh_asset: Some(imported.mesh_asset),
+            source_bounds: metadata.source_bounds,
+            vertex_count: metadata.vertex_count,
+            triangle_count: metadata.triangle_count,
+            groups: metadata.groups,
+            material_slots: metadata.material_slots,
+            diagnostics: Vec::new(),
+            evidence: metadata.evidence,
+        })
+    }
+
     pub fn new() -> Self {
         Self::default()
     }

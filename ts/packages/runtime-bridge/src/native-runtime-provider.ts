@@ -27,6 +27,7 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
   'planVoxelConversion',
   'registerVoxelConversionSource',
   'registerVoxelConversionMeshAsset',
+  'importVoxelConversionMeshSource',
   'readVoxelConversionSourceMetadata',
   'previewVoxelConversion',
   'applyVoxelConversion',

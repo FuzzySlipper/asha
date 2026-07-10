@@ -584,6 +584,7 @@ class ReferenceRuntimeSessionFacade {
     planVoxelConversion(_request) { void _request; return this.#unsupportedOperation('planVoxelConversion', 'Voxel conversion authority is not wired into the reference RuntimeSession'); }
     registerVoxelConversionSource(_request) { void _request; return this.#unsupportedOperation('registerVoxelConversionSource', 'Voxel conversion source registration is not wired into the reference RuntimeSession'); }
     registerVoxelConversionMeshAsset(_request) { void _request; return this.#unsupportedOperation('registerVoxelConversionMeshAsset', 'Voxel conversion mesh asset registration is not wired into the reference RuntimeSession'); }
+    importVoxelConversionMeshSource(_request) { void _request; return this.#unsupportedOperation('importVoxelConversionMeshSource', 'Voxel conversion mesh source import is not wired into the reference RuntimeSession'); }
     readVoxelConversionSourceMetadata(_request) { void _request; return this.#unsupportedOperation('readVoxelConversionSourceMetadata', 'Voxel conversion source metadata is not wired into the reference RuntimeSession'); }
     previewVoxelConversion(_request) { void _request; return this.#unsupportedOperation('previewVoxelConversion', 'Voxel conversion preview is not wired into the reference RuntimeSession'); }
     applyVoxelConversion(_request) { void _request; return this.#unsupportedOperation('applyVoxelConversion', 'Voxel conversion apply is not wired into the reference RuntimeSession'); }

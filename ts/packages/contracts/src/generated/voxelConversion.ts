@@ -9,8 +9,20 @@
 import type { DiagnosticSeverity } from './diagnostics.js';
 import type { VoxelCoord } from './voxel.js';
 
+// Hard source-byte ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES = 67108864;
+
+// Hard canonical vertex ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES = 2000000;
+
+// Hard canonical index ceiling for one mesh import request.
+export const VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES = 6000000;
+
 // Conversion modes Rust authority may execute.
 export type VoxelConversionMode = 'surface' | 'solid';
+
+// Authority-owned source format selected for static mesh ingestion.
+export type VoxelConversionMeshSourceFormat = 'glb';
 
 // How the source bounds fit into the requested target resolution.
 export type VoxelConversionFitPolicy = 'contain' | 'cover' | 'stretch';
@@ -75,6 +87,33 @@ export interface VoxelConversionMeshAsset {
 export interface VoxelConversionMeshAssetRegistrationRequest {
   readonly source: VoxelConversionSourceRef;
   readonly meshAsset: VoxelConversionMeshAsset;
+}
+
+// Import host-provided static mesh bytes through Rust parser authority and register the resulting canonical geometry for voxel conversion.
+export interface VoxelConversionMeshSourceImportRequest {
+  readonly sourceAssetId: string;
+  readonly assetVersion: number;
+  readonly sourcePath: string;
+  readonly format: VoxelConversionMeshSourceFormat;
+  readonly sourceBytes: readonly number[];
+  readonly meshPrimitive: string | null;
+}
+
+// Receipt/readback for one authority-owned static mesh import and registration. Source bytes are intentionally not echoed in the receipt.
+export interface VoxelConversionMeshSourceImportReceipt {
+  readonly source: VoxelConversionSourceRef;
+  readonly imported: boolean;
+  readonly sourcePath: string;
+  readonly format: VoxelConversionMeshSourceFormat;
+  readonly sourceByteCount: number;
+  readonly meshAsset: VoxelConversionMeshAsset | null;
+  readonly sourceBounds: VoxelConversionSourceBounds | null;
+  readonly vertexCount: number;
+  readonly triangleCount: number;
+  readonly groups: readonly VoxelConversionSourceGroupMetadata[];
+  readonly materialSlots: readonly VoxelConversionSourceMaterialSlot[];
+  readonly diagnostics: readonly VoxelConversionDiagnostic[];
+  readonly evidence: readonly VoxelConversionEvidenceRef[];
 }
 
 // Request authority metadata for a registered conversion source.

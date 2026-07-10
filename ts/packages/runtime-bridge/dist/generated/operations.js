@@ -13,6 +13,7 @@ export const MANIFEST_OPERATIONS = [
     { manifestName: 'plan_voxel_conversion', facadeMethod: 'planVoxelConversion', surface: 'stable' },
     { manifestName: 'register_voxel_conversion_source', facadeMethod: 'registerVoxelConversionSource', surface: 'stable' },
     { manifestName: 'register_voxel_conversion_mesh_asset', facadeMethod: 'registerVoxelConversionMeshAsset', surface: 'stable' },
+    { manifestName: 'import_voxel_conversion_mesh_source', facadeMethod: 'importVoxelConversionMeshSource', surface: 'stable' },
     { manifestName: 'read_voxel_conversion_source_metadata', facadeMethod: 'readVoxelConversionSourceMetadata', surface: 'stable' },
     { manifestName: 'preview_voxel_conversion', facadeMethod: 'previewVoxelConversion', surface: 'stable' },
     { manifestName: 'apply_voxel_conversion', facadeMethod: 'applyVoxelConversion', surface: 'stable' },

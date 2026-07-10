@@ -12,6 +12,7 @@ import { MANIFEST_OPERATIONS, NATIVE_WIRED_OPERATIONS, NativeRuntimeBridge, Runt
 import { fpsLoadRequest } from './native-fps-fixtures.test-fixture.js';
 import { NATIVE_GENERATED_TUNNEL_RECEIPT } from './native-generated-tunnel-fixture.js';
 import { REQUIRED_NATIVE_CONFORMANCE_OPS } from './native-conformance-operations.test-fixture.js';
+import { VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST, VOXEL_CONVERSION_MESH_SOURCE_IMPORT_REQUEST, createNativeVoxelMeshSourceHandlers, } from './native-voxel-mesh-source.test-fixture.js';
 import { createVoxelPaletteUpdateHandler, voxelPaletteUpdateRequest } from './native-voxel-palette.test-fixture.js';
 const MODEL_MATERIAL_PREVIEW_REQUEST = {
     catalogEntry: {
@@ -148,18 +149,6 @@ const VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST = {
     positions: [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
     triangles: [{ indices: [0, 1, 2], sourceMaterialSlot: 0 }],
     materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'mat/a' }],
-};
-const VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST = {
-    source: VOXEL_CONVERSION_PLAN_REQUEST.source,
-    meshAsset: {
-        assetId: 'mesh/quad',
-        sourcePath: 'assets/mesh/quad.mesh.json',
-        positions: [[0, 0, 0], [1, 0, 0], [0, 1, 0]],
-        normals: [],
-        indices: [0, 1, 2],
-        groups: [{ materialSlot: 0, start: 0, count: 3 }],
-        materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'mat/a' }],
-    },
 };
 const VOXEL_CONVERSION_EVIDENCE = [
     {
@@ -786,21 +775,7 @@ function fakeAddon(calls = []) {
                     }],
             });
         },
-        registerVoxelConversionMeshAsset: (_handle, requestJson) => {
-            calls.push(`voxelMeshAssetRegister:${requestJson}`);
-            const request = parseJsonFixture(requestJson);
-            return JSON.stringify({
-                source: request.source,
-                registered: true,
-                materialSlots: request.meshAsset.materialSlots,
-                diagnostics: [],
-                evidence: [{
-                        kind: 'source_snapshot',
-                        uri: `asha://voxel-conversion/source/${request.meshAsset.assetId}`,
-                        contentHash: request.source.sourceHash,
-                    }],
-            });
-        },
+        ...createNativeVoxelMeshSourceHandlers(calls),
         readVoxelConversionSourceMetadata: (_handle, requestJson) => {
             calls.push(`voxelSourceMetadata:${requestJson}`);
             const request = parseJsonFixture(requestJson);
@@ -1259,6 +1234,7 @@ const INVOKE = new Map([
     ['planVoxelConversion', (b) => b.planVoxelConversion(VOXEL_CONVERSION_PLAN_REQUEST)],
     ['registerVoxelConversionSource', (b) => b.registerVoxelConversionSource(VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST)],
     ['registerVoxelConversionMeshAsset', (b) => b.registerVoxelConversionMeshAsset(VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST)],
+    ['importVoxelConversionMeshSource', (b) => b.importVoxelConversionMeshSource(VOXEL_CONVERSION_MESH_SOURCE_IMPORT_REQUEST)],
     ['readVoxelConversionSourceMetadata', (b) => b.readVoxelConversionSourceMetadata({
             source: VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST.source,
         })],

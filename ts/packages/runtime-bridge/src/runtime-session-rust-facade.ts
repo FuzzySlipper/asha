@@ -7,6 +7,8 @@ import type {
   VoxelConversionApplyRequest,
   VoxelConversionEvidenceRef,
   VoxelConversionMeshAssetRegistrationRequest,
+  VoxelConversionMeshSourceImportReceipt,
+  VoxelConversionMeshSourceImportRequest,
   VoxelConversionPlan,
   VoxelConversionPlanRequest,
   VoxelConversionPreview,
@@ -860,6 +862,13 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   ): VoxelConversionSourceRegistration {
     this.#requireInitialized('registerVoxelConversionMeshAsset');
     return this.#bridge.registerVoxelConversionMeshAsset(request);
+  }
+
+  importVoxelConversionMeshSource(
+    request: VoxelConversionMeshSourceImportRequest,
+  ): VoxelConversionMeshSourceImportReceipt {
+    this.#requireInitialized('importVoxelConversionMeshSource');
+    return this.#bridge.importVoxelConversionMeshSource(request);
   }
 
   readVoxelConversionSourceMetadata(

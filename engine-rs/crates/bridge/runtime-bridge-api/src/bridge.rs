@@ -60,6 +60,12 @@ pub trait RuntimeBridge {
         &mut self,
         request: VoxelConversionMeshAssetRegistrationRequest,
     ) -> BridgeResult<VoxelConversionSourceRegistration>;
+    /// Parse host-provided static mesh bytes through Rust authority, register
+    /// canonical geometry, and return bounded source metadata and diagnostics.
+    fn import_voxel_conversion_mesh_source(
+        &mut self,
+        request: VoxelConversionMeshSourceImportRequest,
+    ) -> BridgeResult<VoxelConversionMeshSourceImportReceipt>;
     /// Read authority-owned metadata for a registered conversion source. Unknown
     /// sources return diagnostics instead of requiring Studio to infer catalog
     /// metadata from paths or private state.
