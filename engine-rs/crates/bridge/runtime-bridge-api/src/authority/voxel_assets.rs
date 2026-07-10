@@ -1142,23 +1142,6 @@ impl EngineBridge {
                 )],
             ));
         }
-        if self.voxel_model_infos.iter().any(|(other_key, other)| {
-            other_key != &key
-                && other.grid == info.grid
-                && other
-                    .resident_voxels
-                    .keys()
-                    .any(|coord| info.resident_voxels.contains_key(coord))
-        }) {
-            return Ok(Self::rejected_voxel_volume_asset_unload(
-                request,
-                vec![Self::voxel_asset_diagnostic(
-                    VoxelAssetDiagnosticCode::StaleRuntimeSnapshot,
-                    "residentVoxels",
-                    "unload cannot restore a model whose footprint overlaps another resident model",
-                )],
-            ));
-        }
         let Some(world) = self.voxel.as_ref() else {
             return Ok(Self::rejected_voxel_volume_asset_unload(
                 request,
@@ -1206,6 +1189,23 @@ impl EngineBridge {
                     VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
                     "voxelCommandApply",
                     "runtime authority rejected the unload restoration command batch",
+                )],
+            ));
+        }
+        if self.voxel_model_infos.iter().any(|(other_key, other)| {
+            other_key != &key
+                && other.grid == info.grid
+                && other.resident_voxels.iter().any(|(coord, value)| {
+                    info.resident_voxels.contains_key(coord)
+                        && Self::voxel_value_at(&candidate, *coord) != *value
+                })
+        }) {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::StaleRuntimeSnapshot,
+                    "residentVoxels",
+                    "unload restoration conflicts with another resident model",
                 )],
             ));
         }

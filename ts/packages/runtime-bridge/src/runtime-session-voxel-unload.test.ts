@@ -8,9 +8,11 @@ import type {
 
 import {
   RuntimeBridgeError,
+  createNativeRuntimeBridge,
   createRuntimeSessionFacade,
 } from './index.js';
 import { MockRuntimeBridge } from './mock.js';
+import type { RuntimeSessionFacade } from '@asha/runtime-session';
 
 const UNLOAD_REQUEST = {
   grid: 7,
@@ -81,4 +83,172 @@ void test('reference RuntimeSession fails closed for voxel volume unload', () =>
     (error: unknown) =>
       error instanceof RuntimeBridgeError && error.kind === 'operation_unimplemented',
   );
+});
+
+void test('native conversion save unload and reload preserves a prior resident model', (t) => {
+  let session: RuntimeSessionFacade;
+  try {
+    session = createRuntimeSessionFacade({ bridge: createNativeRuntimeBridge(), mode: 'rust' });
+  } catch (error) {
+    if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
+      t.skip('native addon not built (run harness/ci/check-native.sh)');
+      return;
+    }
+    throw error;
+  }
+  session.initialize(sessionInput());
+
+  const registration = session.registerVoxelConversionMeshAsset({
+    source: {
+      assetId: 'mesh/native-unload-quad',
+      assetKind: 'mesh',
+      assetVersion: 1,
+      sourceHash: 'sha256:native-unload-quad',
+      meshPrimitive: 'default',
+    },
+    meshAsset: {
+      assetId: 'mesh/native-unload-quad',
+      sourcePath: 'assets/meshes/native-unload-quad.mesh.json',
+      positions: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]],
+      normals: [],
+      indices: [0, 1, 2, 0, 2, 3],
+      groups: [{ materialSlot: 0, start: 0, count: 6 }],
+      materialSlots: [{ sourceMaterialSlot: 0, sourceMaterialId: 'material/surface-a' }],
+    },
+  });
+  assert.equal(registration.registered, true);
+
+  const applyConversion = () => {
+    const plan = session.planVoxelConversion({
+      source: registration.source,
+      target: {
+        grid: 2,
+        volumeAssetId: 'voxel/generated',
+        origin: { x: 0, y: 0, z: 0 },
+      },
+      settings: {
+        mode: 'surface',
+        fitPolicy: 'contain',
+        originPolicy: 'target_min',
+        resolution: [4, 4, 1],
+        voxelSize: 1,
+        maxOutputVoxels: 16,
+        transform: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        materialMap: {
+          entries: [{
+            sourceMaterialSlot: 0,
+            sourceMaterialId: 'material/surface-a',
+            voxelMaterial: 1,
+          }],
+          textureAssets: [],
+          textureBindings: [],
+          defaultVoxelMaterial: null,
+        },
+      },
+    });
+    assert.equal(plan.diagnostics.length, 0);
+    const preview = session.previewVoxelConversion({
+      planId: plan.planId,
+      expectedPlanHash: plan.planHash,
+    });
+    assert.equal(preview.diagnostics.length, 0);
+    const receipt = session.applyVoxelConversion({
+      planId: plan.planId,
+      expectedPlanHash: plan.planHash,
+      expectedPreviewHash: preview.outputHash,
+    });
+    assert.equal(receipt.applied, true, JSON.stringify(receipt.diagnostics));
+  };
+
+  applyConversion();
+  const firstInfo = session.readVoxelModelInfo({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    includeMaterialCounts: true,
+  });
+  const firstExport = session.exportVoxelVolumeAsset({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    targetAssetId: 'voxel-volume/native-unload-predecessor',
+    label: 'Native unload predecessor',
+    createdBy: '@asha/runtime-bridge',
+    sourceTool: '@asha/runtime-bridge',
+    maxSparseRuns: 16,
+    expectedSessionHash: firstInfo.sessionHash,
+  });
+  assert.equal(firstExport.exported, true, JSON.stringify(firstExport.diagnostics));
+  const firstUnload = session.unloadVoxelVolumeAsset({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    expectedSessionHash: firstInfo.sessionHash,
+  });
+  assert.equal(firstUnload.unloaded, true, JSON.stringify(firstUnload.diagnostics));
+  const predecessor = session.loadVoxelVolumeAsset({
+    asset: firstExport.asset!,
+    targetGrid: 2,
+    targetVolumeAssetId: 'voxel/predecessor',
+    replaceExisting: false,
+    includeMaterialCounts: true,
+  });
+  assert.equal(predecessor.loaded, true, JSON.stringify(predecessor.diagnostics));
+
+  applyConversion();
+  const currentInfo = session.readVoxelModelInfo({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    includeMaterialCounts: true,
+  });
+  const saved = session.saveVoxelVolumeAsset({
+    exportRequest: {
+      grid: 2,
+      volumeAssetId: 'voxel/generated',
+      targetAssetId: 'voxel-volume/native-unload-current',
+      label: 'Native unload current',
+      createdBy: '@asha/runtime-bridge',
+      sourceTool: '@asha/runtime-bridge',
+      maxSparseRuns: 16,
+      expectedSessionHash: currentInfo.sessionHash,
+    },
+    targetProjectBundle: 'asha-testing',
+    targetAssetPath: 'assets/voxels/native-unload-current.avxl.json',
+    representationKind: 'sparse_runs',
+    expectedExistingCanonicalJsonHash: null,
+    expectedCanonicalJsonHash: null,
+    expectedVoxelDataHash: null,
+  });
+  assert.equal(saved.saved, true, JSON.stringify(saved.diagnostics));
+
+  const lowerUnload = session.unloadVoxelVolumeAsset({
+    grid: 2,
+    volumeAssetId: 'voxel/predecessor',
+    expectedSessionHash: predecessor.sessionHash,
+  });
+  assert.equal(lowerUnload.unloaded, false);
+  assert.equal(lowerUnload.diagnostics[0]?.code, 'stale_runtime_snapshot');
+
+  const unloaded = session.unloadVoxelVolumeAsset({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    expectedSessionHash: currentInfo.sessionHash,
+  });
+  assert.equal(unloaded.unloaded, true, JSON.stringify(unloaded.diagnostics));
+  assert.equal(unloaded.removedVoxelCount, currentInfo.voxelCount);
+  const absent = session.readVoxelModelInfo({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    includeMaterialCounts: true,
+  });
+  assert.equal(absent.resident, false);
+
+  const reloaded = session.loadVoxelVolumeAsset({
+    asset: saved.asset!,
+    targetGrid: 2,
+    targetVolumeAssetId: 'voxel/generated',
+    replaceExisting: false,
+    includeMaterialCounts: true,
+  });
+  assert.equal(reloaded.loaded, true, JSON.stringify(reloaded.diagnostics));
+  assert.equal(reloaded.voxelCount, currentInfo.voxelCount);
+  assert.deepEqual(reloaded.bounds, saved.asset?.bounds);
+  assert.equal(reloaded.voxelDataHash, saved.voxelDataHash);
 });

@@ -346,3 +346,157 @@ fn voxel_volume_asset_session_hash_captures_unload_restoration_state() {
         );
     }
 }
+
+#[test]
+fn converted_volume_save_unload_and_reload_preserves_predecessor_model() {
+    let mut bridge = init_bridge();
+    let registration = studio_registered_source_request();
+    let registered = bridge
+        .register_voxel_conversion_source(registration.clone())
+        .unwrap();
+    assert!(registered.registered);
+
+    let mut predecessor_asset = hand_authored_voxel_volume_asset();
+    predecessor_asset.asset_id = "voxel-volume/predecessor".to_string();
+    predecessor_asset = svc_voxel_asset::with_computed_hashes(&predecessor_asset);
+    let predecessor_load = bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: predecessor_asset,
+            target_grid: 2,
+            target_volume_asset_id: Some("voxel/predecessor".to_string()),
+            replace_existing: true,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(
+        predecessor_load.loaded,
+        "{:?}",
+        predecessor_load.diagnostics
+    );
+    let predecessor_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/predecessor".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(predecessor_info.resident);
+
+    let mut current_request = registered_source_plan_request(&registration);
+    current_request.target.grid = 2;
+    current_request.target.volume_asset_id = Some("voxel/generated".to_string());
+    current_request.settings.material_map.entries[0].voxel_material = 1;
+    let current_receipt = apply_conversion_for_unload_test(&mut bridge, current_request);
+    assert!(current_receipt.applied, "{:?}", current_receipt.diagnostics);
+    let current_info = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(current_info.resident);
+
+    let exported = bridge
+        .export_voxel_volume_asset(VoxelVolumeAssetExportRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            target_asset_id: "voxel-volume/studio-generated".to_string(),
+            label: Some("Studio generated".to_string()),
+            created_by: Some("runtime-bridge-api-test".to_string()),
+            source_tool: Some("svc-voxel-conversion".to_string()),
+            max_sparse_runs: 16,
+            expected_session_hash: Some(current_info.session_hash.clone()),
+        })
+        .unwrap();
+    assert!(exported.exported, "{:?}", exported.diagnostics);
+    let saved = bridge
+        .save_voxel_volume_asset(VoxelVolumeAssetSaveRequest {
+            export_request: exported.request.clone(),
+            target_project_bundle: "asha-studio".to_string(),
+            target_asset_path: "assets/voxels/studio-generated.avxl.json".to_string(),
+            representation_kind: "sparse_runs".to_string(),
+            expected_existing_canonical_json_hash: None,
+            expected_canonical_json_hash: exported.canonical_json_hash.clone(),
+            expected_voxel_data_hash: exported.voxel_data_hash.clone(),
+        })
+        .unwrap();
+    assert!(saved.saved, "{:?}", saved.diagnostics);
+    let saved_asset = saved.asset.clone().expect("saved asset remains available");
+
+    let lower_unload = bridge
+        .unload_voxel_volume_asset(VoxelVolumeAssetUnloadRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/predecessor".to_string()),
+            expected_session_hash: predecessor_info.session_hash.clone(),
+        })
+        .unwrap();
+    assert!(!lower_unload.unloaded);
+    assert_eq!(
+        lower_unload.diagnostics[0].code,
+        protocol_voxel_asset::VoxelAssetDiagnosticCode::StaleRuntimeSnapshot
+    );
+
+    let unloaded = bridge
+        .unload_voxel_volume_asset(VoxelVolumeAssetUnloadRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            expected_session_hash: current_info.session_hash,
+        })
+        .unwrap();
+    assert!(unloaded.unloaded, "{:?}", unloaded.diagnostics);
+    assert_eq!(unloaded.removed_voxel_count, current_info.voxel_count);
+    let absent = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/generated".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(!absent.resident);
+    let predecessor_after = bridge
+        .read_voxel_model_info(VoxelModelInfoRequest {
+            grid: 2,
+            volume_asset_id: Some("voxel/predecessor".to_string()),
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(predecessor_after.resident);
+
+    let saved_bounds = saved_asset.bounds.clone();
+    let reloaded = bridge
+        .load_voxel_volume_asset(VoxelVolumeAssetLoadRequest {
+            asset: saved_asset,
+            target_grid: 2,
+            target_volume_asset_id: Some("voxel/generated".to_string()),
+            replace_existing: false,
+            include_material_counts: true,
+        })
+        .unwrap();
+    assert!(reloaded.loaded, "{:?}", reloaded.diagnostics);
+    assert_eq!(reloaded.voxel_count, current_info.voxel_count);
+    assert_eq!(reloaded.bounds, Some(saved_bounds));
+    assert_eq!(reloaded.voxel_data_hash, saved.voxel_data_hash);
+}
+
+fn apply_conversion_for_unload_test(
+    bridge: &mut EngineBridge,
+    request: VoxelConversionPlanRequest,
+) -> VoxelConversionReceipt {
+    let plan = bridge.plan_voxel_conversion(request).unwrap();
+    assert!(plan.diagnostics.is_empty(), "{:?}", plan.diagnostics);
+    let preview = bridge
+        .preview_voxel_conversion(VoxelConversionPreviewRequest {
+            plan_id: plan.plan_id.clone(),
+            expected_plan_hash: plan.plan_hash.clone(),
+        })
+        .unwrap();
+    assert!(preview.diagnostics.is_empty(), "{:?}", preview.diagnostics);
+    bridge
+        .apply_voxel_conversion(VoxelConversionApplyRequest {
+            plan_id: plan.plan_id,
+            expected_plan_hash: plan.plan_hash,
+            expected_preview_hash: Some(preview.output_hash),
+        })
+        .unwrap()
+}
