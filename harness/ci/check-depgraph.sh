@@ -24,6 +24,12 @@ python3 "$REPO_ROOT/harness/depgraph/generate-ts-eslint-boundaries.py" --check
 echo "==> Checking Agent Code Atlas inventory"
 python3 "$REPO_ROOT/harness/code-map/check-agent-code-atlas.py" --check
 
+echo "==> Checking generated README workspace counts"
+python3 "$REPO_ROOT/harness/code-map/check-readme-workspace-counts.py" --check
+
+echo "==> Running README workspace-count fixtures"
+python3 "$REPO_ROOT/harness/code-map/check-readme-workspace-counts-fixtures.py"
+
 echo "==> Running depgraph negative fixtures"
 bash "$REPO_ROOT/harness/depgraph/check-negative-fixtures.sh"
 

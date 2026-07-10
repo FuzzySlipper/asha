@@ -41,8 +41,12 @@ For multi-repo checkout, consumer setup, and deployment-viable repo roles, see
 
 ## Repository layout
 
+<!-- workspace-counts:start -->
+Workspace inventory: **77 default Cargo workspace members, 1 explicit-build excluded crate (78 governed Rust crates total), and 24 pnpm workspace packages (workspace root excluded).**
+<!-- workspace-counts:end -->
+
 ```text
-engine-rs/          Rust workspace (64 crates, including reserved cells)
+engine-rs/          Rust workspace
   crates/
     foundation/     core IDs, math, time, errors, collections, coordinates, assets
     state/          authoritative state, entities, scene, catalog, voxel, commands, events, snapshots
@@ -55,7 +59,7 @@ engine-rs/          Rust workspace (64 crates, including reserved cells)
     wasm/           wasm-api for replay/golden surfaces
     tools/          fixture-maker, replay-tool, diagnostics, protocol dump, asset import, snapshot diff, state inspector
 
-ts/                 pnpm workspace (21 packages, including reserved cells)
+ts/                 pnpm workspace
   packages/
     contracts/          generated TypeScript contract types (do not hand-edit generated/)
     script-sdk/         policy view/command helpers, deterministic env, test harness
