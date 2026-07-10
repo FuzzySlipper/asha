@@ -580,6 +580,9 @@ mod tests {
         assert_eq!(projection.collider_count(), 1);
         assert!(projection.contains_point(WorldPos::new(0.5, 1.5, 1.5)));
         assert!(!projection.contains_point(tunnel.spawn_markers[0].world));
+        let identity = projection.identity(&tunnel.world);
+        assert_eq!(identity.source_hash_hex(), "47e4c52bb98a5f36");
+        assert_eq!(identity.projection_hash_label(), "fnv1a64:5499053dc60a873b");
     }
 
     #[test]

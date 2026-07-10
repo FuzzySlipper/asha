@@ -115,11 +115,11 @@ interface NativeFpsPrimaryFireResult {
   readonly mutationOwner: string;
   readonly workspaceTrace: readonly string[];
   readonly shooter: number;
-  readonly target: number | null;
-  readonly targetHealthBefore: NativeFpsHealth | null;
-  readonly targetHealthAfter: NativeFpsHealth | null;
+  readonly target?: number | null;
+  readonly targetHealthBefore?: NativeFpsHealth | null;
+  readonly targetHealthAfter?: NativeFpsHealth | null;
   readonly lifecycleStatus: { readonly state: string; readonly entity?: number; readonly tick?: number };
-  readonly targetRenderVisible: boolean | null;
+  readonly targetRenderVisible?: boolean | null;
   readonly entityHash: string;
   readonly healthHash: string;
   readonly replayHash: string;

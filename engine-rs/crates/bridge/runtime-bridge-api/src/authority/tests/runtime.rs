@@ -291,8 +291,11 @@ fn generated_tunnel_apply_installs_collision_authority_for_loaded_fps_session() 
     assert_eq!(applied.grid, 0);
     assert_eq!(applied.config_hash, "e1d156c6b55137a7");
     assert_eq!(applied.output_hash, "a9b504096397f5b4");
-    assert_eq!(applied.collision_source_hash.len(), 16);
-    assert!(applied.collision_projection_hash.starts_with("fnv1a64:"));
+    assert_eq!(applied.collision_source_hash, "47e4c52bb98a5f36");
+    assert_eq!(
+        applied.collision_projection_hash,
+        "fnv1a64:5499053dc60a873b"
+    );
 
     let camera = bridge
         .create_camera(CameraCreateRequest {

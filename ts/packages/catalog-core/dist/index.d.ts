@@ -49,7 +49,7 @@ export interface FpsGeneratorPresetRef {
     readonly seed: 17;
     readonly outputHash: 'a9b504096397f5b4';
     readonly renderProjectionHash: 'fnv1a64:21eb8696f6f3b5c4';
-    readonly collisionProjectionHash: 'fnv1a64:78b242163cf67524';
+    readonly collisionProjectionHash: 'fnv1a64:5499053dc60a873b';
 }
 export interface FpsGameplayOwnership {
     readonly gameOwned: readonly [

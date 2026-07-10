@@ -138,8 +138,9 @@ impl RuntimeBridge for EngineBridge {
         };
         self.cameras.insert(envelope.camera.raw(), after);
         let (min, max) = Self::aabb_for_pose(after.pose, envelope.shape);
-        let collision_projection_hash = Self::collision_projection_hash(world, &projection);
-        let collision_source_hash = Self::voxel_state_hash(world);
+        let collision_identity = projection.identity(world);
+        let collision_projection_hash = collision_identity.projection_hash_label();
+        let collision_source_hash = collision_identity.source_hash_hex();
         let correction = [
             after.pose.position[0] - attempted.pose.position[0],
             after.pose.position[1] - attempted.pose.position[1],
@@ -202,14 +203,15 @@ impl RuntimeBridge for EngineBridge {
             )
         })?;
         let projection = CollisionProjection::build(&tunnel.world);
+        let collision_identity = projection.identity(&tunnel.world);
         let receipt = GeneratedTunnelRuntimeApplyReceipt {
             preset: request.preset,
             seed: request.seed,
             grid: tunnel.grid.id().raw() as u64,
             config_hash: format!("{:016x}", tunnel.record.config_hash),
             output_hash: format!("{:016x}", tunnel.record.output_hash),
-            collision_source_hash: Self::voxel_state_hash(&tunnel.world),
-            collision_projection_hash: Self::collision_projection_hash(&tunnel.world, &projection),
+            collision_source_hash: collision_identity.source_hash_hex(),
+            collision_projection_hash: collision_identity.projection_hash_label(),
         };
         self.reset_voxel_edit_history(tunnel.world);
         Ok(receipt)
@@ -1158,6 +1160,8 @@ impl RuntimeBridge for EngineBridge {
             .target_role
             .map(Self::fps_runtime_role)
             .unwrap_or(FpsRuntimeRole::Enemy);
+        let has_explicit_role_pair =
+            request.shooter_role.is_some() && request.target_role.is_some();
         let ray = Self::ray_from_primary_fire(request)?;
         let world = self.voxel.as_ref().ok_or_else(|| {
             RuntimeBridgeError::new(
@@ -1166,10 +1170,27 @@ impl RuntimeBridge for EngineBridge {
             )
         })?;
         let projection = CollisionProjection::build(world);
-        let receipt = self
-            .fps_session_mut("apply_fps_primary_fire")?
-            .apply_primary_fire_for_roles(&projection, ray, tick, shooter_role, target_role, 0)
-            .map_err(Self::fps_runtime_error)?;
+        let session = self.fps_session_mut("apply_fps_primary_fire")?;
+        let receipt = if has_explicit_role_pair {
+            session.apply_targeted_primary_fire_with_damage_delta(
+                &projection,
+                ray.origin,
+                tick,
+                shooter_role,
+                target_role,
+                0,
+            )
+        } else {
+            session.apply_primary_fire_for_roles(
+                &projection,
+                ray,
+                tick,
+                shooter_role,
+                target_role,
+                0,
+            )
+        }
+        .map_err(Self::fps_runtime_error)?;
         Ok(Self::primary_fire_result(receipt))
     }
 

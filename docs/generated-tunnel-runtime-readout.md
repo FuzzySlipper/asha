@@ -21,7 +21,7 @@ import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 - output hash `a9b504096397f5b4`
 - replay hash `fnv1a64:0821a0c2aea17dff`
 - render projection hash `fnv1a64:21eb8696f6f3b5c4`
-- collision projection hash `fnv1a64:78b242163cf67524`
+- collision projection hash `fnv1a64:5499053dc60a873b`
 - spawn markers `player_start` and `exit_hint`
 
 On a Rust-backed session, call

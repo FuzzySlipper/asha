@@ -349,25 +349,6 @@ impl EngineBridge {
         Ok(())
     }
 
-    pub(super) fn collision_projection_hash(
-        world: &VoxelWorld,
-        projection: &CollisionProjection,
-    ) -> String {
-        let chunks = projection
-            .collider_chunks()
-            .map(|coord| format!("{},{},{}", coord.x, coord.y, coord.z))
-            .collect::<Vec<_>>()
-            .join(";");
-        let key = format!(
-            "{}|v{}|n{}|{}",
-            Self::voxel_state_hash(world),
-            projection.version(),
-            projection.collider_count(),
-            chunks
-        );
-        format!("fnv1a64:{}", Self::fnv1a64(&key))
-    }
-
     pub(super) fn screen_point_to_normalized(
         point: ScreenPoint,
         viewport: ViewportSize,

@@ -177,6 +177,20 @@ function fpsLifecycleStatus(value) {
     }
     throw new RuntimeBridgeError('internal', `unknown native FPS lifecycle status '${value.state}'`);
 }
+function normalizeFpsPrimaryFireResult(result) {
+    return {
+        ...result,
+        backend: fpsBackend(result.backend),
+        target: result.target ?? null,
+        targetHealthBefore: result.targetHealthBefore ?? null,
+        targetHealthAfter: result.targetHealthAfter ?? null,
+        lifecycleStatus: fpsLifecycleStatus(result.lifecycleStatus),
+        targetRenderVisible: result.targetRenderVisible ?? null,
+        entityHash: hashString(result.entityHash, 'entityHash'),
+        healthHash: hashString(result.healthHash, 'healthHash'),
+        replayHash: hashString(result.replayHash, 'replayHash'),
+    };
+}
 function hashString(value, field) {
     if (!/^fnv1a64:[0-9a-f]{16}$/u.test(value)) {
         throw new RuntimeBridgeError('internal', `native ${field} was not an fnv1a64 hash`);
@@ -397,14 +411,7 @@ export class NativeRuntimeBridge {
         const shooterRole = request.shooterRole === undefined ? undefined : fpsRole(request.shooterRole);
         const targetRole = request.targetRole === undefined ? undefined : fpsRole(request.targetRole);
         const result = callNative(() => this.#addon.applyFpsPrimaryFire(handle, tick, origin, direction, shooterRole, targetRole));
-        return {
-            ...result,
-            backend: fpsBackend(result.backend),
-            lifecycleStatus: fpsLifecycleStatus(result.lifecycleStatus),
-            entityHash: hashString(result.entityHash, 'entityHash'),
-            healthHash: hashString(result.healthHash, 'healthHash'),
-            replayHash: hashString(result.replayHash, 'replayHash'),
-        };
+        return normalizeFpsPrimaryFireResult(result);
     }
     invokeGameExtensionWeaponEffect(request) {
         const handle = this.#requireHandle('invokeGameExtensionWeaponEffect');
@@ -423,14 +430,7 @@ export class NativeRuntimeBridge {
             replayEvidence: parseNativeJson(result.replayEvidenceJson, 'game extension replay evidence'),
             primaryFire: result.primaryFire === undefined || result.primaryFire === null
                 ? null
-                : {
-                    ...result.primaryFire,
-                    backend: fpsBackend(result.primaryFire.backend),
-                    lifecycleStatus: fpsLifecycleStatus(result.primaryFire.lifecycleStatus),
-                    entityHash: hashString(result.primaryFire.entityHash, 'entityHash'),
-                    healthHash: hashString(result.primaryFire.healthHash, 'healthHash'),
-                    replayHash: hashString(result.primaryFire.replayHash, 'replayHash'),
-                },
+                : normalizeFpsPrimaryFireResult(result.primaryFire),
         };
     }
     validateGameRuleCatalog(catalog) {

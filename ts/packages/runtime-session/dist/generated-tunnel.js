@@ -46,7 +46,7 @@ export const TINY_GENERATED_TUNNEL_READOUT = {
     },
     collisionProjection: {
         available: true,
-        hash: 'fnv1a64:78b242163cf67524',
+        hash: 'fnv1a64:5499053dc60a873b',
     },
     replayHash: 'fnv1a64:0821a0c2aea17dff',
     fixture: 'harness/fixtures/generated-levels/tiny-tunnel.snapshot.txt',

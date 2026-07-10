@@ -185,6 +185,34 @@ pub struct CollisionProjection {
     version: u64,
 }
 
+/// Stable identity for a collision projection and the voxel authority it was
+/// derived from. Receipts expose these values so separately invoked operations
+/// can prove they queried the same projection substrate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CollisionProjectionIdentity {
+    pub source_hash: u64,
+    pub projection_hash: u64,
+}
+
+impl CollisionProjectionIdentity {
+    pub fn source_hash_hex(self) -> String {
+        format!("{:016x}", self.source_hash)
+    }
+
+    pub fn projection_hash_label(self) -> String {
+        format!("fnv1a64:{:016x}", self.projection_hash)
+    }
+}
+
+fn fnv1a64(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    hash
+}
+
 impl CollisionProjection {
     /// Build a fresh projection over every resident chunk of `world`.
     pub fn build(world: &VoxelWorld) -> Self {
@@ -232,6 +260,36 @@ impl CollisionProjection {
     /// Deterministic iterator over chunks that have colliders.
     pub fn collider_chunks(&self) -> impl Iterator<Item = ChunkCoord> + '_ {
         self.chunks.keys().copied()
+    }
+
+    /// Compute the versioned identity of this projection from canonical voxel
+    /// chunk hashes and deterministic collider coordinates.
+    pub fn identity(&self, world: &VoxelWorld) -> CollisionProjectionIdentity {
+        let mut source_key = String::new();
+        for (coord, chunk) in world.resident_chunks() {
+            source_key.push_str(&format!(
+                "{},{},{}={:016x};",
+                coord.x,
+                coord.y,
+                coord.z,
+                chunk.content_hash().0
+            ));
+        }
+        let source_hash = fnv1a64(source_key.as_bytes());
+        let chunks = self
+            .collider_chunks()
+            .map(|coord| format!("{},{},{}", coord.x, coord.y, coord.z))
+            .collect::<Vec<_>>()
+            .join(";");
+        let projection_key = format!(
+            "{source_hash:016x}|v{}|n{}|{chunks}",
+            self.version(),
+            self.collider_count()
+        );
+        CollisionProjectionIdentity {
+            source_hash,
+            projection_hash: fnv1a64(projection_key.as_bytes()),
+        }
     }
 
     /// Build/replace the collider for one chunk from its current voxels. Drops the

@@ -93,6 +93,56 @@ fn fps_primary_fire_receipt_comes_from_rust_combat_lifecycle_and_replay() {
 }
 
 #[test]
+fn generated_tunnel_preserves_explicit_role_targeted_enemy_damage() {
+    let mut bridge = init_bridge();
+    bridge
+        .load_fps_runtime_session(fps_load_request(75))
+        .unwrap();
+    bridge
+        .apply_generated_tunnel_to_runtime_world(GeneratedTunnelRuntimeApplyRequest {
+            preset: GeneratedTunnelPreset::TinyEnclosed,
+            seed: 17,
+        })
+        .unwrap();
+
+    let receipt = bridge
+        .apply_fps_primary_fire(FpsPrimaryFireRequest {
+            tick: 6,
+            origin: [0.0, 0.5, -2.6],
+            direction: [2.5, 1.0, 4.7],
+            shooter_role: Some(FpsBridgeRole::Enemy),
+            target_role: Some(FpsBridgeRole::Player),
+        })
+        .expect("role-targeted enemy fire remains authoritative after tunnel apply");
+
+    assert_eq!(receipt.shooter, 777);
+    assert_eq!(receipt.target, Some(101));
+    assert_eq!(
+        receipt.target_health_before,
+        Some(FpsBridgeHealth {
+            current: 88,
+            max: 88,
+        })
+    );
+    assert_eq!(
+        receipt.target_health_after,
+        Some(FpsBridgeHealth {
+            current: 78,
+            max: 88,
+        })
+    );
+    let snapshot = bridge.read_fps_runtime_session().unwrap();
+    assert_eq!(
+        snapshot
+            .health
+            .iter()
+            .find(|health| health.entity == 101)
+            .map(|health| health.current),
+        Some(78)
+    );
+}
+
+#[test]
 fn fps_encounter_transition_is_rule_lifecycle_authority() {
     let mut bridge = init_bridge();
     bridge
