@@ -2,6 +2,8 @@
 import { lstatSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+import { validateBaselineChange } from './ts-source-shape-policy-audit.mjs';
+
 const repoRoot = process.argv[2] ?? process.cwd();
 const policyPath = join(repoRoot, 'harness/depgraph/ts-source-shape-policy.json');
 const policy = JSON.parse(readFileSync(policyPath, 'utf8'));
@@ -81,13 +83,14 @@ function readExemption(kind, rel, value) {
     );
     return undefined;
   }
-  const maxLines = Number(value.maxLines);
-  if (!Number.isSafeInteger(maxLines) || maxLines <= 0) {
+  const maxLines = value.maxLines;
+  if (typeof maxLines !== 'number' || !Number.isSafeInteger(maxLines) || maxLines <= 0) {
     failures.push(`FAIL: ${rel} ${kind} entry maxLines must be a positive integer.`);
   }
   if (typeof value.justification !== 'string' || value.justification.trim().length < 20) {
     failures.push(`FAIL: ${rel} ${kind} entry must include a specific justification.`);
   }
+  validateBaselineChange(kind, rel, value.baselineChange, failures);
   return { maxLines };
 }
 

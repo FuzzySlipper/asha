@@ -9,6 +9,8 @@ pnpm install --frozen-lockfile
 
 echo "==> TypeScript source shape guard"
 node "$REPO_ROOT/harness/depgraph/check-ts-source-shape.mjs" "$REPO_ROOT"
+node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-diff.mjs" "$REPO_ROOT"
+node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-fixtures.mjs" "$REPO_ROOT"
 
 echo "==> pnpm -r typecheck"
 pnpm -r typecheck
