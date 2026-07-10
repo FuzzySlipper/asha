@@ -45,6 +45,8 @@ export type {
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
   VoxelVolumeAssetLoadRequest,
+  VoxelVolumeAssetUnloadReceipt,
+  VoxelVolumeAssetUnloadRequest,
   VoxelVolumeAssetPaletteStoredDiff,
   VoxelVolumeAssetPaletteUpdateReceipt,
   VoxelVolumeAssetPaletteUpdateRequest,

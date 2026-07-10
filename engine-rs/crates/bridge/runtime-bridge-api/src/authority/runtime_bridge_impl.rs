@@ -534,6 +534,7 @@ impl RuntimeBridge for EngineBridge {
             ));
         };
         let mut candidate = self.voxel_conversion_target_candidate(&target, &planned)?;
+        let prior_world = candidate.clone();
         let expected = batch.commands.len() as u32;
         let command_result =
             Self::apply_command_batch_to_world(&batch, &mut candidate, &self.materials)?;
@@ -551,7 +552,7 @@ impl RuntimeBridge for EngineBridge {
             );
         } else {
             self.reset_voxel_edit_history(candidate);
-            self.remember_voxel_model_info(&target, &planned, &receipt);
+            self.remember_voxel_model_info(&target, &planned, &receipt, &prior_world);
         }
         self.remember_voxel_conversion_evidence(receipt.evidence.clone());
         Ok(receipt)
@@ -1030,6 +1031,7 @@ impl RuntimeBridge for EngineBridge {
         };
         let batch = Self::voxel_asset_load_commands(asset, target.spec.id())?;
         let mut candidate = self.voxel_asset_load_candidate(&target, request.replace_existing);
+        let prior_world = candidate.clone();
         Self::ensure_candidate_chunks_for_asset(asset, &target.spec, &mut candidate);
         let expected = batch.commands.len() as u32;
         let command_result =
@@ -1048,7 +1050,13 @@ impl RuntimeBridge for EngineBridge {
             ));
         }
 
-        let info = Self::loaded_voxel_asset_info(&request, &target);
+        let key = Self::voxel_model_key(target.spec.id().raw() as u64, &target.volume_asset_id);
+        let info = Self::loaded_voxel_asset_info(
+            &request,
+            &target,
+            &prior_world,
+            self.voxel_model_infos.get(&key),
+        );
         let receipt =
             Self::voxel_volume_asset_load_receipt(&request, &target, &info, true, Vec::new());
         self.reset_voxel_edit_history(candidate);
@@ -1056,11 +1064,15 @@ impl RuntimeBridge for EngineBridge {
             Self::voxel_model_key(info.grid, &info.volume_asset_id),
             target,
         );
-        self.voxel_model_infos.insert(
-            Self::voxel_model_key(info.grid, &info.volume_asset_id),
-            info,
-        );
+        self.voxel_model_infos.insert(key, info);
         Ok(receipt)
+    }
+
+    fn unload_voxel_volume_asset(
+        &mut self,
+        request: VoxelVolumeAssetUnloadRequest,
+    ) -> BridgeResult<VoxelVolumeAssetUnloadReceipt> {
+        self.unload_voxel_volume_asset_authority(request)
     }
 
     fn validate_voxel_annotation_layer(

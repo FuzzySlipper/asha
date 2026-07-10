@@ -394,6 +394,7 @@ function createFakeRuntimeBridge(): RuntimeBridge {
     saveVoxelVolumeAsset: operation,
     updateVoxelVolumeAssetPalette: operation,
     loadVoxelVolumeAsset: operation,
+    unloadVoxelVolumeAsset: operation,
     validateVoxelAnnotationLayer: operation,
     loadVoxelAnnotationLayer: operation,
     readVoxelAnnotationQuery: operation,

@@ -60,6 +60,8 @@ import type {
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
   VoxelVolumeAssetLoadRequest,
+  VoxelVolumeAssetUnloadReceipt,
+  VoxelVolumeAssetUnloadRequest,
   VoxelVolumeAssetPaletteUpdateReceipt,
   VoxelVolumeAssetPaletteUpdateRequest,
   VoxelVolumeAssetSaveReceipt,
@@ -297,6 +299,7 @@ export interface RuntimeBridge {
   saveVoxelVolumeAsset(request: VoxelVolumeAssetSaveRequest): VoxelVolumeAssetSaveReceipt;
   updateVoxelVolumeAssetPalette(request: VoxelVolumeAssetPaletteUpdateRequest): VoxelVolumeAssetPaletteUpdateReceipt;
   loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt;
+  unloadVoxelVolumeAsset(request: VoxelVolumeAssetUnloadRequest): VoxelVolumeAssetUnloadReceipt;
   validateVoxelAnnotationLayer(request: VoxelAnnotationLayerValidationRequest): VoxelAnnotationLayerValidationReport;
   loadVoxelAnnotationLayer(request: VoxelAnnotationLayerLoadRequest): VoxelAnnotationLayerLoadReceipt;
   readVoxelAnnotationQuery(request: VoxelAnnotationQueryRequest): VoxelAnnotationQueryReadout;

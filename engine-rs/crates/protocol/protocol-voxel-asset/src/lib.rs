@@ -421,6 +421,33 @@ pub struct VoxelVolumeAssetLoadReceipt {
     pub diagnostics: Vec<VoxelAssetDiagnostic>,
 }
 
+/// Hash-guarded request to remove one resident voxel-volume model while
+/// leaving its durable ProjectBundle asset untouched.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct VoxelVolumeAssetUnloadRequest {
+    pub grid: u64,
+    pub volume_asset_id: Option<String>,
+    pub expected_session_hash: String,
+}
+
+/// Authority receipt for one accepted or rejected resident-volume unload.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct VoxelVolumeAssetUnloadReceipt {
+    pub request: VoxelVolumeAssetUnloadRequest,
+    pub unloaded: bool,
+    pub model_id: String,
+    pub volume_asset_id: Option<String>,
+    pub grid: u64,
+    pub removed_voxel_count: u64,
+    pub session_hash: String,
+    pub replay_hash: String,
+    pub diagnostics: Vec<VoxelAssetDiagnostic>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

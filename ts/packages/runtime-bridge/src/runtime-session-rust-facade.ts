@@ -42,6 +42,8 @@ import type {
   VoxelVolumeAssetExportRequest,
   VoxelVolumeAssetLoadReceipt,
   VoxelVolumeAssetLoadRequest,
+  VoxelVolumeAssetUnloadReceipt,
+  VoxelVolumeAssetUnloadRequest,
   VoxelVolumeAssetPaletteUpdateReceipt,
   VoxelVolumeAssetPaletteUpdateRequest,
   VoxelVolumeAssetSaveReceipt,
@@ -914,6 +916,11 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   loadVoxelVolumeAsset(request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt {
     this.#requireInitialized('loadVoxelVolumeAsset');
     return this.#bridge.loadVoxelVolumeAsset(request);
+  }
+
+  unloadVoxelVolumeAsset(request: VoxelVolumeAssetUnloadRequest): VoxelVolumeAssetUnloadReceipt {
+    this.#requireInitialized('unloadVoxelVolumeAsset');
+    return this.#bridge.unloadVoxelVolumeAsset(request);
   }
 
   validateVoxelAnnotationLayer(

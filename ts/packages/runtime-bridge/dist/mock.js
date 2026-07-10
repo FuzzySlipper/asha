@@ -1075,6 +1075,7 @@ export class MockRuntimeBridge {
     saveVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('saveVoxelVolumeAsset', 'mock bridge does not own voxel volume asset save authority'); }
     updateVoxelVolumeAssetPalette(_request) { void _request; return this.#unsupportedAfterInit('updateVoxelVolumeAssetPalette', 'mock bridge does not own durable voxel palette authority'); }
     loadVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('loadVoxelVolumeAsset', 'mock bridge does not own voxel volume asset load authority'); }
+    unloadVoxelVolumeAsset(_request) { void _request; return this.#unsupportedAfterInit('unloadVoxelVolumeAsset', 'mock bridge does not own voxel volume asset unload authority'); }
     validateVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedAfterInit('validateVoxelAnnotationLayer', 'mock bridge does not own voxel annotation validation authority'); }
     loadVoxelAnnotationLayer(_request) { void _request; return this.#unsupportedAfterInit('loadVoxelAnnotationLayer', 'mock bridge does not own voxel annotation load authority'); }
     readVoxelAnnotationQuery(_request) { void _request; return this.#unsupportedAfterInit('readVoxelAnnotationQuery', 'mock bridge does not own voxel annotation query authority'); }

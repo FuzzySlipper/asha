@@ -50,6 +50,7 @@ void test('native addon loader accepts current ProjectBundle export vocabulary',
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('saveProjectBundle'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('getProjectBundleCompositionStatus'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('createCamera'));
+    assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('unloadVoxelVolumeAsset'));
     assert.equal((REQUIRED_NATIVE_ADDON_EXPORTS as readonly string[]).includes(`load${retiredRuntimeContainerTerm()}Bundle`), false);
     assert.equal((REQUIRED_NATIVE_ADDON_EXPORTS as readonly string[]).includes(`saveCurrent${retiredRuntimeContainerTerm()}`), false);
     assert.equal((REQUIRED_NATIVE_ADDON_EXPORTS as readonly string[]).includes('getCompositionStatus'), false);
@@ -58,6 +59,7 @@ void test('native addon loader accepts current ProjectBundle export vocabulary',
     assert.equal(typeof addon.loadProjectBundle, 'function');
     assert.equal(typeof addon.saveProjectBundle, 'function');
     assert.equal(typeof addon.getProjectBundleCompositionStatus, 'function');
+    assert.equal(typeof addon.unloadVoxelVolumeAsset, 'function');
   } finally {
     rmSync(dirname(modulePath), { recursive: true, force: true });
   }
@@ -74,6 +76,7 @@ void test('native addon loader rejects stale modules missing encounter authority
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('exportVoxelConversionEvidence'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelInfo'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelModelWindow'));
+    assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('unloadVoxelVolumeAsset'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('readVoxelEditHistory'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('previewVoxelEditRevert'));
     assert.ok(REQUIRED_NATIVE_ADDON_EXPORTS.includes('applyVoxelEditRevert'));
@@ -89,6 +92,7 @@ void test('native addon loader rejects stale modules missing encounter authority
         error.message.includes('planVoxelConversion') &&
         error.message.includes('registerVoxelConversionSource') &&
         error.message.includes('readVoxelConversionSourceMetadata') &&
+        error.message.includes('unloadVoxelVolumeAsset') &&
         error.message.includes('readVoxelEditHistory') &&
         error.message.includes('redoVoxelEdit') &&
         error.message.includes('exportVoxelConversionEvidence'),

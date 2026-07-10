@@ -11,6 +11,7 @@ import { entityId } from '@asha/contracts';
 import { MANIFEST_OPERATIONS, NATIVE_WIRED_OPERATIONS, NativeRuntimeBridge, RuntimeBridgeError, frameCursor, } from './index.js';
 import { fpsLoadRequest } from './native-fps-fixtures.test-fixture.js';
 import { NATIVE_GENERATED_TUNNEL_RECEIPT } from './native-generated-tunnel-fixture.js';
+import { REQUIRED_NATIVE_CONFORMANCE_OPS } from './native-conformance-operations.test-fixture.js';
 import { createVoxelPaletteUpdateHandler, voxelPaletteUpdateRequest } from './native-voxel-palette.test-fixture.js';
 const MODEL_MATERIAL_PREVIEW_REQUEST = {
     catalogEntry: {
@@ -65,51 +66,6 @@ const COLLISION_CAMERA_INPUT = {
     shape: { halfExtents: [0.2, 0.2, 0.2] },
     policy: { mode: 'axis_separable_slide', maxIterations: 3 },
 };
-const REQUIRED_NATIVE_CONFORMANCE_OPS = [
-    'initialize_engine',
-    'load_project_bundle',
-    'submit_commands',
-    'step_simulation',
-    'create_camera',
-    'apply_collision_constrained_camera_input',
-    'apply_enemy_direct_nav_movement',
-    'load_fps_runtime_session',
-    'read_fps_runtime_session',
-    'apply_fps_primary_fire',
-    'invoke_game_extension_weapon_effect',
-    'validate_game_rule_catalog',
-    'submit_game_rule_effect_intent',
-    'read_game_rule_runtime_readout',
-    'restart_fps_runtime_session',
-    'read_fps_encounter_director',
-    'apply_fps_encounter_transition',
-    'plan_voxel_conversion',
-    'register_voxel_conversion_source',
-    'register_voxel_conversion_mesh_asset',
-    'read_voxel_conversion_source_metadata',
-    'preview_voxel_conversion',
-    'apply_voxel_conversion',
-    'export_voxel_conversion_evidence',
-    'read_voxel_model_info',
-    'read_voxel_model_window',
-    'export_voxel_volume_asset',
-    'save_voxel_volume_asset',
-    'update_voxel_volume_asset_palette',
-    'load_voxel_volume_asset',
-    'validate_voxel_annotation_layer',
-    'load_voxel_annotation_layer',
-    'read_voxel_annotation_query',
-    'apply_voxel_annotation_edit',
-    'export_voxel_annotation_layer',
-    'read_voxel_edit_history',
-    'preview_voxel_edit_revert',
-    'apply_voxel_edit_revert',
-    'undo_voxel_edit',
-    'redo_voxel_edit',
-    'read_render_diffs',
-    'save_project_bundle',
-    'get_project_bundle_composition_status',
-];
 const HASH_A = 'fnv1a64:00000000000000aa';
 const HASH_B = 'fnv1a64:00000000000000bb';
 const HASH_C = 'fnv1a64:00000000000000cc';
@@ -286,6 +242,11 @@ const VOXEL_VOLUME_ASSET_SAVE_REQUEST = {
     expectedExistingCanonicalJsonHash: null,
     expectedCanonicalJsonHash: 'fnv1a64:0000000000000108',
     expectedVoxelDataHash: 'fnv1a64:0000000000000109',
+};
+const VOXEL_VOLUME_ASSET_UNLOAD_REQUEST = {
+    grid: 1,
+    volumeAssetId: 'voxel/generated',
+    expectedSessionHash: 'fnv1a64:0000000000000110',
 };
 const VOXEL_ANNOTATION_LAYER = {
     layerId: 'voxel-annotation/native-fixture',
@@ -1076,6 +1037,21 @@ function fakeAddon(calls = []) {
                 diagnostics: [],
             });
         },
+        unloadVoxelVolumeAsset: (_handle, requestJson) => {
+            calls.push(`voxelVolumeAssetUnload:${requestJson}`);
+            const request = parseJsonFixture(requestJson);
+            return JSON.stringify({
+                request,
+                unloaded: true,
+                modelId: `voxel-model:grid:${request.grid}:volume:${request.volumeAssetId}`,
+                volumeAssetId: request.volumeAssetId,
+                grid: request.grid,
+                removedVoxelCount: 1,
+                sessionHash: 'fnv1a64:0000000000000116',
+                replayHash: 'fnv1a64:0000000000000117',
+                diagnostics: [],
+            });
+        },
         validateVoxelAnnotationLayer: (_handle, requestJson) => {
             calls.push(`voxelAnnotationValidate:${requestJson}`);
             const request = parseJsonFixture(requestJson);
@@ -1302,6 +1278,7 @@ const INVOKE = new Map([
     ['saveVoxelVolumeAsset', (b) => b.saveVoxelVolumeAsset(VOXEL_VOLUME_ASSET_SAVE_REQUEST)],
     ['updateVoxelVolumeAssetPalette', (b) => b.updateVoxelVolumeAssetPalette(voxelPaletteUpdateRequest(VOXEL_VOLUME_ASSET_LOAD_REQUEST.asset))],
     ['loadVoxelVolumeAsset', (b) => b.loadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_LOAD_REQUEST)],
+    ['unloadVoxelVolumeAsset', (b) => b.unloadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_UNLOAD_REQUEST)],
     ['validateVoxelAnnotationLayer', (b) => b.validateVoxelAnnotationLayer(VOXEL_ANNOTATION_VALIDATION_REQUEST)],
     ['loadVoxelAnnotationLayer', (b) => b.loadVoxelAnnotationLayer(VOXEL_ANNOTATION_LOAD_REQUEST)],
     ['readVoxelAnnotationQuery', (b) => b.readVoxelAnnotationQuery(VOXEL_ANNOTATION_QUERY_REQUEST)],
@@ -1507,6 +1484,21 @@ void test('native conformance sequence routes through the addon without mock fal
         'render:0',
         'save',
         'status',
+    ]);
+});
+void test('native voxel volume unload routes generated request and receipt JSON', () => {
+    const calls = [];
+    const bridge = new NativeRuntimeBridge(fakeAddon(calls));
+    bridge.initializeEngine({ seed: 3 });
+    const receipt = bridge.unloadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_UNLOAD_REQUEST);
+    assert.deepEqual(receipt.request, VOXEL_VOLUME_ASSET_UNLOAD_REQUEST);
+    assert.equal(receipt.unloaded, true);
+    assert.equal(receipt.modelId, 'voxel-model:grid:1:volume:voxel/generated');
+    assert.equal(receipt.removedVoxelCount, 1);
+    assert.equal(receipt.sessionHash, 'fnv1a64:0000000000000116');
+    assert.deepEqual(calls, [
+        'initialize:3',
+        `voxelVolumeAssetUnload:${JSON.stringify(VOXEL_VOLUME_ASSET_UNLOAD_REQUEST)}`,
     ]);
 });
 void test('native facade validates numeric inputs before addon casts can wrap', () => {

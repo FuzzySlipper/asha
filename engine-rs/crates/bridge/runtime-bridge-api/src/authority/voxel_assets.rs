@@ -258,6 +258,7 @@ impl EngineBridge {
         target: &VoxelConversionTargetAuthority,
         planned: &PlannedConversion,
         receipt: &VoxelConversionReceipt,
+        prior_world: &VoxelWorld,
     ) {
         let Some(output) = &planned.output else {
             return;
@@ -304,8 +305,30 @@ impl EngineBridge {
                 planned.plan.plan_id, output_hash, evidence
             ))
         );
+        let key = Self::voxel_model_key(grid, &target.volume_asset_id);
+        let existing = self.voxel_model_infos.get(&key);
+        let resident_voxels = output
+            .voxels
+            .iter()
+            .map(|voxel| {
+                (
+                    VoxelCoord::new(voxel.coord.x, voxel.coord.y, voxel.coord.z),
+                    voxel.value,
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
+        let prior_voxels = resident_voxels
+            .keys()
+            .map(|coord| {
+                let prior = existing
+                    .and_then(|info| info.resident_voxels.get(coord).map(|_| info))
+                    .and_then(|info| info.prior_voxels.get(coord).copied())
+                    .unwrap_or_else(|| Self::voxel_value_at(prior_world, *coord));
+                (*coord, prior)
+            })
+            .collect();
         self.voxel_model_infos.insert(
-            Self::voxel_model_key(grid, &target.volume_asset_id),
+            key,
             VoxelModelInfoAuthority {
                 model_id,
                 volume_asset_id: target.volume_asset_id.clone(),
@@ -319,6 +342,8 @@ impl EngineBridge {
                 session_hash,
                 replay_hash,
                 evidence,
+                resident_voxels,
+                prior_voxels,
             },
         );
     }
@@ -394,6 +419,8 @@ impl EngineBridge {
             session_hash: "fnv1a64:missing".to_string(),
             replay_hash: "fnv1a64:missing".to_string(),
             evidence: Vec::new(),
+            resident_voxels: BTreeMap::new(),
+            prior_voxels: BTreeMap::new(),
         }
     }
 
@@ -901,6 +928,8 @@ impl EngineBridge {
     pub(super) fn loaded_voxel_asset_info(
         request: &VoxelVolumeAssetLoadRequest,
         target: &VoxelConversionTargetAuthority,
+        prior_world: &VoxelWorld,
+        existing: Option<&VoxelModelInfoAuthority>,
     ) -> VoxelModelInfoAuthority {
         let asset = &request.asset;
         let volume_asset_id = target.volume_asset_id.clone();
@@ -939,6 +968,25 @@ impl EngineBridge {
                 asset.asset_id, session_hash, asset.provenance
             ))
         );
+        let mut resident_voxels = BTreeMap::new();
+        for run in &asset.representation.sparse_runs {
+            for offset in 0..run.length {
+                resident_voxels.insert(
+                    VoxelCoord::new(run.start.x + i64::from(offset), run.start.y, run.start.z),
+                    VoxelValue::solid_raw(run.material),
+                );
+            }
+        }
+        let prior_voxels = resident_voxels
+            .keys()
+            .map(|coord| {
+                let prior = existing
+                    .and_then(|info| info.resident_voxels.get(coord).map(|_| info))
+                    .and_then(|info| info.prior_voxels.get(coord).copied())
+                    .unwrap_or_else(|| Self::voxel_value_at(prior_world, *coord));
+                (*coord, prior)
+            })
+            .collect();
         VoxelModelInfoAuthority {
             model_id,
             volume_asset_id,
@@ -969,7 +1017,167 @@ impl EngineBridge {
             session_hash,
             replay_hash,
             evidence,
+            resident_voxels,
+            prior_voxels,
         }
+    }
+
+    pub(super) fn rejected_voxel_volume_asset_unload(
+        request: VoxelVolumeAssetUnloadRequest,
+        diagnostics: Vec<VoxelAssetDiagnostic>,
+    ) -> VoxelVolumeAssetUnloadReceipt {
+        let model_id = Self::voxel_model_id(request.grid, &request.volume_asset_id);
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-unload|rejected|{:?}|{:?}",
+                request, diagnostics
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-unload|rejected-replay|{session_hash}"
+            ))
+        );
+        VoxelVolumeAssetUnloadReceipt {
+            model_id,
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            request,
+            unloaded: false,
+            removed_voxel_count: 0,
+            session_hash,
+            replay_hash,
+            diagnostics,
+        }
+    }
+
+    pub(super) fn unload_voxel_volume_asset_authority(
+        &mut self,
+        request: VoxelVolumeAssetUnloadRequest,
+    ) -> BridgeResult<VoxelVolumeAssetUnloadReceipt> {
+        self.require_initialized("unload_voxel_volume_asset")?;
+        let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
+        let Some(info) = self.voxel_model_infos.get(&key).cloned() else {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "volumeAssetId",
+                    "voxel-volume model is not resident in runtime authority",
+                )],
+            ));
+        };
+        if request.expected_session_hash != info.session_hash {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::StaleRuntimeSnapshot,
+                    "expectedSessionHash",
+                    "unload expected a different resident voxel-volume session hash",
+                )],
+            ));
+        }
+        if self.voxel_model_infos.iter().any(|(other_key, other)| {
+            other_key != &key
+                && other
+                    .resident_voxels
+                    .keys()
+                    .any(|coord| info.resident_voxels.contains_key(coord))
+        }) {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::StaleRuntimeSnapshot,
+                    "residentVoxels",
+                    "unload cannot restore a model whose footprint overlaps another resident model",
+                )],
+            ));
+        }
+        let Some(world) = self.voxel.as_ref() else {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "runtimeWorld",
+                    "runtime voxel authority is unavailable",
+                )],
+            ));
+        };
+        if world.grid().id().raw() as u64 != request.grid
+            || info
+                .resident_voxels
+                .iter()
+                .any(|(coord, value)| Self::voxel_value_at(world, *coord) != *value)
+        {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::StaleRuntimeSnapshot,
+                    "residentVoxels",
+                    "resident voxel-volume footprint changed after its session readout",
+                )],
+            ));
+        }
+
+        let mut candidate = world.clone();
+        let batch = CommandBatch {
+            commands: info
+                .prior_voxels
+                .iter()
+                .map(|(coord, value)| VoxelCommand::SetVoxel {
+                    grid: candidate.grid().id(),
+                    coord: *coord,
+                    value: *value,
+                })
+                .collect(),
+        };
+        let expected = batch.commands.len() as u32;
+        let result = Self::apply_command_batch_to_world(&batch, &mut candidate, &self.materials)?;
+        if result.accepted != expected || result.rejected != 0 {
+            return Ok(Self::rejected_voxel_volume_asset_unload(
+                request,
+                vec![Self::voxel_asset_diagnostic(
+                    VoxelAssetDiagnosticCode::RuntimeModelUnavailable,
+                    "voxelCommandApply",
+                    "runtime authority rejected the unload restoration command batch",
+                )],
+            ));
+        }
+
+        self.reset_voxel_edit_history(candidate);
+        self.voxel_model_infos.remove(&key);
+        if let Some(volume_asset_id) = &request.volume_asset_id {
+            self.voxel_annotation_layers
+                .retain(|_, layer| layer.target_voxel_volume_asset_id != *volume_asset_id);
+        }
+        let removed_voxel_count = info.resident_voxels.len() as u64;
+        let session_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-unload|session|{}|{}|{}",
+                info.model_id, info.session_hash, removed_voxel_count
+            ))
+        );
+        let replay_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "voxel-volume-unload|replay|{}|{}",
+                session_hash, info.replay_hash
+            ))
+        );
+        Ok(VoxelVolumeAssetUnloadReceipt {
+            model_id: info.model_id,
+            volume_asset_id: request.volume_asset_id.clone(),
+            grid: request.grid,
+            request,
+            unloaded: true,
+            removed_voxel_count,
+            session_hash,
+            replay_hash,
+            diagnostics: Vec::new(),
+        })
     }
 
     pub(super) fn voxel_volume_asset_load_receipt(

@@ -34,6 +34,7 @@ import {
   type VoxelEditHistoryUndoReceipt, type VoxelEditHistoryUndoRequest,
   type VoxelVolumeAssetExportReceipt, type VoxelVolumeAssetExportRequest,
   type VoxelVolumeAssetLoadReceipt, type VoxelVolumeAssetLoadRequest,
+  type VoxelVolumeAssetUnloadReceipt, type VoxelVolumeAssetUnloadRequest,
   type VoxelVolumeAssetPaletteUpdateReceipt, type VoxelVolumeAssetPaletteUpdateRequest,
   type VoxelVolumeAssetSaveReceipt, type VoxelVolumeAssetSaveRequest,
   type GameRuleCatalog,
@@ -856,6 +857,8 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
   updateVoxelVolumeAssetPalette(_request: VoxelVolumeAssetPaletteUpdateRequest): VoxelVolumeAssetPaletteUpdateReceipt { void _request; return this.#unsupportedOperation('updateVoxelVolumeAssetPalette', 'Durable voxel palette updates are not wired into the reference RuntimeSession'); }
 
   loadVoxelVolumeAsset(_request: VoxelVolumeAssetLoadRequest): VoxelVolumeAssetLoadReceipt { void _request; return this.#unsupportedOperation('loadVoxelVolumeAsset', 'Voxel volume asset load is not wired into the reference RuntimeSession'); }
+
+  unloadVoxelVolumeAsset(_request: VoxelVolumeAssetUnloadRequest): VoxelVolumeAssetUnloadReceipt { void _request; return this.#unsupportedOperation('unloadVoxelVolumeAsset', 'Voxel volume asset unload is not wired into the reference RuntimeSession'); }
 
   validateVoxelAnnotationLayer(_request: VoxelAnnotationLayerValidationRequest): VoxelAnnotationLayerValidationReport { void _request; return this.#unsupportedOperation('validateVoxelAnnotationLayer', 'Voxel annotation validation is not wired into the reference RuntimeSession'); }
 

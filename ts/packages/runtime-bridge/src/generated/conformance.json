@@ -171,6 +171,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "unload_voxel_volume_asset",
+      "facadeMethod": "unloadVoxelVolumeAsset",
+      "surface": "stable",
+      "input": "protocol_voxel_asset::VoxelVolumeAssetUnloadRequest",
+      "output": "protocol_voxel_asset::VoxelVolumeAssetUnloadReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "validate_voxel_annotation_layer",
       "facadeMethod": "validateVoxelAnnotationLayer",
       "surface": "stable",

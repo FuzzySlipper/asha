@@ -123,6 +123,12 @@ pub trait RuntimeBridge {
         &mut self,
         request: VoxelVolumeAssetLoadRequest,
     ) -> BridgeResult<VoxelVolumeAssetLoadReceipt>;
+    /// Remove one hash-guarded resident voxel-volume model from runtime while
+    /// preserving its durable stored asset and unrelated resident models.
+    fn unload_voxel_volume_asset(
+        &mut self,
+        request: VoxelVolumeAssetUnloadRequest,
+    ) -> BridgeResult<VoxelVolumeAssetUnloadReceipt>;
     /// Validate and canonicalize a stored voxel annotation layer through Rust
     /// authority without mutating runtime state.
     fn validate_voxel_annotation_layer(

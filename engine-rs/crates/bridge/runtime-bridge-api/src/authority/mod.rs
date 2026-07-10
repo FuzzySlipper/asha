@@ -102,6 +102,8 @@ struct VoxelModelInfoAuthority {
     session_hash: String,
     replay_hash: String,
     evidence: Vec<VoxelConversionEvidenceRef>,
+    resident_voxels: BTreeMap<VoxelCoord, VoxelValue>,
+    prior_voxels: BTreeMap<VoxelCoord, VoxelValue>,
 }
 
 struct BuiltInDamageModifierModule {

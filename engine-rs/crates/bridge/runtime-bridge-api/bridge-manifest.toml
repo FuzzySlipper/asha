@@ -192,6 +192,14 @@ errors = "RuntimeBridgeError"
 summary = "Load a validated Asha-native stored voxel-volume asset into runtime authority with explicit stored-to-runtime diagnostics and readback evidence."
 
 [[operation]]
+name = "unload_voxel_volume_asset"
+surface = "stable"
+input = "protocol_voxel_asset::VoxelVolumeAssetUnloadRequest"
+output = "protocol_voxel_asset::VoxelVolumeAssetUnloadReceipt"
+errors = "RuntimeBridgeError"
+summary = "Remove one hash-guarded resident voxel-volume model from runtime authority without deleting its durable ProjectBundle asset or unrelated resident models."
+
+[[operation]]
 name = "validate_voxel_annotation_layer"
 surface = "stable"
 input = "protocol_voxel_annotation::VoxelAnnotationLayerValidationRequest"

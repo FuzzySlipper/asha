@@ -185,4 +185,20 @@ export interface VoxelVolumeAssetLoadReceipt {
     readonly replayHash: string;
     readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }
+export interface VoxelVolumeAssetUnloadRequest {
+    readonly grid: number;
+    readonly volumeAssetId: string | null;
+    readonly expectedSessionHash: string;
+}
+export interface VoxelVolumeAssetUnloadReceipt {
+    readonly request: VoxelVolumeAssetUnloadRequest;
+    readonly unloaded: boolean;
+    readonly modelId: string;
+    readonly volumeAssetId: string | null;
+    readonly grid: number;
+    readonly removedVoxelCount: number;
+    readonly sessionHash: string;
+    readonly replayHash: string;
+    readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}
 //# sourceMappingURL=voxelAsset.d.ts.map

@@ -42,7 +42,7 @@ use runtime_bridge_api::{
     VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertRequest, VoxelEditHistoryUndoRequest,
     VoxelModelInfoRequest, VoxelModelWindowRequest, VoxelVolumeAssetExportRequest,
     VoxelVolumeAssetLoadRequest, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveRequest,
-    WeaponEffectHookRequest, VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES,
+    VoxelVolumeAssetUnloadRequest, WeaponEffectHookRequest, VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES,
 };
 use serde::Serialize;
 
@@ -1965,6 +1965,7 @@ mod tests {
         "stepSimulation",
         "submitCommands",
         "undoVoxelEdit",
+        "unloadVoxelVolumeAsset",
         "updateVoxelVolumeAssetPalette",
         "validateVoxelAnnotationLayer",
     ];
@@ -2011,6 +2012,7 @@ mod tests {
                 "stepSimulation",
                 "submitCommands",
                 "undoVoxelEdit",
+                "unloadVoxelVolumeAsset",
                 "updateVoxelVolumeAssetPalette",
                 "validateVoxelAnnotationLayer",
             ]

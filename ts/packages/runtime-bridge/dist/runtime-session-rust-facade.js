@@ -647,6 +647,10 @@ export class RustBackedRuntimeSessionFacade {
         this.#requireInitialized('loadVoxelVolumeAsset');
         return this.#bridge.loadVoxelVolumeAsset(request);
     }
+    unloadVoxelVolumeAsset(request) {
+        this.#requireInitialized('unloadVoxelVolumeAsset');
+        return this.#bridge.unloadVoxelVolumeAsset(request);
+    }
     validateVoxelAnnotationLayer(request) {
         this.#requireInitialized('validateVoxelAnnotationLayer');
         return this.#bridge.validateVoxelAnnotationLayer(request);

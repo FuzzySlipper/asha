@@ -263,3 +263,23 @@ export interface VoxelVolumeAssetLoadReceipt {
   readonly replayHash: string;
   readonly diagnostics: readonly VoxelAssetDiagnostic[];
 }
+
+// Hash-guarded request to remove one resident voxel-volume model while leaving its durable ProjectBundle asset untouched.
+export interface VoxelVolumeAssetUnloadRequest {
+  readonly grid: number;
+  readonly volumeAssetId: string | null;
+  readonly expectedSessionHash: string;
+}
+
+// Authority receipt for one accepted or rejected resident-volume unload.
+export interface VoxelVolumeAssetUnloadReceipt {
+  readonly request: VoxelVolumeAssetUnloadRequest;
+  readonly unloaded: boolean;
+  readonly modelId: string;
+  readonly volumeAssetId: string | null;
+  readonly grid: number;
+  readonly removedVoxelCount: number;
+  readonly sessionHash: string;
+  readonly replayHash: string;
+  readonly diagnostics: readonly VoxelAssetDiagnostic[];
+}

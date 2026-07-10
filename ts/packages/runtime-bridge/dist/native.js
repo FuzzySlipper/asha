@@ -50,6 +50,7 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'save_voxel_volume_asset',
     'update_voxel_volume_asset_palette',
     'load_voxel_volume_asset',
+    'unload_voxel_volume_asset',
     'validate_voxel_annotation_layer',
     'load_voxel_annotation_layer',
     'read_voxel_annotation_query',
@@ -556,6 +557,11 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('loadVoxelVolumeAsset');
         const payload = callNative(() => this.#addon.loadVoxelVolumeAsset(handle, JSON.stringify(request)));
         return parseNativeJson(payload, 'voxel volume asset load receipt');
+    }
+    unloadVoxelVolumeAsset(request) {
+        const handle = this.#requireHandle('unloadVoxelVolumeAsset');
+        const payload = callNative(() => this.#addon.unloadVoxelVolumeAsset(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'voxel volume asset unload receipt');
     }
     validateVoxelAnnotationLayer(request) {
         const handle = this.#requireHandle('validateVoxelAnnotationLayer');

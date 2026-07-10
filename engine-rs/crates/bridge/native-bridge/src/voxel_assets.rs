@@ -68,6 +68,15 @@ pub fn load_voxel_volume_asset(handle: i64, request_json: String) -> napi::Resul
     })
 }
 
+#[napi]
+pub fn unload_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_request::<VoxelVolumeAssetUnloadRequest>(&request_json, "unload")?;
+    with_bridge(handle, |bridge| {
+        let receipt = bridge.unload_voxel_volume_asset(request).map_err(to_napi)?;
+        voxel_conversion_json(&receipt)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

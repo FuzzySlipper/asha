@@ -148,6 +148,7 @@ function bridgeWith(overrides) {
         saveVoxelVolumeAsset: base.saveVoxelVolumeAsset.bind(base),
         updateVoxelVolumeAssetPalette: base.updateVoxelVolumeAssetPalette.bind(base),
         loadVoxelVolumeAsset: base.loadVoxelVolumeAsset.bind(base),
+        unloadVoxelVolumeAsset: base.unloadVoxelVolumeAsset.bind(base),
         validateVoxelAnnotationLayer: base.validateVoxelAnnotationLayer.bind(base),
         loadVoxelAnnotationLayer: base.loadVoxelAnnotationLayer.bind(base),
         readVoxelAnnotationQuery: base.readVoxelAnnotationQuery.bind(base),

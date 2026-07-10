@@ -323,6 +323,19 @@ const savedAsset = bridge.saveVoxelVolumeAsset({
 assert.equal(savedAsset.saved, true);
 assert.equal(savedAsset.diff.assetPath, 'assets/voxels/check-native-export.avxl.json');
 assert.equal(savedAsset.canonicalJsonHash, exportedAsset.canonicalJsonHash);
+const unloadedAsset = bridge.unloadVoxelVolumeAsset({
+  grid: 1,
+  volumeAssetId: 'voxel/generated',
+  expectedSessionHash: modelInfo.sessionHash,
+});
+assert.equal(unloadedAsset.unloaded, true);
+assert.equal(unloadedAsset.removedVoxelCount, modelInfo.voxelCount);
+const unloadedModelInfo = bridge.readVoxelModelInfo({
+  grid: 1,
+  volumeAssetId: 'voxel/generated',
+  includeMaterialCounts: true,
+});
+assert.equal(unloadedModelInfo.resident, false);
 const loadedAsset = bridge.loadVoxelVolumeAsset({
   asset: exportedAsset.asset,
   targetGrid: 1,
@@ -333,6 +346,12 @@ const loadedAsset = bridge.loadVoxelVolumeAsset({
 assert.equal(loadedAsset.loaded, true);
 assert.equal(loadedAsset.requestAssetId, 'voxel-volume/check-native-export');
 assert.equal(loadedAsset.voxelCount, modelInfo.voxelCount);
+const reloadedModelInfo = bridge.readVoxelModelInfo({
+  grid: 1,
+  volumeAssetId: 'voxel/generated',
+  includeMaterialCounts: true,
+});
+assert.equal(reloadedModelInfo.resident, true);
 console.log('Native addon smoke: OK');
 "
 

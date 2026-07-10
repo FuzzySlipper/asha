@@ -280,6 +280,7 @@ export interface NativeAddon {
   saveVoxelVolumeAsset(handle: number, requestJson: string): string;
   updateVoxelVolumeAssetPalette(handle: number, requestJson: string): string;
   loadVoxelVolumeAsset(handle: number, requestJson: string): string;
+  unloadVoxelVolumeAsset(handle: number, requestJson: string): string;
   validateVoxelAnnotationLayer(handle: number, requestJson: string): string;
   loadVoxelAnnotationLayer(handle: number, requestJson: string): string;
   readVoxelAnnotationQuery(handle: number, requestJson: string): string;
@@ -327,6 +328,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'saveVoxelVolumeAsset',
   'updateVoxelVolumeAssetPalette',
   'loadVoxelVolumeAsset',
+  'unloadVoxelVolumeAsset',
   'validateVoxelAnnotationLayer',
   'loadVoxelAnnotationLayer',
   'readVoxelAnnotationQuery',
