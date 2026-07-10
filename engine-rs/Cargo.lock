@@ -759,6 +759,7 @@ dependencies = [
  "rule-lifecycle",
  "rule-voxel-edit",
  "serde",
+ "serde_json",
  "svc-collision",
  "svc-combat",
  "svc-game-rules",

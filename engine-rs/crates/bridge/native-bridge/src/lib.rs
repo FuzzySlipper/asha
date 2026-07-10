@@ -41,7 +41,7 @@ use runtime_bridge_api::{
     VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertRequest, VoxelEditHistoryUndoRequest,
     VoxelModelInfoRequest, VoxelModelWindowRequest, VoxelVolumeAssetExportRequest,
     VoxelVolumeAssetLoadRequest, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveRequest,
-    WeaponEffectHookRequest,
+    WeaponEffectHookRequest, VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES,
 };
 use serde::{Deserialize, Serialize};
 

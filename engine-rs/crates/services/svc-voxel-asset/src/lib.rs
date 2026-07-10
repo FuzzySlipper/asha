@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use core_assets::{AssetId, AssetKind};
 use protocol_diagnostics::DiagnosticSeverity;
 use protocol_voxel_asset::{
-    VoxelAssetContentHashes, VoxelAssetCoord, VoxelAssetDiagnostic, VoxelAssetDiagnosticCode,
+    VoxelAssetContentHashes, VoxelAssetDiagnostic, VoxelAssetDiagnosticCode,
     VoxelAssetRepresentationKind, VoxelVolumeAsset, VOXEL_ASSET_MEDIA_TYPE,
     VOXEL_ASSET_SCHEMA_VERSION,
 };
@@ -307,6 +307,13 @@ fn valid_scoped_binding_id(value: &str, prefix: &str) -> bool {
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SparseRunInterval {
+    start_x: i64,
+    end_x: i64,
+    index: usize,
+}
+
 fn validate_sparse_runs(
     asset: &VoxelVolumeAsset,
     material_palette: &BTreeSet<u16>,
@@ -320,7 +327,7 @@ fn validate_sparse_runs(
         ));
     }
 
-    let mut occupied = BTreeSet::new();
+    let mut runs_by_row: BTreeMap<(i64, i64), Vec<SparseRunInterval>> = BTreeMap::new();
     for (index, run) in asset.representation.sparse_runs.iter().enumerate() {
         if run.length == 0 {
             diagnostics.push(diagnostic(
@@ -358,22 +365,33 @@ fn validate_sparse_runs(
                 "sparse run must stay inside inclusive asset bounds",
             ));
         }
-        for x in run.start.x..=end_x {
-            let coord = VoxelAssetCoord {
-                x,
-                y: run.start.y,
-                z: run.start.z,
-            };
-            if !occupied.insert(coord) {
-                diagnostics.push(diagnostic(
-                    VoxelAssetDiagnosticCode::DuplicateVoxel,
-                    format!("representation.sparseRuns[{index}]"),
-                    format!(
-                        "voxel coordinate ({}, {}, {}) is written more than once",
-                        x, run.start.y, run.start.z
-                    ),
-                ));
+        runs_by_row
+            .entry((run.start.y, run.start.z))
+            .or_default()
+            .push(SparseRunInterval {
+                start_x: run.start.x,
+                end_x,
+                index,
+            });
+    }
+
+    for ((y, z), runs) in &mut runs_by_row {
+        runs.sort_unstable_by_key(|run| (run.start_x, run.end_x, run.index));
+        let mut furthest_end: Option<i64> = None;
+        for run in runs.iter() {
+            if let Some(previous_end) = furthest_end {
+                if run.start_x <= previous_end {
+                    diagnostics.push(diagnostic(
+                        VoxelAssetDiagnosticCode::DuplicateVoxel,
+                        format!("representation.sparseRuns[{}]", run.index),
+                        format!(
+                            "sparse run overlaps an earlier run at voxel coordinate ({}, {y}, {z})",
+                            run.start_x
+                        ),
+                    ));
+                }
             }
+            furthest_end = Some(furthest_end.map_or(run.end_x, |current| current.max(run.end_x)));
         }
     }
 }
@@ -472,9 +490,10 @@ fn feed_u16(hash: &mut u64, value: u16) {
 mod tests {
     use super::*;
     use protocol_voxel_asset::{
-        VoxelAssetAuthoringMetadata, VoxelAssetBounds, VoxelAssetContentHashes, VoxelAssetGrid,
-        VoxelAssetMaterialBinding, VoxelAssetProvenanceKind, VoxelAssetProvenanceRef,
-        VoxelAssetRepresentation, VoxelAssetSparseRun, VOXEL_ASSET_MEDIA_TYPE,
+        VoxelAssetAuthoringMetadata, VoxelAssetBounds, VoxelAssetContentHashes, VoxelAssetCoord,
+        VoxelAssetGrid, VoxelAssetMaterialBinding, VoxelAssetProvenanceKind,
+        VoxelAssetProvenanceRef, VoxelAssetRepresentation, VoxelAssetSparseRun,
+        VOXEL_ASSET_MEDIA_TYPE,
     };
 
     fn coord(x: i64, y: i64, z: i64) -> VoxelAssetCoord {
@@ -616,6 +635,47 @@ mod tests {
             .count();
         assert_eq!(duplicate_diagnostics, 2);
         assert!(!report.is_valid());
+    }
+
+    #[test]
+    fn sparse_run_overlap_detection_uses_intervals() {
+        let mut asset = hand_authored_asset();
+        asset.bounds.max.x = 4;
+        asset.representation.sparse_runs = vec![
+            VoxelAssetSparseRun {
+                start: coord(0, 0, 0),
+                length: 4,
+                material: 1,
+            },
+            VoxelAssetSparseRun {
+                start: coord(3, 0, 0),
+                length: 2,
+                material: 2,
+            },
+        ];
+        let asset = with_computed_hashes(&asset);
+
+        let report = validate_asset(&asset);
+        assert!(report
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.code == VoxelAssetDiagnosticCode::DuplicateVoxel));
+    }
+
+    #[test]
+    fn compressed_sparse_run_validation_does_not_expand_each_voxel() {
+        let mut asset = hand_authored_asset();
+        asset.bounds.max = coord(i64::from(u32::MAX) - 1, 0, 0);
+        asset.material_palette.truncate(1);
+        asset.representation.sparse_runs = vec![VoxelAssetSparseRun {
+            start: coord(0, 0, 0),
+            length: u32::MAX,
+            material: 1,
+        }];
+        let asset = with_computed_hashes(&asset);
+
+        let report = validate_asset(&asset);
+        assert!(report.is_valid(), "{:?}", report.diagnostics);
     }
 
     #[test]

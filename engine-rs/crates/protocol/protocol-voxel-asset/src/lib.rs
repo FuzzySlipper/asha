@@ -27,6 +27,27 @@ pub const VOXEL_ASSET_MEDIA_TYPE: &str = "application/vnd.asha.voxel-volume+json
 /// Canonical filename extension for this JSON envelope.
 pub const VOXEL_ASSET_EXTENSION: &str = "avxl.json";
 
+/// Hard serialized-size ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES: u64 = 8_388_608;
+
+/// Hard source sparse-run ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_SPARSE_RUNS: u64 = 65_536;
+
+/// Hard represented-voxel ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_REPRESENTED_VOXELS: u64 = 1_000_000_000;
+
+/// Hard source or replacement palette ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS: u64 = 4_096;
+
+/// Hard provenance-reference ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_PROVENANCE_REFS: u64 = 4_096;
+
+/// Hard embedded-diagnostic ceiling for one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_EMBEDDED_DIAGNOSTICS: u64 = 1_024;
+
+/// Hard UTF-8 byte ceiling for any string in one durable palette update request.
+pub const VOXEL_PALETTE_UPDATE_MAX_STRING_BYTES: u64 = 4_096;
+
 /// Stable representation tags.
 pub const VOXEL_ASSET_REPRESENTATION_KINDS: &[&str] = &["sparse_runs"];
 

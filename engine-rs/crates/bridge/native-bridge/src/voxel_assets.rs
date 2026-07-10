@@ -12,6 +12,19 @@ where
     })
 }
 
+fn validate_palette_update_request_size(request_json: &str) -> napi::Result<()> {
+    if request_json.len() as u64 > VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES {
+        return Err(to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!(
+                "voxel volume asset palette update request has {} bytes; hard limit is {VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES}",
+                request_json.len()
+            ),
+        )));
+    }
+    Ok(())
+}
+
 #[napi]
 pub fn export_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_request::<VoxelVolumeAssetExportRequest>(&request_json, "export")?;
@@ -35,6 +48,7 @@ pub fn update_voxel_volume_asset_palette(
     handle: i64,
     request_json: String,
 ) -> napi::Result<String> {
+    validate_palette_update_request_size(&request_json)?;
     let request =
         parse_request::<VoxelVolumeAssetPaletteUpdateRequest>(&request_json, "palette update")?;
     with_bridge(handle, |bridge| {
@@ -52,4 +66,19 @@ pub fn load_voxel_volume_asset(handle: i64, request_json: String) -> napi::Resul
         let receipt = bridge.load_voxel_volume_asset(request).map_err(to_napi)?;
         voxel_conversion_json(&receipt)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn palette_update_json_is_bounded_before_deserialization() {
+        let at_limit = "x".repeat(VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES as usize);
+        assert!(validate_palette_update_request_size(&at_limit).is_ok());
+
+        let over_limit = "x".repeat(VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES as usize + 1);
+        let error = validate_palette_update_request_size(&over_limit).unwrap_err();
+        assert!(error.reason.contains("hard limit"));
+    }
 }

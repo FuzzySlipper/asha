@@ -53,3 +53,4 @@ game-rule-extension = { path = "../../rules/game-rule-extension" }
 rule-lifecycle = { path = "../../rules/rule-lifecycle" }
 svc-combat = { path = "../../services/svc-combat" }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"

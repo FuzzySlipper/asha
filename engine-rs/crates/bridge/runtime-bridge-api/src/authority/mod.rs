@@ -286,6 +286,7 @@ mod runtime_bridge_impl;
 mod voxel_annotations;
 mod voxel_assets;
 mod voxel_history;
+mod voxel_palette_limits;
 
 #[cfg(test)]
 mod game_extension_tests;

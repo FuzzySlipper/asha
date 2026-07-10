@@ -1086,6 +1086,13 @@ mod tests {
             "export const VOXEL_ASSET_MEDIA_TYPE = \"application/vnd.asha.voxel-volume+json;version=1\";"
         ));
         assert!(va.contains("export const VOXEL_ASSET_EXTENSION = \"avxl.json\";"));
+        assert!(va.contains("export const VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES = 8388608;"));
+        assert!(va.contains("export const VOXEL_PALETTE_UPDATE_MAX_SPARSE_RUNS = 65536;"));
+        assert!(
+            va.contains("export const VOXEL_PALETTE_UPDATE_MAX_REPRESENTED_VOXELS = 1000000000;")
+        );
+        assert!(va.contains("export const VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS = 4096;"));
+        assert!(va.contains("export const VOXEL_PALETTE_UPDATE_MAX_STRING_BYTES = 4096;"));
         for kind in protocol_voxel_asset::VOXEL_ASSET_REPRESENTATION_KINDS {
             assert!(
                 va.contains(&format!("'{kind}'")),

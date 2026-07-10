@@ -1,7 +1,5 @@
 use super::*;
 
-const VOXEL_ASSET_MAX_MATERIAL_BINDINGS: u64 = 4096;
-
 impl EngineBridge {
     pub(super) fn update_voxel_volume_asset_palette_authority(
         &self,
@@ -9,6 +7,12 @@ impl EngineBridge {
     ) -> BridgeResult<VoxelVolumeAssetPaletteUpdateReceipt> {
         self.require_initialized("update_voxel_volume_asset_palette")?;
         let mut diagnostics = Self::voxel_asset_palette_update_request_diagnostics(&request);
+        if !diagnostics.is_empty() {
+            return Ok(Self::rejected_voxel_volume_asset_palette_update(
+                request,
+                diagnostics,
+            ));
+        }
         let source_report = svc_voxel_asset::validate_asset(&request.asset);
         diagnostics.extend(source_report.diagnostics);
         if request.expected_canonical_json_hash != request.asset.content_hashes.canonical_json {
@@ -545,35 +549,6 @@ impl EngineBridge {
         }
     }
 
-    pub(super) fn voxel_asset_palette_update_request_diagnostics(
-        request: &VoxelVolumeAssetPaletteUpdateRequest,
-    ) -> Vec<VoxelAssetDiagnostic> {
-        let mut diagnostics = Self::voxel_asset_stored_target_diagnostics(
-            &request.target_project_bundle,
-            &request.target_asset_path,
-        );
-        if request.max_material_bindings == 0
-            || request.max_material_bindings > VOXEL_ASSET_MAX_MATERIAL_BINDINGS
-        {
-            diagnostics.push(Self::voxel_asset_diagnostic(
-                VoxelAssetDiagnosticCode::ExportLimitExceeded,
-                "maxMaterialBindings",
-                format!("maxMaterialBindings must be in 1..={VOXEL_ASSET_MAX_MATERIAL_BINDINGS}"),
-            ));
-        } else if request.material_palette.len() as u64 > request.max_material_bindings {
-            diagnostics.push(Self::voxel_asset_diagnostic(
-                VoxelAssetDiagnosticCode::ExportLimitExceeded,
-                "materialPalette",
-                format!(
-                    "material palette has {} entries; request limit is {}",
-                    request.material_palette.len(),
-                    request.max_material_bindings
-                ),
-            ));
-        }
-        diagnostics
-    }
-
     pub(super) fn voxel_asset_save_request_diagnostics(
         request: &VoxelVolumeAssetSaveRequest,
     ) -> Vec<VoxelAssetDiagnostic> {
@@ -591,7 +566,7 @@ impl EngineBridge {
         diagnostics
     }
 
-    fn voxel_asset_stored_target_diagnostics(
+    pub(super) fn voxel_asset_stored_target_diagnostics(
         target_project_bundle: &str,
         target_asset_path: &str,
     ) -> Vec<VoxelAssetDiagnostic> {

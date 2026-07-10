@@ -717,24 +717,29 @@ fn voxel_annotation_layer_runtime_bridge_validates_loads_queries_edits_and_expor
     assert!(export.diagnostics.is_empty());
 }
 
+fn stored_voxel_palette_update_request(
+    asset: VoxelVolumeAsset,
+) -> VoxelVolumeAssetPaletteUpdateRequest {
+    VoxelVolumeAssetPaletteUpdateRequest {
+        material_palette: asset.material_palette.clone(),
+        expected_canonical_json_hash: asset.content_hashes.canonical_json.clone(),
+        expected_voxel_data_hash: asset.content_hashes.voxel_data.clone(),
+        asset: asset.clone(),
+        target_project_bundle: "asha-studio-palette".to_string(),
+        target_asset_path: "assets/voxels/hand-authored-room.avxl.json".to_string(),
+        max_material_bindings: 16,
+    }
+}
+
 #[test]
 fn stored_voxel_palette_update_is_hash_guarded_validated_and_round_trips() {
     let asset = hand_authored_voxel_volume_asset();
-    let mut replacement = asset.material_palette.clone();
-    replacement[0].palette_entry_id = "voxel-material/polished-concrete".to_string();
-    replacement[0].display_name = Some("Polished concrete".to_string());
-    replacement[0].material_asset_id = "material/polished-concrete".to_string();
-    replacement[0].material_catalog_binding_id =
+    let mut request = stored_voxel_palette_update_request(asset.clone());
+    request.material_palette[0].palette_entry_id = "voxel-material/polished-concrete".to_string();
+    request.material_palette[0].display_name = Some("Polished concrete".to_string());
+    request.material_palette[0].material_asset_id = "material/polished-concrete".to_string();
+    request.material_palette[0].material_catalog_binding_id =
         Some("catalog-binding/polished-concrete".to_string());
-    let request = VoxelVolumeAssetPaletteUpdateRequest {
-        asset: asset.clone(),
-        material_palette: replacement,
-        target_project_bundle: "asha-studio-palette".to_string(),
-        target_asset_path: "assets/voxels/hand-authored-room.avxl.json".to_string(),
-        expected_canonical_json_hash: asset.content_hashes.canonical_json.clone(),
-        expected_voxel_data_hash: asset.content_hashes.voxel_data.clone(),
-        max_material_bindings: 16,
-    };
     let bridge = init_bridge();
     assert!(bridge.voxel_model_infos.is_empty());
     let receipt = bridge
@@ -808,6 +813,104 @@ fn stored_voxel_palette_update_is_hash_guarded_validated_and_round_trips() {
         .diagnostics
         .iter()
         .any(|diagnostic| diagnostic.code == VoxelAssetDiagnosticCode::InvalidMaterialReference));
+}
+
+#[test]
+fn stored_voxel_palette_update_rejects_source_shape_quotas_before_validation() {
+    let bridge = init_bridge();
+
+    let mut represented = stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    represented.asset.representation.sparse_runs[0].length =
+        (VOXEL_PALETTE_UPDATE_MAX_REPRESENTED_VOXELS + 1) as u32;
+    let represented_receipt = bridge
+        .update_voxel_volume_asset_palette(represented)
+        .unwrap();
+    assert!(!represented_receipt.updated);
+    assert_eq!(
+        represented_receipt.diagnostics[0].reference,
+        "asset.representation.representedVoxelCount"
+    );
+
+    let mut run_count = stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    run_count.asset.representation.sparse_runs =
+        vec![
+            run_count.asset.representation.sparse_runs[0].clone();
+            VOXEL_PALETTE_UPDATE_MAX_SPARSE_RUNS as usize + 1
+        ];
+    let run_count_receipt = bridge.update_voxel_volume_asset_palette(run_count).unwrap();
+    assert!(!run_count_receipt.updated);
+    assert_eq!(
+        run_count_receipt.diagnostics[0].reference,
+        "asset.representation.sparseRuns"
+    );
+}
+
+#[test]
+fn stored_voxel_palette_update_rejects_palette_and_string_quotas() {
+    let bridge = init_bridge();
+    let binding = hand_authored_voxel_volume_asset().material_palette[0].clone();
+
+    let mut source_palette =
+        stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    source_palette.asset.material_palette =
+        vec![binding.clone(); VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS as usize + 1];
+    let source_receipt = bridge
+        .update_voxel_volume_asset_palette(source_palette)
+        .unwrap();
+    assert!(!source_receipt.updated);
+    assert_eq!(
+        source_receipt.diagnostics[0].reference,
+        "asset.materialPalette"
+    );
+
+    let mut replacement_palette =
+        stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    replacement_palette.max_material_bindings = VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS;
+    replacement_palette.material_palette =
+        vec![binding; VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS as usize + 1];
+    let replacement_receipt = bridge
+        .update_voxel_volume_asset_palette(replacement_palette)
+        .unwrap();
+    assert!(!replacement_receipt.updated);
+    assert!(replacement_receipt
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.reference == "materialPalette"));
+
+    let mut oversized_string =
+        stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    oversized_string.target_project_bundle =
+        "x".repeat(VOXEL_PALETTE_UPDATE_MAX_STRING_BYTES as usize + 1);
+    let string_receipt = bridge
+        .update_voxel_volume_asset_palette(oversized_string)
+        .unwrap();
+    assert!(!string_receipt.updated);
+    assert_eq!(
+        string_receipt.diagnostics[0].reference,
+        "targetProjectBundle"
+    );
+}
+
+#[test]
+fn stored_voxel_palette_update_rejects_aggregate_serialized_size() {
+    let bridge = init_bridge();
+    let mut request = stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
+    request.max_material_bindings = VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS;
+    let long_value = "x".repeat(VOXEL_PALETTE_UPDATE_MAX_STRING_BYTES as usize / 2);
+    let mut binding = request.material_palette[0].clone();
+    binding.palette_entry_id = long_value.clone();
+    binding.display_name = Some(long_value.clone());
+    binding.material_asset_id = long_value.clone();
+    binding.material_catalog_binding_id = Some(long_value);
+    request.material_palette = vec![binding; 1_024];
+
+    let receipt = bridge.update_voxel_volume_asset_palette(request).unwrap();
+    assert!(!receipt.updated);
+    assert_eq!(receipt.diagnostics[0].reference, "request");
+    assert_eq!(
+        receipt.diagnostics[0].code,
+        VoxelAssetDiagnosticCode::ExportLimitExceeded
+    );
 }
 
 #[test]
