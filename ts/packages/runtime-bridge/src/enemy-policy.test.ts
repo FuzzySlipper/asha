@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createGeneratedTunnelEnemyPolicyFixture,
   validateEnemyPolicySource,
-} from './index.js';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 
 function sessionInput() {
@@ -22,7 +22,6 @@ function sessionInput() {
     },
   };
 }
-
 void test('enemy policy fixture proposes movement and typed fire intent from read-only nav policy view', () => {
   const session = createMockRuntimeSession();
   session.initialize(sessionInput());
@@ -82,7 +81,6 @@ void test('enemy policy fixture proposes movement and typed fire intent from rea
   });
   assert.equal('payload' in receipt, false);
 });
-
 void test('enemy policy fixture records proposal diagnostics without mutating authority', () => {
   const session = createMockRuntimeSession();
   session.initialize(sessionInput());

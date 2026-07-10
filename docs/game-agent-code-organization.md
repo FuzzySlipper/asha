@@ -147,7 +147,9 @@ export interface BrowserInputPort {
 
 Adapters implement ports:
 
-- `asha-runtime-session.ts` adapts public `@asha/runtime-bridge`.
+- `asha-runtime-session.ts` implements a game-facing port against neutral
+  `@asha/runtime-session` contracts and receives concrete construction from
+  public `@asha/runtime-bridge` at the composition root.
 - `browser-input-adapter.ts` adapts DOM/pointer-lock/keyboard events.
 - a standalone host can provide another adapter without changing features.
 

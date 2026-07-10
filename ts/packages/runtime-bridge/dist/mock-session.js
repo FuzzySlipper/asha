@@ -1,5 +1,5 @@
 import { createMockRuntimeBridge } from './mock.js';
-import { createRuntimeSessionFacade, } from './runtime-session.js';
+import { createRuntimeSessionFacade } from './runtime-session-adapter.js';
 import { referenceRuntimeSessionNonClaims } from './runtime-session-hash.js';
 export const REFERENCE_RUNTIME_BACKEND_PROFILE = {
     entrypoint: '@asha/runtime-bridge/reference',

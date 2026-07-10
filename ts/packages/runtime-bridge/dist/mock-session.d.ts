@@ -1,4 +1,4 @@
-import { type RuntimeSessionFacade, type RuntimeSessionNonClaim } from './runtime-session.js';
+import type { RuntimeSessionFacade, RuntimeSessionNonClaim } from '@asha/runtime-session';
 import type { RuntimeBridge } from './bridge.js';
 export interface MockRuntimeSessionOptions {
     readonly bridge?: RuntimeBridge;

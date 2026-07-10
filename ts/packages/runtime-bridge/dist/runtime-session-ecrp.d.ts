@@ -1,4 +1,4 @@
-import type { RuntimeSessionEcrpProjectDiagnostic, RuntimeSessionEcrpProjectLoadInput, RuntimeSessionEcrpProjectState, RuntimeSessionEcrpTransformState, RuntimeSessionEcrpReadout, RuntimeSessionIdentity, RuntimeSessionInitializeInput, RuntimeSessionLifecycleState } from './runtime-session.js';
+import type { RuntimeSessionEcrpProjectDiagnostic, RuntimeSessionEcrpProjectLoadInput, RuntimeSessionEcrpProjectState, RuntimeSessionEcrpTransformState, RuntimeSessionEcrpReadout, RuntimeSessionIdentity, RuntimeSessionInitializeInput, RuntimeSessionLifecycleState } from '@asha/runtime-session';
 export declare function defaultRuntimeSessionEcrpProjectLoadInput(input: RuntimeSessionInitializeInput): RuntimeSessionEcrpProjectLoadInput;
 export declare function validateEcrpProjectLoadInput(input: RuntimeSessionEcrpProjectLoadInput): readonly RuntimeSessionEcrpProjectDiagnostic[];
 export declare function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectState;

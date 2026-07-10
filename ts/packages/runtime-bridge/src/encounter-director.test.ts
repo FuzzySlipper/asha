@@ -1,11 +1,11 @@
 import { test } from 'node:test';
+import type { CameraCreateRequest } from '@asha/contracts';
 import assert from 'node:assert/strict';
 
 import {
   GENERATED_TUNNEL_SMALL_ENCOUNTER_CONFIG,
-  type CameraCreateRequest,
   type EncounterTransitionRequest,
-} from './index.js';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 
 function sessionInput() {
@@ -23,7 +23,6 @@ function sessionInput() {
     },
   };
 }
-
 function cameraRequest(): CameraCreateRequest {
   return {
     initialPose: { position: [2.5, 1.5, 1.5], yawDegrees: 180, pitchDegrees: 0 },
@@ -99,7 +98,6 @@ void test('RuntimeSession exposes deterministic encounter director pending and a
   assert.notEqual(activated.hashes.sessionHashAfter, activated.hashes.sessionHashBefore);
   assert.equal(session.readTelemetry().replayRecords.at(-1)?.kind, 'requestEncounterTransition');
 });
-
 void test('RuntimeSession encounter director syncs lifecycle clear/fail and restart reset', () => {
   const session = createMockRuntimeSession();
   session.initialize(sessionInput());

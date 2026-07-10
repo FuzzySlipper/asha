@@ -17,8 +17,8 @@ import {
   createNativeRuntimeBridge,
   createRuntimeSessionFacade,
   type RuntimeBridge,
-  type RuntimeSessionFacade,
 } from '@asha/runtime-bridge';
+import type { RuntimeSessionFacade } from '@asha/runtime-session';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const proofPath = resolve(repoRoot, 'harness/smoke-out/voxel-annotation-consumer-proof.json');

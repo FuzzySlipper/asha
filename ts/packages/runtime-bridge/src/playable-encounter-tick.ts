@@ -5,7 +5,7 @@ import type {
   RuntimeSessionEcrpEntityReadout,
   RuntimeSessionFacade,
   RuntimeSessionLifecycleStatusReadout,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 export type RuntimeSessionPlayableEncounterTickBlockedReason =
   | 'missing_backend'
@@ -29,7 +29,6 @@ export interface RuntimeSessionPlayableEncounterTickRequest {
     readonly lineOfSight?: 'clear' | 'blocked';
   };
 }
-
 export interface RuntimeSessionPlayableEncounterTickReadout {
   readonly kind: 'runtime_session.playable_encounter_tick.v0';
   readonly status: 'advanced' | 'blocked';

@@ -11,7 +11,7 @@ import {
   GENERATED_TUNNEL_FIRE_HIT_READOUT,
   type CombatRuntimeReadout,
   type RuntimeActionIntentEnvelope,
-} from '@asha/runtime-bridge';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 ```
 

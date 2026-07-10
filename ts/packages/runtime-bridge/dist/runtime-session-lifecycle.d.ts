@@ -1,46 +1,11 @@
 import { type EnemyDirectNavMovementResult } from './bridge.js';
-import type { CombatRuntimeReadout } from './combat-readout.js';
-import { type EncounterLifecycleInput } from './encounter-director.js';
-import type { EnemyPolicyProposal, EnemyPolicyVec3 } from './enemy-policy.js';
-import type { GeneratedTunnelOperationRequest, GeneratedTunnelReadoutRequest } from './generated-tunnel.js';
-import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
-import type { RuntimeSessionActionIntentReceipt, RuntimeSessionAutonomousPolicyTickInput, RuntimeSessionEcrpProjectState, RuntimeSessionIdentity, RuntimeSessionInitializeInput, RuntimeSessionLifecycleEventKind, RuntimeSessionLifecycleEventReadout, RuntimeSessionLifecycleHealthReadout, RuntimeSessionLifecycleScenario, RuntimeSessionLifecycleState, RuntimeSessionLifecycleStatusReadout, RuntimeSessionLifecycleStatusRequest, RuntimeSessionRestartIntent } from './runtime-session.js';
-export type RuntimeSessionAutonomousPolicyProposalStatus = 'accepted' | 'unsupported' | 'rejected';
-export type RuntimeSessionAutonomousPolicyProposalRejectionReason = 'movement_authority_not_wired' | 'policy_source_forbidden_capability' | 'invalid_policy_proposal' | 'runtime_action_rejected';
-export interface RuntimeSessionAutonomousPolicyProposalRejection {
-    readonly reason: RuntimeSessionAutonomousPolicyProposalRejectionReason;
-    readonly detail: string;
-}
-export interface RuntimeSessionAutonomousPolicyMovementSummary {
-    readonly status: RuntimeSessionAutonomousPolicyProposalStatus;
-    readonly actor: string;
-    readonly target: string;
-    readonly from: EnemyPolicyVec3;
-    readonly nextWaypoint: EnemyPolicyVec3 | null;
-    readonly pathHash: string;
-    readonly transformHash: string | null;
-    readonly authoritySource: EnemyDirectNavMovementResult['authoritySource'] | null;
-    readonly authorityTransport: EnemyDirectNavMovementResult['authorityTransport'] | null;
-    readonly reason: RuntimeSessionAutonomousPolicyProposalRejectionReason | null;
-}
-export interface RuntimeSessionAutonomousPolicyCombatSummary {
-    readonly status: RuntimeSessionAutonomousPolicyProposalStatus;
-    readonly action: RuntimeActionIntentEnvelope['action'];
-    readonly outcome: CombatRuntimeReadout['outcome'] | null;
-    readonly healthHash: string | null;
-    readonly replayHash: string | null;
-}
-export interface RuntimeSessionAutonomousPolicyProposalReceipt {
-    readonly proposalKind: EnemyPolicyProposal['kind'];
-    readonly actor: string;
-    readonly target: string;
-    readonly accepted: boolean;
-    readonly status: RuntimeSessionAutonomousPolicyProposalStatus;
-    readonly rejection: RuntimeSessionAutonomousPolicyProposalRejection | null;
-    readonly movement: RuntimeSessionAutonomousPolicyMovementSummary | null;
-    readonly actionReceipt: RuntimeSessionActionIntentReceipt | null;
-    readonly combat: RuntimeSessionAutonomousPolicyCombatSummary | null;
-}
+import type { CombatRuntimeReadout } from '@asha/runtime-session';
+import { type EncounterLifecycleInput } from '@asha/runtime-session';
+import type { EnemyPolicyProposal } from '@asha/runtime-session';
+import type { GeneratedTunnelOperationRequest, GeneratedTunnelReadoutRequest } from '@asha/runtime-session';
+import type { RuntimeActionIntentEnvelope } from '@asha/runtime-session';
+import type { RuntimeSessionActionIntentReceipt, RuntimeSessionAutonomousPolicyProposalReceipt, RuntimeSessionAutonomousPolicyProposalRejection, RuntimeSessionAutonomousPolicyTickInput, RuntimeSessionEcrpProjectState, RuntimeSessionIdentity, RuntimeSessionInitializeInput, RuntimeSessionLifecycleEventKind, RuntimeSessionLifecycleEventReadout, RuntimeSessionLifecycleHealthReadout, RuntimeSessionLifecycleScenario, RuntimeSessionLifecycleState, RuntimeSessionLifecycleStatusReadout, RuntimeSessionLifecycleStatusRequest, RuntimeSessionRestartIntent } from '@asha/runtime-session';
+export type { RuntimeSessionAutonomousPolicyCombatSummary, RuntimeSessionAutonomousPolicyMovementSummary, RuntimeSessionAutonomousPolicyProposalReceipt, RuntimeSessionAutonomousPolicyProposalRejection, RuntimeSessionAutonomousPolicyProposalRejectionReason, RuntimeSessionAutonomousPolicyProposalStatus, } from '@asha/runtime-session';
 export declare function initialRuntimeSessionLifecycleState(): RuntimeSessionLifecycleState;
 export declare function generatedTunnelEnemyDefeatedLifecycleState(): RuntimeSessionLifecycleState;
 export declare function generatedTunnelPlayerDefeatedLifecycleState(): RuntimeSessionLifecycleState;

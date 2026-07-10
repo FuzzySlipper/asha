@@ -1,5 +1,5 @@
 import type { CameraHandle } from '@asha/contracts';
-import type { RuntimeSessionAutonomousPolicyTickReadout, RuntimeSessionFacade, RuntimeSessionLifecycleStatusReadout } from './runtime-session.js';
+import type { RuntimeSessionAutonomousPolicyTickReadout, RuntimeSessionFacade, RuntimeSessionLifecycleStatusReadout } from '@asha/runtime-session';
 export type RuntimeSessionPlayableEncounterTickBlockedReason = 'missing_backend' | 'paused' | 'player_dead' | 'enemy_dead' | 'missing_enemy' | 'missing_player';
 export interface RuntimeSessionPlayableEncounterTickRequest {
     readonly targetCamera: CameraHandle | null;

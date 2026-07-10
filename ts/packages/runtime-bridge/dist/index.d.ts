@@ -8,10 +8,8 @@ export { SelectedBackendGameRuntimeLauncher, createNativeGameRuntimeLauncher, cr
 export type { GameRuntimeBackendMode, GameRuntimeBackendProfile, GameRuntimeBackendProfileValidation, GameRuntimeBackendTransport, GameRuntimeCommandProposalResult, GameRuntimeCompatibility, GameRuntimeConfig, GameRuntimeDiagnostic, GameRuntimeDiagnosticCode, GameRuntimeEvidenceExport, GameRuntimeEvidenceExportRequest, GameRuntimeEvidenceRef, GameRuntimeLaunchResult, GameRuntimeLauncher, GameRuntimeMode, GameRuntimeNonClaim, GameRuntimeProfile, GameRuntimeProjectionSummary, GameRuntimeRenderDiffSnapshot, GameRuntimeReplayExport, GameRuntimeReplayExportRequest, GameRuntimeResourceProfile, GameRuntimeSession, GameRuntimeTelemetrySnapshot, SelectedBackendLauncherOptions, } from './launcher.js';
 export * from './native.js';
 export * from './browser-fps-input.js';
-export * from '@asha/runtime-session';
-export type { RuntimeSessionAnimationIntentAuthority, RuntimeSessionAnimationIntentNonClaim, RuntimeSessionAnimationIntentReadout, RuntimeSessionAnimationSelectionReason, } from './runtime-session-animation.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';
-export * from './runtime-session.js';
+export { createRuntimeSessionFacade, type RuntimeSessionFacadeOptions, } from './runtime-session-adapter.js';
 //# sourceMappingURL=index.d.ts.map

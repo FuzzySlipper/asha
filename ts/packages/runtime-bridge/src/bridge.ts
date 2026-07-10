@@ -8,16 +8,8 @@ import type {
   CommandBatch,
   CommandResult,
   FirstPersonCameraInputEnvelope,
-  GameExtensionHookReceipt,
-  GameExtensionReplayEvidence,
   GameRuleCatalog,
-  GameRuleDiagnostic,
-  GameRuleEvidenceRef,
-  GameRuleModifierState,
   GameRuleResolutionReceipt,
-  GameRuleResolutionRequest,
-  GameRuleTraceEntry,
-  GameRuleModuleManifest,
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   PickRay,
@@ -68,16 +60,80 @@ import type {
   VoxelVolumeAssetLoadRequest,
   VoxelVolumeAssetSaveReceipt,
   VoxelVolumeAssetSaveRequest,
-  WeaponEffectHookRequest,
 } from '@asha/contracts';
+import type {
+  CompositionStatus,
+  EnemyDirectNavMovementRequest,
+  EnemyDirectNavMovementResult,
+  EngineHandle,
+  FpsEncounterDirectorSnapshot,
+  FpsEncounterLifecycleInput,
+  FpsEncounterTransitionRequest,
+  FpsEncounterTransitionResult,
+  FpsPrimaryFireRequest,
+  FpsPrimaryFireResult,
+  FpsRuntimeSessionLoadRequest,
+  FpsRuntimeSessionRestartRequest,
+  FpsRuntimeSessionSnapshot,
+  FrameCursor,
+  GameExtensionWeaponEffectInvocationRequest,
+  GameExtensionWeaponEffectInvocationResult,
+  GameRuleCatalogValidationReceipt,
+  GameRuleEffectIntentRequest,
+  GameRuleRuntimeReadout,
+  ProjectBundleLoadRequest,
+  StepResult,
+} from '@asha/runtime-session';
+
+export type {
+  BridgeVec3,
+  CompositionStatus,
+  EnemyDirectNavAuthoritySource,
+  EnemyDirectNavAuthorityTransport,
+  EnemyDirectNavMovementRequest,
+  EnemyDirectNavMovementResult,
+  EngineHandle,
+  FpsBoundsCapability,
+  FpsEncounterDirectorSnapshot,
+  FpsEncounterLastTransition,
+  FpsEncounterLifecycleInput,
+  FpsEncounterStateReadout,
+  FpsEncounterStatus,
+  FpsEncounterTransitionAction,
+  FpsEncounterTransitionRequest,
+  FpsEncounterTransitionResult,
+  FpsEntityHealthReadout,
+  FpsHealth,
+  FpsLifecycleStatus,
+  FpsPolicyBinding,
+  FpsPolicyBindingReadout,
+  FpsPrimaryFireRequest,
+  FpsPrimaryFireResult,
+  FpsReadSetEvidence,
+  FpsReplayEvidence,
+  FpsRuntimeAuthorityTransport,
+  FpsRuntimeRole,
+  FpsRuntimeSessionLoadRequest,
+  FpsRuntimeSessionRestartRequest,
+  FpsRuntimeSessionSnapshot,
+  FpsStoredEntityDefinition,
+  FpsTransformCapability,
+  FpsWeaponMount,
+  FrameCursor,
+  GameExtensionWeaponEffectInvocationRequest,
+  GameExtensionWeaponEffectInvocationResult,
+  GameRuleCatalogValidationReceipt,
+  GameRuleEffectIntentRequest,
+  GameRuleRuntimeReadout,
+  ProjectBundleLoadRequest,
+  StepResult,
+} from '@asha/runtime-session';
 
 // ── Opaque handle types ───────────────────────────────────────────────────────
 // Branded numbers so a buffer handle can't be passed where an engine handle is
 // expected. They carry no transport detail and never expose a StateStore.
 
-export type EngineHandle = number & { readonly __brand: 'EngineHandle' };
 export type RuntimeBufferHandle = number & { readonly __brand: 'RuntimeBufferHandle' };
-export type FrameCursor = number & { readonly __brand: 'FrameCursor' };
 export type ReplaySessionHandle = number & { readonly __brand: 'ReplaySessionHandle' };
 
 export const frameCursor = (frame: number): FrameCursor => frame as FrameCursor;
@@ -110,7 +166,6 @@ export class RuntimeBridgeError extends Error {
     this.name = 'RuntimeBridgeError';
   }
 }
-
 export function nonNegativeSafeInteger(value: number, field: string): number {
   if (!Number.isSafeInteger(value) || value < 0) {
     throw new RuntimeBridgeError('invalid_input', `${field} must be a non-negative safe integer`);
@@ -142,224 +197,8 @@ export interface EngineConfig {
 export interface StepInputEnvelope {
   readonly tick: number;
 }
-export interface StepResult {
-  readonly tick: number;
-  readonly diffCount: number;
-}
-export type BridgeVec3 = readonly [number, number, number];
-export type EnemyDirectNavAuthoritySource = 'seeded_from_request' | 'rust_entity_store';
-export type EnemyDirectNavAuthorityTransport = 'native_rust' | 'reference_bridge';
-export interface EnemyDirectNavMovementRequest {
-  readonly entity: number;
-  readonly seedPosition: BridgeVec3;
-  readonly target: BridgeVec3;
-  readonly maxStepUnits: number;
-}
-export interface EnemyDirectNavMovementResult {
-  readonly entity: number;
-  readonly authoritySource: EnemyDirectNavAuthoritySource;
-  readonly authorityTransport: EnemyDirectNavAuthorityTransport;
-  readonly from: BridgeVec3;
-  readonly target: BridgeVec3;
-  readonly nextWaypoint: BridgeVec3;
-  readonly distanceUnits: number;
-  readonly reached: boolean;
-  readonly pathHash: string;
-  readonly transformHash: string;
-  readonly projectionChanged: boolean;
-}
-export type FpsRuntimeRole = 'player' | 'enemy' | 'neutral';
-export type FpsRuntimeAuthorityTransport = 'native_rust' | 'reference_bridge';
-export interface FpsTransformCapability {
-  readonly translation: BridgeVec3;
-  readonly rotation: readonly [number, number, number, number];
-  readonly scale: BridgeVec3;
-}
-export interface FpsBoundsCapability {
-  readonly min: BridgeVec3;
-  readonly max: BridgeVec3;
-}
-export interface FpsHealth {
-  readonly current: number;
-  readonly max: number;
-}
-export interface FpsWeaponMount {
-  readonly weaponId: string;
-  readonly damage: number;
-  readonly rangeUnits: number;
-  readonly ammo: number;
-  readonly cooldownTicksAfterFire: number;
-}
-export interface FpsPolicyBinding {
-  readonly bindingId: string;
-  readonly policyId: string;
-  readonly viewKind: string;
-  readonly viewVersion: string;
-  readonly allowedIntents: readonly string[];
-  readonly runtimeMoment: string;
-}
-export interface FpsStoredEntityDefinition {
-  readonly entity: number;
-  readonly stableId: string;
-  readonly displayName: string;
-  readonly sourcePath: string;
-  readonly tags: readonly string[];
-  readonly role: FpsRuntimeRole;
-  readonly transform: FpsTransformCapability | null;
-  readonly bounds: FpsBoundsCapability | null;
-  readonly renderVisible: boolean | null;
-  readonly staticCollider: boolean | null;
-  readonly health: FpsHealth | null;
-  readonly weapon: FpsWeaponMount | null;
-  readonly policyBinding: FpsPolicyBinding | null;
-}
-export interface FpsRuntimeSessionLoadRequest {
-  readonly projectBundle: string;
-  readonly definitions: readonly FpsStoredEntityDefinition[];
-  readonly gameRuleModules: readonly GameRuleModuleManifest[];
-}
-export interface FpsRuntimeSessionRestartRequest {
-  readonly expectedEpoch: number;
-}
-export interface FpsPrimaryFireRequest {
-  readonly tick: number;
-  readonly origin: BridgeVec3;
-  readonly direction: BridgeVec3;
-  readonly shooterRole?: FpsRuntimeRole;
-  readonly targetRole?: FpsRuntimeRole;
-}
-export type FpsLifecycleStatus =
-  | { readonly state: 'active' }
-  | { readonly state: 'enemy_defeated'; readonly entity: number; readonly tick: number };
-export interface FpsReadSetEvidence {
-  readonly viewKind: string;
-  readonly owner: string;
-  readonly readSet: readonly string[];
-}
-export interface FpsReplayEvidence {
-  readonly replayUnit: string;
-  readonly entityHash: string;
-  readonly healthHash: string;
-  readonly recordHash: string;
-}
-export interface FpsEntityHealthReadout {
-  readonly entity: number;
-  readonly current: number;
-  readonly max: number;
-}
-export interface FpsPolicyBindingReadout extends FpsPolicyBinding {
-  readonly entity: number;
-}
-export interface FpsRuntimeSessionSnapshot {
-  readonly backend: FpsRuntimeAuthorityTransport;
-  readonly authoritySurface: string;
-  readonly projectBundle: string;
-  readonly sessionEpoch: number;
-  readonly lifecycleStatus: FpsLifecycleStatus;
-  readonly playerEntity: number;
-  readonly enemyEntity: number;
-  readonly health: readonly FpsEntityHealthReadout[];
-  readonly policyBindings: readonly FpsPolicyBindingReadout[];
-  readonly replayRecords: readonly FpsReplayEvidence[];
-  readonly readSets: readonly FpsReadSetEvidence[];
-  readonly entityHash: string;
-  readonly healthHash: string;
-  readonly replayHash: string;
-}
-export interface FpsPrimaryFireResult {
-  readonly backend: FpsRuntimeAuthorityTransport;
-  readonly authoritySurface: string;
-  readonly mutationOwner: string;
-  readonly workspaceTrace: readonly string[];
-  readonly shooter: number;
-  readonly target: number | null;
-  readonly targetHealthBefore: FpsHealth | null;
-  readonly targetHealthAfter: FpsHealth | null;
-  readonly lifecycleStatus: FpsLifecycleStatus;
-  readonly targetRenderVisible: boolean | null;
-  readonly entityHash: string;
-  readonly healthHash: string;
-  readonly replayHash: string;
-}
-export interface GameExtensionWeaponEffectInvocationRequest {
-  readonly hook: WeaponEffectHookRequest;
-  readonly primaryFire: FpsPrimaryFireRequest;
-}
-export interface GameExtensionWeaponEffectInvocationResult {
-  readonly hookReceipt: GameExtensionHookReceipt;
-  readonly replayEvidence: GameExtensionReplayEvidence;
-  readonly primaryFire: FpsPrimaryFireResult | null;
-}
-export interface GameRuleCatalogValidationReceipt {
-  readonly accepted: boolean;
-  readonly catalogHash: string;
-  readonly diagnostics: readonly GameRuleDiagnostic[];
-  readonly trace: readonly GameRuleTraceEntry[];
-  readonly evidence: readonly GameRuleEvidenceRef[];
-}
-export interface GameRuleEffectIntentRequest {
-  readonly catalog: GameRuleCatalog;
-  readonly request: GameRuleResolutionRequest;
-}
-export interface GameRuleRuntimeReadout {
-  readonly backend: FpsRuntimeAuthorityTransport;
-  readonly authoritySurface: string;
-  readonly activeModifiers: readonly GameRuleModifierState[];
-  readonly recentTrace: readonly GameRuleTraceEntry[];
-  readonly recentReplayHashes: readonly string[];
-  readonly latestReplayHash: string | null;
-}
-export type FpsEncounterStatus = 'pending' | 'active' | 'cleared' | 'failed';
-export type FpsEncounterLastTransition = 'initialized' | 'activated' | 'cleared' | 'failed' | 'reset';
-export type FpsEncounterTransitionAction = 'activate' | 'sync_lifecycle' | 'reset';
-export interface FpsEncounterLifecycleInput {
-  readonly outcomeKind: 'in_progress' | 'won' | 'lost';
-  readonly terminal: boolean;
-  readonly enemyDead: boolean;
-  readonly playerDead: boolean;
-  readonly lifecycleHash: string;
-}
-export interface FpsEncounterTransitionRequest {
-  readonly presetId: string;
-  readonly action: FpsEncounterTransitionAction;
-  readonly lifecycle: FpsEncounterLifecycleInput;
-}
-export interface FpsEncounterStateReadout {
-  readonly presetId: string;
-  readonly status: FpsEncounterStatus;
-  readonly spawnedEnemyIds: readonly string[];
-  readonly defeatedEnemyIds: readonly string[];
-  readonly revision: number;
-  readonly lastTransition: FpsEncounterLastTransition;
-}
-export interface FpsEncounterDirectorSnapshot {
-  readonly backend: FpsRuntimeAuthorityTransport;
-  readonly authoritySurface: string;
-  readonly mutationOwner: string;
-  readonly workspaceTrace: readonly string[];
-  readonly state: FpsEncounterStateReadout;
-  readonly lifecycle: FpsEncounterLifecycleInput;
-  readonly readSets: readonly FpsReadSetEvidence[];
-  readonly encounterHash: string;
-  readonly replayHash: string;
-}
-export interface FpsEncounterTransitionResult {
-  readonly backend: FpsRuntimeAuthorityTransport;
-  readonly authoritySurface: string;
-  readonly mutationOwner: string;
-  readonly workspaceTrace: readonly string[];
-  readonly accepted: boolean;
-  readonly rejectionReason: 'encounter_not_pending' | 'invalid_encounter_transition' | 'unknown_encounter_preset' | null;
-  readonly eventKind:
-    | 'runtime_encounter.activated.v0'
-    | 'runtime_encounter.lifecycle_synced.v0'
-    | 'runtime_encounter.reset.v0'
-    | null;
-  readonly state: FpsEncounterStateReadout;
-  readonly lifecycle: FpsEncounterLifecycleInput;
-  readonly encounterHash: string;
-  readonly replayHash: string;
-}
+
+
 // `CommandBatch` / `CommandResult` are NOT prototype DTOs: they are the generated
 // voxel command border (imported from `@asha/contracts`). `submitCommands` carries
 // the real `VoxelCommand` union — there is no `{ kind: 'smoke-edit' }` placeholder
@@ -381,17 +220,7 @@ export interface ReplayStepReport {
 }
 // ProjectBundle load/save composition payloads (#2363). PROTOTYPE: replaced by
 // generated bundle/diagnostic contracts once the emitter wires them.
-export interface ProjectBundleLoadRequest {
-  readonly bundleSchemaVersion: number;
-  readonly protocolVersion: number;
-  readonly sceneId: number;
-}
-export interface CompositionStatus {
-  readonly loadedProjectBundle: number | null;
-  readonly fatalCount: number;
-  readonly totalCount: number;
-  readonly blocksLoad: boolean;
-}
+
 export interface ProjectBundleSaveSummary {
   readonly artifactsWritten: number;
   readonly compactedEdits: number;

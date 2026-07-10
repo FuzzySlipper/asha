@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cameraHandle } from '@asha/contracts';
 import { GENERATED_TUNNEL_NAV_POLICY_VIEW, GENERATED_TUNNEL_NAV_PROJECTION, GENERATED_TUNNEL_FIRE_HIT_READOUT, TINY_GENERATED_TUNNEL_READOUT, buildEncounterDirectorReadout, buildCombatFeedbackProjection, createGeneratedTunnelEnemyPolicyFixture, defaultCombatFeedbackIntent, } from './index.js';
+const facadeOwnershipCompiles = true;
 void test('@asha/runtime-session exposes semantic readouts without a bridge backend', () => {
+    assert.equal(facadeOwnershipCompiles, true);
     const envelope = {
         kind: 'runtime_action_intent.v0',
         action: 'primary_fire',

@@ -5,7 +5,7 @@
   "asha": {
     "publicSurface": {
       "tier": 1,
-      "role": "runtime-facade",
+      "role": "runtime-transport",
       "allowedConsumers": ["asha-testing", "asha-demo", "asha-studio"],
       "rootExportOnly": true,
       "allowedExportSubpaths": ["./reference"],

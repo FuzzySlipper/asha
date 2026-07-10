@@ -1,4 +1,4 @@
-import { GENERATED_TUNNEL_NAV_PROJECTION, } from './nav-readout.js';
+import { GENERATED_TUNNEL_NAV_PROJECTION, } from '@asha/runtime-session';
 import { stableHash } from './runtime-session-hash.js';
 export const RUNTIME_SESSION_ENEMY_MOVEMENT_AUTHORITY = {
     navServiceCrate: 'svc-pathfinding',

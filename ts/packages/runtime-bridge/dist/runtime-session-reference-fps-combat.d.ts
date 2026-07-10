@@ -1,6 +1,6 @@
-import { type CombatRuntimeReadout } from './combat-readout.js';
-import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
-import type { RuntimeSessionEcrpProjectState, RuntimeSessionLifecycleState } from './runtime-session.js';
+import { type CombatRuntimeReadout } from '@asha/runtime-session';
+import type { RuntimeActionIntentEnvelope } from '@asha/runtime-session';
+import type { RuntimeSessionEcrpProjectState, RuntimeSessionLifecycleState } from '@asha/runtime-session';
 export declare const REFERENCE_FPS_COMBAT_FIXTURE_PROVENANCE: {
     readonly ruleCrate: "rule-lifecycle";
     readonly combatServiceCrate: "svc-combat";

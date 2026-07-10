@@ -1,5 +1,5 @@
 import { RuntimeBridgeError } from './bridge.js';
-import { initialEncounterDirectorState } from './encounter-director.js';
+import { initialEncounterDirectorState } from '@asha/runtime-session';
 import { encounterStateHashRecord, lifecycleStateHashRecord, projectBundleHashRecord, stableHash, } from './runtime-session-hash.js';
 import { buildReferenceFpsCombatFixturePrimaryFireReadout, } from './runtime-session-reference-fps-combat.js';
 function runtimeSessionResetHash(identity) {

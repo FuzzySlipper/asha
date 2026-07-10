@@ -1,19 +1,19 @@
 import type {
   EnemyPolicyProposal,
   EnemyPolicyVec3,
-} from './enemy-policy.js';
+} from '@asha/runtime-session';
 import {
   GENERATED_TUNNEL_NAV_PROJECTION,
   type NavPathReadout,
   type NavPathScenario,
-} from './nav-readout.js';
+} from '@asha/runtime-session';
 import type {
   RuntimeSessionEcrpEntityState,
   RuntimeSessionEcrpProjectState,
   RuntimeSessionEcrpTransformState,
   RuntimeSessionHashValue,
   RuntimeSessionLifecycleRole,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 import { stableHash } from './runtime-session-hash.js';
 
 export const RUNTIME_SESSION_ENEMY_MOVEMENT_AUTHORITY = {
@@ -34,7 +34,6 @@ export function buildRuntimeSessionEnemyNavPath(input: {
   }
   return buildDirectNavPath(input.enemyPosition, input.targetPosition);
 }
-
 export function transformForAutonomousMovementProposal(input: {
   readonly projectState: RuntimeSessionEcrpProjectState | null;
   readonly proposal: Extract<EnemyPolicyProposal, { readonly kind: 'enemy_policy.move_toward_target.v0' }>;

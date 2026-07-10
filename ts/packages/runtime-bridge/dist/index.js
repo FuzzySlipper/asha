@@ -16,12 +16,8 @@ export { RuntimeBridgeError, frameCursor } from './bridge.js';
 export { SelectedBackendGameRuntimeLauncher, createNativeGameRuntimeLauncher, createSelectedBackendGameRuntimeLauncher, nativeBackendProfile, validateGameRuntimeBackendProfile, } from './launcher.js';
 export * from './native.js';
 export * from './browser-fps-input.js';
-// Compatibility shim for RuntimeSession semantic readouts/proposal shapes.
-// New consumers import these from @asha/runtime-session; keep the bridge root
-// re-export only for runtime-bridge.v0 callers while the migration closes.
-export * from '@asha/runtime-session';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';
-export * from './runtime-session.js';
+export { createRuntimeSessionFacade, } from './runtime-session-adapter.js';
 //# sourceMappingURL=index.js.map

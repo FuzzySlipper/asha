@@ -5,11 +5,11 @@
   "asha": {
     "publicSurface": {
       "tier": 1,
-      "role": "runtime-session-semantics",
+      "role": "runtime-session-facade",
       "allowedConsumers": ["asha-testing", "asha-demo", "asha-studio"],
       "rootExportOnly": true,
       "nativeTransportAccess": false,
-      "nativeTransportRule": "@asha/runtime-session must not import @asha/native-bridge; bridge-backed adapters remain in @asha/runtime-bridge during migration."
+      "nativeTransportRule": "@asha/runtime-session must not import @asha/native-bridge or @asha/runtime-bridge; concrete bridge-backed adapters are constructed by @asha/runtime-bridge."
     },
     "compatibility": {
       "version": "runtime-session.v0",

@@ -8,7 +8,7 @@ Public import path:
 import {
   TINY_GENERATED_TUNNEL_READOUT,
   type GeneratedTunnelReadout,
-} from '@asha/runtime-bridge';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 ```
 

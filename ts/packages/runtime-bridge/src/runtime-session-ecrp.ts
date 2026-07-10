@@ -20,7 +20,7 @@ import type {
   RuntimeSessionInitializeInput,
   RuntimeSessionLifecycleHealthReadout,
   RuntimeSessionLifecycleState,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 export function defaultRuntimeSessionEcrpProjectLoadInput(
   input: RuntimeSessionInitializeInput,
@@ -140,7 +140,6 @@ export function defaultRuntimeSessionEcrpProjectLoadInput(
     },
   };
 }
-
 export function validateEcrpProjectLoadInput(
   input: RuntimeSessionEcrpProjectLoadInput,
 ): readonly RuntimeSessionEcrpProjectDiagnostic[] {

@@ -7,13 +7,8 @@ export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export { RuntimeBridgeError, frameCursor } from './bridge.js';
 export * from './browser-fps-input.js';
-export * from './combat-readout.js';
-export * from './generated-tunnel.js';
-export * from './nav-readout.js';
-export * from './enemy-policy.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';
-export * from './runtime-action.js';
-export * from './runtime-session.js';
+export { createRuntimeSessionFacade, } from './runtime-session-adapter.js';
 //# sourceMappingURL=browser.js.map

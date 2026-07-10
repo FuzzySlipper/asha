@@ -2,13 +2,13 @@ import {
   GENERATED_TUNNEL_FIRE_HIT_READOUT,
   type CombatEventReadout,
   type CombatRuntimeReadout,
-} from './combat-readout.js';
-import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
+} from '@asha/runtime-session';
+import type { RuntimeActionIntentEnvelope } from '@asha/runtime-session';
 import { stableHash } from './runtime-session-hash.js';
 import type {
   RuntimeSessionEcrpProjectState,
   RuntimeSessionLifecycleState,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 export const REFERENCE_FPS_COMBAT_FIXTURE_PROVENANCE = {
   ruleCrate: 'rule-lifecycle',
@@ -58,7 +58,6 @@ export function buildReferenceFpsCombatFixturePrimaryFireReadout(input: {
     weaponOwnerRole: 'player',
   });
 }
-
 function buildPrimaryFireHitReadout(input: {
   readonly projectState: RuntimeSessionEcrpProjectState | null;
   readonly tick: number;

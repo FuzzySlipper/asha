@@ -1,4 +1,4 @@
-import type { RuntimeSessionEcrpCapabilityState, RuntimeSessionFacade } from './runtime-session.js';
+import type { RuntimeSessionEcrpCapabilityState, RuntimeSessionFacade } from '@asha/runtime-session';
 export interface RuntimeSessionPlayableLoopStateRequest {
     readonly shell?: {
         readonly paused?: boolean;

@@ -1,5 +1,5 @@
 import type { CameraHandle, FirstPersonCameraInputEnvelope } from '@asha/contracts';
-import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
+import type { RuntimeActionIntentEnvelope } from '@asha/runtime-session';
 
 export type BrowserFpsKeyCode = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'Escape';
 
@@ -8,7 +8,6 @@ export interface BrowserFpsKeyboardInput {
   readonly repeat?: boolean;
   preventDefault?(): void;
 }
-
 export interface BrowserFpsMouseMoveInput {
   readonly movementX: number;
   readonly movementY: number;

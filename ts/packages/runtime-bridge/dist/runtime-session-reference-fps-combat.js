@@ -1,4 +1,4 @@
-import { GENERATED_TUNNEL_FIRE_HIT_READOUT, } from './combat-readout.js';
+import { GENERATED_TUNNEL_FIRE_HIT_READOUT, } from '@asha/runtime-session';
 import { stableHash } from './runtime-session-hash.js';
 export const REFERENCE_FPS_COMBAT_FIXTURE_PROVENANCE = {
     ruleCrate: 'rule-lifecycle',

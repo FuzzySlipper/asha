@@ -1,6 +1,6 @@
 import type { RenderFrameDiff } from '@asha/contracts';
 import type { CompositionStatus, ProjectBundleLoadRequest } from './bridge.js';
-import type { EncounterDirectorState } from './encounter-director.js';
+import type { EncounterDirectorState } from '@asha/runtime-session';
 import type {
   RuntimeSessionHashRecord,
   RuntimeSessionHashValue,
@@ -8,7 +8,7 @@ import type {
   RuntimeSessionLifecycleHealthReadout,
   RuntimeSessionLifecycleState,
   RuntimeSessionNonClaim,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 // These hashes are deterministic TypeScript readout/projection fingerprints.
 // Live Rust-backed authority hashes must come from bridge snapshots/results.
@@ -23,7 +23,6 @@ export function referenceRuntimeSessionNonClaims(): readonly RuntimeSessionNonCl
     'not_renderer',
   ];
 }
-
 export function identityHashRecord(identity: RuntimeSessionIdentity): RuntimeSessionHashRecord {
   return {
     sessionId: identity.sessionId,

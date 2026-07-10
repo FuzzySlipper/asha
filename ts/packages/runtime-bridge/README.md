@@ -1,6 +1,6 @@
 # `@asha/runtime-bridge`
 
-`@asha/runtime-bridge` is the Tier 1 public TypeScript runtime facade for ASHA engine consumers such as `asha-testing`, `asha-demo`, and `asha-studio`.
+`@asha/runtime-bridge` is the Tier 1 public TypeScript runtime transport and concrete adapter package for ASHA engine consumers such as `asha-testing`, `asha-demo`, and `asha-studio`. Transport-neutral `RuntimeSessionFacade` contracts live in `@asha/runtime-session`.
 
 Production-facing consumers should import the package root:
 
@@ -54,7 +54,7 @@ The raw native addon wrapper remains internal transport plumbing. This package i
 
 ## Internal layout
 
-The package root is the production-safe public facade. `@asha/runtime-bridge/reference` is the only approved public subpath, and it is for deterministic reference/mock helpers used by demos, tests, and compatibility smokes that intentionally opt into the fixture backend. Internally, `src/index.ts` is a barrel over concern-focused modules: `bridge.ts` owns handle/error/DTO/interface types, `mock.ts` owns the reference bridge, `native.ts` is the only raw `@asha/native-bridge` importer, `runtime-session.ts` owns the semantic session facade, and `launcher.ts` owns the `GameRuntimeLauncher` session facade.
+The package root is the production-safe transport surface. `@asha/runtime-bridge/reference` is the only approved public subpath, and it is for deterministic reference/mock helpers used by demos, tests, and compatibility smokes that intentionally opt into the fixture backend. Internally, `src/index.ts` is an exports-only barrel: `bridge.ts` owns transport errors and the bounded bridge interface, `mock.ts` owns the reference bridge, `native.ts` is the only raw `@asha/native-bridge` importer, `runtime-session-adapter.ts` constructs concrete transport-backed sessions against neutral `@asha/runtime-session` contracts, and `launcher.ts` owns the `GameRuntimeLauncher` composition facade.
 
 `RuntimeSession` is the narrow semantic facade for game repos and Studio. It exposes initialized session state, ProjectBundle-shaped ECRP load/readout, generated command submission, deterministic ticks, camera/collision inputs, typed runtime action intents, lifecycle/restart receipts, generated-tunnel/combat/nav readouts, render projection summaries, telemetry, and restart. `createRuntimeSessionFacade` accepts an explicit `RuntimeBridge`; `createMockRuntimeSession` lives under `@asha/runtime-bridge/reference` for consumers that intentionally want the reference backend. The current reference implementation wraps the mock bridge where native runtime attach is not yet available, but its ECRP/action/lifecycle readouts are no longer demo-local counters: primary-fire receipts and CapabilityState readouts are derived from the loaded runtime project state. It keeps explicit non-claims for native runtime, raw StateStore access, arbitrary JSON bridge calls, and renderer ownership.
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCombatFeedbackProjectionFromReceipt, } from './index.js';
+import { buildCombatFeedbackProjectionFromReceipt, } from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 function sessionInput() {
     return {

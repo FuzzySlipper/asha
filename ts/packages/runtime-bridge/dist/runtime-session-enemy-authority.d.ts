@@ -1,6 +1,6 @@
-import type { EnemyPolicyProposal, EnemyPolicyVec3 } from './enemy-policy.js';
-import { type NavPathReadout, type NavPathScenario } from './nav-readout.js';
-import type { RuntimeSessionEcrpEntityState, RuntimeSessionEcrpProjectState, RuntimeSessionEcrpTransformState, RuntimeSessionHashValue, RuntimeSessionLifecycleRole } from './runtime-session.js';
+import type { EnemyPolicyProposal, EnemyPolicyVec3 } from '@asha/runtime-session';
+import { type NavPathReadout, type NavPathScenario } from '@asha/runtime-session';
+import type { RuntimeSessionEcrpEntityState, RuntimeSessionEcrpProjectState, RuntimeSessionEcrpTransformState, RuntimeSessionHashValue, RuntimeSessionLifecycleRole } from '@asha/runtime-session';
 export declare const RUNTIME_SESSION_ENEMY_MOVEMENT_AUTHORITY: {
     readonly navServiceCrate: "svc-pathfinding";
     readonly runtimeTransformAuthorityCrate: "core-scene";

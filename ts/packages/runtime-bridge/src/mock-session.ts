@@ -1,9 +1,9 @@
 import { createMockRuntimeBridge } from './mock.js';
-import {
-  createRuntimeSessionFacade,
-  type RuntimeSessionFacade,
-  type RuntimeSessionNonClaim,
-} from './runtime-session.js';
+import type {
+  RuntimeSessionFacade,
+  RuntimeSessionNonClaim,
+} from '@asha/runtime-session';
+import { createRuntimeSessionFacade } from './runtime-session-adapter.js';
 import type { RuntimeBridge } from './bridge.js';
 import { referenceRuntimeSessionNonClaims } from './runtime-session-hash.js';
 

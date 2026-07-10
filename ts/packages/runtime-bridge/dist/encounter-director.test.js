@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GENERATED_TUNNEL_SMALL_ENCOUNTER_CONFIG, } from './index.js';
+import { GENERATED_TUNNEL_SMALL_ENCOUNTER_CONFIG, } from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 function sessionInput() {
     return {

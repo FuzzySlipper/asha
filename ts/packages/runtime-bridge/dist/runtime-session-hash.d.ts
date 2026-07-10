@@ -1,7 +1,7 @@
 import type { RenderFrameDiff } from '@asha/contracts';
 import type { CompositionStatus, ProjectBundleLoadRequest } from './bridge.js';
-import type { EncounterDirectorState } from './encounter-director.js';
-import type { RuntimeSessionHashRecord, RuntimeSessionHashValue, RuntimeSessionIdentity, RuntimeSessionLifecycleState, RuntimeSessionNonClaim } from './runtime-session.js';
+import type { EncounterDirectorState } from '@asha/runtime-session';
+import type { RuntimeSessionHashRecord, RuntimeSessionHashValue, RuntimeSessionIdentity, RuntimeSessionLifecycleState, RuntimeSessionNonClaim } from '@asha/runtime-session';
 export declare function referenceRuntimeSessionNonClaims(): readonly RuntimeSessionNonClaim[];
 export declare function identityHashRecord(identity: RuntimeSessionIdentity): RuntimeSessionHashRecord;
 export declare function encounterStateHashRecord(state: EncounterDirectorState): RuntimeSessionHashRecord;

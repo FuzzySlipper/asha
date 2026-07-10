@@ -13,9 +13,16 @@ import {
   createGeneratedTunnelEnemyPolicyFixture,
   defaultCombatFeedbackIntent,
   type RuntimeActionIntentEnvelope,
+  type RuntimeSessionFacade,
 } from './index.js';
 
+const facadeOwnershipCompiles: RuntimeSessionFacade extends {
+  initialize: (...args: never[]) => unknown;
+  readEcrpRuntimeReadout: (...args: never[]) => unknown;
+} ? true : false = true;
+
 void test('@asha/runtime-session exposes semantic readouts without a bridge backend', () => {
+  assert.equal(facadeOwnershipCompiles, true);
   const envelope: RuntimeActionIntentEnvelope = {
     kind: 'runtime_action_intent.v0',
     action: 'primary_fire',

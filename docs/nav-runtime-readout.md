@@ -9,7 +9,7 @@ import {
   GENERATED_TUNNEL_NAV_POLICY_VIEW,
   GENERATED_TUNNEL_REACHABLE_PATH,
   type NavPathReadout,
-} from '@asha/runtime-bridge';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 ```
 

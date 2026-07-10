@@ -184,17 +184,10 @@ export type {
 } from './launcher.js';
 export * from './native.js';
 export * from './browser-fps-input.js';
-// Compatibility shim for RuntimeSession semantic readouts/proposal shapes.
-// New consumers import these from @asha/runtime-session; keep the bridge root
-// re-export only for runtime-bridge.v0 callers while the migration closes.
-export * from '@asha/runtime-session';
-export type {
-  RuntimeSessionAnimationIntentAuthority,
-  RuntimeSessionAnimationIntentNonClaim,
-  RuntimeSessionAnimationIntentReadout,
-  RuntimeSessionAnimationSelectionReason,
-} from './runtime-session-animation.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';
-export * from './runtime-session.js';
+export {
+  createRuntimeSessionFacade,
+  type RuntimeSessionFacadeOptions,
+} from './runtime-session-adapter.js';

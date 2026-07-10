@@ -68,44 +68,44 @@ import {
   type GameRuleRuntimeReadout,
   type RuntimeBridge,
 } from './bridge.js';
-import type { CombatRuntimeReadout } from './combat-readout.js';
-import type { CombatFeedbackProjection } from './combat-feedback.js';
+import type { CombatRuntimeReadout } from '@asha/runtime-session';
+import type { CombatFeedbackProjection } from '@asha/runtime-session';
 import {
   createGeneratedTunnelEnemyPolicyFixture,
   validateEnemyPolicySource,
   type EnemyPolicyProposal,
   type EnemyPolicyVec3,
-} from './enemy-policy.js';
+} from '@asha/runtime-session';
 import type {
   GeneratedTunnelOperationRequest,
   GeneratedTunnelReadout,
   GeneratedTunnelReadoutRequest,
-} from './generated-tunnel.js';
+} from '@asha/runtime-session';
 import type {
   EncounterDirectorReadout,
   EncounterDirectorReadoutRequest,
   EncounterDirectorState,
   EncounterTransitionRequest,
   RuntimeSessionEncounterTransitionReceipt,
-} from './encounter-director.js';
+} from '@asha/runtime-session';
 import {
   buildEncounterDirectorReadout,
   buildEncounterTransitionReceipt,
   validateEncounterDirectorReadoutRequest,
   validateEncounterTransitionRequest,
-} from './encounter-director.js';
+} from '@asha/runtime-session';
 import type {
   NavPathQueryRequest,
   NavPathReadout,
   NavPolicyViewReadout,
   NavProjectionReadout,
-} from './nav-readout.js';
+} from '@asha/runtime-session';
 import {
   GENERATED_TUNNEL_NAV_POLICY_VIEW,
   GENERATED_TUNNEL_NO_PATH,
   GENERATED_TUNNEL_REACHABLE_PATH,
-} from './nav-readout.js';
-import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
+} from '@asha/runtime-session';
+import type { RuntimeActionIntentEnvelope } from '@asha/runtime-session';
 import {
   buildRuntimeSessionEnemyNavPath,
   ecrpActorPosition,
@@ -182,7 +182,7 @@ import type {
   RuntimeSessionTelemetrySummary,
   RuntimeSessionTickInput,
   RuntimeSessionTickResult,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   readonly #bridge: RuntimeBridge;
@@ -1184,7 +1184,6 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     });
   }
 }
-
 function rustRuntimeSessionNonClaims(): readonly RuntimeSessionNonClaim[] {
   return ['not_raw_state_store', 'not_arbitrary_json_bridge', 'not_renderer'];
 }
@@ -1442,7 +1441,6 @@ function encounterReadoutFromFpsSnapshot(input: {
     },
   });
 }
-
 function fpsEncounterStateToReadoutState(state: FpsEncounterStateReadout): EncounterDirectorState {
   return {
     presetId: requireGeneratedTunnelEncounterPreset(state.presetId),

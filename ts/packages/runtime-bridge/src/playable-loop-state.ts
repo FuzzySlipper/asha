@@ -3,7 +3,7 @@ import type {
   RuntimeSessionFacade,
   RuntimeSessionLifecycleHealthReadout,
   RuntimeSessionReplayRecord,
-} from './runtime-session.js';
+} from '@asha/runtime-session';
 
 export interface RuntimeSessionPlayableLoopStateRequest {
   readonly shell?: {
@@ -12,7 +12,6 @@ export interface RuntimeSessionPlayableLoopStateRequest {
   };
   readonly unavailableReason?: string;
 }
-
 export interface RuntimeSessionPlayableLoopHealthState {
   readonly current: number;
   readonly max: number;

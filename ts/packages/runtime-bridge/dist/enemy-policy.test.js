@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGeneratedTunnelEnemyPolicyFixture, validateEnemyPolicySource, } from './index.js';
+import { createGeneratedTunnelEnemyPolicyFixture, validateEnemyPolicySource, } from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 function sessionInput() {
     return {

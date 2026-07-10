@@ -1,10 +1,10 @@
 import { test } from 'node:test';
+import type { CameraCreateRequest } from '@asha/contracts';
 import assert from 'node:assert/strict';
 
 import {
   buildCombatFeedbackProjectionFromReceipt,
-  type CameraCreateRequest,
-} from './index.js';
+} from '@asha/runtime-session';
 import { createMockRuntimeSession } from './reference.js';
 
 function sessionInput() {
@@ -22,7 +22,6 @@ function sessionInput() {
     },
   };
 }
-
 function cameraRequest(): CameraCreateRequest {
   return {
     initialPose: { position: [2.5, 1.5, 1.5], yawDegrees: 180, pitchDegrees: 0 },
@@ -75,7 +74,6 @@ void test('Combat feedback projection exposes hit marker, trace, HUD status, and
   assert.ok(feedback.nonClaims.includes('not_combat_authority'));
   assert.ok(feedback.nonClaims.includes('not_ui_state'));
 });
-
 void test('Combat feedback projection exposes blocked miss feedback without damage authority', () => {
   const session = createMockRuntimeSession();
   session.initialize(sessionInput());
