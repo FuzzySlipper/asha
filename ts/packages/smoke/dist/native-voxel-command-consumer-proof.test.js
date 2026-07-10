@@ -27,6 +27,21 @@ const COMMANDS_BY_OP = {
         value: VALUES_BY_KIND.empty,
     },
 };
+const REJECTIONS_BY_REASON = {
+    unknownMaterial: { reason: 'unknownMaterial', material: 65535 },
+    emptyRegion: {
+        reason: 'emptyRegion',
+        min: { x: 1, y: 1, z: 1 },
+        max: { x: 1, y: 1, z: 1 },
+    },
+    chunkNotResident: { reason: 'chunkNotResident', chunk: { x: 50, y: 0, z: 0 } },
+    generationDivergence: {
+        reason: 'generationDivergence',
+        chunk: { x: 0, y: 0, z: 0 },
+        expected: 1,
+        actual: 2,
+    },
+};
 void test('public RuntimeSession submits the exhaustive generated voxel command union to native authority', (t) => {
     let session;
     try {
@@ -58,6 +73,55 @@ void test('public RuntimeSession submits the exhaustive generated voxel command 
     });
     assert.deepEqual(result.result, { accepted: 4, rejected: 0, rejections: [] });
     assert.equal(session.readTelemetry().acceptedCommandCount, 4);
+    const unknownMaterial = session.submitCommands({
+        commands: [
+            {
+                op: 'setVoxel',
+                grid: 1,
+                coord: { x: 0, y: 0, z: 0 },
+                value: { kind: 'solid', material: 65535 },
+            },
+        ],
+    });
+    assert.deepEqual(unknownMaterial.result, {
+        accepted: 0,
+        rejected: 1,
+        rejections: [REJECTIONS_BY_REASON.unknownMaterial],
+    });
+    const emptyRegion = session.submitCommands({
+        commands: [
+            {
+                op: 'fillRegion',
+                grid: 1,
+                min: { x: 1, y: 1, z: 1 },
+                max: { x: 1, y: 1, z: 1 },
+                value: { kind: 'empty' },
+            },
+        ],
+    });
+    assert.deepEqual(emptyRegion.result, {
+        accepted: 0,
+        rejected: 1,
+        rejections: [REJECTIONS_BY_REASON.emptyRegion],
+    });
+    const nonResident = session.submitCommands({
+        commands: [
+            {
+                op: 'setVoxel',
+                grid: 1,
+                coord: { x: 100, y: 0, z: 0 },
+                value: { kind: 'empty' },
+            },
+        ],
+    });
+    assert.deepEqual(nonResident.result, {
+        accepted: 0,
+        rejected: 1,
+        rejections: [REJECTIONS_BY_REASON.chunkNotResident],
+    });
+    const telemetry = session.readTelemetry();
+    assert.equal(telemetry.acceptedCommandCount, 4);
+    assert.equal(telemetry.rejectedCommandCount, 3);
     const history = session.readVoxelEditHistory({
         historyId: 'history/default',
         cursorId: null,

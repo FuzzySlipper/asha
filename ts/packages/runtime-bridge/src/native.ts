@@ -509,7 +509,7 @@ export class NativeRuntimeBridge implements RuntimeBridge {
 
   submitCommands(batch: CommandBatch): CommandResult {
     const handle = this.#requireHandle('submitCommands');
-    return callNative(() => this.#addon.submitCommands(handle, JSON.stringify(batch.commands)) as CommandResult);
+    return callNative(() => this.#addon.submitCommands(handle, JSON.stringify(batch.commands)));
   }
 
   stepSimulation(input: StepInputEnvelope): StepResult {

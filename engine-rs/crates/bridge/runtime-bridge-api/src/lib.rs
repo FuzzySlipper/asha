@@ -124,7 +124,7 @@ pub(crate) use rule_lifecycle::{
     FpsRenderProjectionState, FpsRuntimeError, FpsRuntimeRole, FpsRuntimeSessionState,
     FpsStoredEntityDefinition, FpsWeaponMount,
 };
-pub(crate) use rule_voxel_edit::VoxelEditRejection;
+pub use rule_voxel_edit::VoxelEditRejection;
 pub(crate) use svc_collision::{CollisionProjection, Ray};
 pub(crate) use svc_combat::HealthState;
 pub(crate) use svc_game_rules::{resolve_protocol_request, validate_catalog};

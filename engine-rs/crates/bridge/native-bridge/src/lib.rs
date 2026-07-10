@@ -50,7 +50,11 @@ mod generated_tunnel;
 #[cfg(test)]
 mod resource_limit_tests;
 mod voxel_assets;
+#[cfg(test)]
+mod voxel_rejection_tests;
+mod voxel_rejections;
 pub use generated_tunnel::apply_generated_tunnel_to_runtime_world;
+pub use voxel_rejections::NativeCommandResult;
 
 #[derive(Debug, Default)]
 struct NativeSessions {
@@ -147,27 +151,6 @@ impl From<runtime_bridge_api::CompositionStatus> for NativeCompositionStatus {
             fatal_count: value.fatal_count,
             total_count: value.total_count,
             blocks_load: value.blocks_load,
-        }
-    }
-}
-
-#[napi(object)]
-pub struct NativeCommandResult {
-    pub accepted: u32,
-    pub rejected: u32,
-    pub rejections: Vec<String>,
-}
-
-impl From<runtime_bridge_api::CommandResult> for NativeCommandResult {
-    fn from(value: runtime_bridge_api::CommandResult) -> Self {
-        Self {
-            accepted: value.accepted,
-            rejected: value.rejected,
-            rejections: value
-                .rejections
-                .into_iter()
-                .map(|r| format!("{r:?}"))
-                .collect(),
         }
     }
 }
