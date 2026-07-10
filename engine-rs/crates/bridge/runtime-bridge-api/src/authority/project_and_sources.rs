@@ -46,7 +46,12 @@ impl EngineBridge {
     ) -> BridgeResult<VoxelConversionMeshSourceImportReceipt> {
         self.require_initialized("import_voxel_conversion_mesh_source")?;
         let source_byte_count = request.source_bytes.len() as u64;
-        let source_hash = svc_mesh_import::source_sha256(&request.source_bytes);
+        let preflight_error = svc_mesh_import::preflight_import_request(&request).err();
+        let source_hash = if preflight_error.is_none() {
+            svc_mesh_import::source_sha256(&request.source_bytes)
+        } else {
+            "sha256:not-computed".to_string()
+        };
         let rejected_source = protocol_voxel_conversion::VoxelConversionSourceRef {
             asset_id: request.source_asset_id.clone(),
             asset_kind: "mesh".to_string(),
@@ -54,19 +59,30 @@ impl EngineBridge {
             source_hash,
             mesh_primitive: request.mesh_primitive.clone(),
         };
+        if let Some(error) = preflight_error {
+            return Ok(VoxelConversionMeshSourceImportReceipt {
+                source: rejected_source,
+                imported: false,
+                source_path: request.source_path,
+                format: request.format,
+                source_byte_count,
+                mesh_asset: None,
+                source_bounds: None,
+                vertex_count: 0,
+                triangle_count: 0,
+                groups: Vec::new(),
+                material_slots: Vec::new(),
+                diagnostics: vec![Self::voxel_conversion_diagnostic(
+                    Self::mesh_import_diagnostic_code(error.kind),
+                    "meshImportPreflight",
+                    error.message,
+                )],
+                evidence: Vec::new(),
+            });
+        }
         let imported = match svc_mesh_import::import_static_mesh(&request) {
             Ok(imported) => imported,
             Err(error) => {
-                let code = match error.kind {
-                    svc_mesh_import::MeshImportErrorKind::QuotaExceeded => {
-                        VoxelConversionDiagnosticCode::OutputLimitExceeded
-                    }
-                    svc_mesh_import::MeshImportErrorKind::InvalidRequest
-                    | svc_mesh_import::MeshImportErrorKind::UnsupportedFeature
-                    | svc_mesh_import::MeshImportErrorKind::InvalidGeometry => {
-                        VoxelConversionDiagnosticCode::UnsupportedSourceAsset
-                    }
-                };
                 return Ok(VoxelConversionMeshSourceImportReceipt {
                     source: rejected_source,
                     imported: false,
@@ -80,7 +96,7 @@ impl EngineBridge {
                     groups: Vec::new(),
                     material_slots: Vec::new(),
                     diagnostics: vec![Self::voxel_conversion_diagnostic(
-                        code,
+                        Self::mesh_import_diagnostic_code(error.kind),
                         "sourceBytes",
                         error.message,
                     )],
@@ -138,6 +154,21 @@ impl EngineBridge {
             diagnostics: Vec::new(),
             evidence: metadata.evidence,
         })
+    }
+
+    pub(super) fn mesh_import_diagnostic_code(
+        kind: svc_mesh_import::MeshImportErrorKind,
+    ) -> VoxelConversionDiagnosticCode {
+        match kind {
+            svc_mesh_import::MeshImportErrorKind::QuotaExceeded => {
+                VoxelConversionDiagnosticCode::OutputLimitExceeded
+            }
+            svc_mesh_import::MeshImportErrorKind::InvalidRequest
+            | svc_mesh_import::MeshImportErrorKind::UnsupportedFeature
+            | svc_mesh_import::MeshImportErrorKind::InvalidGeometry => {
+                VoxelConversionDiagnosticCode::UnsupportedSourceAsset
+            }
+        }
     }
 
     pub fn new() -> Self {

@@ -25,6 +25,18 @@ fn validate_palette_update_request_size(request_json: &str) -> napi::Result<()> 
     Ok(())
 }
 
+fn validate_mesh_import_request_size(request_bytes: usize) -> napi::Result<()> {
+    if request_bytes as u64 > VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES {
+        return Err(to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            format!(
+                "voxel conversion mesh import request has {request_bytes} bytes; hard limit is {VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES}"
+            ),
+        )));
+    }
+    Ok(())
+}
+
 #[napi]
 pub fn export_voxel_volume_asset(handle: i64, request_json: String) -> napi::Result<String> {
     let request = parse_request::<VoxelVolumeAssetExportRequest>(&request_json, "export")?;
@@ -82,6 +94,7 @@ pub fn import_voxel_conversion_mesh_source(
     handle: i64,
     request_json: String,
 ) -> napi::Result<String> {
+    validate_mesh_import_request_size(request_json.len())?;
     let request =
         parse_request::<VoxelConversionMeshSourceImportRequest>(&request_json, "mesh import")?;
     with_bridge(handle, |bridge| {
@@ -103,6 +116,20 @@ mod tests {
 
         let over_limit = "x".repeat(VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES as usize + 1);
         let error = validate_palette_update_request_size(&over_limit).unwrap_err();
+        assert!(error.reason.contains("hard limit"));
+    }
+
+    #[test]
+    fn mesh_import_json_is_bounded_before_deserialization() {
+        assert!(validate_mesh_import_request_size(
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES as usize
+        )
+        .is_ok());
+
+        let error = validate_mesh_import_request_size(
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES as usize + 1,
+        )
+        .unwrap_err();
         assert!(error.reason.contains("hard limit"));
     }
 }

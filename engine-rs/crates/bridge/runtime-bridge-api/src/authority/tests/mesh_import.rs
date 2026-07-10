@@ -94,3 +94,48 @@ fn reference_glb_import_registers_converts_and_returns_bounded_evidence() {
     assert!(model.resident);
     assert_eq!(model.voxel_count, applied.output_voxel_count);
 }
+
+#[test]
+fn mesh_import_preflight_rejects_before_hash_or_authority_mutation() {
+    let source_bytes = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../harness/fixtures/voxel-conversion/kenney-wall-a.glb"
+    ));
+    let mut bridge = init_bridge();
+    let existing_plan = bridge
+        .plan_voxel_conversion(project_voxel_conversion_request(7))
+        .unwrap();
+    let source_count = bridge.voxel_conversion_sources.len();
+    let metadata_count = bridge.voxel_conversion_source_metadata.len();
+
+    let rejected = bridge
+        .import_voxel_conversion_mesh_source(VoxelConversionMeshSourceImportRequest {
+            source_asset_id: "a"
+                .repeat(VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES as usize + 1),
+            asset_version: 1,
+            source_path: "assets/reference/kenney-wall-a.glb".to_string(),
+            format: VoxelConversionMeshSourceFormat::Glb,
+            source_bytes: source_bytes.to_vec(),
+            mesh_primitive: None,
+        })
+        .unwrap();
+
+    assert!(!rejected.imported);
+    assert_eq!(rejected.source.source_hash, "sha256:not-computed");
+    assert_eq!(
+        rejected.diagnostics[0].code,
+        VoxelConversionDiagnosticCode::OutputLimitExceeded
+    );
+    assert_eq!(bridge.voxel_conversion_sources.len(), source_count);
+    assert_eq!(
+        bridge.voxel_conversion_source_metadata.len(),
+        metadata_count
+    );
+    assert_eq!(
+        bridge
+            .voxel_conversion_plan
+            .as_ref()
+            .map(|plan| &plan.plan.plan_id),
+        Some(&existing_plan.plan_id)
+    );
+}

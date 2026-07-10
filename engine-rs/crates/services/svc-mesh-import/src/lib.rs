@@ -12,8 +12,10 @@ use gltf::{buffer::Source as BufferSource, mesh::Mode};
 use protocol_voxel_conversion::{
     VoxelConversionMeshAsset, VoxelConversionMeshAssetGroup, VoxelConversionMeshSourceFormat,
     VoxelConversionMeshSourceImportRequest, VoxelConversionSourceMaterialSlot,
-    VoxelConversionSourceRef, VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
-    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
+    VoxelConversionSourceRef, VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES, VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
 };
 use sha2::{Digest, Sha256};
 
@@ -44,13 +46,13 @@ pub fn source_sha256(bytes: &[u8]) -> String {
 pub fn import_static_mesh(
     request: &VoxelConversionMeshSourceImportRequest,
 ) -> Result<ImportedMeshSource, MeshImportError> {
-    validate_request(request)?;
+    preflight_import_request(request)?;
     match request.format {
         VoxelConversionMeshSourceFormat::Glb => import_glb(request),
     }
 }
 
-fn validate_request(
+pub fn preflight_import_request(
     request: &VoxelConversionMeshSourceImportRequest,
 ) -> Result<(), MeshImportError> {
     if request.source_asset_id.trim().is_empty()
@@ -62,16 +64,79 @@ fn validate_request(
             "mesh import requires sourceAssetId, positive assetVersion, and sourcePath",
         ));
     }
+    validate_string_bytes(
+        "sourceAssetId",
+        request.source_asset_id.len() as u64,
+        VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES,
+    )?;
+    validate_string_bytes(
+        "sourcePath",
+        request.source_path.len() as u64,
+        VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES,
+    )?;
+    if let Some(mesh_primitive) = &request.mesh_primitive {
+        if mesh_primitive.trim().is_empty() {
+            return Err(error(
+                MeshImportErrorKind::InvalidRequest,
+                "meshPrimitive must be omitted or non-empty",
+            ));
+        }
+        validate_string_bytes(
+            "meshPrimitive",
+            mesh_primitive.len() as u64,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES,
+        )?;
+    }
     if request.source_bytes.is_empty() {
         return Err(error(
             MeshImportErrorKind::InvalidRequest,
             "mesh import source bytes are empty",
         ));
     }
-    if request.source_bytes.len() as u64 > VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES {
+    validate_source_byte_count(request.source_bytes.len() as u64)?;
+    Ok(())
+}
+
+fn validate_string_bytes(label: &str, count: u64, limit: u64) -> Result<(), MeshImportError> {
+    if count > limit {
         return Err(error(
             MeshImportErrorKind::QuotaExceeded,
-            "mesh import source exceeds the byte limit",
+            format!("mesh import {label} has {count} bytes; hard limit is {limit}"),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_source_byte_count(count: u64) -> Result<(), MeshImportError> {
+    if count > VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES {
+        return Err(error(
+            MeshImportErrorKind::QuotaExceeded,
+            format!(
+                "mesh import source has {count} bytes; hard limit is {VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES}"
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_cumulative_count(
+    current: usize,
+    incoming: usize,
+    limit: u64,
+    label: &str,
+) -> Result<(), MeshImportError> {
+    let total = (current as u64)
+        .checked_add(incoming as u64)
+        .ok_or_else(|| {
+            error(
+                MeshImportErrorKind::QuotaExceeded,
+                format!("GLB cumulative {label} count overflowed"),
+            )
+        })?;
+    if total > limit {
+        return Err(error(
+            MeshImportErrorKind::QuotaExceeded,
+            format!("GLB cumulative {label} count {total} exceeds hard limit {limit}"),
         ));
     }
     Ok(())
@@ -145,6 +210,13 @@ fn import_glb(
                 "GLB primitive is missing POSITION data",
             )
         })?;
+        let primitive_vertex_count = primitive_positions.len();
+        validate_cumulative_count(
+            positions.len(),
+            primitive_vertex_count,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
+            "vertex",
+        )?;
         let vertex_offset = u32::try_from(positions.len()).map_err(|_| {
             error(
                 MeshImportErrorKind::QuotaExceeded,
@@ -165,8 +237,9 @@ fn import_glb(
         positions.extend(collected_positions);
 
         match reader.read_normals() {
-            Some(values) => normals.extend(values),
+            Some(values) if values.len() == primitive_vertex_count => normals.extend(values),
             None => all_primitives_have_normals = false,
+            Some(_) => all_primitives_have_normals = false,
         }
         let primitive_indices = reader.read_indices().ok_or_else(|| {
             error(
@@ -174,13 +247,21 @@ fn import_glb(
                 "GLB primitives must provide an explicit index accessor",
             )
         })?;
+        let primitive_indices = primitive_indices.into_u32();
+        let primitive_index_count = primitive_indices.len();
+        validate_cumulative_count(
+            indices.len(),
+            primitive_index_count,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
+            "index",
+        )?;
         let start = u32::try_from(indices.len()).map_err(|_| {
             error(
                 MeshImportErrorKind::QuotaExceeded,
                 "GLB index offset exceeds u32",
             )
         })?;
-        let local_indices = primitive_indices.into_u32().collect::<Vec<_>>();
+        let local_indices = primitive_indices.collect::<Vec<_>>();
         if local_indices.len() % 3 != 0
             || local_indices
                 .iter()
@@ -216,14 +297,6 @@ fn import_glb(
         });
     }
 
-    if positions.len() as u64 > VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES
-        || indices.len() as u64 > VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES
-    {
-        return Err(error(
-            MeshImportErrorKind::QuotaExceeded,
-            "GLB canonical geometry exceeds the vertex or index limit",
-        ));
-    }
     if positions.is_empty() || indices.is_empty() || groups.is_empty() {
         return Err(error(
             MeshImportErrorKind::InvalidGeometry,
@@ -325,6 +398,89 @@ mod tests {
         assert_eq!(
             import_static_mesh(&malformed).unwrap_err().kind,
             MeshImportErrorKind::InvalidGeometry
+        );
+    }
+
+    #[test]
+    fn import_preflight_enforces_exact_source_and_string_limits() {
+        assert!(validate_source_byte_count(VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES).is_ok());
+        assert_eq!(
+            validate_source_byte_count(VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES + 1)
+                .unwrap_err()
+                .kind,
+            MeshImportErrorKind::QuotaExceeded
+        );
+
+        let mut at_limit = request();
+        at_limit.source_asset_id =
+            "a".repeat(usize::try_from(VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES).unwrap());
+        at_limit.source_path = "p"
+            .repeat(usize::try_from(VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES).unwrap());
+        at_limit.mesh_primitive = Some(
+            "m".repeat(usize::try_from(VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES).unwrap()),
+        );
+        assert!(preflight_import_request(&at_limit).is_ok());
+
+        for over_limit in [
+            (
+                "sourceAssetId",
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES,
+            ),
+            (
+                "sourcePath",
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES,
+            ),
+            (
+                "meshPrimitive",
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES,
+            ),
+        ] {
+            assert_eq!(
+                validate_string_bytes(over_limit.0, over_limit.1 + 1, over_limit.1)
+                    .unwrap_err()
+                    .kind,
+                MeshImportErrorKind::QuotaExceeded
+            );
+        }
+    }
+
+    #[test]
+    fn cumulative_geometry_limits_reject_before_collection() {
+        assert!(validate_cumulative_count(
+            0,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES as usize,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
+            "vertex",
+        )
+        .is_ok());
+        assert_eq!(
+            validate_cumulative_count(
+                1,
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES as usize,
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
+                "vertex",
+            )
+            .unwrap_err()
+            .kind,
+            MeshImportErrorKind::QuotaExceeded
+        );
+        assert!(validate_cumulative_count(
+            0,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES as usize,
+            VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
+            "index",
+        )
+        .is_ok());
+        assert_eq!(
+            validate_cumulative_count(
+                0,
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES as usize + 1,
+                VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
+                "index",
+            )
+            .unwrap_err()
+            .kind,
+            MeshImportErrorKind::QuotaExceeded
         );
     }
 }

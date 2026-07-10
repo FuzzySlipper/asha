@@ -27,6 +27,20 @@ pub const VOXEL_CONVERSION_MESH_SOURCE_FORMATS: &[&str] = &["glb"];
 /// Hard source-byte ceiling for one mesh import request.
 pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES: u64 = 67_108_864;
 
+/// Hard serialized JSON ceiling for one native mesh import request. Four bytes
+/// per source byte covers the worst-case `255,` JSON array representation.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES: u64 =
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES * 4 + 32_768;
+
+/// Hard UTF-8 byte ceiling for the source asset identity.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES: u64 = 1_024;
+
+/// Hard UTF-8 byte ceiling for the source provenance path.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES: u64 = 8_192;
+
+/// Hard UTF-8 byte ceiling for an optional primitive selector.
+pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES: u64 = 1_024;
+
 /// Hard canonical vertex ceiling for one mesh import request.
 pub const VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES: u64 = 2_000_000;
 

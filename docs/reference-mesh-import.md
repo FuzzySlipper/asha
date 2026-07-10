@@ -24,6 +24,16 @@ the published byte/vertex/index quotas. It performs no filesystem or network
 access. Images and texture sampling are outside this import slice; texture-aware
 voxel conversion continues to use the existing explicit texture DTOs.
 
+## Resource Bounds
+
+The native transport rejects serialized requests above 268,468,224 bytes before
+JSON deserialization. Rust preflight then limits source bytes to 67,108,864,
+source asset IDs to 1,024 UTF-8 bytes, source paths to 8,192 UTF-8 bytes, and
+primitive selectors to 1,024 UTF-8 bytes before content hashing. GLB accessor
+counts are checked cumulatively before canonical vectors are collected: at most
+2,000,000 vertices and 6,000,000 indices. Quota rejection does not register a
+source or invalidate the current conversion plan.
+
 ## Receipt And Provenance
 
 The receipt does not echo source bytes. It returns the Rust-computed `sha256:`

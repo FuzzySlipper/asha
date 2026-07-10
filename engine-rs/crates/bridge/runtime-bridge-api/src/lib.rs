@@ -112,8 +112,10 @@ pub use protocol_voxel_conversion::{
     VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration,
     VoxelConversionSourceRegistrationRequest, VoxelModelInfoReadout, VoxelModelInfoRequest,
     VoxelModelMaterialCount, VoxelModelWindowReadout, VoxelModelWindowRequest,
-    VoxelModelWindowSample, VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES,
-    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
+    VoxelModelWindowSample, VOXEL_CONVERSION_MESH_IMPORT_MAX_ASSET_ID_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_INDICES, VOXEL_CONVERSION_MESH_IMPORT_MAX_PRIMITIVE_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_BYTES,
+    VOXEL_CONVERSION_MESH_IMPORT_MAX_SOURCE_PATH_BYTES, VOXEL_CONVERSION_MESH_IMPORT_MAX_VERTICES,
 };
 pub use protocol_voxel_edit_history::{
     VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest,
