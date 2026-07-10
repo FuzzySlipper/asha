@@ -109,6 +109,7 @@ import {
   type ProjectBundleLoadRequest,
   type ProjectBundleSaveSummary,
 } from './bridge.js';
+import { collisionCameraAttemptedPose } from './camera-collision-movement.js';
 import { MockGameRuleRuntime } from './mock-game-rules.js';
 
 // ── Mock implementation ───────────────────────────────────────────────────────
@@ -172,16 +173,6 @@ function basisFromPose(pose: CameraSnapshot['pose']): CameraSnapshot['basis'] {
     forward: [f32(sy * cp), sp, f32(-cy * cp)],
     right: [cy, 0, sy],
     up: [f32(-sy * sp), cp, f32(cy * sp)],
-  };
-}
-
-function horizontalMovementBasisFromPose(pose: CameraSnapshot['pose']): Pick<CameraSnapshot['basis'], 'forward' | 'right'> {
-  const yaw = f32((pose.yawDegrees * Math.PI) / 180);
-  const sy = f32(Math.sin(yaw));
-  const cy = f32(Math.cos(yaw));
-  return {
-    forward: [sy, 0, f32(-cy)],
-    right: [cy, 0, sy],
   };
 }
 
@@ -1057,6 +1048,12 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (cameraInput.dtSeconds < 0 || cameraInput.moveSpeedUnitsPerSecond < 0) {
       throw new RuntimeBridgeError('invalid_input', 'dtSeconds and moveSpeedUnitsPerSecond must be non-negative');
     }
+    if (input.movementMode === 'grounded' && cameraInput.moveUp !== 0) {
+      throw new RuntimeBridgeError(
+        'invalid_input',
+        'grounded camera input requires moveUp to be zero; select freeFlight for vertical locomotion',
+      );
+    }
     for (const [idx, halfExtent] of input.shape.halfExtents.entries()) {
       finite(halfExtent, `shape.halfExtents[${idx}]`);
       if (halfExtent <= 0) {
@@ -1066,47 +1063,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
     if (input.policy.mode !== 'axis_separable_slide' || input.policy.maxIterations < 1 || input.policy.maxIterations > 3) {
       throw new RuntimeBridgeError('invalid_input', 'only axis_separable_slide with maxIterations in 1..=3 is supported');
     }
-    const lookPose: CameraSnapshot['pose'] = {
-      position: before.pose.position,
-      yawDegrees: f32(before.pose.yawDegrees + input.input.yawDeltaDegrees),
-      pitchDegrees: Math.max(-89, Math.min(89, f32(before.pose.pitchDegrees + input.input.pitchDeltaDegrees))),
-    };
-    const lookBasis = basisFromPose(lookPose);
-    const movementBasis = horizontalMovementBasisFromPose(lookPose);
-    const distance = f32(input.input.dtSeconds * input.input.moveSpeedUnitsPerSecond);
-    const attemptedPose = {
-      position: [
-        f32(
-          before.pose.position[0] +
-            f32(
-                f32(movementBasis.forward[0] * input.input.moveForward) +
-                f32(movementBasis.right[0] * input.input.moveRight) +
-                f32(lookBasis.up[0] * input.input.moveUp),
-            ) *
-              distance,
-        ),
-        f32(
-          before.pose.position[1] +
-            f32(
-                f32(movementBasis.forward[1] * input.input.moveForward) +
-                f32(movementBasis.right[1] * input.input.moveRight) +
-                f32(lookBasis.up[1] * input.input.moveUp),
-            ) *
-              distance,
-        ),
-        f32(
-          before.pose.position[2] +
-            f32(
-                f32(movementBasis.forward[2] * input.input.moveForward) +
-                f32(movementBasis.right[2] * input.input.moveRight) +
-                f32(lookBasis.up[2] * input.input.moveUp),
-            ) *
-              distance,
-        ),
-      ] as readonly [number, number, number],
-      yawDegrees: lookPose.yawDegrees,
-      pitchDegrees: lookPose.pitchDegrees,
-    };
+    const attemptedPose = collisionCameraAttemptedPose(before, input);
     const attempted: CameraSnapshot = { ...before, tick: input.tick, pose: attemptedPose, basis: basisFromPose(attemptedPose) };
     const delta = [
       motionDelta(attempted.pose.position[0] - before.pose.position[0]),
@@ -1150,6 +1107,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
       after,
       collision: {
         grid: input.grid,
+        movementMode: input.movementMode,
         shape: input.shape,
         policy: input.policy,
         collided: blockedAxes.length > 0,
@@ -1160,7 +1118,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
         collisionProjectionHash: STATIC_ROOM_COLLISION_PROJECTION_HASH,
       },
       movementHash: `fnv1a64:${fnv1a64(
-        `${input.camera}|${input.tick}|${JSON.stringify(before.pose)}|${JSON.stringify(attempted.pose)}|${JSON.stringify(after.pose)}|${STATIC_ROOM_COLLISION_SOURCE_HASH}|${STATIC_ROOM_COLLISION_PROJECTION_HASH}`,
+        `${input.camera}|${input.tick}|${input.movementMode}|${JSON.stringify(before.pose)}|${JSON.stringify(attempted.pose)}|${JSON.stringify(after.pose)}|${STATIC_ROOM_COLLISION_SOURCE_HASH}|${STATIC_ROOM_COLLISION_PROJECTION_HASH}`,
       )}`,
     };
   }

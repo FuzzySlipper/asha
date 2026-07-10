@@ -162,6 +162,13 @@ pub struct CameraCollisionPolicy {
     pub max_iterations: u8,
 }
 
+/// Locomotion basis selected explicitly by a collision-constrained camera input.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FirstPersonMovementMode {
+    Grounded,
+    FreeFlight,
+}
+
 /// Bounded generated-level preset accepted by runtime collision materialization.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum GeneratedTunnelPreset {
@@ -195,6 +202,7 @@ pub struct GeneratedTunnelRuntimeApplyReceipt {
 pub struct CollisionConstrainedCameraInputEnvelope {
     pub camera: CameraHandle,
     pub grid: u64,
+    pub movement_mode: FirstPersonMovementMode,
     pub input: FirstPersonCameraInput,
     pub tick: u64,
     pub shape: CameraCollisionShape,
@@ -220,6 +228,7 @@ pub enum CollisionAxis {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CameraCollisionEvidence {
     pub grid: u64,
+    pub movement_mode: FirstPersonMovementMode,
     pub shape: CameraCollisionShape,
     pub policy: CameraCollisionPolicy,
     pub collided: bool,

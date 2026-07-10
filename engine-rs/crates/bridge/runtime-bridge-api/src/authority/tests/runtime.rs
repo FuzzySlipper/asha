@@ -126,6 +126,7 @@ fn collision_constrained_camera_blocks_terrain_and_allows_empty_space() {
         .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
             camera: camera.camera,
             grid: 1,
+            movement_mode: FirstPersonMovementMode::Grounded,
             input: FirstPersonCameraInput {
                 move_forward: 1.0,
                 move_right: 0.0,
@@ -149,6 +150,7 @@ fn collision_constrained_camera_blocks_terrain_and_allows_empty_space() {
         .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
             camera: camera.camera,
             grid: 1,
+            movement_mode: FirstPersonMovementMode::Grounded,
             input: FirstPersonCameraInput {
                 move_forward: -1.0,
                 move_right: 0.0,
@@ -166,6 +168,110 @@ fn collision_constrained_camera_blocks_terrain_and_allows_empty_space() {
     assert!(!clear.collision.collided);
     assert_eq!(clear.collision.blocked_axes, Vec::<CollisionAxis>::new());
     assert_eq!(clear.after.pose.position, [1.5, 1.5, 2.3]);
+}
+
+#[test]
+fn collision_camera_requires_an_explicit_grounded_or_free_flight_basis() {
+    use protocol_view::{CameraPose, PerspectiveProjection, ViewportSize};
+
+    let mut bridge = init_bridge();
+    let create_camera = |bridge: &mut EngineBridge| {
+        bridge
+            .create_camera(CameraCreateRequest {
+                initial_pose: CameraPose {
+                    position: [20.0, 20.0, 20.0],
+                    yaw_degrees: 40.0,
+                    pitch_degrees: -45.0,
+                },
+                projection: PerspectiveProjection {
+                    fov_y_degrees: 60.0,
+                    near: 0.1,
+                    far: 1000.0,
+                },
+                viewport: ViewportSize {
+                    width: 1280,
+                    height: 720,
+                },
+            })
+            .unwrap()
+    };
+    let shape = CameraCollisionShape {
+        half_extents: [0.2, 0.7, 0.2],
+    };
+    let policy = CameraCollisionPolicy {
+        mode: CameraCollisionPolicyMode::AxisSeparableSlide,
+        max_iterations: 3,
+    };
+    let forward = FirstPersonCameraInput {
+        move_forward: 1.0,
+        move_right: 0.0,
+        move_up: 0.0,
+        yaw_delta_degrees: 0.0,
+        pitch_delta_degrees: 0.0,
+        dt_seconds: 1.0,
+        move_speed_units_per_second: 3.0,
+    };
+
+    let grounded_camera = create_camera(&mut bridge);
+    let grounded = bridge
+        .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+            camera: grounded_camera.camera,
+            grid: 1,
+            movement_mode: FirstPersonMovementMode::Grounded,
+            input: forward,
+            tick: 1,
+            shape,
+            policy,
+        })
+        .unwrap();
+    assert_eq!(grounded.attempted.pose.position[1], 20.0);
+    assert_eq!(grounded.after.pose.position[1], 20.0);
+    assert_eq!(
+        grounded.collision.movement_mode,
+        FirstPersonMovementMode::Grounded
+    );
+
+    let free_flight_camera = create_camera(&mut bridge);
+    let free_flight = bridge
+        .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+            camera: free_flight_camera.camera,
+            grid: 1,
+            movement_mode: FirstPersonMovementMode::FreeFlight,
+            input: forward,
+            tick: 1,
+            shape,
+            policy,
+        })
+        .unwrap();
+    assert!(free_flight.attempted.pose.position[1] < 20.0);
+    assert_eq!(
+        free_flight.collision.movement_mode,
+        FirstPersonMovementMode::FreeFlight
+    );
+
+    let vertical_error = bridge
+        .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+            camera: grounded_camera.camera,
+            grid: 1,
+            movement_mode: FirstPersonMovementMode::Grounded,
+            input: FirstPersonCameraInput {
+                move_up: 1.0,
+                ..forward
+            },
+            tick: 2,
+            shape,
+            policy,
+        })
+        .unwrap_err();
+    assert_eq!(vertical_error.kind, RuntimeBridgeErrorKind::InvalidInput);
+    assert_eq!(
+        bridge
+            .cameras
+            .get(&grounded_camera.camera.raw())
+            .unwrap()
+            .tick,
+        1
+    );
 }
 
 #[test]
@@ -210,6 +316,7 @@ fn generated_tunnel_apply_installs_collision_authority_for_loaded_fps_session() 
         .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
             camera: camera.camera,
             grid: applied.grid,
+            movement_mode: FirstPersonMovementMode::Grounded,
             input: FirstPersonCameraInput {
                 move_forward: 1.0,
                 move_right: 0.0,

@@ -14,6 +14,7 @@ export type {
   CameraSnapshot,
   CameraCollisionSnapshot,
   CollisionConstrainedCameraInputEnvelope,
+  FirstPersonMovementMode,
   ScreenPointToPickRayRequest,
   PickRaySnapshot,
   VoxelSelectionSnapshot,

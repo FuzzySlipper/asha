@@ -823,6 +823,7 @@ mod tests {
                 "view.CameraProjectionSnapshot",
                 "view.CameraCollisionShape",
                 "view.CameraCollisionPolicy",
+                "view.FirstPersonMovementMode",
                 "view.CollisionConstrainedCameraInputEnvelope",
                 "view.CollisionAabbEvidence",
                 "view.CameraCollisionEvidence",

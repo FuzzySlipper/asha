@@ -74,6 +74,7 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
     const collisionEnvelope = {
         camera: motion.snapshot.camera,
         grid: 1,
+        movementMode: 'grounded',
         input: {
             moveForward: 1,
             moveRight: 0,
@@ -95,6 +96,8 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
     const collision = session.applyCollisionConstrainedCameraInput(collisionEnvelope);
     assert.equal(collision.collided, true);
     assert.deepEqual(collision.blockedAxes, ['z']);
+    assert.equal(collision.snapshot.collision.movementMode, 'grounded');
+    assert.equal(collision.snapshot.after.pose.position[1], collision.snapshot.before.pose.position[1]);
     assert.ok(collision.collisionProjectionHash.startsWith('fnv1a64:'));
     const tunnel = session.readGeneratedTunnelReadout({ presetId: 'tiny-enclosed', seed: 17 });
     assert.equal(tunnel.status, 'available');

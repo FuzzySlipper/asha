@@ -80,13 +80,14 @@ assert.equal(tunnel.status, 'applied');
 assert.equal(tunnel.grid, 0);
 assert.equal(tunnel.outputHash, 'a9b504096397f5b4');
 const tunnelCamera = session.createCamera({
-  initialPose: { position: [1.5, 1.62, 1.5], yawDegrees: 0, pitchDegrees: 0 },
+  initialPose: { position: [1.5, 1.62, 1.5], yawDegrees: 0, pitchDegrees: -45 },
   projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
   viewport: { width: 1280, height: 720 },
 }).snapshot.camera;
 const tunnelMovement = session.applyCollisionConstrainedCameraInput({
   camera: tunnelCamera,
   grid: tunnel.grid,
+  movementMode: 'grounded',
   input: {
     moveForward: 1,
     moveRight: 0,
@@ -102,6 +103,9 @@ const tunnelMovement = session.applyCollisionConstrainedCameraInput({
 });
 assert.equal(tunnelMovement.collided, true);
 assert.deepEqual(tunnelMovement.blockedAxes, ['z']);
+assert.equal(tunnelMovement.snapshot.collision.movementMode, 'grounded');
+assert.equal(tunnelMovement.snapshot.attempted.pose.position[1], tunnelMovement.snapshot.before.pose.position[1]);
+assert.equal(tunnelMovement.snapshot.after.pose.position[1], tunnelMovement.snapshot.before.pose.position[1]);
 assert.equal(tunnelMovement.snapshot.after.pose.position[2], 1.5);
 assert.equal(tunnelMovement.snapshot.collision.grid, tunnel.grid);
 assert.equal(tunnelMovement.snapshot.collision.collisionSourceHash, tunnel.collisionSourceHash);
@@ -228,6 +232,7 @@ assert.equal(receipt.diagnostics.length, 0);
 const constrainedCamera = bridge.applyCollisionConstrainedCameraInput({
   camera: camera.camera,
   grid: 1,
+  movementMode: 'grounded',
   input: {
     moveForward: 1,
     moveRight: 0,

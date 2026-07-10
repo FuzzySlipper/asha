@@ -1130,6 +1130,7 @@ void test('RuntimeSession applies collision-constrained camera input against the
     const blockedEnvelope = {
         camera,
         grid: 1,
+        movementMode: 'grounded',
         input: {
             moveForward: 1,
             moveRight: 0,
@@ -1198,6 +1199,7 @@ void test('collision-constrained camera movement is horizontal and target-obstac
     const intoTarget = session.applyCollisionConstrainedCameraInput({
         camera,
         grid: 1,
+        movementMode: 'grounded',
         input: {
             moveForward: 1,
             moveRight: 0,
@@ -1234,6 +1236,7 @@ void test('collision-constrained camera movement is horizontal and target-obstac
     const yawedForward = session.applyCollisionConstrainedCameraInput({
         camera: yawedCamera,
         grid: 1,
+        movementMode: 'grounded',
         input: {
             moveForward: 1,
             moveRight: 0,
@@ -1274,6 +1277,7 @@ void test('collision-constrained camera movement uses same-tick look deltas for 
     const moved = session.applyCollisionConstrainedCameraInput({
         camera,
         grid: 1,
+        movementMode: 'grounded',
         input: {
             moveForward: 1,
             moveRight: 0,

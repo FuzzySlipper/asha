@@ -108,6 +108,9 @@ export interface CameraCollisionPolicy {
   readonly maxIterations: number;
 }
 
+// Locomotion basis selected explicitly by a collision-constrained camera input.
+export type FirstPersonMovementMode = 'grounded' | 'freeFlight';
+
 // Bounded generated-level preset accepted by runtime collision materialization.
 export type GeneratedTunnelPreset = 'tiny-enclosed';
 
@@ -132,6 +135,7 @@ export interface GeneratedTunnelRuntimeApplyReceipt {
 export interface CollisionConstrainedCameraInputEnvelope {
   readonly camera: CameraHandle;
   readonly grid: number;
+  readonly movementMode: FirstPersonMovementMode;
   readonly input: FirstPersonCameraInput;
   readonly tick: number;
   readonly shape: CameraCollisionShape;
@@ -150,6 +154,7 @@ export type CollisionAxis = 'x' | 'y' | 'z';
 // Collision details for an attempted camera move.
 export interface CameraCollisionEvidence {
   readonly grid: number;
+  readonly movementMode: FirstPersonMovementMode;
   readonly shape: CameraCollisionShape;
   readonly policy: CameraCollisionPolicy;
   readonly collided: boolean;

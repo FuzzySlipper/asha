@@ -20,6 +20,7 @@ use protocol_view::{
     CameraCollisionEvidence, CameraCollisionPolicy, CameraCollisionPolicyMode,
     CameraCollisionShape, CameraCollisionSnapshot, CameraHandle, CollisionAabbEvidence,
     CollisionAxis, CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInput,
+    FirstPersonMovementMode,
 };
 use runtime_bridge_api::{
     set_voxel_command, CameraCreateRequest, CameraPose, CommandBatch,
@@ -453,6 +454,7 @@ impl From<CameraCollisionPolicy> for NativeCameraCollisionPolicy {
 pub struct NativeCollisionConstrainedCameraInputEnvelope {
     pub camera: i64,
     pub grid: i64,
+    pub movement_mode: String,
     pub input: NativeFirstPersonCameraInput,
     pub tick: i64,
     pub shape: NativeCameraCollisionShape,
@@ -464,6 +466,15 @@ impl NativeCollisionConstrainedCameraInputEnvelope {
         Ok(CollisionConstrainedCameraInputEnvelope {
             camera: CameraHandle::new(u64_input(self.camera, "camera")?),
             grid: u64_input(self.grid, "grid")?,
+            movement_mode: match self.movement_mode.as_str() {
+                "grounded" => FirstPersonMovementMode::Grounded,
+                "freeFlight" => FirstPersonMovementMode::FreeFlight,
+                _ => {
+                    return Err(napi::Error::from_reason(
+                        "movementMode must be grounded or freeFlight",
+                    ))
+                }
+            },
             input: self.input.into_bridge("input")?,
             tick: u64_input(self.tick, "tick")?,
             shape: self.shape.into_bridge("shape")?,
@@ -490,6 +501,7 @@ impl From<CollisionAabbEvidence> for NativeCollisionAabbEvidence {
 #[napi(object)]
 pub struct NativeCameraCollisionEvidence {
     pub grid: i64,
+    pub movement_mode: String,
     pub shape: NativeCameraCollisionShape,
     pub policy: NativeCameraCollisionPolicy,
     pub collided: bool,
@@ -504,6 +516,10 @@ impl From<CameraCollisionEvidence> for NativeCameraCollisionEvidence {
     fn from(value: CameraCollisionEvidence) -> Self {
         Self {
             grid: value.grid as i64,
+            movement_mode: match value.movement_mode {
+                FirstPersonMovementMode::Grounded => "grounded".to_string(),
+                FirstPersonMovementMode::FreeFlight => "freeFlight".to_string(),
+            },
             shape: value.shape.into(),
             policy: value.policy.into(),
             collided: value.collided,

@@ -297,6 +297,7 @@ void test('[rust authority evidence] public RuntimeSession facade reports backen
   const collisionEnvelope: CollisionConstrainedCameraInputEnvelope = {
     camera,
     grid: 1,
+    movementMode: 'grounded',
     input: {
       moveForward: 1,
       moveRight: 0,

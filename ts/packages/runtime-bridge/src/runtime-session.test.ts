@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
 import { cameraHandle, entityId } from '@asha/contracts';
 import type {
   CameraCreateRequest,
@@ -1278,6 +1277,7 @@ void test('RuntimeSession applies collision-constrained camera input against the
   const blockedEnvelope: CollisionConstrainedCameraInputEnvelope = {
     camera,
     grid: 1,
+    movementMode: 'grounded',
     input: {
       moveForward: 1,
       moveRight: 0,
@@ -1352,6 +1352,7 @@ void test('collision-constrained camera movement is horizontal and target-obstac
   const intoTarget = session.applyCollisionConstrainedCameraInput({
     camera,
     grid: 1,
+    movementMode: 'grounded',
     input: {
       moveForward: 1,
       moveRight: 0,
@@ -1391,6 +1392,7 @@ void test('collision-constrained camera movement is horizontal and target-obstac
   const yawedForward = session.applyCollisionConstrainedCameraInput({
     camera: yawedCamera,
     grid: 1,
+    movementMode: 'grounded',
     input: {
       moveForward: 1,
       moveRight: 0,
@@ -1434,6 +1436,7 @@ void test('collision-constrained camera movement uses same-tick look deltas for 
   const moved = session.applyCollisionConstrainedCameraInput({
     camera,
     grid: 1,
+    movementMode: 'grounded',
     input: {
       moveForward: 1,
       moveRight: 0,
@@ -1454,7 +1457,6 @@ void test('collision-constrained camera movement uses same-tick look deltas for 
   assert.ok(moved.snapshot.after.pose.position[2] < 1.5);
   assert.ok(Math.abs(moved.snapshot.after.pose.position[1] - 1.62) < 0.00001);
 });
-
 void test('RuntimeSession exposes the generated tunnel fixture readout and fail-closed operations', () => {
   const session = createMockRuntimeSession();
   session.initialize(sessionInput());

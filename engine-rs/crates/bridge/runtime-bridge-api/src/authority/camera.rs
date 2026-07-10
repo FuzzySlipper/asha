@@ -172,6 +172,19 @@ impl EngineBridge {
         Ok(())
     }
 
+    pub(super) fn validate_collision_camera_movement(
+        movement_mode: FirstPersonMovementMode,
+        input: FirstPersonCameraInput,
+    ) -> BridgeResult<()> {
+        if movement_mode == FirstPersonMovementMode::Grounded && input.move_up != 0.0 {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "grounded camera input requires move_up to be zero; select freeFlight for vertical locomotion",
+            ));
+        }
+        Ok(())
+    }
+
     pub(super) fn integrate_camera_snapshot(
         prior: CameraSnapshot,
         input: FirstPersonCameraInput,
@@ -200,6 +213,44 @@ impl EngineBridge {
             yaw_degrees: prior.pose.yaw_degrees + input.yaw_delta_degrees,
             pitch_degrees: (prior.pose.pitch_degrees + input.pitch_delta_degrees)
                 .clamp(-89.0, 89.0),
+        };
+        CameraSnapshot {
+            tick,
+            pose,
+            basis: Self::basis_from_pose(pose),
+            ..prior
+        }
+    }
+
+    pub(super) fn integrate_grounded_camera_snapshot(
+        prior: CameraSnapshot,
+        input: FirstPersonCameraInput,
+        tick: u64,
+    ) -> CameraSnapshot {
+        let distance = input.dt_seconds * input.move_speed_units_per_second;
+        let pose = CameraPose {
+            position: prior.pose.position,
+            yaw_degrees: prior.pose.yaw_degrees + input.yaw_delta_degrees,
+            pitch_degrees: (prior.pose.pitch_degrees + input.pitch_delta_degrees)
+                .clamp(-89.0, 89.0),
+        };
+        let movement_basis = Self::basis_from_pose(CameraPose {
+            pitch_degrees: 0.0,
+            ..pose
+        });
+        let pose = CameraPose {
+            position: [
+                prior.pose.position[0]
+                    + (movement_basis.forward[0] * input.move_forward
+                        + movement_basis.right[0] * input.move_right)
+                        * distance,
+                prior.pose.position[1],
+                prior.pose.position[2]
+                    + (movement_basis.forward[2] * input.move_forward
+                        + movement_basis.right[2] * input.move_right)
+                        * distance,
+            ],
+            ..pose
         };
         CameraSnapshot {
             tick,

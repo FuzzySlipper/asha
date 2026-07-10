@@ -81,7 +81,6 @@ const CAMERA_CREATE_REQUEST = {
   projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
   viewport: { width: 1280, height: 720 },
 } as const;
-
 const CAMERA_INPUT = {
   camera: 1 as import('@asha/contracts').CameraHandle,
   tick: 1,
@@ -95,10 +94,10 @@ const CAMERA_INPUT = {
     moveSpeedUnitsPerSecond: 3,
   },
 } as const;
-
 const COLLISION_CAMERA_INPUT: CollisionConstrainedCameraInputEnvelope = {
   ...CAMERA_INPUT,
   grid: 1,
+  movementMode: 'grounded',
   shape: { halfExtents: [0.2, 0.2, 0.2] },
   policy: { mode: 'axis_separable_slide', maxIterations: 3 },
 };
@@ -549,6 +548,7 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         after,
         collision: {
           grid: envelope.grid,
+          movementMode: envelope.movementMode,
           shape: envelope.shape,
           policy: envelope.policy,
           collided: true,

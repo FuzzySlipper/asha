@@ -73,6 +73,7 @@ export interface CameraCollisionPolicy {
     readonly mode: CameraCollisionPolicyMode;
     readonly maxIterations: number;
 }
+export type FirstPersonMovementMode = 'grounded' | 'freeFlight';
 export type GeneratedTunnelPreset = 'tiny-enclosed';
 export interface GeneratedTunnelRuntimeApplyRequest {
     readonly preset: GeneratedTunnelPreset;
@@ -90,6 +91,7 @@ export interface GeneratedTunnelRuntimeApplyReceipt {
 export interface CollisionConstrainedCameraInputEnvelope {
     readonly camera: CameraHandle;
     readonly grid: number;
+    readonly movementMode: FirstPersonMovementMode;
     readonly input: FirstPersonCameraInput;
     readonly tick: number;
     readonly shape: CameraCollisionShape;
@@ -102,6 +104,7 @@ export interface CollisionAabbEvidence {
 export type CollisionAxis = 'x' | 'y' | 'z';
 export interface CameraCollisionEvidence {
     readonly grid: number;
+    readonly movementMode: FirstPersonMovementMode;
     readonly shape: CameraCollisionShape;
     readonly policy: CameraCollisionPolicy;
     readonly collided: boolean;

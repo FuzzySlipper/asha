@@ -67,8 +67,9 @@ pub(crate) use protocol_view::{
     CameraCollisionEvidence, CameraCollisionPolicyMode, CameraCollisionShape,
     CameraCollisionSnapshot, CameraProjectionRequest, CameraProjectionSnapshot,
     CollisionAabbEvidence, CollisionAxis, CollisionConstrainedCameraInputEnvelope,
-    FirstPersonCameraInput, FirstPersonCameraInputEnvelope, PickRaySnapshot, ScreenPoint,
-    ScreenPointSpace, ScreenPointToPickRayRequest, VoxelSelectionOutcome, VoxelSelectionSnapshot,
+    FirstPersonCameraInput, FirstPersonCameraInputEnvelope, FirstPersonMovementMode,
+    PickRaySnapshot, ScreenPoint, ScreenPointSpace, ScreenPointToPickRayRequest,
+    VoxelSelectionOutcome, VoxelSelectionSnapshot,
 };
 pub(crate) use protocol_voxel_annotation::{
     VoxelAnnotationDiagnostic, VoxelAnnotationDiagnosticCode, VoxelAnnotationEditOperation,

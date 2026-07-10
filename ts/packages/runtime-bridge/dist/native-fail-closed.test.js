@@ -61,6 +61,7 @@ const CAMERA_INPUT = {
 const COLLISION_CAMERA_INPUT = {
     ...CAMERA_INPUT,
     grid: 1,
+    movementMode: 'grounded',
     shape: { halfExtents: [0.2, 0.2, 0.2] },
     policy: { mode: 'axis_separable_slide', maxIterations: 3 },
 };
@@ -488,6 +489,7 @@ function fakeAddon(calls = []) {
                 after,
                 collision: {
                     grid: envelope.grid,
+                    movementMode: envelope.movementMode,
                     shape: envelope.shape,
                     policy: envelope.policy,
                     collided: true,

@@ -98,6 +98,7 @@ impl RuntimeBridge for EngineBridge {
             ));
         }
         Self::validate_camera_input(envelope.input)?;
+        Self::validate_collision_camera_movement(envelope.movement_mode, envelope.input)?;
         Self::validate_collision_shape(envelope.shape)?;
         if envelope.policy.mode != CameraCollisionPolicyMode::AxisSeparableSlide
             || envelope.policy.max_iterations == 0
@@ -114,7 +115,14 @@ impl RuntimeBridge for EngineBridge {
                 "unknown camera handle",
             )
         })?;
-        let attempted = Self::integrate_camera_snapshot(before, envelope.input, envelope.tick);
+        let attempted = match envelope.movement_mode {
+            FirstPersonMovementMode::Grounded => {
+                Self::integrate_grounded_camera_snapshot(before, envelope.input, envelope.tick)
+            }
+            FirstPersonMovementMode::FreeFlight => {
+                Self::integrate_camera_snapshot(before, envelope.input, envelope.tick)
+            }
+        };
         let projection = CollisionProjection::build(world);
         let mut after_pose = CameraPose {
             position: before.pose.position,
@@ -162,9 +170,10 @@ impl RuntimeBridge for EngineBridge {
         let movement_hash = format!(
             "fnv1a64:{}",
             Self::fnv1a64(&format!(
-                "{}|{}|{:?}|{:?}|{:?}|{}|{}",
+                "{}|{}|{:?}|{:?}|{:?}|{:?}|{}|{}",
                 envelope.camera.raw(),
                 envelope.tick,
+                envelope.movement_mode,
                 before.pose,
                 attempted.pose,
                 after.pose,
@@ -180,6 +189,7 @@ impl RuntimeBridge for EngineBridge {
             after,
             collision: CameraCollisionEvidence {
                 grid: envelope.grid,
+                movement_mode: envelope.movement_mode,
                 shape: envelope.shape,
                 policy: envelope.policy,
                 collided: !blocked_axes.is_empty(),
