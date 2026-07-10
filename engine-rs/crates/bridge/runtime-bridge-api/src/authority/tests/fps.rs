@@ -239,6 +239,7 @@ fn autonomous_enemy_movement_moves_authoritative_combat_bounds() {
             max: 75,
         })
     );
+    let before_movement = bridge.read_fps_runtime_session().unwrap();
 
     let moved = bridge
         .apply_enemy_direct_nav_movement(EnemyDirectNavMovementRequest {
@@ -254,6 +255,22 @@ fn autonomous_enemy_movement_moves_authoritative_combat_bounds() {
     );
     assert_eq!(moved.next_waypoint, Vec3::new(0.0, 1.62, 1.15));
     assert!(moved.reached);
+    let after_movement = bridge.read_fps_runtime_session().unwrap();
+    assert_ne!(after_movement.entity_hash, before_movement.entity_hash);
+    assert_eq!(after_movement.health_hash, before_movement.health_hash);
+    assert_eq!(
+        after_movement.replay_records.len(),
+        before_movement.replay_records.len() + 1
+    );
+    assert_eq!(
+        after_movement.replay_records.last().unwrap().replay_unit,
+        "runtime_session.fps.autonomous_movement.v0"
+    );
+    assert_eq!(
+        after_movement.replay_records.last().unwrap().entity_hash,
+        after_movement.entity_hash
+    );
+    assert_ne!(after_movement.replay_hash, before_movement.replay_hash);
 
     let receipt = bridge
         .apply_fps_primary_fire(FpsPrimaryFireRequest {
@@ -273,6 +290,43 @@ fn autonomous_enemy_movement_moves_authoritative_combat_bounds() {
             max: 75,
         })
     );
+}
+
+#[test]
+fn public_enemy_nav_rejects_non_enemy_fps_entities_without_mutation() {
+    let mut bridge = init_bridge();
+    let mut load = fps_load_request(75);
+    let mut neutral = load.definitions[0].clone();
+    neutral.entity = 303;
+    neutral.stable_id = "actor/custom-neutral".to_string();
+    neutral.display_name = "Custom Neutral".to_string();
+    neutral.source_path = "catalogs/actors/neutral.entity.json".to_string();
+    neutral.tags = vec!["neutral".to_string()];
+    neutral.role = FpsBridgeRole::Neutral;
+    neutral.health = None;
+    neutral.weapon = None;
+    neutral.policy_binding = None;
+    load.definitions.push(neutral);
+    bridge.load_fps_runtime_session(load).unwrap();
+    let before = bridge.read_fps_runtime_session().unwrap();
+
+    for entity in [101, 303, 999] {
+        let error = bridge
+            .apply_enemy_direct_nav_movement(EnemyDirectNavMovementRequest {
+                entity,
+                seed_position: Vec3::new(0.0, 1.5, 0.0),
+                target: Vec3::new(3.0, 1.62, 1.5),
+                max_step_units: 8.0,
+            })
+            .expect_err("loaded FPS session rejects non-enemy movement");
+        assert_eq!(error.kind, RuntimeBridgeErrorKind::InvalidInput);
+        assert!(error.message.contains("UnauthorizedAutonomousMovement"));
+        let after = bridge.read_fps_runtime_session().unwrap();
+        assert_eq!(after.entity_hash, before.entity_hash);
+        assert_eq!(after.health_hash, before.health_hash);
+        assert_eq!(after.replay_hash, before.replay_hash);
+        assert_eq!(after.replay_records, before.replay_records);
+    }
 }
 
 #[test]

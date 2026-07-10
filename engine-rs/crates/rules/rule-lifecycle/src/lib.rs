@@ -20,11 +20,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use core_entity::{EntityLifecycle, EntityStore};
+use core_entity::{EntityLifecycle, EntityStore, EntityTransform};
 use core_ids::EntityId;
 use core_space::WorldPos;
 use protocol_entity_authoring::{
-    AuthoringCapability, EntityAuthoringCommand, EntityDefinition, EntityDefinitionCapability,
+    AuthoringCapability, AuthoringTransform, EntityAuthoringCommand, EntityDefinition,
+    EntityDefinitionCapability,
 };
 use protocol_game_rules::{
     GameRuleBoundedValue, GameRuleCatalog, GameRuleCatalogRef, GameRuleEffectBundle,
@@ -43,7 +44,12 @@ use svc_entity_authoring::{
     RuleOwnedEntityAuthoringOutcome,
 };
 use svc_game_rules::resolve_protocol_request;
+use svc_pathfinding::{
+    propose_direct_nav_movement, DirectNavMovementError, DirectNavMovementReadout,
+    DirectNavMovementRequest,
+};
 
+mod fps_movement;
 pub mod lifecycle_primitives;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -123,6 +129,10 @@ pub enum FpsRuntimeError {
         entity: EntityId,
         field: &'static str,
     },
+    UnauthorizedAutonomousMovement {
+        entity: EntityId,
+    },
+    NavigationRejected(DirectNavMovementError),
     Bootstrap(ProjectBundleEntityDefinitionBootstrapError),
     RuleMutationRejected {
         entity: EntityId,
@@ -236,6 +246,19 @@ pub struct FpsPrimaryFireReceipt {
     pub health_hash: u64,
     pub replay_hash: u64,
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FpsAutonomousMovementReceipt {
+    pub entity: EntityId,
+    pub navigation: DirectNavMovementReadout,
+    pub transform: EntityTransform,
+    pub entity_hash: u64,
+    pub health_hash: u64,
+    pub replay_hash: u64,
+    pub projection_changed: bool,
+}
+
+pub const FPS_AUTONOMOUS_DIRECT_NAV_INTENT: &str = "runtime.intent.move_direct_nav.v0";
 
 pub fn load_fps_project_bundle(
     input: FpsProjectBundleLoadInput,
@@ -982,6 +1005,9 @@ mod tests {
     use core_space::WorldVec;
     use protocol_entity_authoring::{AuthoringTransform, EntityDefinitionSourceTrace};
     use svc_levelgen::{generate_tunnel, TunnelGeneratorConfig};
+
+    #[path = "fps_movement_tests.rs"]
+    mod fps_movement_tests;
 
     fn tunnel_projection() -> CollisionProjection {
         let tunnel = generate_tunnel(TunnelGeneratorConfig::tiny_enclosed(17)).expect("tunnel");

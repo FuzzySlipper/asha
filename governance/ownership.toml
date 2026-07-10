@@ -367,7 +367,7 @@ lane = "rust-rule"
 # `lifecycle_primitives` is the product-neutral spawn/despawn/terminal-state
 # layer. The `Fps*` APIs are the current named FPS RuntimeSession authority
 # slice over entity-authoring/combat/collision services, not generic lifecycle.
-may_depend_on = ["core-ids", "core-space", "core-entity", "protocol-entity-authoring", "protocol-game-rules", "svc-collision", "svc-combat", "svc-entity-authoring", "svc-game-rules", "svc-levelgen"]
+may_depend_on = ["core-ids", "core-space", "core-entity", "protocol-entity-authoring", "protocol-game-rules", "svc-collision", "svc-combat", "svc-entity-authoring", "svc-game-rules", "svc-levelgen", "svc-pathfinding"]
 may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]

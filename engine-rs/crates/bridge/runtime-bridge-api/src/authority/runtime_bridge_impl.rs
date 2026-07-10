@@ -1447,7 +1447,30 @@ impl RuntimeBridge for EngineBridge {
     ) -> BridgeResult<EnemyDirectNavMovementResult> {
         self.require_initialized("apply_enemy_direct_nav_movement")?;
         let entity = Self::enemy_entity_id(request.entity)?;
-        let entities = self.enemy_runtime_entities_mut(entity);
+        if self.fps_session.is_some() {
+            let receipt = self
+                .fps_session_mut("apply_enemy_direct_nav_movement")?
+                .apply_autonomous_enemy_direct_nav_movement(
+                    entity,
+                    request.target.to_array(),
+                    request.max_step_units,
+                )
+                .map_err(Self::fps_runtime_error)?;
+            return Ok(EnemyDirectNavMovementResult {
+                entity: receipt.entity.raw(),
+                authority_source: EnemyDirectNavAuthoritySource::RustEntityStore,
+                from: receipt.navigation.from,
+                target: receipt.navigation.target,
+                next_waypoint: receipt.navigation.next_waypoint,
+                distance_units: receipt.navigation.distance_units,
+                reached: receipt.navigation.reached,
+                path_hash: receipt.navigation.path_hash,
+                transform_hash: Self::transform_hash(receipt.entity, receipt.transform),
+                projection_changed: receipt.projection_changed,
+            });
+        }
+
+        let entities = &mut self.entities;
         let (authority_source, current_transform) =
             Self::seed_or_read_enemy_transform(entities, entity, request.seed_position)?;
         let from = current_transform.translation;

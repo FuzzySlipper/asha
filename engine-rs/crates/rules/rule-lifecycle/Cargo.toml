@@ -16,6 +16,7 @@ svc-collision             = { path = "../../services/svc-collision" }
 svc-combat                = { path = "../../services/svc-combat" }
 svc-entity-authoring      = { path = "../../services/svc-entity-authoring" }
 svc-game-rules            = { path = "../../services/svc-game-rules" }
+svc-pathfinding           = { path = "../../services/svc-pathfinding" }
 
 [dev-dependencies]
 svc-levelgen = { path = "../../services/svc-levelgen" }

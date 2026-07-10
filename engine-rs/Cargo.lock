@@ -767,6 +767,7 @@ dependencies = [
  "svc-entity-authoring",
  "svc-game-rules",
  "svc-levelgen",
+ "svc-pathfinding",
 ]
 
 [[package]]
