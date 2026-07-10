@@ -5053,10 +5053,6 @@ const generatedBoundaryConfigs = [
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/render-projection (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
             },
             {
-              "name": "@asha/renderer-host",
-              "message": "ts/packages/smoke (lane ts-shell) may not import @asha/renderer-host (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
-            },
-            {
               "name": "@asha/script-host",
               "message": "ts/packages/smoke (lane ts-shell) may not import @asha/script-host (lane ts-policy) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
             },
@@ -5164,7 +5160,7 @@ const generatedBoundaryConfigs = [
               "group": [
                 "@asha/renderer-host/*"
               ],
-              "message": "ts/packages/smoke (lane ts-shell) may not import @asha/renderer-host (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+              "message": "ts/packages/smoke must import @asha/renderer-host through its root barrel. Do not import @asha/renderer-host/src, @asha/renderer-host/dist, generated internals, or other package-private files."
             },
             {
               "group": [

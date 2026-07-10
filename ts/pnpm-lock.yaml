@@ -230,6 +230,9 @@ importers:
       '@asha/editor-tools':
         specifier: workspace:*
         version: link:../editor-tools
+      '@asha/renderer-host':
+        specifier: workspace:*
+        version: link:../renderer-host
       '@asha/renderer-three':
         specifier: workspace:*
         version: link:../renderer-three

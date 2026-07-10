@@ -1,4 +1,4 @@
-import type { AnimatedMeshAsset, AnimatedMeshPlaybackCommand, CameraCollisionSnapshot, CameraCreateRequest, CameraHandle, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CollisionAxis, CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInputEnvelope, GameExtensionHookReceipt, GameExtensionReplayEvidence, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, RenderFrameDiff, WeaponEffectHookRequest } from '@asha/contracts';
+import type { AnimatedMeshAsset, AnimatedMeshPlaybackCommand, CameraCollisionSnapshot, CameraCreateRequest, CameraHandle, CameraProjectionRequest, CameraProjectionSnapshot, CameraSnapshot, CollisionAxis, CollisionConstrainedCameraInputEnvelope, FirstPersonCameraInputEnvelope, GameExtensionHookReceipt, GameExtensionReplayEvidence, GameRuleCatalog, GameRuleResolutionReceipt, GameRuleResolutionRequest, RenderFrameDiff, RenderHandle, WeaponEffectHookRequest } from '@asha/contracts';
 import type { CombatReadoutScenario, CombatRuntimeReadout } from './combat-readout.js';
 import type { EnemyPolicyActorView, EnemyPolicyCombatView, EnemyPolicyProposal, EnemyPolicyProposalFrame, EnemyPolicySourceDiagnostic, EnemyPolicyTargetView, EnemyPolicyVec3 } from './enemy-policy.js';
 import type { GeneratedTunnelOperationReceipt, GeneratedTunnelOperationRequest } from './generated-tunnel.js';
@@ -185,7 +185,7 @@ export interface RuntimeSessionAnimationIntentReadout {
     readonly sequenceId: number;
     readonly tick: number;
     readonly asset: AnimatedMeshAsset;
-    readonly instanceHandle: number;
+    readonly instanceHandle: RenderHandle;
     readonly selectedClipId: string;
     readonly selectionReason: RuntimeSessionAnimationSelectionReason;
     readonly playback: AnimatedMeshPlaybackCommand;

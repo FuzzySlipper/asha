@@ -16,6 +16,7 @@ import type {
   GameRuleResolutionReceipt,
   GameRuleResolutionRequest,
   RenderFrameDiff,
+  RenderHandle,
   WeaponEffectHookRequest,
 } from '@asha/contracts';
 import type { CombatReadoutScenario, CombatRuntimeReadout } from './combat-readout.js';
@@ -246,7 +247,7 @@ export interface RuntimeSessionAnimationIntentReadout {
   readonly sequenceId: number;
   readonly tick: number;
   readonly asset: AnimatedMeshAsset;
-  readonly instanceHandle: number;
+  readonly instanceHandle: RenderHandle;
   readonly selectedClipId: string;
   readonly selectionReason: RuntimeSessionAnimationSelectionReason;
   readonly playback: AnimatedMeshPlaybackCommand;
