@@ -82,7 +82,10 @@ runtime.
 
 **Recommendation:** Don't build a Mecanim clone. But define a minimal
 `AnimationController` protocol type and a simple state-machine evaluator in
-Rust that takes named float parameters → selects clip + blend weight. This
+Rust that takes named float parameters → selects clip + blend weight. Note the
+engine already has `rule-state-machine`, a generic finite-state transition
+authority (specs, transitions over `EntityId`/`ProcessId`/`ModeId`) — evaluate
+reusing it as the FSM core before writing a new evaluator (#5601). This
 keeps animation logic deterministic and replayable. Keyframe events can be a
 separate concern (or deferred to the audio system landing first).
 
@@ -204,8 +207,14 @@ rooms). Both are extensions of the current service, not a replacement.
 
 ### 7. Particle Systems / VFX — MISSING ❌ (Medium Priority)
 
-**Nothing exists.** The `cosmetic` TS package exists but is likely a stub.
-Zero particle infrastructure in Rust or TS.
+**No particle infrastructure exists in Rust or TS.** Note however that the
+`cosmetic` TS package is *not* a stub (an earlier revision of this doc guessed
+wrong): it implements screen_flash / hit_spark / view_kick effects with typed
+descriptors, view models, diagnostics, and an explicit
+`replayScope: 'excluded_from_replay_truth'` marker — the established pattern
+for authority-parameterized, visual-only effects excluded from replay
+verification. A particle system should extend that convention, not invent a
+parallel one.
 
 **What matters for OSHApunk:**
 - Machine operation feedback (sparks from assembler, smoke from smelter)
@@ -328,8 +337,10 @@ adding delta-based saves later.
 ### 11. Resource / Asset Management — EXISTS ✅
 
 **What it has:**
-- `core-assets`: `AssetReference`, `AssetKind` (Mesh, Sprite, Audio, VoxelVolume,
-  Material, Font, etc.)
+- `core-assets`: `AssetReference`, `AssetKind` (Material, StaticMesh, Sprite,
+  SpriteSheet, Texture, VoxelVolume, VoxelObject, Script, Scene — note there is
+  **no Audio or Font kind yet**; audio (#5595) and world-space UI text (#5597)
+  each need one)
 - `core-catalog`: catalog entries with lifecycle + fallback decisions
 - `svc-voxel-asset`: validation, canonicalization, hashing for voxel assets
 - `protocol-assets`: border types for asset drift detection
@@ -438,9 +449,10 @@ the command pipeline. This is 90% of the value for 10% of the complexity.
   but needs camera-relative triggers.
 
 **Recommendation:** The FPS camera works. Add an `OrbitCameraController` as a
-parallel mode (not replacing FPS, just adding a second mode). The
-`CameraMode` enum in the protocol already has room for this. Post-processing
-can be deferred to the material/renderer upgrade pass.
+parallel mode (not replacing FPS, just adding a second mode). Note there is
+**no camera mode enum in the protocol today** (`protocol-view` has only
+`CameraCollisionPolicyMode`) — a `CameraMode` enum must be introduced (#5604).
+Post-processing can be deferred to the material/renderer upgrade pass.
 
 ### 17. Material System — BASIC ⚠️ (Medium Priority)
 
