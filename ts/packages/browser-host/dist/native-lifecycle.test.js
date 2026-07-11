@@ -62,7 +62,7 @@ void test('native browser host survives sustained movement defeat restart and in
             host = await launchNativeBrowserHost({ uiRoot, host: '127.0.0.1', port: 0 });
         }
         catch (error) {
-            if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
+            if (isNativeUnavailable(error)) {
                 t.skip('native addon not built (run harness/ci/check-native.sh)');
                 return;
             }
@@ -129,6 +129,10 @@ void test('native browser host survives sustained movement defeat restart and in
         await rm(uiRoot, { recursive: true, force: true });
     }
 });
+function isNativeUnavailable(error) {
+    return (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable')
+        || (error instanceof Error && error.message.includes('[native_unavailable]'));
+}
 async function invokeBridge(baseUrl, method, args) {
     const response = await invokeBridgeResponse(baseUrl, method, args);
     assert.equal(response.status, 200, response.errorMessage);
