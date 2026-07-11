@@ -117,6 +117,117 @@ function complexShapeCommands(): VoxelCommand[] {
   return commands;
 }
 
+function inclusiveWindowCellCount(
+  bounds: NonNullable<ReturnType<RuntimeSessionFacade['readVoxelModelInfo']>['bounds']>,
+): number {
+  return (bounds.max.x - bounds.min.x + 1)
+    * (bounds.max.y - bounds.min.y + 1)
+    * (bounds.max.z - bounds.min.z + 1);
+}
+
+void test('native model window survives converted asset save unload and reload', (t) => {
+  let session: RuntimeSessionFacade;
+  try {
+    session = createNativeSession();
+  } catch (error) {
+    if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
+      t.skip('native addon not built (run harness/ci/check-native.sh)');
+      return;
+    }
+    throw error;
+  }
+  applyQuadConversion(session);
+
+  const info = session.readVoxelModelInfo({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    includeMaterialCounts: true,
+  });
+  assert.equal(info.resident, true);
+  assert.notEqual(info.bounds, null);
+  const bounds = info.bounds!;
+  const request = {
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    bounds,
+    includeEmpty: false,
+    materialFilter: [],
+    maxSamples: inclusiveWindowCellCount(bounds),
+  } as const;
+  const before = session.readVoxelModelWindow(request);
+  assert.equal(before.resident, true);
+  assert.deepEqual(before.modelBounds, bounds);
+  assert.equal(before.scannedVoxelCount, inclusiveWindowCellCount(bounds));
+  assert.equal(before.returnedSampleCount, info.voxelCount);
+  assert.ok(before.samples.every((sample) => sample.occupied && sample.material === 1));
+  assert.match(before.sessionHash, /^fnv1a64:[0-9a-f]{16}$/u);
+  assert.match(before.replayHash, /^fnv1a64:[0-9a-f]{16}$/u);
+  assert.deepEqual(before.diagnostics, []);
+
+  const invalidBounds = session.readVoxelModelWindow({
+    ...request,
+    bounds: { min: { x: 1, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } },
+  });
+  assert.equal(invalidBounds.scannedVoxelCount, 0);
+  assert.equal(invalidBounds.diagnostics[0]?.code, 'invalid_query_bounds');
+  const overQuota = session.readVoxelModelWindow({
+    ...request,
+    maxSamples: Math.max(1, inclusiveWindowCellCount(bounds) - 1),
+  });
+  assert.equal(overQuota.scannedVoxelCount, 0);
+  assert.equal(overQuota.diagnostics[0]?.code, 'query_quota_exceeded');
+  const nonresident = session.readVoxelModelWindow({
+    ...request,
+    volumeAssetId: 'voxel/missing',
+  });
+  assert.equal(nonresident.resident, false);
+  assert.equal(nonresident.diagnostics[0]?.code, 'voxel_conversion_unavailable');
+
+  const saved = session.saveVoxelVolumeAsset({
+    exportRequest: {
+      grid: 2,
+      volumeAssetId: 'voxel/generated',
+      targetAssetId: 'voxel-volume/native-window-roundtrip',
+      label: 'Native model window roundtrip',
+      createdBy: '@asha/runtime-bridge',
+      sourceTool: '@asha/runtime-bridge',
+      maxSparseRuns: 32,
+      expectedSessionHash: info.sessionHash,
+    },
+    targetProjectBundle: 'asha-testing',
+    targetAssetPath: 'assets/voxels/native-window-roundtrip.avxl.json',
+    representationKind: 'sparse_runs',
+    expectedExistingCanonicalJsonHash: null,
+    expectedCanonicalJsonHash: null,
+    expectedVoxelDataHash: null,
+  });
+  assert.equal(saved.saved, true, JSON.stringify(saved.diagnostics));
+  const unloaded = session.unloadVoxelVolumeAsset({
+    grid: 2,
+    volumeAssetId: 'voxel/generated',
+    expectedSessionHash: info.sessionHash,
+  });
+  assert.equal(unloaded.unloaded, true, JSON.stringify(unloaded.diagnostics));
+  assert.equal(session.readVoxelModelWindow(request).resident, false);
+  const loaded = session.loadVoxelVolumeAsset({
+    asset: saved.asset!,
+    targetGrid: 2,
+    targetVolumeAssetId: 'voxel/generated',
+    replaceExisting: false,
+    includeMaterialCounts: true,
+  });
+  assert.equal(loaded.loaded, true, JSON.stringify(loaded.diagnostics));
+
+  const after = session.readVoxelModelWindow(request);
+  assert.equal(after.resident, true);
+  assert.deepEqual(after.modelBounds, before.modelBounds);
+  assert.equal(after.scannedVoxelCount, before.scannedVoxelCount);
+  assert.deepEqual(after.samples, before.samples);
+  assert.match(after.sessionHash, /^fnv1a64:[0-9a-f]{16}$/u);
+  assert.match(after.replayHash, /^fnv1a64:[0-9a-f]{16}$/u);
+  assert.deepEqual(after.diagnostics, []);
+});
+
 void test('native compact-equivalent edits grow adjacent chunks and survive save reload', (t) => {
   let session: RuntimeSessionFacade;
   try {
