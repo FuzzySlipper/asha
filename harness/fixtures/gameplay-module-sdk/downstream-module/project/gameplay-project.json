@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "projectId": "fixture.pulse.conformance",
+  "sceneId": 90,
+  "runtimeSessionId": 5,
+  "consumerNeeds": [
+    "pulse.configuration",
+    "pulse.module",
+    "pulse.observe",
+    "pulse.public-sdk",
+    "pulse.subscribe"
+  ],
+  "gameplayModuleBindings": {
+    "schemaVersion": 1,
+    "configurations": [
+      {
+        "configurationId": "fixture.pulse.default",
+        "module": {
+          "moduleId": "fixture.pulse.module",
+          "namespace": "fixture.pulse",
+          "version": "1.0.0",
+          "sdkHash": "sha256:gameplay-sdk-v1",
+          "contractHash": "sha256:fixture-pulse-contract",
+          "artifactHash": "sha256:fixture-pulse-behavior-4",
+          "providerId": "provider.fixture-pulse"
+        },
+        "configuration": {
+          "namespace": "fixture.pulse",
+          "name": "configuration",
+          "version": 1,
+          "schemaHash": "sha256:fixture.pulse.configuration"
+        },
+        "codecId": "codec.fixture-pulse.configuration",
+        "canonicalConfig": [52],
+        "configHash": "fnv1a64:9867ed87cffc0daa"
+      }
+    ],
+    "bindings": [
+      {
+        "bindingId": "fixture.pulse.session",
+        "moduleId": "fixture.pulse.module",
+        "configurationId": "fixture.pulse.default",
+        "stateSchema": {
+          "namespace": "fixture.pulse",
+          "name": "pulse-state",
+          "version": 1,
+          "schemaHash": "sha256:fixture.pulse.pulse-state"
+        },
+        "target": { "kind": "session" },
+        "requiredReads": [],
+        "outputContracts": [
+          {
+            "namespace": "fixture.pulse",
+            "name": "pulse-result",
+            "version": 1,
+            "schemaHash": "sha256:fixture.pulse.pulse-result"
+          }
+        ],
+        "enabled": true
+      }
+    ],
+    "overrides": [],
+    "registryHash": "fnv1a64:5c26a036e0658948"
+  },
+  "declaredReads": [
+    {
+      "requestId": "pulse-state",
+      "moduleId": "fixture.pulse.module",
+      "invocationId": "fixture.pulse.observe",
+      "view": {
+        "namespace": "fixture.pulse",
+        "name": "pulse-state-view",
+        "version": 1,
+        "schemaHash": "sha256:fixture.pulse.pulse-state-view"
+      },
+      "scope": { "kind": "session" },
+      "fields": ["amount"]
+    }
+  ]
+}

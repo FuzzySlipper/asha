@@ -1,0 +1,17 @@
+[package]
+name = "svc-gameplay-fabric"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+# Static Session composition and validation for the gameplay fabric. This crate
+# owns no dispatch loop or authority-state mutation.
+[dependencies]
+protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

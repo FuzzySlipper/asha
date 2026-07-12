@@ -170,7 +170,7 @@ export const GENERATED_TUNNEL_FPS_ECRP_OBJECT_MODEL = {
                 'RuntimeSessionFacade.readCameraProjection',
                 'RuntimeSessionFacade.readCombatReadout',
                 'RuntimeSessionFacade.readLifecycleStatus',
-                'BrowserFpsInputCollector',
+                'BrowserInputHost',
                 'mountAshaRendererBrowserSurface',
             ],
         },
@@ -386,7 +386,7 @@ function buildFpsGameplayPresetReadout(preset) {
             referenceHash,
         },
         migration: {
-            playerControllerConstants: 'BrowserFpsInputCollector options',
+            playerControllerConstants: 'BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options',
             weaponConstants: 'RuntimeSession primary_fire combat readout defaults',
             enemyConstants: 'generated tunnel enemy policy fixture',
             encounterConstants: 'generated-tunnel-small-encounter',

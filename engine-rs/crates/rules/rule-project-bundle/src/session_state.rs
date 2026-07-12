@@ -15,6 +15,9 @@
 use core_entity::{encode_snapshot, EntityHash, EntitySnapshot};
 use svc_serialization::{ArtifactEntry, ArtifactRole};
 
+use crate::prefab_instance::PrefabInstanceSnapshot;
+use crate::prefab_snapshot::embed_prefab_snapshot;
+
 /// Canonical bundle-relative path for the runtime session-state snapshot artifact.
 pub const SESSION_STATE_SNAPSHOT_PATH: &str = "session/state.snapshot.json";
 
@@ -40,7 +43,20 @@ pub fn runtime_diverged(bootstrap_baseline: EntityHash, runtime: EntityHash) -> 
 /// snapshot. The bytes are the canonical `core_entity` encoding and the manifest
 /// entry carries their content hash for drift/round-trip diagnostics.
 pub fn compose_session_state_snapshot(runtime: &EntitySnapshot) -> SessionStateArtifact {
-    let text = encode_snapshot(runtime);
+    compose_artifact(encode_snapshot(runtime))
+}
+
+/// Compose the owning Session artifact with both entity authority and durable
+/// prefab-instance role/override metadata. The entity codec intentionally ignores
+/// the additive top-level field, preserving compatibility for generic readers.
+pub fn compose_session_state_snapshot_with_prefabs(
+    runtime: &EntitySnapshot,
+    prefabs: &PrefabInstanceSnapshot,
+) -> SessionStateArtifact {
+    compose_artifact(embed_prefab_snapshot(&encode_snapshot(runtime), prefabs))
+}
+
+fn compose_artifact(text: String) -> SessionStateArtifact {
     let entry = ArtifactEntry::durable(
         SESSION_STATE_SNAPSHOT_PATH,
         ArtifactRole::SessionStateSnapshot,

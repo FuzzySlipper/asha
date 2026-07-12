@@ -9,6 +9,7 @@ export interface AshaGameManifest {
     };
     readonly workspace: {
         readonly sceneRoots: readonly string[];
+        readonly prefabRoots: readonly string[];
         readonly assetRoots: readonly string[];
         readonly replayRoots: readonly string[];
         readonly catalogPackages: readonly string[];

@@ -10,6 +10,11 @@ use std::collections::BTreeMap;
 use core_assets::{AssetReference, AssetVersionReq};
 use core_ids::{EntityId, TagId};
 
+use crate::activation::{
+    ActivatableCapabilityKind, CapabilityActivationAction, CapabilityActivationCommand,
+    CapabilityActivationError, CapabilityActivationEvent, CapabilityActivationPresence,
+    CapabilityActivationReadout, CapabilityActivationState,
+};
 use crate::capability::{
     AssetBindingCapability, BoundsCapability, CollisionCapability, ContainmentCapability,
     ControllerCapability, RenderProjectionCapability, TransformCapability,
@@ -35,6 +40,7 @@ pub struct EntityStore {
     containment: BTreeMap<EntityId, ContainmentCapability>,
     controller: BTreeMap<EntityId, ControllerCapability>,
     asset_binding: BTreeMap<EntityId, AssetBindingCapability>,
+    activations: BTreeMap<(EntityId, ActivatableCapabilityKind), CapabilityActivationState>,
     /// Relation 1 (design §5): spatial transform attachment, child → parent. Only
     /// this relation propagates transforms; cycle-checked.
     transform_parent: BTreeMap<EntityId, EntityId>,
@@ -184,6 +190,7 @@ impl EntityStore {
         self.containment.remove(&id);
         self.controller.remove(&id);
         self.asset_binding.remove(&id);
+        self.activations.retain(|(entity, _), _| *entity != id);
         // Relations the destroyed entity owns.
         self.transform_parent.remove(&id);
         self.derived_from.remove(&id);
@@ -242,6 +249,9 @@ impl EntityStore {
         self.attach(id, |s| {
             s.collision
                 .insert(id, CollisionCapability { static_collider });
+            s.activations
+                .entry((id, ActivatableCapabilityKind::Collision))
+                .or_insert(CapabilityActivationState::Active);
         })
     }
 
@@ -255,6 +265,9 @@ impl EntityStore {
     pub fn attach_controller(&mut self, id: EntityId, controller: ControllerCapability) -> bool {
         self.attach(id, |s| {
             s.controller.insert(id, controller);
+            s.activations
+                .entry((id, ActivatableCapabilityKind::Controller))
+                .or_insert(CapabilityActivationState::Active);
         })
     }
 
@@ -313,12 +326,102 @@ impl EntityStore {
         self.collision.get(&id)
     }
 
+    pub fn active_collision(&self, id: EntityId) -> Option<&CollisionCapability> {
+        (self.activation_state(id, ActivatableCapabilityKind::Collision)
+            == Some(CapabilityActivationState::Active))
+        .then(|| self.collision.get(&id))
+        .flatten()
+    }
+
     pub fn containment(&self, id: EntityId) -> Option<&ContainmentCapability> {
         self.containment.get(&id)
     }
 
     pub fn controller(&self, id: EntityId) -> Option<&ControllerCapability> {
         self.controller.get(&id)
+    }
+
+    pub fn active_controller(&self, id: EntityId) -> Option<&ControllerCapability> {
+        (self.activation_state(id, ActivatableCapabilityKind::Controller)
+            == Some(CapabilityActivationState::Active))
+        .then(|| self.controller.get(&id))
+        .flatten()
+    }
+
+    pub fn capability_activation(
+        &self,
+        id: EntityId,
+        capability: ActivatableCapabilityKind,
+    ) -> Option<CapabilityActivationReadout> {
+        let core = self.cores.get(&id)?;
+        let state = self.activation_state(id, capability);
+        let presence = match state {
+            None => CapabilityActivationPresence::Absent,
+            Some(CapabilityActivationState::Inactive) => CapabilityActivationPresence::Inactive,
+            Some(CapabilityActivationState::Active) => CapabilityActivationPresence::Active,
+        };
+        let entity_active = core.lifecycle == EntityLifecycle::Active;
+        Some(CapabilityActivationReadout {
+            entity: id,
+            capability,
+            presence,
+            entity_lifecycle: core.lifecycle,
+            effective_active: entity_active && presence == CapabilityActivationPresence::Active,
+        })
+    }
+
+    pub fn apply_capability_activation(
+        &mut self,
+        command: CapabilityActivationCommand,
+    ) -> Result<CapabilityActivationEvent, CapabilityActivationError> {
+        let id = command.entity;
+        let Some(core) = self.cores.get(&id) else {
+            return Err(CapabilityActivationError::UnknownEntity { entity: id });
+        };
+        if core.lifecycle == EntityLifecycle::Tombstoned {
+            return Err(CapabilityActivationError::Tombstoned { entity: id });
+        }
+        let Some(from) = self.activation_state(id, command.capability) else {
+            return Err(CapabilityActivationError::CapabilityAbsent {
+                entity: id,
+                capability: command.capability,
+            });
+        };
+        let to = match command.action {
+            CapabilityActivationAction::Activate => CapabilityActivationState::Active,
+            CapabilityActivationAction::Deactivate => CapabilityActivationState::Inactive,
+        };
+        if from == to {
+            return Err(CapabilityActivationError::AlreadyInState {
+                entity: id,
+                capability: command.capability,
+                state: to,
+            });
+        }
+        self.activations.insert((id, command.capability), to);
+        Ok(CapabilityActivationEvent {
+            entity: id,
+            capability: command.capability,
+            from,
+            to,
+        })
+    }
+
+    fn activation_state(
+        &self,
+        id: EntityId,
+        capability: ActivatableCapabilityKind,
+    ) -> Option<CapabilityActivationState> {
+        let attached = match capability {
+            ActivatableCapabilityKind::Collision => self.collision.contains_key(&id),
+            ActivatableCapabilityKind::Controller => self.controller.contains_key(&id),
+        };
+        attached.then(|| {
+            self.activations
+                .get(&(id, capability))
+                .copied()
+                .unwrap_or(CapabilityActivationState::Active)
+        })
     }
 
     pub fn asset_binding(&self, id: EntityId) -> Option<&AssetBindingCapability> {
@@ -418,6 +521,10 @@ impl EntityStore {
             Some(c) => {
                 h.write_u8(1);
                 h.write_u8(c.static_collider as u8);
+                h.write_u8(activation_tag(
+                    self.activation_state(id, ActivatableCapabilityKind::Collision)
+                        .expect("attached collision has activation"),
+                ));
             }
             None => h.write_u8(0),
         }
@@ -432,10 +539,18 @@ impl EntityStore {
             Some(ControllerCapability::Process(p)) => {
                 h.write_u8(1);
                 h.write_u64(p.raw());
+                h.write_u8(activation_tag(
+                    self.activation_state(id, ActivatableCapabilityKind::Controller)
+                        .expect("attached controller has activation"),
+                ));
             }
             Some(ControllerCapability::Subject(s)) => {
                 h.write_u8(2);
                 h.write_u64(s.raw());
+                h.write_u8(activation_tag(
+                    self.activation_state(id, ActivatableCapabilityKind::Controller)
+                        .expect("attached controller has activation"),
+                ));
             }
             None => h.write_u8(0),
         }
@@ -487,8 +602,12 @@ impl EntityStore {
                 bounds: self.bounds.get(id).copied(),
                 render: self.render.get(id).copied(),
                 collision: self.collision.get(id).copied(),
+                collision_activation: self
+                    .activation_state(*id, ActivatableCapabilityKind::Collision),
                 containment: self.containment.get(id).copied(),
                 controller: self.controller.get(id).copied(),
+                controller_activation: self
+                    .activation_state(*id, ActivatableCapabilityKind::Controller),
                 asset_binding: self.asset_binding.get(id).cloned(),
                 transform_parent: self.transform_parent.get(id).copied(),
                 derived_from: self.derived_from.get(id).copied(),
@@ -515,12 +634,24 @@ impl EntityStore {
             }
             if let Some(c) = record.collision {
                 store.collision.insert(id, c);
+                store.activations.insert(
+                    (id, ActivatableCapabilityKind::Collision),
+                    record
+                        .collision_activation
+                        .unwrap_or(CapabilityActivationState::Active),
+                );
             }
             if let Some(c) = record.containment {
                 store.containment.insert(id, c);
             }
             if let Some(c) = record.controller {
                 store.controller.insert(id, c);
+                store.activations.insert(
+                    (id, ActivatableCapabilityKind::Controller),
+                    record
+                        .controller_activation
+                        .unwrap_or(CapabilityActivationState::Active),
+                );
             }
             if let Some(a) = record.asset_binding {
                 store.asset_binding.insert(id, a);
@@ -587,15 +718,33 @@ impl EntityStore {
             caps.push(format!("render(visible={})", r.visible));
         }
         if let Some(c) = self.collision.get(&id) {
-            caps.push(format!("collision(static={})", c.static_collider));
+            let activation = self
+                .activation_state(id, ActivatableCapabilityKind::Collision)
+                .expect("attached collision has activation");
+            caps.push(format!(
+                "collision(static={},activation={})",
+                c.static_collider,
+                activation.label()
+            ));
         }
         if let Some(c) = self.containment.get(&id) {
             caps.push(format!("contained_in({})", c.container.raw()));
         }
         if let Some(c) = self.controller.get(&id) {
+            let activation = self
+                .activation_state(id, ActivatableCapabilityKind::Controller)
+                .expect("attached controller has activation");
             caps.push(match c {
-                ControllerCapability::Process(p) => format!("controller(process={})", p.raw()),
-                ControllerCapability::Subject(s) => format!("controller(subject={})", s.raw()),
+                ControllerCapability::Process(p) => format!(
+                    "controller(process={},activation={})",
+                    p.raw(),
+                    activation.label()
+                ),
+                ControllerCapability::Subject(s) => format!(
+                    "controller(subject={},activation={})",
+                    s.raw(),
+                    activation.label()
+                ),
             });
         }
         if let Some(a) = self.asset_binding.get(&id) {
@@ -626,8 +775,10 @@ pub struct EntityRecord {
     pub bounds: Option<BoundsCapability>,
     pub render: Option<RenderProjectionCapability>,
     pub collision: Option<CollisionCapability>,
+    pub collision_activation: Option<CapabilityActivationState>,
     pub containment: Option<ContainmentCapability>,
     pub controller: Option<ControllerCapability>,
+    pub controller_activation: Option<CapabilityActivationState>,
     pub asset_binding: Option<AssetBindingCapability>,
     pub transform_parent: Option<EntityId>,
     pub derived_from: Option<EntityId>,
@@ -649,6 +800,18 @@ fn source_dump(source: &EntitySource) -> String {
             None => "runtimeCreated".to_string(),
         },
         EntitySource::Imported { asset } => format!("imported({})", asset.id().as_str()),
+        EntitySource::PrefabInstance {
+            prefab,
+            instance,
+            part,
+            role,
+        } => format!(
+            "prefabInstance(prefab={},instance={},part={},role={})",
+            prefab.raw(),
+            instance.raw(),
+            part.raw(),
+            role.as_deref().unwrap_or("none")
+        ),
         EntitySource::DiagnosticTooling => "diagnosticTooling".to_string(),
         EntitySource::PolicyProposed { by } => format!("policyProposed(by={})", by.raw()),
     }
@@ -668,6 +831,13 @@ fn lifecycle_tag(l: EntityLifecycle) -> u8 {
         EntityLifecycle::Active => 1,
         EntityLifecycle::Disabled => 2,
         EntityLifecycle::Tombstoned => 3,
+    }
+}
+
+fn activation_tag(state: CapabilityActivationState) -> u8 {
+    match state {
+        CapabilityActivationState::Active => 1,
+        CapabilityActivationState::Inactive => 2,
     }
 }
 
@@ -695,6 +865,26 @@ fn hash_source(h: &mut Fnv1a, source: &EntitySource) {
         EntitySource::PolicyProposed { by } => {
             h.write_u8(5);
             h.write_u64(by.raw());
+        }
+        EntitySource::PrefabInstance {
+            prefab,
+            instance,
+            part,
+            role,
+        } => {
+            h.write_u8(6);
+            h.write_u64(prefab.raw());
+            h.write_u64(instance.raw());
+            h.write_u64(part.raw());
+            match role {
+                Some(role) => {
+                    h.write_u8(1);
+                    for byte in role.bytes() {
+                        h.write_u8(byte);
+                    }
+                }
+                None => h.write_u8(0),
+            }
         }
     }
 }

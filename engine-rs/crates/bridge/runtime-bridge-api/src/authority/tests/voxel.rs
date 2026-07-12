@@ -11,6 +11,33 @@ fn native_runtime_seeds_default_studio_and_authored_voxel_targets() {
 }
 
 #[test]
+fn initialize_voxel_volume_authoring_commits_a_real_runtime_model_atomically() {
+    let mut bridge = init_bridge();
+    let stored_fixture = hand_authored_voxel_volume_asset();
+    let request = VoxelVolumeAuthoringInitializeRequest {
+        grid: 1,
+        volume_asset_id: Some("voxel-volume/conformance-blank".to_string()),
+        seed_chunk: VoxelAssetCoord { x: 0, y: 0, z: 0 },
+        material_palette: stored_fixture.material_palette,
+        authoring: stored_fixture.authoring,
+        max_material_bindings: 8,
+    };
+
+    let receipt = bridge
+        .initialize_voxel_volume_authoring(request.clone())
+        .unwrap();
+    assert!(receipt.initialized, "{:?}", receipt.diagnostics);
+    assert_eq!(receipt.request, request);
+    assert_eq!(receipt.grid, 1);
+    assert!(receipt.session_hash.starts_with("fnv1a64:"));
+    assert!(receipt.replay_hash.starts_with("fnv1a64:"));
+
+    let duplicate = bridge.initialize_voxel_volume_authoring(request).unwrap();
+    assert!(!duplicate.initialized);
+    assert_eq!(duplicate.diagnostics.len(), 1);
+}
+
+#[test]
 fn voxel_conversion_plan_preview_apply_uses_rust_authority_and_commands() {
     let mut bridge = init_bridge();
     let request = project_voxel_conversion_request(7);

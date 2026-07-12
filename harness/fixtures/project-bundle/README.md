@@ -9,6 +9,8 @@ drift-checked by tests; regenerate with the listed command and review the diff.
 |---|---|---|---|
 | `load-plan.txt` | `svc-serialization` `dump_load_plan` example | `svc-serialization::tests::golden` | `cargo run -p svc-serialization --example dump_load_plan > harness/fixtures/project-bundle/load-plan.txt` |
 | `sample-manifest.json` | `svc-serialization` `dump_manifest` example | `svc-serialization::tests::golden` | `cargo run -p svc-serialization --example dump_manifest > harness/fixtures/project-bundle/sample-manifest.json` |
+| `prefab-registry.valid.json` | `svc-serialization` `dump_prefab_registry` example | `svc-serialization::tests::prefab_golden` | `cargo run -p svc-serialization --example dump_prefab_registry > harness/fixtures/project-bundle/prefab-registry.valid.json` |
+| `prefab-registry.invalid-alias-removal.json` | Hand-authored semantic rejection case | `svc-serialization::tests::prefab_golden` | Edit deliberately; it must remain decodable but invalid |
 | `compacted-save.txt` | `render::sample_compacted_save` | `rule-project-bundle` `tests/golden.rs::compacted_save_matches_committed_golden` | `cargo run -p rule-project-bundle --example dump_compacted_save > harness/fixtures/project-bundle/compacted-save.txt` |
 | `voxel-durability.txt` | `render::sample_durability_evidence` | `rule-project-bundle` `tests/golden.rs::voxel_durability_matches_committed_golden` | `cargo run -p rule-project-bundle --example dump_durability > harness/fixtures/project-bundle/voxel-durability.txt` |
 | `regen-conflict.txt` | `render::conflict_report` | `rule-project-bundle` `tests/golden.rs::regen_conflict_matches_committed_golden` | `cargo run -p rule-project-bundle --example dump_regen_conflict > harness/fixtures/project-bundle/regen-conflict.txt` |

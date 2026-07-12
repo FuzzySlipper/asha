@@ -6,6 +6,32 @@ use crate::*;
 /// `call(method, json)` — adding a verb here is a reviewed boundary change.
 pub trait RuntimeBridge {
     fn initialize_engine(&mut self, config: EngineConfig) -> BridgeResult<EngineHandle>;
+    /// Validate and activate the named-input catalog and initial Session context stack.
+    fn configure_input_session(
+        &mut self,
+        request: InputSessionConfigureRequest,
+    ) -> BridgeResult<InputSessionSnapshot>;
+    /// Apply one typed Session context push/pop/replace transaction.
+    fn apply_input_context_command(
+        &mut self,
+        command: InputContextCommand,
+    ) -> BridgeResult<InputContextChangeReceipt>;
+    /// Resolve one normalized platform sample through Rust-owned context priority.
+    fn submit_raw_input(&self, sample: RawInputSample) -> BridgeResult<InputResolutionReceipt>;
+    /// Deliver one authority-issued semantic action record without platform events.
+    fn replay_resolved_input_action(
+        &mut self,
+        record: RecordedInputAction,
+    ) -> BridgeResult<InputActionReplayReceipt>;
+    /// Read the complete active Session input-context state.
+    fn read_input_context_state(&self) -> BridgeResult<InputContextStackState>;
+    /// Apply one validated Session time-control transaction.
+    fn apply_time_control_command(
+        &mut self,
+        command: TimeControlCommand,
+    ) -> BridgeResult<TimeControlReceipt>;
+    /// Read pause/speed/exact-step state without advancing authority.
+    fn read_time_control_state(&self) -> BridgeResult<TimeControlState>;
     fn step_simulation(&mut self, input: StepInputEnvelope) -> BridgeResult<StepResult>;
     /// Submit a batch of proposed voxel commands for Rust-side validation + apply
     /// (mirrors manifest `submit_commands`). Accepted commands mutate authority and
@@ -210,6 +236,8 @@ pub trait RuntimeBridge {
         &mut self,
         request: FpsPrimaryFireRequest,
     ) -> BridgeResult<FpsPrimaryFireResult>;
+    /// Read the generated scene plus ordered non-scene projection frame.
+    fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame>;
     /// Invoke a declared game-owned Rust weapon-effect hook, validate its
     /// bounded proposal, and apply accepted output through FPS combat authority.
     fn invoke_game_extension_weapon_effect(
@@ -251,6 +279,18 @@ pub trait RuntimeBridge {
         request: FpsEncounterTransitionRequest,
     ) -> BridgeResult<FpsEncounterTransitionResult>;
     fn create_camera(&mut self, request: CameraCreateRequest) -> BridgeResult<CameraSnapshot>;
+    fn apply_camera_mode_command(
+        &mut self,
+        command: CameraModeCommand,
+    ) -> BridgeResult<CameraModeChangeReceipt>;
+    fn apply_camera_navigation_input(
+        &mut self,
+        envelope: CameraNavigationInputEnvelope,
+    ) -> BridgeResult<CameraNavigationReceipt>;
+    fn read_camera_controller_state(
+        &self,
+        request: CameraControllerReadRequest,
+    ) -> BridgeResult<CameraControllerState>;
     fn apply_first_person_camera_input(
         &mut self,
         input: FirstPersonCameraInputEnvelope,

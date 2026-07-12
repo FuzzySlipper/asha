@@ -26,8 +26,11 @@ members = [
     "crates/protocol/protocol-ids",
     "crates/protocol/protocol-script",
     "crates/protocol/protocol-render",
+    "crates/protocol/protocol-presentation",
     "crates/protocol/protocol-replay",
     "crates/protocol/protocol-telemetry",
+    "crates/protocol/protocol-input",
+    "crates/protocol/protocol-time-control",
     "crates/protocol/protocol-diagnostics",
     "crates/protocol/protocol-scene",
     "crates/protocol/protocol-project-bundle",
@@ -68,6 +71,7 @@ members = [
     "crates/services/svc-levelgen",
     "crates/services/svc-combat",
     "crates/services/svc-game-rules",
+    "crates/services/svc-gameplay-fabric",
 
     # Rules
     "crates/rules/rule-lifecycle",
@@ -78,10 +82,21 @@ members = [
     "crates/rules/rule-voxel-edit",
     "crates/rules/rule-project-bundle",
     "crates/rules/rule-game-modifier",
+    "crates/rules/rule-gameplay-fabric",
+    "crates/rules/rule-trigger-volume",
+    "crates/rules/rule-input",
+    "crates/rules/rule-animation-controller",
     "crates/rules/game-rule-extension",
+    "crates/rules/gameplay-module-sdk",
+    "crates/rules/gameplay-runtime-host",
 
     # Render
     "crates/render/render-bridge",
+    "crates/render/render-audio",
+    "crates/render/render-billboard",
+    "crates/render/render-particle",
+    "crates/render/render-telemetry-overlay",
+    "crates/render/render-animation",
     "crates/render/render-debug",
 
     # WASM

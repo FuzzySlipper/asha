@@ -6,7 +6,9 @@
 //! and asset binding are all *optional capabilities* (see [`crate::capability`]),
 //! never core fields.
 
-use core_ids::{EntityId, ProcessId, SceneNodeId, SubjectId, TagId};
+use core_ids::{
+    EntityId, PrefabId, PrefabInstanceId, PrefabPartId, ProcessId, SceneNodeId, SubjectId, TagId,
+};
 
 use core_assets::AssetReference;
 
@@ -21,6 +23,15 @@ pub enum EntitySource {
     RuntimeCreated { by: Option<ProcessId> },
     /// Instantiated from a catalog/asset source.
     Imported { asset: AssetReference },
+    /// Created by authoritative prefab expansion. The part id and optional
+    /// canonical role preserve authored provenance without making a display
+    /// label, hierarchy path, or runtime entity id into stored identity.
+    PrefabInstance {
+        prefab: PrefabId,
+        instance: PrefabInstanceId,
+        part: PrefabPartId,
+        role: Option<String>,
+    },
     /// Created by devtools/diagnostics. Flagged so it is never mistaken for
     /// product/world authority and can be policy-excluded from saves (design §4).
     DiagnosticTooling,
@@ -36,6 +47,7 @@ impl EntitySource {
             EntitySource::SceneBootstrap { .. } => "sceneBootstrap",
             EntitySource::RuntimeCreated { .. } => "runtimeCreated",
             EntitySource::Imported { .. } => "imported",
+            EntitySource::PrefabInstance { .. } => "prefabInstance",
             EntitySource::DiagnosticTooling => "diagnosticTooling",
             EntitySource::PolicyProposed { .. } => "policyProposed",
         }

@@ -36,6 +36,8 @@ pub const ASSET_KINDS: &[&str] = &[
     "sprite",
     "sprite-sheet",
     "texture",
+    "audio",
+    "font",
     "voxel-volume",
     "voxel-object",
     "script",

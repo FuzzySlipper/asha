@@ -38,6 +38,8 @@ pub mod hash;
 pub mod json;
 pub mod load_plan;
 pub mod manifest;
+pub mod prefab;
+pub mod prefab_json;
 pub mod save_plan;
 
 pub use artifact::{ArtifactClass, ArtifactEntry, ArtifactRole};
@@ -47,6 +49,17 @@ pub use load_plan::{LoadPlan, LoadPlanError, LoadStage, LoadStep};
 pub use manifest::{
     AssetLockSection, GeneratorMetadata, ManifestError, ProjectBundleManifest, ProjectSection,
     SceneSection, BUNDLE_SCHEMA_VERSION, SUPPORTED_PROTOCOL_VERSION,
+};
+pub use prefab::{
+    validate_prefab_registry, PrefabDefinition, PrefabDiagnostic, PrefabDiagnosticCode,
+    PrefabInstanceRecord, PrefabOverride, PrefabOverrideValue, PrefabPart, PrefabPartReference,
+    PrefabPartRoleBinding, PrefabPartSource, PrefabRegistry, PrefabRegistryValidationContext,
+    PrefabTransform, PrefabValidationReport, PrefabVariantDelta, ValidatedPrefabRegistry,
+    PREFAB_DEFINITION_SCHEMA_VERSION, PREFAB_REGISTRY_SCHEMA_VERSION,
+};
+pub use prefab_json::{
+    encode_prefab_registry, load_prefab_registry, PrefabRegistryDecodeError,
+    PrefabRegistryLoadError,
 };
 pub use save_plan::{CompactionPlan, SavePlan};
 
@@ -142,6 +155,39 @@ mod tests {
         assert!(matches!(
             m.validate(),
             Err(ManifestError::DuplicateArtifact { .. })
+        ));
+    }
+
+    #[test]
+    fn prefab_registry_is_a_single_durable_bundle_artifact() {
+        let mut manifest = sample_manifest();
+        manifest.artifacts.push(ArtifactEntry::durable(
+            "prefabs/registry.json",
+            ArtifactRole::PrefabRegistry,
+            b"prefab-registry",
+        ));
+        assert!(manifest.validate().is_ok());
+
+        manifest.artifacts.push(ArtifactEntry::durable(
+            "prefabs/second-registry.json",
+            ArtifactRole::PrefabRegistry,
+            b"second-prefab-registry",
+        ));
+        assert!(matches!(
+            manifest.validate(),
+            Err(ManifestError::DuplicateArtifactRole { .. })
+        ));
+
+        manifest.artifacts.pop();
+        manifest.artifacts.pop();
+        manifest.artifacts.push(ArtifactEntry::generated(
+            "prefabs/registry.json",
+            ArtifactRole::PrefabRegistry,
+            b"generated-prefab-registry",
+        ));
+        assert!(matches!(
+            manifest.validate(),
+            Err(ManifestError::ArtifactClassMismatch { .. })
         ));
     }
 

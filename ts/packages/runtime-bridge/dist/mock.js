@@ -1,6 +1,11 @@
 import { RuntimeBridgeError, nonNegativeSafeInteger, u32, } from './bridge.js';
 import { collisionCameraAttemptedPose } from './camera-collision-movement.js';
+import { mockCameraProjectionSnapshot } from './mock-camera-projection.js';
 import { MockGameRuleRuntime } from './mock-game-rules.js';
+import { MockCameraControllers } from './mock-camera-controller.js';
+import { MockInputSession } from './mock-input-session.js';
+import { MockTimeController } from './mock-time-control.js';
+import { fnv1a64, validateVec3 } from './mock-primitives.js';
 function finite(value, field) {
     if (!Number.isFinite(value)) {
         throw new RuntimeBridgeError('invalid_input', `${field} must be finite`);
@@ -45,24 +50,6 @@ function basisFromPose(pose) {
         right: [cy, 0, sy],
         up: [f32(-sy * sp), cp, f32(cy * sp)],
     };
-}
-function matrixKey(values) {
-    return values.map((value) => value.toFixed(3)).join(',');
-}
-function fnv1a64(text) {
-    let hash = 0xcbf29ce484222325n;
-    const prime = 0x100000001b3n;
-    const mask = 0xffffffffffffffffn;
-    for (let i = 0; i < text.length; i += 1) {
-        hash ^= BigInt(text.charCodeAt(i));
-        hash = (hash * prime) & mask;
-    }
-    return hash.toString(16).padStart(16, '0');
-}
-function validateVec3(value, field) {
-    if (value.length !== 3 || value.some((component) => !Number.isFinite(component))) {
-        throw new RuntimeBridgeError('invalid_input', `${field} must be a finite vec3`);
-    }
 }
 function vec3Distance(from, to) {
     const dx = to[0] - from[0];
@@ -149,68 +136,6 @@ function poseWithAxis(pose, axis, value) {
         pitchDegrees: pose.pitchDegrees,
     };
 }
-function multiplyMatrix4(a, b) {
-    const out = new Array(16).fill(0);
-    for (let col = 0; col < 4; col += 1) {
-        for (let row = 0; row < 4; row += 1) {
-            let sum = 0;
-            for (let k = 0; k < 4; k += 1) {
-                sum = f32(sum + f32((a[k * 4 + row] ?? 0) * (b[col * 4 + k] ?? 0)));
-            }
-            out[col * 4 + row] = sum;
-        }
-    }
-    return out;
-}
-function viewMatrixFromSnapshot(snapshot) {
-    const { right, up, forward } = snapshot.basis;
-    const position = snapshot.pose.position;
-    const dotRight = f32(f32(right[0] * position[0]) + f32(right[1] * position[1]) + f32(right[2] * position[2]));
-    const dotUp = f32(f32(up[0] * position[0]) + f32(up[1] * position[1]) + f32(up[2] * position[2]));
-    const dotForward = f32(f32(forward[0] * position[0]) + f32(forward[1] * position[1]) + f32(forward[2] * position[2]));
-    return [
-        right[0],
-        up[0],
-        -forward[0],
-        0,
-        right[1],
-        up[1],
-        -forward[1],
-        0,
-        right[2],
-        up[2],
-        -forward[2],
-        0,
-        -dotRight,
-        -dotUp,
-        dotForward,
-        1,
-    ];
-}
-function projectionMatrixFromSnapshot(snapshot, viewport) {
-    const aspect = f32(viewport.width / viewport.height);
-    const f = f32(1 / Math.tan(f32((snapshot.projection.fovYDegrees * Math.PI) / 360)));
-    const near = snapshot.projection.near;
-    const far = snapshot.projection.far;
-    return [
-        f32(f / aspect),
-        0,
-        0,
-        0,
-        0,
-        f,
-        0,
-        0,
-        0,
-        0,
-        f32((far + near) / (near - far)),
-        -1,
-        0,
-        0,
-        f32((2 * far * near) / (near - far)),
-        0,
-    ];
-}
 function materialDescriptor(id, material) {
     return {
         id,
@@ -219,24 +144,6 @@ function materialDescriptor(id, material) {
         roughness: material.render.roughness,
         emissive: material.render.emissive,
         uvStrategy: material.render.uvStrategy,
-    };
-}
-function projectionSnapshot(snapshot, viewport = snapshot.viewport) {
-    const viewMatrix = viewMatrixFromSnapshot(snapshot);
-    const projectionMatrix = projectionMatrixFromSnapshot(snapshot, viewport);
-    const viewProjectionMatrix = multiplyMatrix4(projectionMatrix, viewMatrix);
-    const projectionHash = `fnv1a64:${fnv1a64(matrixKey([
-        ...viewMatrix,
-        ...projectionMatrix,
-        ...viewProjectionMatrix,
-    ]))}`;
-    return {
-        ...snapshot,
-        viewport,
-        viewMatrix,
-        projectionMatrix,
-        viewProjectionMatrix,
-        projectionHash,
     };
 }
 function cloneFlatSceneDocument(document) {
@@ -412,12 +319,15 @@ export class MockRuntimeBridge {
     #sceneDocument = initialMockSceneDocument();
     #nextCamera = 1;
     #cameras = new Map();
+    #cameraControllers = new MockCameraControllers();
     #enemyTransforms = new Map();
     #fpsSeed = null;
     #fpsSnapshot = null;
     #fpsEncounter = initialFpsEncounterState();
     #fpsEpoch = 0;
     #gameRules = new MockGameRuleRuntime();
+    #inputSession = new MockInputSession();
+    #timeController = new MockTimeController();
     #unsupportedAfterInit(method, message) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', `${method} before initializeEngine`);
@@ -439,14 +349,24 @@ export class MockRuntimeBridge {
         this.#fpsEncounter = initialFpsEncounterState();
         this.#fpsEpoch = 0;
         this.#gameRules.reset();
+        this.#cameraControllers.clear();
+        this.#inputSession.initialize();
+        this.#timeController.initialize();
         return handle;
     }
+    configureInputSession(request) { return this.#inputSession.configure(request); }
+    applyInputContextCommand(command) { return this.#inputSession.applyContextCommand(command); }
+    submitRawInput(sample) { return this.#inputSession.resolve(sample); }
+    replayResolvedInputAction(record) { return this.#inputSession.replay(record); }
+    readInputContextState() { return this.#inputSession.readContextState(); }
+    applyTimeControlCommand(command) { return this.#timeController.apply(command); }
+    readTimeControlState() { return this.#timeController.read(); }
     stepSimulation(input) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'step before initializeEngine');
         }
         const tick = nonNegativeSafeInteger(input.tick, 'tick');
-        return { tick, diffCount: tick % 4 };
+        return this.#timeController.step(tick);
     }
     applyEnemyDirectNavMovement(request) {
         if (this.#engine === null) {
@@ -834,6 +754,9 @@ export class MockRuntimeBridge {
         if (before === undefined) {
             throw new RuntimeBridgeError('unknown_handle', 'unknown camera handle');
         }
+        if (!this.#cameraControllers.isFirstPerson(input.camera)) {
+            throw new RuntimeBridgeError('invalid_input', 'collision camera input requires firstPerson camera mode');
+        }
         const cameraInput = input.input;
         finite(cameraInput.moveForward, 'moveForward');
         finite(cameraInput.moveRight, 'moveRight');
@@ -894,6 +817,7 @@ export class MockRuntimeBridge {
             f32(after.pose.position[2] - attempted.pose.position[2]),
         ];
         this.#cameras.set(input.camera, after);
+        this.#cameraControllers.syncFirstPerson(after);
         return {
             camera: input.camera,
             tick: input.tick,
@@ -964,7 +888,7 @@ export class MockRuntimeBridge {
             origin,
             direction,
             maxDistance: request.maxDistance,
-            cameraProjectionHash: projectionSnapshot(camera, viewport).projectionHash,
+            cameraProjectionHash: mockCameraProjectionSnapshot(camera, viewport).projectionHash,
             rayHash: `fnv1a64:${fnv1a64(`${request.camera}|${request.grid}|${origin.join(',')}|${direction.join(',')}|${request.maxDistance}`)}`,
         };
         // Mock fixture mirrors the canonical launch world enough for downstream
@@ -1155,6 +1079,18 @@ export class MockRuntimeBridge {
         }
         return { ops: [] };
     }
+    readProjectionFrame(cursor) {
+        const scene = this.readRenderDiffs(cursor);
+        return {
+            schemaVersion: 1,
+            authorityTick: cursor,
+            scene,
+            presentation: {
+                replayScope: 'excludedFromReplayTruth',
+                ops: [],
+            },
+        };
+    }
     createCamera(request) {
         if (this.#engine === null) {
             throw new RuntimeBridgeError('not_initialized', 'createCamera before initializeEngine');
@@ -1176,7 +1112,42 @@ export class MockRuntimeBridge {
             viewport: request.viewport,
         };
         this.#cameras.set(camera, snapshot);
+        this.#cameraControllers.create(snapshot);
         return snapshot;
+    }
+    applyCameraModeCommand(command) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'applyCameraModeCommand before initializeEngine');
+        }
+        const receipt = this.#cameraControllers.applyMode(command);
+        if (receipt === undefined) {
+            throw new RuntimeBridgeError('unknown_handle', `no camera for handle ${command.camera}`);
+        }
+        if (receipt.accepted)
+            this.#cameras.set(command.camera, receipt.after.snapshot);
+        return receipt;
+    }
+    applyCameraNavigationInput(input) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'applyCameraNavigationInput before initializeEngine');
+        }
+        const receipt = this.#cameraControllers.applyNavigation(input);
+        if (receipt === undefined) {
+            throw new RuntimeBridgeError('unknown_handle', `no camera for handle ${input.camera}`);
+        }
+        if (receipt.accepted)
+            this.#cameras.set(input.camera, receipt.after.snapshot);
+        return receipt;
+    }
+    readCameraControllerState(request) {
+        if (this.#engine === null) {
+            throw new RuntimeBridgeError('not_initialized', 'readCameraControllerState before initializeEngine');
+        }
+        const controller = this.#cameraControllers.read(request.camera);
+        if (controller === undefined) {
+            throw new RuntimeBridgeError('unknown_handle', `no camera for handle ${request.camera}`);
+        }
+        return controller;
     }
     applyFirstPersonCameraInput(envelope) {
         if (this.#engine === null) {
@@ -1185,6 +1156,9 @@ export class MockRuntimeBridge {
         const prior = this.#cameras.get(envelope.camera);
         if (!prior) {
             throw new RuntimeBridgeError('unknown_handle', `no camera for handle ${envelope.camera}`);
+        }
+        if (!this.#cameraControllers.isFirstPerson(envelope.camera)) {
+            throw new RuntimeBridgeError('invalid_input', 'first-person camera input requires firstPerson camera mode');
         }
         const i = envelope.input;
         finite(i.moveForward, 'moveForward');
@@ -1229,6 +1203,7 @@ export class MockRuntimeBridge {
             basis: basisFromPose(pose),
         };
         this.#cameras.set(envelope.camera, snapshot);
+        this.#cameraControllers.syncFirstPerson(snapshot);
         return snapshot;
     }
     readCameraProjection(request) {
@@ -1241,7 +1216,7 @@ export class MockRuntimeBridge {
         }
         if (request.viewport !== null)
             validateViewport(request.viewport);
-        return projectionSnapshot(snapshot, request.viewport ?? snapshot.viewport);
+        return mockCameraProjectionSnapshot(snapshot, request.viewport ?? snapshot.viewport);
     }
     getBuffer(handle) {
         if (handle !== 0) {

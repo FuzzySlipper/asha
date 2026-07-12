@@ -1,17 +1,9 @@
-// @asha/editor-tools — the persistent editor tool context (ADR 0008).
-//
-// The third state category: not Rust authority, not throwaway DOM state. A small,
-// dependency-free observable store of *what the user is about to do* (tool, brush,
-// material, selection, preview), plus pure functions that turn that context into
-// generated `@asha/contracts` `VoxelCommand` proposals and brush-preview targets.
-//
-// It imports `@asha/contracts` ONLY — no DOM, `three`, policy, bridge, or renderer.
-// It produces proposals; it never submits them and never mutates authority (the
-// `app` command-submission path does that). See docs/voxel-ui-architecture.md.
 // Proposal-only scene authoring controls with Rust validation feedback (#2380).
 export * from './scene-authoring.js';
 // Canonical scene-object hierarchy snapshot/proposal helpers over FlatSceneDocument.
 export * from './scene-object-hierarchy.js';
+export * from './resolved-input.js';
+export * from './camera-navigation.js';
 // Proposal-only generic entity authoring controls with Rust validation feedback (#2485).
 export * from './entity-authoring.js';
 /** The editing tools that author voxels (have a preview + a proposal). */

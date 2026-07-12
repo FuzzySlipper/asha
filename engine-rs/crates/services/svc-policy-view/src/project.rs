@@ -40,6 +40,10 @@ fn to_policy_source(source: &EntitySource) -> Option<PolicyEntitySource> {
         EntitySource::Imported { asset } => Some(PolicyEntitySource::Imported {
             asset: asset.id().as_str().to_string(),
         }),
+        // The generic policy vocabulary exposes whether an Entity is runtime
+        // authority, not prefab-internal authoring identity. Modules obtain
+        // prefab/part provenance through the declared prefab read view.
+        EntitySource::PrefabInstance { .. } => Some(PolicyEntitySource::Runtime),
         EntitySource::PolicyProposed { .. } => Some(PolicyEntitySource::Policy),
         EntitySource::DiagnosticTooling => None,
     }

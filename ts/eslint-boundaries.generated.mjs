@@ -2424,10 +2424,6 @@ const generatedBoundaryConfigs = [
               "message": "ts/packages/game-workspace (lane ts-game-workspace) may not import @asha/command-registry (lane ts-command-registry) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
             },
             {
-              "name": "@asha/contracts",
-              "message": "ts/packages/game-workspace (lane ts-game-workspace) may not import @asha/contracts (lane contract-steward) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
-            },
-            {
               "name": "@asha/cosmetic",
               "message": "ts/packages/game-workspace (lane ts-game-workspace) may not import @asha/cosmetic (lane ts-shell) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
             },
@@ -2531,7 +2527,7 @@ const generatedBoundaryConfigs = [
               "group": [
                 "@asha/contracts/*"
               ],
-              "message": "ts/packages/game-workspace (lane ts-game-workspace) may not import @asha/contracts (lane contract-steward) unless governance/ownership.toml may_import allows it. Route through an approved public API or update ownership with reviewer context."
+              "message": "ts/packages/game-workspace must import @asha/contracts through its root barrel. Do not import @asha/contracts/src, @asha/contracts/dist, generated internals, or other package-private files."
             },
             {
               "group": [

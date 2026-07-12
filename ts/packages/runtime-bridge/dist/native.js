@@ -20,10 +20,20 @@ import { RuntimeBridgeError, nonNegativeSafeInteger, u32, } from './bridge.js';
  */
 export const NATIVE_WIRED_OPERATIONS = new Set([
     'initialize_engine',
+    'configure_input_session',
+    'apply_input_context_command',
+    'submit_raw_input',
+    'replay_resolved_input_action',
+    'read_input_context_state',
+    'apply_time_control_command',
+    'read_time_control_state',
     'load_project_bundle',
     'submit_commands',
     'step_simulation',
     'create_camera',
+    'apply_camera_mode_command',
+    'apply_camera_navigation_input',
+    'read_camera_controller_state',
     'apply_collision_constrained_camera_input',
     'apply_generated_tunnel_to_runtime_world',
     'apply_enemy_direct_nav_movement',
@@ -64,6 +74,7 @@ export const NATIVE_WIRED_OPERATIONS = new Set([
     'undo_voxel_edit',
     'redo_voxel_edit',
     'read_render_diffs',
+    'read_projection_frame',
     'save_project_bundle',
     'get_project_bundle_composition_status',
 ]);
@@ -250,6 +261,77 @@ function normalizeEncounterTransition(value) {
         replayHash: hashString(value.replayHash, 'replayHash'),
     };
 }
+function projectionFrameFromNative(native) {
+    if (native.schemaVersion !== 1 || !Number.isSafeInteger(native.authorityTick)) {
+        throw new RuntimeBridgeError('internal', 'native projection frame header is invalid');
+    }
+    if (native.presentation?.replayScope !== 'excludedFromReplayTruth') {
+        throw new RuntimeBridgeError('internal', 'native projection replay scope is invalid');
+    }
+    if (!Array.isArray(native.presentation.ops)) {
+        throw new RuntimeBridgeError('internal', 'native projection operations must be an array');
+    }
+    const nativeOperations = native.presentation.ops;
+    const ops = nativeOperations.map((operation, index) => {
+        if (operation.meta?.sequence !== index) {
+            throw new RuntimeBridgeError('internal', 'native presentation sequence is not contiguous');
+        }
+        if (operation.domain === 'audio'
+            && operation.audioOp !== undefined
+            && operation.billboardOp === undefined
+            && operation.particleOp === undefined
+            && operation.telemetryOverlayOp === undefined
+            && operation.animationOp === undefined) {
+            return { domain: 'audio', meta: operation.meta, op: operation.audioOp };
+        }
+        if (operation.domain === 'billboard'
+            && operation.billboardOp !== undefined
+            && operation.audioOp === undefined
+            && operation.particleOp === undefined
+            && operation.telemetryOverlayOp === undefined
+            && operation.animationOp === undefined) {
+            return { domain: 'billboard', meta: operation.meta, op: operation.billboardOp };
+        }
+        if (operation.domain === 'particle'
+            && operation.particleOp !== undefined
+            && operation.audioOp === undefined
+            && operation.billboardOp === undefined
+            && operation.telemetryOverlayOp === undefined
+            && operation.animationOp === undefined) {
+            return { domain: 'particle', meta: operation.meta, op: operation.particleOp };
+        }
+        if (operation.domain === 'telemetryOverlay'
+            && operation.telemetryOverlayOp !== undefined
+            && operation.audioOp === undefined
+            && operation.billboardOp === undefined
+            && operation.particleOp === undefined
+            && operation.animationOp === undefined) {
+            return {
+                domain: 'telemetryOverlay',
+                meta: operation.meta,
+                op: operation.telemetryOverlayOp,
+            };
+        }
+        if (operation.domain === 'animation'
+            && operation.animationOp !== undefined
+            && operation.audioOp === undefined
+            && operation.billboardOp === undefined
+            && operation.particleOp === undefined
+            && operation.telemetryOverlayOp === undefined) {
+            return { domain: 'animation', meta: operation.meta, op: operation.animationOp };
+        }
+        throw new RuntimeBridgeError('internal', `native presentation operation ${index} has an invalid closed-domain payload`);
+    });
+    return {
+        schemaVersion: native.schemaVersion,
+        authorityTick: native.authorityTick,
+        scene: native.scene,
+        presentation: {
+            replayScope: native.presentation.replayScope,
+            ops,
+        },
+    };
+}
 function nativeFpsLoadRequest(request) {
     if (request.projectBundle.trim() === '') {
         throw new RuntimeBridgeError('invalid_input', 'projectBundle is required');
@@ -356,6 +438,41 @@ export class NativeRuntimeBridge {
         }
         return this.#engineHandle;
     }
+    configureInputSession(request) {
+        const handle = this.#requireHandle('configureInputSession');
+        const payload = callNative(() => this.#addon.configureInputSession(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'input session snapshot');
+    }
+    applyInputContextCommand(command) {
+        const handle = this.#requireHandle('applyInputContextCommand');
+        const payload = callNative(() => this.#addon.applyInputContextCommand(handle, JSON.stringify(command)));
+        return parseNativeJson(payload, 'input context change receipt');
+    }
+    submitRawInput(sample) {
+        const handle = this.#requireHandle('submitRawInput');
+        const payload = callNative(() => this.#addon.submitRawInput(handle, JSON.stringify(sample)));
+        return parseNativeJson(payload, 'input resolution receipt');
+    }
+    replayResolvedInputAction(record) {
+        const handle = this.#requireHandle('replayResolvedInputAction');
+        const payload = callNative(() => this.#addon.replayResolvedInputAction(handle, JSON.stringify(record)));
+        return parseNativeJson(payload, 'input action replay receipt');
+    }
+    readInputContextState() {
+        const handle = this.#requireHandle('readInputContextState');
+        const payload = callNative(() => this.#addon.readInputContextState(handle));
+        return parseNativeJson(payload, 'input context state');
+    }
+    applyTimeControlCommand(command) {
+        const handle = this.#requireHandle('applyTimeControlCommand');
+        const payload = callNative(() => this.#addon.applyTimeControlCommand(handle, JSON.stringify(command)));
+        return parseNativeJson(payload, 'time control receipt');
+    }
+    readTimeControlState() {
+        const handle = this.#requireHandle('readTimeControlState');
+        const payload = callNative(() => this.#addon.readTimeControlState(handle));
+        return parseNativeJson(payload, 'time control state');
+    }
     loadProjectBundle(request) {
         const handle = this.#requireHandle('loadProjectBundle');
         const bundleSchemaVersion = u32(request.bundleSchemaVersion, 'bundleSchemaVersion');
@@ -371,8 +488,11 @@ export class NativeRuntimeBridge {
     stepSimulation(input) {
         const handle = this.#requireHandle('stepSimulation');
         const tick = nonNegativeSafeInteger(input.tick, 'tick');
-        const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
-        return { tick, diffCount };
+        const result = callNative(() => this.#addon.stepSimulation(handle, tick));
+        return {
+            tick: nonNegativeSafeInteger(result.tick, 'native step tick'),
+            diffCount: u32(result.diffCount, 'native step diffCount'),
+        };
     }
     applyEnemyDirectNavMovement(request) {
         const handle = this.#requireHandle('applyEnemyDirectNavMovement');
@@ -485,6 +605,12 @@ export class NativeRuntimeBridge {
         const handle = this.#requireHandle('readRenderDiffs');
         const frame = nonNegativeSafeInteger(cursor, 'frame cursor');
         return callNative(() => this.#addon.readRenderDiffs(handle, frame));
+    }
+    readProjectionFrame(cursor) {
+        const handle = this.#requireHandle('readProjectionFrame');
+        const frame = nonNegativeSafeInteger(cursor, 'frame cursor');
+        const nativeFrame = callNative(() => this.#addon.readProjectionFrame(handle, frame));
+        return projectionFrameFromNative(nativeFrame);
     }
     saveProjectBundle() {
         const handle = this.#requireHandle('saveProjectBundle');
@@ -666,6 +792,21 @@ export class NativeRuntimeBridge {
     createCamera(request) {
         const handle = this.#requireHandle('createCamera');
         return callNative(() => this.#addon.createCamera(handle, request));
+    }
+    applyCameraModeCommand(command) {
+        const handle = this.#requireHandle('applyCameraModeCommand');
+        const payload = callNative(() => this.#addon.applyCameraModeCommand(handle, JSON.stringify(command)));
+        return parseNativeJson(payload, 'camera mode change receipt');
+    }
+    applyCameraNavigationInput(input) {
+        const handle = this.#requireHandle('applyCameraNavigationInput');
+        const payload = callNative(() => this.#addon.applyCameraNavigationInput(handle, JSON.stringify(input)));
+        return parseNativeJson(payload, 'camera navigation receipt');
+    }
+    readCameraControllerState(request) {
+        const handle = this.#requireHandle('readCameraControllerState');
+        const payload = callNative(() => this.#addon.readCameraControllerState(handle, JSON.stringify(request)));
+        return parseNativeJson(payload, 'camera controller state');
     }
     applyFirstPersonCameraInput() {
         throw nativeUnimplemented('apply_first_person_camera_input');

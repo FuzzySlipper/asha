@@ -1,0 +1,13 @@
+[package]
+name = "render-animation"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+protocol-presentation = { path = "../../protocol/protocol-presentation" }
+protocol-render = { path = "../../protocol/protocol-render" }
+rule-animation-controller = { path = "../../rules/rule-animation-controller" }

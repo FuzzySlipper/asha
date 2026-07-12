@@ -48,7 +48,7 @@ ownership:
   engineOwned: schemaValidation, runtimeAuthority, collisionResolution, combatDamageApplication, policyExecution, proceduralGeneration
 
 migration:
-  playerControllerConstants: BrowserFpsInputCollector options
+  playerControllerConstants: BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options
   weaponConstants: RuntimeSession primary_fire combat readout defaults
   enemyConstants: generated tunnel enemy policy fixture
   encounterConstants: generated-tunnel-small-encounter

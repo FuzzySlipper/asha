@@ -1,5 +1,6 @@
 import type { CameraBasis, RenderFrameDiff, RenderHandle } from '@asha/contracts';
 import { type GeneratedTunnelFrameReadout, type RenderProjectionInstruction, type RenderProjectionSnapshot, type TunnelViewportMaterialPalette } from '@asha/render-projection';
+import { type BrowserInputHostReadout, type BrowserInputSessionPort } from '@asha/runtime-bridge';
 import { type AshaRendererAnimatedMeshFrameReceipt, type AshaRendererAnimatedMeshPlaybackReadout, type AshaRendererAnimatedMeshResourceManifest, type AshaRendererAnimatedMeshResourceResolver } from './animated-mesh-host.js';
 export declare const ASHA_RENDERER_HOST_COMPATIBILITY_VERSION = "renderer-host.v0";
 export type AshaRendererBackendFamily = 'threejs';
@@ -28,6 +29,9 @@ export interface AshaRendererSurfaceControlsOptions {
     readonly mouseSensitivity?: number;
     readonly movementAuthority?: AshaRendererSurfaceMovementAuthority;
     readonly moveSpeed?: number;
+    /** Public RuntimeSession input surface. Controls stay inactive when omitted. */
+    readonly inputSession?: BrowserInputSessionPort;
+    readonly initialInputContexts?: readonly string[];
 }
 export interface AshaRendererSurfaceCameraPose {
     readonly position: readonly [number, number, number];
@@ -120,6 +124,7 @@ export interface AshaRendererSurface {
     readonly lockPointer: () => void;
     readonly movementState: () => AshaRendererSurfaceMovementState;
     readonly pointerLocked: () => boolean;
+    readonly inputReadout: () => BrowserInputHostReadout | null;
     readonly projectRenderTargetProjection: (target: AshaRendererSurfaceRenderTargetIdentity, options?: {
         readonly lastEvent?: string;
     }) => void;

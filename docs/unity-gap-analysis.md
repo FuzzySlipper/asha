@@ -17,11 +17,11 @@ Assessment basis: `/home/dev/asha-engine` (93K LOC Rust, 78 crates, 257 files)
 |---|---|---|---|
 | 1 | Scene graph / entity hierarchy | **EXISTS** | — |
 | 2 | Animation | **PARTIAL** | Medium |
-| 3 | Audio | **MISSING** | High |
+| 3 | Audio | **BASELINE IMPLEMENTED** | Medium |
 | 4 | Input handling | **PARTIAL** | High |
 | 5 | Physics (dynamics) | **STUB** | Medium |
 | 6 | Navigation / pathfinding | **EXISTS** | — |
-| 7 | Particle systems / VFX | **MISSING** | Medium |
+| 7 | Particle systems / VFX | **BASELINE IMPLEMENTED** | Medium |
 | 8 | World-space UI | **MISSING** | High |
 | 9 | Prefabs / templates | **PARTIAL** | High |
 | 10 | Serialization / persistence | **EXISTS** | — |
@@ -33,7 +33,7 @@ Assessment basis: `/home/dev/asha-engine` (93K LOC Rust, 78 crates, 257 files)
 | 16 | Camera system | **PARTIAL** | Medium |
 | 17 | Material system | **BASIC** | Medium |
 | 18 | LOD system | **MISSING** | Low-Medium |
-| 19 | Gameplay event bus | **PARTIAL** | Medium |
+| 19 | Gameplay fabric | **IMPLEMENTED (Wave 1 static)** | Medium |
 | 20 | Component lifecycle | **PARTIAL** | Medium |
 
 ---
@@ -92,10 +92,13 @@ separate concern (or deferred to the audio system landing first).
 **Current workaround:** Consumers call `playClip(handle, 'idle')` directly.
 Fine for proofs. Won't scale past ~5 animated entity types.
 
-### 3. Audio — MISSING ❌ (High Priority)
+### 3. Audio — BASELINE IMPLEMENTED ✅ (Wave 1)
 
-**Nothing exists.** Zero audio crates. Zero audio TS packages. No AudioSource,
-AudioListener, mixer, spatial audio, or even a "play sound" API.
+The original analysis found no audio path. Task #5595 now provides a generated
+G1 audio contract, Rust catalog/descriptor/lifecycle validation, stable native
+`RuntimeProjectionFrame` delivery, and a Web Audio host on the public
+`@asha/renderer-host` root. See
+[`audio-projection.md`](audio-projection.md).
 
 **Why this is high priority despite being "non-visual":**
 
@@ -110,27 +113,27 @@ Without audio infrastructure, the factory simulator has no non-visual feedback
 layer. Every status change must be communicated through UI panels or world-space
 text — both expensive in screen real estate and attention.
 
-**What's needed (minimal):**
-1. **AudioSource concept** — attachable to entities/positions. Plays a clip
-   (sound file reference), with volume, pitch, spatial blend, looping, and
-   play-on-awake flag. Deterministic: playback state is authority-owned.
-2. **AudioListener** — single camera-attached listener for spatialization.
-3. **AudioClip asset type** — catalog entry for sound files (wav/ogg). Asset
-   pipeline validates and hashes.
-4. **Simple mixer** — master volume, maybe 2-3 buses (SFX, ambient, UI).
-   No need for Unity's full mixer graph with snapshots and effects.
-5. **Spatial audio** — distance attenuation + stereo panning. No need for
-   reverb zones or occlusion — defer to post-v1.
+**Implemented baseline:**
 
-**Architecture note:** Audio playback is inherently non-deterministic at the OS
-level (audio buffer timing, hardware latency). The engine should treat audio
-commands as fire-and-forget from the replay perspective — they're logged for
-debugging but not replayed for state verification. The authority owns *what*
-should play; the renderer owns *when* the buffer reaches the DAC.
+1. **AudioSource projection** — one-shot `emit` plus retained
+   create/update/destroy, with global 2D, world 3D, and entity-attached emitters.
+2. **AudioListener realization** — the downstream shell supplies its projected
+   camera position/forward/up to the host without making listener state
+   authority.
+3. **AudioClip asset type** — `AssetKind::AudioClip`, closed-catalog lookup,
+   projected hash validation, and browser-side SHA-256 verification before
+   decode.
+4. **Simple buses** — fixed SFX, ambient, and UI gain groups.
+5. **Spatial audio** — equal-power panning and distance attenuation through
+   `PannerNode`.
 
-**Rust/TS split:** `protocol-audio` defines border types. `svc-audio` validates
-play requests against catalog. Render bridge emits `PlayAudioCommand` diffs.
-TS `renderer-host` maps them to Web Audio API nodes.
+**Architecture note:** Audio operations are disposable projections with
+`excludedFromReplayTruth`; their owner/gameplay origin remains inspectable and
+replayable. `protocol-presentation` owns the shared generated envelope,
+`render-audio` validates the audio domain, and `renderer-host` realizes it.
+
+**Still deferred:** reverb zones, occlusion, mixer snapshots/automation,
+custom HRTF, streaming, and procedural synthesis.
 
 ### 4. Input Handling — PARTIAL ⚠️ (High Priority)
 
@@ -205,16 +208,14 @@ queries are deterministic service calls. No gap here for v1 needs.
 levels). Rimworld-style room graph traversal (path through doors, avoid locked
 rooms). Both are extensions of the current service, not a replacement.
 
-### 7. Particle Systems / VFX — MISSING ❌ (Medium Priority)
+### 7. Particle Systems / VFX — BASELINE IMPLEMENTED ✅ (Wave 1)
 
-**No particle infrastructure exists in Rust or TS.** Note however that the
-`cosmetic` TS package is *not* a stub (an earlier revision of this doc guessed
-wrong): it implements screen_flash / hit_spark / view_kick effects with typed
-descriptors, view models, diagnostics, and an explicit
-`replayScope: 'excluded_from_replay_truth'` marker — the established pattern
-for authority-parameterized, visual-only effects excluded from replay
-verification. A particle system should extend that convention, not invent a
-parallel one.
+The generated G1 presentation frame now carries particle burst emits and
+retained emitter create/update/destroy operations. Rust validates catalog-bound
+sprites, anchors, rate/burst, lifetime and velocity ranges, acceleration,
+ordered size/color curves, flipbook rate, seed, visibility, handle lifecycle,
+and explicit budgets. The renderer host owns bounded per-particle simulation
+and billboard realization through an injected sink.
 
 **What matters for OSHApunk:**
 - Machine operation feedback (sparks from assembler, smoke from smelter)
@@ -223,26 +224,34 @@ parallel one.
 - Environmental ambience (dust motes in factory, steam vents)
 - UI overlays (placement preview glow, belt direction arrows)
 
-**Recommendation:** Minimal particle system:
-1. `ParticleEmitter` capability on entities — position, emission rate,
-   lifetime, velocity range, color gradient, size curve, sprite sheet.
-2. Render bridge emits `CreateParticleEmitter` / `UpdateParticleEmitter` /
-   `DestroyParticleEmitter` diffs.
-3. Three.js renderer implements GPU particle simulation (transform feedback
-   or compute shader — or CPU for v1 simplicity).
-4. Deterministic seed for replay (particle positions are authoritative but
-   visual-only — replay can skip or approximate).
+Unlike a Unity `ParticleSystem` component, the stored/runtime identity does not
+own thousands of mutable particle records. Gameplay or owner code selects a
+typed effect and anchor; `render-particle` projects it beside scene diffs; the
+host realizes it. The seed supports stable debugging, while particle positions
+remain explicitly outside replay truth. This preserves the useful Unity author
+experience without importing component callbacks or renderer state into Rust
+authority.
+
+`@asha/cosmetic` also exposes a one-way adapter from particle bursts into its
+existing `hit_spark` view model. Local UI-only screen effects remain outside
+the Rust border. See [Particle projection](particle-projection.md).
+
+**Remaining gap:** richer authoring and realization: GPU/compute paths, mesh
+particles, collision, sub-emitters, ribbons, lights, and a VFX graph. None is a
+prerequisite for the Wave 1 gameplay feedback path.
 
 This is not urgent for simulation prototyping but becomes critical the moment
 the factory needs to "feel alive." A factory with silent, motionless machines
 is a spreadsheet, not a game.
 
-### 8. World-Space UI — MISSING ❌ (High Priority)
+### 8. World-Space UI — BASELINE IMPLEMENTED ✅ (Wave 1)
 
-**Nothing exists.** There's `ui-dom` (DOM-based UI for studio) and
-`studio-panels` (Angular panels), but zero world-space UI infrastructure:
-no health bars, no nameplates, no belt throughput indicators, no interaction
-prompts ("Press E to interact"), no damage numbers.
+The generated G1 presentation frame now carries retained billboard
+create/update/destroy operations with world/entity anchors, localized
+text/value/icon content, explicit Font/Texture asset posture, screen-space size,
+distance culling, and display layers. `render-billboard` validates the contract
+and `AshaBillboardHost` realizes it without making host state authoritative.
+See [`billboard-projection.md`](billboard-projection.md).
 
 **Why this is high priority:**
 
@@ -258,7 +267,7 @@ Without world-space UI, all status information is either invisible or requires
 opening inspector panels. For a factory builder, that's unplayable — you need
 to see your factory's state at a glance.
 
-**Recommendation:** Add a `Billboard` concept to the render protocol:
+**Implemented baseline:** the billboard domain provides:
 - Position in world space, screen-space size, anchor point
 - Text content + optional icon
 - Visibility conditions (distance, occlusion, mode)
@@ -268,31 +277,33 @@ This is a render-only concern — Rust authority owns *what* text should display
 (status text, value), TS renderer owns *how* it's rendered (billboard quad
 with canvas texture, CSS3D, sprite).
 
-The `hud-menu-projection.md` doc exists, suggesting this is already on the
-radar as planned-but-not-built.
+Interactive billboards, rich text/widgets, automatic batching, damage-number
+helpers, and an engine-owned occlusion query remain future work.
 
-### 9. Prefabs / Templates — PARTIAL ⚠️ (High Priority)
+### 9. Prefabs / Templates — SUBSTANTIAL WAVE 1 ✅
 
 **What it has:**
 - `FlatSceneDocument` + `SceneNodeRecord`: scene files are flat node lists
   with parent-child, kind, asset reference, transform
 - `game-workspace` TS package: manifest + assets + authoring
 - Scene objects have explicit create/delete/reparent commands
+- Public prefab draft create/replace/delete/instantiate commands, browser and
+  selection readouts, stable part-role inspection, binding/configuration
+  readouts, and canonical source serialization
+- Validated Rust registry loading, deterministic authored/player placement,
+  one-level variants, typed per-instance overrides, stable role resolution,
+  provenance, save/restore/replay, and public RuntimeSession readouts
+- A downstream two-instance multi-part proof with distinct overrides, typed
+  prefab-part gameplay execution, and visible world-space placement
 
-**What's missing:**
-- **Prefab concept:** A reusable template that can be instantiated multiple
-  times with per-instance overrides. Current scene files are single-use
-  documents — you can't say "place another Assembler Mk1 here."
-- **Prefab variants:** "Assembler Mk2 is Mk1 with different material + faster
-  processing speed." Without variants, every machine tier duplicates the full
-  definition.
+**What remains:**
 - **Nested prefabs:** "Factory Wing contains 4 Assemblers + 2 Conveyors."
   Without nesting, factory blueprints are flat monster documents.
-- **Prefab overrides:** Per-instance property changes that survive prefab
-  updates. "This specific assembler is painted red because it's in the danger
-  zone."
-- **Instantiation at runtime:** Policy/scripting can say "spawn prefab X at
-  position Y" without knowing the internal node structure.
+- **Propagating definition edits:** Existing accepted live instances do not
+  silently update when a stored definition changes.
+- **Richer Studio UX:** The public data/readout path exists, but a full visual
+  hierarchy editor, drag placement, preview, undo integration, and variant diff
+  interface remain product work.
 
 **Why this is high priority for OSHApunk specifically:**
 
@@ -305,17 +316,11 @@ decorative prop is a prefab. Without prefabs:
 - "Share this factory layout" has no serializable unit smaller than the
   entire scene
 
-**Recommendation:** Define `PrefabDefinition` as a first-class protocol type:
-- `PrefabId`, base `FlatSceneDocument` (the template), override slots
-- Instantiation produces a set of `SceneNodeRecord`s with instance IDs
-- Variants are prefabs that reference a base prefab + delta
-- Instance overrides stored in a separate table (not baked into the node
-  records)
-
-This is a data model concern, not a rendering concern. It lives in `core-scene`
-and flows through the same scene document pipeline. The studio gets a "save as
-prefab" command and a prefab browser panel. The game gets "instantiate prefab"
-as an authoritative command.
+**Current design:** `PrefabDefinition` is a first-class ProjectBundle protocol
+type. Consumer tools prepare stored drafts, while Rust validation and
+`PrefabInstanceAuthority` own expansion into normal Session Entity authority.
+Gameplay binds to stable prefab-part roles rather than hierarchy paths. See
+[`prefab-authoring-and-placement.md`](prefab-authoring-and-placement.md).
 
 ### 10. Serialization / Persistence — EXISTS ✅
 
@@ -338,9 +343,7 @@ adding delta-based saves later.
 
 **What it has:**
 - `core-assets`: `AssetReference`, `AssetKind` (Material, StaticMesh, Sprite,
-  SpriteSheet, Texture, VoxelVolume, VoxelObject, Script, Scene — note there is
-  **no Audio or Font kind yet**; audio (#5595) and world-space UI text (#5597)
-  each need one)
+  SpriteSheet, Texture, AudioClip, Font, VoxelVolume, VoxelObject, Script, Scene)
 - `core-catalog`: catalog entries with lifecycle + fallback decisions
 - `svc-voxel-asset`: validation, canonicalization, hashing for voxel assets
 - `protocol-assets`: border types for asset drift detection
@@ -391,20 +394,25 @@ undertaking and not a gap for v1.
   JSON(L) output, trend tracking, GPU perf lane
 - Deterministic benchmark fixtures (edit→render cycles, replay divergence checks)
 - Perf metadata: schema version, commit, branch, host label, runtime mode
+- A generated `LiveTelemetrySnapshot` read independently by headless tools and
+  the `AshaTelemetryOverlayHost`; bounded frame-time history and unavailable
+  counters are explicit instead of fabricated
+- A live downstream overlay showing real authority/projection/feedback-host
+  gauges through the G1 telemetry-overlay lifecycle
 
 **What's missing:**
-- **Real-time stats overlay:** Frame time, draw calls, entity count, chunk
-  count, memory usage. The harness is an offline tool — nothing shows live
-  stats during gameplay.
 - **In-engine profiler:** Per-system timing breakdown (physics took X ms,
   pathfinding took Y ms, render projection took Z ms).
 - **Memory tracking:** Entity count by capability type. Chunk memory by state
   (generated, meshed, uploaded). Asset reference counts.
+- **Unavailable live owners:** Draw calls and chunk-state counts remain
+  diagnosed as unavailable until approved public owner adapters expose them.
 
-**Recommendation:** The harness is great for CI regression detection. Add a
-lightweight devtools overlay (toggle with F3) that shows the top 5-10
-counters. The render protocol already has a diagnostics channel — extend it
-with `TelemetrySnapshot` at a low frequency (once per second).
+**Recommendation:** Keep the live snapshot compact and owner-derived. Add
+per-system timing and memory counters only with stable units and public owner
+adapters; route the eventual shared keyboard binding through the input work in
+#5642 rather than giving the overlay ambient input access. See
+[Live telemetry snapshot and overlay](live-telemetry-overlay.md).
 
 ### 15. Coroutines / Async Task Scheduling — PARTIAL ⚠️ (Medium Priority)
 
@@ -503,41 +511,39 @@ queues — add a `lod_level` field to `WorkItem` and let the mesher produce
 simpler geometry for distant chunks. The render protocol already has handles,
 so swapping a handle's mesh at LOD transition is straightforward.
 
-### 19. Gameplay Event Bus — PARTIAL ⚠️ (Medium Priority)
+### 19. Gameplay Fabric — IMPLEMENTED (Wave 1 static) ✅
 
-**What it has:**
-- `core-events::DomainEvent`: authoritative state change events (EntityCreated,
-  EntityTagAdded, ModeDefined, etc.) — 15 variants
-- `EventBatch`: per-tick ordered collection
-- Events are typed enum variants, not a generic message bus
+The old recommendation for a closed `GameEvent` enum and `EventReaction` table
+has been superseded. It would move the bottleneck without solving downstream
+ownership: every new game meaning would still require an engine edit.
 
-**What's missing:**
-- **Game-level events:** "MachineCompletedCrafting", "BeltBackedUp",
-  "CharacterEnteredZone", "PowerGridOverloaded". The current DomainEvent
-  variants are low-level (entity created, tag added) — you can't subscribe
-  to "assembler finished its recipe."
-- **Event subscriptions:** Game rules, UI, and audio need to react to game
-  events without polling state every tick. "When any assembler in zone 3
-  completes a craft, play a sound and increment the production counter."
-- **Event routing:** Scoped subscriptions (by entity, by zone, by tag).
-  "Notify me about crafting events, but only from Assembler Mk2s."
+**What exists now:**
 
-**Why this matters:** The game-rules modifier system already models effects
-applied to entities. But there's no way for a modifier to say "when the target
-entity emits Event X, apply Effect Y." This is the core pattern for:
-- Status effect propagation (machine jam → adjacent machines slow down)
-- Achievement/stat tracking (crafted 100 items → unlock upgrade)
-- Audio/visual feedback (assembler completed craft → play clank sound)
-- Tutorial triggers (first time player places conveyor → show tip)
+- open, versioned `GameplayContractRef` identities and typed Rust codecs;
+- immutable static providers, subscriptions, Guard/Transform/React decision
+  participants, owner registrations, budgets, and ordering;
+- typed semantic adapters for lifecycle, capability activation, triggers,
+  combat, state machines, processes, modifiers, and scheduled moments;
+- declared frozen event/capability/relationship/prefab/module-state reads plus
+  bounded owner queries;
+- ProjectBundle-authored module configuration and bindings to Session,
+  EntityDefinition, Prefab, and stable prefab-part scopes;
+- module-owned typed persistent state, facts, snapshots, migration, playback,
+  and verification replay;
+- public static SDK, conformance kit, runtime host, browser transport, and
+  bounded reaction/decision evidence;
+- real consumer proofs in `asha-demo` and `asha-rulebench`.
 
-**Recommendation:** Add a `GameEvent` enum alongside `DomainEvent` — separate
-type, same authority layer. `DomainEvent` is "what changed in state."
-`GameEvent` is "what this change means in game terms." The rule layer
-translates domain events into game events. Add an `EventReaction` table to
-the game-rules modifier system: `{ trigger: Matcher<GameEvent>, action: ModifierId }`.
+This supports the gameplay problems the old section identified without
+polling or a central enum. A machine-completion owner can publish a namespaced
+typed event; one downstream module can update its production state or propose a
+shared mutation; disposable audio/UI/telemetry projections can follow the same
+causation identity. None of those presentations becomes authority.
 
-This is the biggest architectural gap for the simulation layer. Without it,
-every game system must poll state every tick to detect changes.
+**Current limit:** Wave 1 is statically linked. There is no dynamic module
+loading or TypeScript handler authority, and further engine-owned shared
+proposal routes are added owner by owner. See
+`gameplay-fabric-growth-recipes.md` for the paved road.
 
 ### 20. Component Lifecycle — PARTIAL ⚠️ (Medium Priority)
 
@@ -547,17 +553,14 @@ every game system must poll state every tick to detect changes.
 - Lifecycle commands: Create, Delete, Enable, Disable
 - Capability tables (TransformCapability, etc.) — not behavior components
 
-**What's missing:**
-- **Behavior components:** There's no `Update()` method. No per-entity-per-tick
-  behavior execution. Capabilities are pure data, not behavior. This is by
-  design (ECS-like separation of data from systems), but it means there's no
-  standard pattern for "this entity does X every tick."
-- **Component enable/disable:** Individual capabilities can't be toggled.
-  An entity either projects to render or doesn't — you can't disable just
-  collision while keeping the render projection.
-- **Initialization phases:** No Awake/Start equivalent. Bootstrapping an
-  entity from a scene definition into runtime state is handled ad-hoc by each
-  service.
+**What exists now:**
+- individual typed capability activation/deactivation under closed Rule owners;
+- authority-owned EntityDefinition/ProjectBundle validation and atomic
+  bootstrap;
+- named tick and scheduler moments published through the gameplay fabric;
+- statically composed downstream Rust modules with Session/entity/prefab-scoped
+  state and explicit initialization adapters;
+- trigger enter/exit facts and persistent overlap lifecycle.
 
 **Is this a gap?** It depends on the architectural philosophy. The current
 design is system-oriented (services process entities in bulk) rather than
@@ -566,16 +569,13 @@ thousands of entities doing the same thing (belt items moving, assemblers
 processing), the system-oriented approach is more efficient. Unity's
 `MonoBehaviour.Update()` per instance would be wasteful here.
 
-**Recommendation:** This isn't a gap to "fix" — it's a legitimate architectural
-choice. The system-oriented model is better for OSHApunk's simulation scale.
-The missing piece is a *declared lifecycle contract*: "these are the hooks a
-game rule can register for" (OnEntityCreated, OnTick, OnEntityDestroyed) so
-game rules don't each implement their own polling loop.
-
-The rule crates (`rule-lifecycle`, `rule-process`, `rule-scheduler`) are the
-right place to define these hooks. Make them explicit as a `RuleHooks` trait.
-No need for per-entity Update() — that way lies ECS fragmentation and
-determinism headaches.
+**Current posture:** This remains a deliberate non-Unity shape. There is no
+per-entity `Update()` or `RuleHooks` callback trait. Compiled Rules/services own
+high-frequency simulation. Modules observe named accepted facts or scheduled
+moments through a closed manifest and return typed outputs. Capability
+activation and module bindings replace component enablement and `Awake/Start`
+where those concepts are actually needed, while keeping invocation and replay
+explicit.
 
 ---
 
@@ -591,20 +591,20 @@ determinism headaches.
 
 **The critical gaps for a playable OSHApunk v1:**
 
-1. **Audio** — zero infrastructure. A silent factory is a spreadsheet.
-2. **Input action system** — raw keycodes don't survive mode switches.
-3. **World-space UI** — no way to show machine status at a glance.
-4. **Prefabs** — no reusable templates for factory pieces.
-5. **Gameplay event bus** — no way to react to game events without polling.
-6. **Component lifecycle hooks** — no standard pattern for entity behavior.
+1. **Input action system** — raw keycodes don't survive mode switches.
+2. **World-space UI** — no way to show machine status at a glance.
+3. **Gameplay fabric adoption** — the substrate exists; individual game owners
+   still need to publish rich semantic facts and build real modules.
+4. **Domain lifecycle design** — use named facts/moments and compiled modules,
+   not per-entity callback emulation.
 
 **The "nice to have" gaps:**
 - Animation state machines (manual clip control works for now)
 - Material upgrades (emission, texture tint)
-- Particle systems (visual juice)
+- Particle/VFX authoring beyond the baseline emitters
 - Camera modes beyond FPS
 - Deferred action scheduling
-- Real-time profiling overlay
+- Per-system profiling and memory overlay beyond the delivered live stats baseline
 
 **The defer-to-v1+ gaps:**
 - Physics dynamics (rigid bodies, joints)
@@ -615,13 +615,11 @@ determinism headaches.
 - PBR/shader graph
 - IK/procedural animation
 
-**Architecture risk:** The engine is strong at infrastructure but has mostly
-been proven on single-feature proofs (place a voxel, load a scene, play an
-animation). The integration-risk systems — audio, input routing, world-space
-UI, prefab instantiation — are untested. Each is individually tractable, but
-building all six while keeping the authority/render contract clean is where
-the real integration complexity lives. The `rule-scheduler`'s work queue
-pattern (abstract over execution, deterministic ordering, version-checked
-staleness) is a good model to follow for the other systems. Consider whether
-audio, particles, and world-space UI should share a common "render-side
-projection" abstraction rather than each inventing their own bridge pattern.
+**Architecture risk:** The engine is strong at infrastructure but many systems
+still have more isolated proof than varied product use. Audio now has one real
+downstream interaction and prefabs have a typed instantiation path, but input
+routing and the remaining presentation domains still need integrated gameplay
+  pressure. Audio, billboards, particles, and the live telemetry overlay now
+  share the accepted G1 frame;
+later domains must preserve its typed closed-envelope and independent failure
+behavior rather than growing a generic host event bus.

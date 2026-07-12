@@ -1,5 +1,11 @@
 import type {
   CameraCreateRequest,
+  CameraControllerReadRequest,
+  CameraControllerState,
+  CameraModeChangeReceipt,
+  CameraModeCommand,
+  CameraNavigationInputEnvelope,
+  CameraNavigationReceipt,
   CameraProjectionRequest,
   CollisionConstrainedCameraInputEnvelope,
   CommandBatch,
@@ -55,15 +61,23 @@ import type {
   WeaponEffectHookRequest,
   GameRuleCatalog,
   GameRuleResolutionRequest,
+  InputActionReplayReceipt,
+  InputContextChangeReceipt,
+  InputContextCommand,
+  InputContextStackState,
+  InputResolutionReceipt,
+  InputSessionConfigureRequest,
+  InputSessionSnapshot,
+  RawInputSample,
+  RecordedInputAction,
+  TimeControlCommand,
+  TimeControlReceipt,
+  TimeControlState,
 } from '@asha/contracts';
 import {
   RuntimeBridgeError,
   frameCursor,
   type CompositionStatus,
-  type FpsEncounterDirectorSnapshot,
-  type FpsEncounterLifecycleInput,
-  type FpsEncounterStateReadout,
-  type FpsEncounterTransitionResult,
   type FpsBoundsCapability,
   type EngineHandle,
   type FpsPrimaryFireRequest,
@@ -92,12 +106,10 @@ import type {
 import type {
   EncounterDirectorReadout,
   EncounterDirectorReadoutRequest,
-  EncounterDirectorState,
   EncounterTransitionRequest,
   RuntimeSessionEncounterTransitionReceipt,
 } from '@asha/runtime-session';
 import {
-  buildEncounterDirectorReadout,
   buildEncounterTransitionReceipt,
   validateEncounterDirectorReadoutRequest,
   validateEncounterTransitionRequest,
@@ -147,8 +159,15 @@ import {
   compositionHashRecord,
   identityHashRecord,
   renderFrameHashRecord,
+  runtimeProjectionFrameHashRecord,
   stableHash,
 } from './runtime-session-hash.js';
+import {
+  encounterReadoutFromFpsSnapshot,
+  encounterTransitionResultForReceipt,
+  fpsEncounterLifecycleInput,
+  fpsEncounterStateToReadoutState,
+} from './runtime-session-rust-encounter.js';
 import type {
   RuntimeSessionActionIntentReceipt,
   RuntimeSessionAutonomousPolicyProposalReceipt,
@@ -174,6 +193,13 @@ import type {
   RuntimeSessionGameRuleCatalogValidationReceipt,
   RuntimeSessionGameRuleEffectIntentReceipt,
   RuntimeSessionGameExtensionWeaponEffectReceipt,
+  GameplayRuntimeHostAdvanceReceipt,
+  GameplayRuntimeHostLoadInput,
+  GameplayRuntimeHostLoadReceipt,
+  GameplayRuntimeHostMoment,
+  GameplayRuntimeHostReadout,
+  GameplayRuntimeHostSnapshot,
+  GameplayRuntimeHostTransport,
   RuntimeSessionIdentity,
   RuntimeSessionInitializeInput,
   RuntimeSessionLifecycleHealthReadout,
@@ -195,6 +221,7 @@ import type {
 
 export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   readonly #bridge: RuntimeBridge;
+  readonly #gameplayHost: GameplayRuntimeHostTransport | null;
   #identity: RuntimeSessionIdentity | null = null;
   #engine: EngineHandle | null = null;
   #sequenceId = 0;
@@ -206,9 +233,9 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   #ecrpProjectState: RuntimeSessionEcrpProjectState | null = null;
   #runtimeTransforms = new Map<number, RuntimeSessionEcrpTransformState>();
   #replayRecords: RuntimeSessionReplayRecord[] = [];
-
-  constructor(bridge: RuntimeBridge) {
+  constructor(bridge: RuntimeBridge, gameplayHost?: GameplayRuntimeHostTransport) {
     this.#bridge = bridge;
+    this.#gameplayHost = gameplayHost ?? null;
   }
 
   initialize(input: RuntimeSessionInitializeInput): RuntimeSessionStateSummary {
@@ -237,6 +264,41 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     this.#replayRecords = [];
     this.#record('initialize', snapshot.replayHash);
     return this.#stateSummary(composition);
+  }
+
+  configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot {
+    this.#requireInitialized('configureInputSession');
+    return this.#bridge.configureInputSession(request);
+  }
+
+  applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt {
+    this.#requireInitialized('applyInputContextCommand');
+    return this.#bridge.applyInputContextCommand(command);
+  }
+
+  submitRawInput(sample: RawInputSample): InputResolutionReceipt {
+    this.#requireInitialized('submitRawInput');
+    return this.#bridge.submitRawInput(sample);
+  }
+
+  replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt {
+    this.#requireInitialized('replayResolvedInputAction');
+    return this.#bridge.replayResolvedInputAction(record);
+  }
+
+  readInputContextState(): InputContextStackState {
+    this.#requireInitialized('readInputContextState');
+    return this.#bridge.readInputContextState();
+  }
+
+  applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt {
+    this.#requireInitialized('applyTimeControlCommand');
+    return this.#bridge.applyTimeControlCommand(command);
+  }
+
+  readTimeControlState(): TimeControlState {
+    this.#requireInitialized('readTimeControlState');
+    return this.#bridge.readTimeControlState();
   }
 
   loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt {
@@ -331,6 +393,25 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     };
   }
 
+  applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt {
+    this.#requireInitialized('applyCameraModeCommand');
+    const receipt = this.#bridge.applyCameraModeCommand(command);
+    this.#sequenceId += 1;
+    this.#record('applyCameraModeCommand');
+    return receipt;
+  }
+  applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt {
+    this.#requireInitialized('applyCameraNavigationInput');
+    const receipt = this.#bridge.applyCameraNavigationInput(input);
+    this.#sequenceId += 1;
+    this.#record('applyCameraNavigationInput');
+    return receipt;
+  }
+  readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState {
+    this.#requireInitialized('readCameraControllerState');
+    return this.#bridge.readCameraControllerState(request);
+  }
+
   applyFirstPersonCameraInput(envelope: FirstPersonCameraInputEnvelope): RuntimeSessionCameraInputReceipt {
     this.#requireInitialized('applyFirstPersonCameraInput');
     const before = this.#sessionHash();
@@ -398,6 +479,7 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
       origin: [0, 1.62, 0],
       direction: [0, 0, -1],
     });
+    this.#tick = Math.max(this.#tick, envelope.tick);
     this.#snapshot = this.#bridge.readFpsRuntimeSession();
     this.#record('submitRuntimeActionIntent', fire.replayHash, envelope.source);
     return {
@@ -419,6 +501,7 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     this.#requireInitialized('submitGameExtensionWeaponEffect');
     const before = this.#sessionHash();
     const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+    this.#tick = Math.max(this.#tick, primaryFire.tick);
     this.#snapshot = this.#bridge.readFpsRuntimeSession();
     this.#sequenceId += 1;
     this.#record('submitGameExtensionWeaponEffect', result.replayEvidence.replayHash);
@@ -1013,6 +1096,32 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     });
   }
 
+  loadGameplayRuntime(input: GameplayRuntimeHostLoadInput): GameplayRuntimeHostLoadReceipt {
+    this.#requireInitialized('loadGameplayRuntime');
+    return this.#requireGameplayHost('loadGameplayRuntime').load(input);
+  }
+  advanceGameplayRuntime(moment: GameplayRuntimeHostMoment): GameplayRuntimeHostAdvanceReceipt {
+    this.#requireInitialized('advanceGameplayRuntime');
+    return this.#requireGameplayHost('advanceGameplayRuntime').advance(moment);
+  }
+  readGameplayRuntime(): GameplayRuntimeHostReadout {
+    this.#requireInitialized('readGameplayRuntime');
+    return this.#requireGameplayHost('readGameplayRuntime').read();
+  }
+
+  saveGameplayRuntime(): GameplayRuntimeHostSnapshot {
+    this.#requireInitialized('saveGameplayRuntime');
+    return this.#requireGameplayHost('saveGameplayRuntime').save();
+  }
+
+  restoreGameplayRuntime(
+    input: GameplayRuntimeHostLoadInput,
+    snapshot: GameplayRuntimeHostSnapshot,
+  ): GameplayRuntimeHostLoadReceipt {
+    this.#requireInitialized('restoreGameplayRuntime');
+    return this.#requireGameplayHost('restoreGameplayRuntime').restore(input, snapshot);
+  }
+
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout {
     this.#requireInitialized('readCameraProjection');
     const snapshot = this.#bridge.readCameraProjection(request);
@@ -1036,19 +1145,23 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
 
   readProjection(): RuntimeSessionProjectionSummary {
     this.#requireInitialized('readProjection');
-    const cursor = frameCursor(this.#sequenceId);
-    const frame = this.#bridge.readRenderDiffs(cursor);
+    const cursor = frameCursor(this.#tick);
+    const runtimeFrame = this.#bridge.readProjectionFrame(cursor);
+    const frame = runtimeFrame.scene;
     const composition = this.#bridge.getProjectBundleCompositionStatus();
     return {
       sequenceId: this.#sequenceId,
       cursor,
       frame,
+      runtimeFrame,
       composition,
       renderDiffCount: frame.ops.length,
+      presentationOpCount: runtimeFrame.presentation.ops.length,
       projectionHash: stableHash({
         sequenceId: this.#sequenceId,
         composition: compositionHashRecord(composition),
         frame: renderFrameHashRecord(frame),
+        runtimeFrame: runtimeProjectionFrameHashRecord(runtimeFrame),
       }),
     };
   }
@@ -1190,6 +1303,16 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
       throw new RuntimeBridgeError('not_initialized', 'FPS RuntimeSession snapshot is unavailable before initialize');
     }
     return this.#snapshot;
+  }
+
+  #requireGameplayHost(operation: string): GameplayRuntimeHostTransport {
+    if (this.#gameplayHost === null) {
+      throw new RuntimeBridgeError(
+        'operation_unimplemented',
+        `${operation} requires a statically linked public gameplay RuntimeSession host`,
+      );
+    }
+    return this.#gameplayHost;
   }
 
   #stateSummary(composition: CompositionStatus): RuntimeSessionStateSummary {
@@ -1473,76 +1596,4 @@ function combatAuthorityFromFpsPrimaryFire(result: FpsPrimaryFireResult): Combat
     mutationOwner: result.mutationOwner,
     workspaceTrace: result.workspaceTrace,
   };
-}
-
-function fpsEncounterLifecycleInput(
-  lifecycle: ReturnType<typeof lifecycleStatusToEncounterLifecycle>,
-): FpsEncounterLifecycleInput {
-  return {
-    outcomeKind: lifecycle.outcomeKind,
-    terminal: lifecycle.terminal,
-    enemyDead: lifecycle.enemyDead,
-    playerDead: lifecycle.playerDead,
-    lifecycleHash: lifecycle.lifecycleHash,
-  };
-}
-
-function encounterReadoutFromFpsSnapshot(input: {
-  readonly snapshot: FpsEncounterDirectorSnapshot;
-  readonly sequenceId: number;
-  readonly tick: number;
-  readonly sessionSeed: number;
-  readonly sessionHash: string;
-}): EncounterDirectorReadout {
-  return buildEncounterDirectorReadout({
-    state: fpsEncounterStateToReadoutState(input.snapshot.state),
-    sequenceId: input.sequenceId,
-    tick: input.tick,
-    sessionSeed: input.sessionSeed,
-    sessionHash: input.sessionHash,
-    lifecycle: input.snapshot.lifecycle,
-    authority: {
-      source: input.snapshot.backend === 'native_rust' ? 'rust_bridge' : 'reference_bridge',
-      backend: input.snapshot.backend,
-      surface: input.snapshot.authoritySurface,
-      mutationOwner: input.snapshot.mutationOwner,
-      readSets: input.snapshot.readSets,
-      workspaceTrace: input.snapshot.workspaceTrace,
-    },
-  });
-}
-function fpsEncounterStateToReadoutState(state: FpsEncounterStateReadout): EncounterDirectorState {
-  return {
-    presetId: requireGeneratedTunnelEncounterPreset(state.presetId),
-    status: state.status,
-    spawnedEnemyIds: generatedTunnelEncounterIds(state.spawnedEnemyIds),
-    defeatedEnemyIds: generatedTunnelEncounterIds(state.defeatedEnemyIds),
-    revision: state.revision,
-    lastTransition: state.lastTransition,
-  };
-}
-
-function encounterTransitionResultForReceipt(result: FpsEncounterTransitionResult) {
-  return {
-    accepted: result.accepted,
-    state: fpsEncounterStateToReadoutState(result.state),
-    ...(result.eventKind === null ? {} : { eventKind: result.eventKind }),
-    ...(result.rejectionReason === null ? {} : { rejectionReason: result.rejectionReason }),
-  };
-}
-
-function requireGeneratedTunnelEncounterPreset(value: string): EncounterDirectorState['presetId'] {
-  if (value !== 'generated-tunnel-small-encounter') {
-    throw new RuntimeBridgeError('internal', `unsupported Rust encounter preset '${value}'`);
-  }
-  return value;
-}
-
-function generatedTunnelEncounterIds(ids: readonly string[]): EncounterDirectorState['spawnedEnemyIds'] {
-  return ids.map((id) => {
-    if (id !== 'encounter.generated_tunnel_small.wave_1.enemy_001') {
-      throw new RuntimeBridgeError('internal', `unsupported Rust encounter instance '${id}'`);
-    }
-    return id;
-  });
 }

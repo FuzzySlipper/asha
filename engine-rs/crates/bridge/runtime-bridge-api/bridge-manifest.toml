@@ -40,6 +40,22 @@ errors = "RuntimeBridgeError"
 summary = "Advance the simulation one tick from a deterministic input envelope."
 
 [[operation]]
+name = "apply_time_control_command"
+surface = "stable"
+input = "protocol_time_control::TimeControlCommand"
+output = "protocol_time_control::TimeControlReceipt"
+errors = "RuntimeBridgeError"
+summary = "Apply a validated Session pause, resume, wall-clock cadence multiplier, or exact paused-step transaction."
+
+[[operation]]
+name = "read_time_control_state"
+surface = "stable"
+input = "Unit"
+output = "protocol_time_control::TimeControlState"
+errors = "RuntimeBridgeError"
+summary = "Read the hash-bound Session time-control mode, cadence multiplier, revision, and authority tick without advancing simulation."
+
+[[operation]]
 name = "submit_commands"
 surface = "stable"
 input = "protocol_voxel::CommandBatch"
@@ -376,6 +392,14 @@ errors = "RuntimeBridgeError"
 summary = "Apply an FPS/ECRP encounter transition through rule-lifecycle authority; accepted transitions update encounter state and replay evidence."
 
 [[operation]]
+name = "read_projection_frame"
+surface = "stable"
+input = "FrameCursor"
+output = "protocol_presentation::RuntimeProjectionFrame"
+errors = "RuntimeBridgeError"
+summary = "Read one authority-tick scene frame plus ordered typed non-scene presentation operations. Presentation realization is excluded from replay truth."
+
+[[operation]]
 name = "read_render_diffs"
 surface = "stable"
 input = "FrameCursor"
@@ -412,6 +436,48 @@ summary = "Apply one typed scene-object hierarchy command with expected-document
 # Deterministic bridge-owned view/projection state for editor/testbench evidence.
 # This is not gameplay authority, not a renderer object, and not a StateStore handle.
 
+# ── Named input Session surface (#5642) ──────────────────────────────────────
+
+[[operation]]
+name = "configure_input_session"
+surface = "stable"
+input = "protocol_input::InputSessionConfigureRequest"
+output = "protocol_input::InputSessionSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Validate and activate a named-input catalog and initial RuntimeSession context stack through Rust rule-input authority."
+
+[[operation]]
+name = "apply_input_context_command"
+surface = "stable"
+input = "protocol_input::InputContextCommand"
+output = "protocol_input::InputContextChangeReceipt"
+errors = "RuntimeBridgeError"
+summary = "Apply one typed RuntimeSession input-context push, expectation-bound pop, or replacement transaction."
+
+[[operation]]
+name = "submit_raw_input"
+surface = "stable"
+input = "protocol_input::RawInputSample"
+output = "protocol_input::InputResolutionReceipt"
+errors = "RuntimeBridgeError"
+summary = "Resolve one normalized platform sample through the Rust-owned catalog and active context priority rules."
+
+[[operation]]
+name = "replay_resolved_input_action"
+surface = "stable"
+input = "protocol_input::RecordedInputAction"
+output = "protocol_input::InputActionReplayReceipt"
+errors = "RuntimeBridgeError"
+summary = "Validate and deliver one authority-issued resolved input action directly, without reconstructing a platform or browser event."
+
+[[operation]]
+name = "read_input_context_state"
+surface = "stable"
+input = "Unit"
+output = "protocol_input::InputContextStackState"
+errors = "RuntimeBridgeError"
+summary = "Read the complete typed and hash-bound RuntimeSession input-context stack."
+
 [[operation]]
 name = "create_camera"
 surface = "stable"
@@ -419,6 +485,30 @@ input = "protocol_view::CameraCreateRequest"
 output = "protocol_view::CameraSnapshot"
 errors = "RuntimeBridgeError"
 summary = "Create a bridge-owned runtime view camera and return its deterministic pose/projection snapshot."
+
+[[operation]]
+name = "apply_camera_mode_command"
+surface = "stable"
+input = "protocol_view::CameraModeCommand"
+output = "protocol_view::CameraModeChangeReceipt"
+errors = "RuntimeBridgeError"
+summary = "Apply an expectation-bound first-person, orbit, or top-down camera controller transition and return deterministic authority plus renderer transition evidence."
+
+[[operation]]
+name = "apply_camera_navigation_input"
+surface = "stable"
+input = "protocol_view::CameraNavigationInputEnvelope"
+output = "protocol_view::CameraNavigationReceipt"
+errors = "RuntimeBridgeError"
+summary = "Apply bounded orbit or top-down pan, rotate, and zoom input to authority-owned camera controller state."
+
+[[operation]]
+name = "read_camera_controller_state"
+surface = "stable"
+input = "protocol_view::CameraControllerReadRequest"
+output = "protocol_view::CameraControllerState"
+errors = "RuntimeBridgeError"
+summary = "Read hash-bound camera mode, pivot, distance constraints, accepted pose, and revision without renderer interpolation state."
 
 [[operation]]
 name = "apply_first_person_camera_input"

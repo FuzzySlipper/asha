@@ -1,0 +1,350 @@
+{
+  "schemaVersion": 1,
+  "catalogAssertions": [
+    {
+      "id": "catalog.bridge-operations",
+      "kind": "bridgeOperations",
+      "expectedCount": 71,
+      "expectedStableCount": 69,
+      "proof": { "path": "harness/bridge/validate-manifest.py", "token": "validate_protocol_ref" }
+    },
+    {
+      "id": "catalog.consumer-needs",
+      "kind": "consumerNeeds",
+      "expectedCount": 34,
+      "proof": { "path": "harness/consumer-needs/validate.py", "token": "validate_manifest" }
+    },
+    {
+      "id": "catalog.generated-contracts",
+      "kind": "generatedContracts",
+      "expectedCount": 596,
+      "proof": { "path": "engine-rs/crates/protocol/protocol-codegen/src/lib.rs", "token": "rust_mirrored_ir_entries_have_round_trip_coverage_or_exemption" }
+    },
+    {
+      "id": "catalog.rust-public-surfaces",
+      "kind": "rustPublicSurfaces",
+      "expectedCount": 4,
+      "proof": { "path": "harness/public-surface/check-public-boundary.py", "token": "check_rust_manifest" }
+    },
+    {
+      "id": "catalog.typescript-public-surfaces",
+      "kind": "typescriptPublicSurfaces",
+      "expectedCount": 24,
+      "proof": { "path": "harness/public-surface/check-public-boundary.py", "token": "check_ts_manifest" }
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "audio.runtime-projection",
+      "kind": "projectionChannel",
+      "protocol": { "path": "ts/packages/contracts/src/generated/presentation.ts", "symbol": "RuntimeProjectionFrame" },
+      "provider": { "path": "ts/packages/renderer-host/src/audio-host.ts", "token": "export class AshaAudioHost" },
+      "fields": [
+        { "name": "emitter", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "emitter: AudioEmitter" },
+        { "name": "origin", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "origin: PresentationOriginRef | null" },
+        { "name": "replayScope", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "replayScope: ProjectionReplayScope" }
+      ],
+      "bridgeOperation": "read_projection_frame",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host" },
+      "consumerNeed": "asha-demo.audio-projection",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "audioProjectionEvidence" }
+    },
+    {
+      "id": "billboard.runtime-projection",
+      "kind": "projectionChannel",
+      "protocol": { "path": "ts/packages/contracts/src/generated/presentation.ts", "symbol": "BillboardProjectionOp" },
+      "provider": { "path": "ts/packages/renderer-host/src/billboard-host.ts", "token": "export class AshaBillboardHost" },
+      "fields": [
+        { "name": "anchor", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "anchor: BillboardAnchor" },
+        { "name": "content", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "content: BillboardContent" },
+        { "name": "origin", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "origin: PresentationOriginRef | null" }
+      ],
+      "bridgeOperation": "read_projection_frame",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host" },
+      "consumerNeed": "asha-demo.billboard-projection",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "billboardProjectionEvidence" }
+    },
+    {
+      "id": "bridge.camera-controller",
+      "kind": "bridgeOperation",
+      "protocol": { "path": "ts/packages/contracts/src/generated/view.ts", "symbol": "CameraControllerState" },
+      "provider": { "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs", "token": "fn apply_camera_mode_command" },
+      "fields": [
+        { "name": "distance", "path": "ts/packages/contracts/src/generated/view.ts", "token": "distance: number | null" },
+        { "name": "mode", "path": "ts/packages/contracts/src/generated/view.ts", "token": "mode: CameraMode" },
+        { "name": "pivot", "path": "ts/packages/contracts/src/generated/view.ts", "token": "pivot: readonly [number, number, number] | null" },
+        { "name": "stateHash", "path": "ts/packages/contracts/src/generated/view.ts", "token": "stateHash: string" }
+      ],
+      "bridgeOperation": "apply_camera_mode_command",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/runtime-session", "symbol": "RuntimeSessionFacade" },
+      "delivery": { "path": "ts/packages/app/src/camera-editor-flow.test.ts", "token": "editor selection drives the public orbit pan zoom and FPS return flow" }
+    },
+    {
+      "id": "bridge.project-bundle.load",
+      "kind": "bridgeOperation",
+      "protocol": { "path": "ts/packages/contracts/src/generated/projectBundle.ts", "symbol": "ProjectBundleManifest" },
+      "provider": { "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs", "token": "fn load_project_bundle" },
+      "bridgeOperation": "load_project_bundle",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/runtime-bridge" },
+      "consumerNeed": "asha-demo.runtime-load",
+      "delivery": { "path": "ts/packages/smoke/src/public-consumer-compat.test.ts", "token": "projectBundle:" }
+    },
+    {
+      "id": "bridge.session-input-replay",
+      "kind": "bridgeOperation",
+      "protocol": { "path": "ts/packages/contracts/src/generated/input.ts", "symbol": "RecordedInputAction" },
+      "provider": { "path": "engine-rs/crates/rules/rule-input/src/lib.rs", "token": "pub fn replay" },
+      "fields": [
+        { "name": "action", "path": "ts/packages/contracts/src/generated/input.ts", "token": "action: ResolvedInputAction" },
+        { "name": "catalogHash", "path": "ts/packages/contracts/src/generated/input.ts", "token": "catalogHash: string" },
+        { "name": "contextHash", "path": "ts/packages/contracts/src/generated/input.ts", "token": "contextHash: string" },
+        { "name": "recordHash", "path": "ts/packages/contracts/src/generated/input.ts", "token": "recordHash: string" },
+        { "name": "replayHash", "path": "ts/packages/contracts/src/generated/input.ts", "token": "replayHash: string" }
+      ],
+      "bridgeOperation": "replay_resolved_input_action",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/runtime-session", "symbol": "RuntimeSessionFacade" },
+      "delivery": { "path": "ts/packages/runtime-bridge/src/browser-input-host.test.ts", "token": "resolved pause context records and replays without browser events or double delivery" }
+    },
+    {
+      "id": "bridge.session-time-control",
+      "kind": "bridgeOperation",
+      "protocol": { "path": "ts/packages/contracts/src/generated/timeControl.ts", "symbol": "TimeControlCommand" },
+      "provider": { "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/time_control.rs", "token": "pub(super) fn apply" },
+      "bridgeOperation": "apply_time_control_command",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/runtime-session", "symbol": "RuntimeSessionFacade" },
+      "delivery": { "path": "ts/packages/runtime-bridge/src/time-control.test.ts", "token": "headless RuntimeSession pause and exact stepping" }
+    },
+    {
+      "id": "gameplay.event-bound-read",
+      "kind": "gameplayRead",
+      "protocol": { "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs", "symbol": "GameplayReadRequest" },
+      "provider": { "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs", "token": "GameplayReadAssembler" },
+      "fields": [
+        { "name": "entity", "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs", "token": "\"entity\"" }
+      ],
+      "selectors": [
+        { "name": "eventSource", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs", "token": "EventSource" },
+        { "name": "eventTarget", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs", "token": "EventTarget" }
+      ],
+      "quotas": [
+        { "name": "maxItems", "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs", "token": "max_items: 2" }
+      ],
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayReadRequest" },
+      "delivery": { "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs", "token": "coordinator_delivers_declared_reads_and_binds_them_into_delivery_evidence" }
+    },
+    {
+      "id": "gameplay.generic-event",
+      "kind": "gameplayEvent",
+      "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayEventEnvelope" },
+      "provider": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/composition.rs", "token": "GameplayStaticInvocationHost" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayEventEnvelope" },
+      "consumerNeed": "pulse.subscribe",
+      "delivery": { "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs", "token": "public_facade_executes_real_downstream_code_and_hashes_behavior" }
+    },
+    {
+      "id": "gameplay.module-binding",
+      "kind": "gameplayBinding",
+      "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayModuleBindingRegistry" },
+      "provider": { "path": "engine-rs/crates/rules/rule-project-bundle/src/gameplay_binding.rs", "token": "GameplayBoundProjectBundleSession" },
+      "fields": [
+        { "name": "multiplier", "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs", "token": "\"multiplier\"" }
+      ],
+      "selectors": [
+        { "name": "prefabPartRole", "path": "engine-rs/crates/rules/rule-project-bundle/src/gameplay_binding.rs", "token": "PrefabPart" }
+      ],
+      "bootstrapAdapter": { "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs", "token": "CounterAdapter" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayModuleBindingRegistryBuilder" },
+      "consumerNeed": "pulse.configuration",
+      "delivery": { "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs", "token": "bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authority" }
+    },
+    {
+      "id": "gameplay.module-conformance",
+      "kind": "gameplayConformance",
+      "protocol": { "path": "public-rust/gameplay-module-conformance/src/lib.rs", "symbol": "GameplayModuleConformanceReport" },
+      "provider": { "path": "public-rust/gameplay-module-conformance/src/lib.rs", "token": "run_gameplay_module_conformance" },
+      "fields": [
+        { "name": "bindingRegistryHash", "path": "public-rust/gameplay-module-conformance/src/lib.rs", "token": "binding_registry_hash" },
+        { "name": "reactionFrames", "path": "public-rust/gameplay-module-conformance/src/lib.rs", "token": "reaction_frames" },
+        { "name": "registryDigest", "path": "public-rust/gameplay-module-conformance/src/lib.rs", "token": "registry_digest" }
+      ],
+      "selectors": [
+        { "name": "consumerNeeds", "path": "harness/fixtures/gameplay-module-sdk/downstream-module/project/gameplay-project.json", "token": "consumerNeeds" },
+        { "name": "projectBundle", "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs", "token": "project_bundle_json" }
+      ],
+      "bootstrapAdapter": { "path": "public-rust/gameplay-module-conformance/src/lib.rs", "token": "GameplayBoundProjectBundleSession::activate" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-conformance", "symbol": "run_gameplay_module_conformance" },
+      "consumerNeed": "pulse.conformance",
+      "delivery": { "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs", "token": "run_gameplay_module_conformance" }
+    },
+    {
+      "id": "gameplay.module-named-read",
+      "kind": "gameplayRead",
+      "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayReadViewRequirement" },
+      "provider": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "GameplayReadViewProviderRegistration" },
+      "fields": [
+        { "name": "amount", "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "\"amount\"" }
+      ],
+      "selectors": [
+        { "name": "moduleStateScope", "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "ModuleStateScope" }
+      ],
+      "quotas": [
+        { "name": "maxItems", "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "max_items: 1" }
+      ],
+      "providerCardinality": { "path": "engine-rs/crates/services/svc-gameplay-fabric/src/registry.rs", "token": "MultipleReadViewProviders" },
+      "namespaceOwnership": { "path": "engine-rs/crates/services/svc-gameplay-fabric/src/registry.rs", "token": "read view provider" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayReadViewRequirement" },
+      "delivery": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "provider_state_adapters_initialize_and_apply_recorded_local_facts" }
+    },
+    {
+      "id": "gameplay.runtime-host",
+      "kind": "gameplayRuntimeHost",
+      "protocol": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "symbol": "GameplayRuntimeHostReadout" },
+      "provider": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub fn activate" },
+      "fields": [
+        { "name": "activeOverlapCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub active_overlap_count: u32" },
+        { "name": "bindingRegistryHash", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub binding_registry_hash: String" },
+        { "name": "decisionReceiptCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub decision_receipt_count: u32" },
+        { "name": "gameplayRegistryDigest", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub gameplay_registry_digest: String" },
+        { "name": "moduleStateHash", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub module_state_hash: String" },
+        { "name": "pendingDecisionCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub pending_decision_count: u32" },
+        { "name": "reactionFrameCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub reaction_frame_count: u32" },
+        { "name": "runtimeHostHash", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub runtime_host_hash: String" },
+        { "name": "triggerSnapshotHash", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub trigger_snapshot_hash: String" }
+      ],
+      "bootstrapAdapter": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "GameplayBoundProjectBundleSession::activate" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-runtime-host", "symbol": "GameplayRuntimeHost" },
+      "consumerNeed": "pulse.runtime-host",
+      "delivery": { "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs", "token": "approved_public_runtime_host_links_real_downstream_behavior" }
+    },
+    {
+      "id": "gameplay.runtime-host.decision",
+      "kind": "runtimeOperation",
+      "protocol": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "symbol": "GameplayDecisionReceipt" },
+      "provider": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub fn decide" },
+      "fields": [
+        { "name": "decisionReceiptCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub decision_receipt_count: u32" },
+        { "name": "declaredReadSetHash", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/types.rs", "token": "pub declared_read_set_hash: Option<String>" },
+        { "name": "pendingDecisionCount", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "pub pending_decision_count: u32" }
+      ],
+      "bootstrapAdapter": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "GameplayDecisionContinuations::default" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-runtime-host", "symbol": "GameplayRuntimeDecisionOwner" },
+      "consumerNeed": "pulse.runtime-host",
+      "delivery": { "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs", "token": "approved_public_decision_host_resumes_exactly_once_with_declared_reads" }
+    },
+    {
+      "id": "gameplay.runtime-host.transport",
+      "kind": "runtimeOperation",
+      "protocol": { "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "symbol": "GameplayRuntimeHostTransport" },
+      "provider": { "path": "ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts", "token": "advanceGameplayRuntime" },
+      "fields": [
+        { "name": "actorMovement", "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "token": "kind: 'actorMovement'" },
+        { "name": "ownerEvent", "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "token": "kind: 'ownerEvent'" },
+        { "name": "prefabInteraction", "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "token": "kind: 'prefabInteraction'" },
+        { "name": "tick", "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "token": "kind: 'tick'" }
+      ],
+      "publicSurface": { "kind": "typescript", "identity": "@asha/runtime-session" },
+      "consumerNeed": "asha-demo.gameplay-runtime-host",
+      "delivery": { "path": "ts/packages/runtime-bridge/src/runtime-session-gameplay-host.test.ts", "token": "Rust-backed RuntimeSession consumes a consumer-owned static gameplay host" }
+    },
+    {
+      "id": "gameplay.trigger-lifecycle",
+      "kind": "gameplayEvent",
+      "protocol": { "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "symbol": "TriggerOverlapGameplayPayload" },
+      "provider": { "path": "engine-rs/crates/rules/rule-project-bundle/src/gameplay_binding.rs", "token": "fn reconcile_triggers" },
+      "fields": [
+        { "name": "cause", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "token": "pub cause: String" },
+        { "name": "pairHash", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "token": "pub pair_hash: String" },
+        { "name": "scope", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "token": "pub scope: String" },
+        { "name": "subject", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "token": "pub subject: u64" },
+        { "name": "trigger", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/owner_events.rs", "token": "pub trigger: u64" }
+      ],
+      "selectors": [
+        { "name": "currentTriggerOverlaps", "path": "engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs", "token": "CurrentTriggerOverlaps" },
+        { "name": "standardEventSubscription", "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs", "token": "fixture.trigger-enter.observe" }
+      ],
+      "quotas": [
+        { "name": "maxItems", "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs", "token": "max_items: 4" }
+      ],
+      "bootstrapAdapter": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/composition.rs", "token": "include_standard_owner_events" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "TriggerOverlapGameplayPayload" },
+      "consumerNeed": "pulse.trigger-lifecycle",
+      "delivery": { "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs", "token": "downstream_trigger_observer_proposes_visible_follow_up_without_collision_access" }
+    },
+    {
+      "id": "particle.runtime-projection",
+      "kind": "projectionChannel",
+      "protocol": { "path": "ts/packages/contracts/src/generated/presentation.ts", "symbol": "ParticleProjectionOp" },
+      "provider": { "path": "ts/packages/renderer-host/src/particle-host.ts", "token": "export class AshaParticleHost" },
+      "fields": [
+        { "name": "anchor", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "anchor: ParticleAnchor" },
+        { "name": "seed", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "seed: number" },
+        { "name": "sprite", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "sprite: ParticleSpriteRef" }
+      ],
+      "quotas": [
+        { "name": "maxParticles", "path": "ts/packages/contracts/src/generated/presentation.ts", "token": "maxParticles: number" }
+      ],
+      "bridgeOperation": "read_projection_frame",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host" },
+      "consumerNeed": "asha-demo.particle-projection",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "particleProjectionEvidence" }
+    },
+    {
+      "id": "prefab.public-authoring",
+      "kind": "prefabAuthoring",
+      "protocol": { "path": "ts/packages/contracts/src/generated/projectBundle.ts", "symbol": "PrefabRegistry" },
+      "provider": { "path": "ts/packages/game-workspace/src/prefab-authoring.ts", "token": "export function applyAshaPrefabAuthoringCommand" },
+      "fields": [
+        { "name": "instances", "path": "ts/packages/game-workspace/src/prefab-authoring.ts", "token": "readonly instances: readonly AshaPrefabAuthoredInstance[]" },
+        { "name": "partRoles", "path": "ts/packages/game-workspace/src/prefab-authoring.ts", "token": "readonly partRoles: readonly PrefabPartRoleBinding[]" },
+        { "name": "selectedPrefab", "path": "ts/packages/game-workspace/src/prefab-authoring.ts", "token": "readonly selectedPrefab: PrefabId | null" }
+      ],
+      "publicSurface": { "kind": "typescript", "identity": "@asha/game-workspace" },
+      "consumerNeed": "asha-demo.game-workspace-prefab-authoring",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "prefabAuthoringReadout" }
+    },
+    {
+      "id": "prefab.runtime-placement",
+      "kind": "runtimeOperation",
+      "protocol": { "path": "ts/packages/runtime-session/src/gameplay-runtime-host.ts", "symbol": "GameplayRuntimePrefabBootstrap" },
+      "provider": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs", "token": "pub(crate) fn apply_prefab_bootstrap" },
+      "fields": [
+        { "name": "acceptedCommands", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs", "token": "pub accepted_commands: Vec<GameplayRuntimePrefabCommandReadout>" },
+        { "name": "instances", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs", "token": "pub instances: Vec<GameplayRuntimePrefabInstanceReadout>" },
+        { "name": "placements", "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs", "token": "pub placements: Vec<GameplayRuntimePrefabPlacement>" }
+      ],
+      "bootstrapAdapter": { "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs", "token": "activate_project_with_prefabs" },
+      "publicSurface": { "kind": "rust", "identity": "asha-gameplay-runtime-host", "symbol": "GameplayRuntimePrefabBootstrap" },
+      "consumerNeed": "asha-demo.prefab-runtime-placement",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "prefabRuntimeReadout" }
+    },
+    {
+      "id": "telemetry.live-snapshot-overlay",
+      "kind": "projectionChannel",
+      "protocol": { "path": "ts/packages/contracts/src/generated/telemetry.ts", "symbol": "LiveTelemetrySnapshot" },
+      "provider": { "path": "ts/packages/renderer-host/src/telemetry-host.ts", "token": "export class AshaLiveTelemetryCollector" },
+      "fields": [
+        { "name": "diagnostics", "path": "ts/packages/contracts/src/generated/telemetry.ts", "token": "diagnostics: readonly LiveTelemetryDiagnostic[]" },
+        { "name": "frameTimeHistoryMs", "path": "ts/packages/contracts/src/generated/telemetry.ts", "token": "frameTimeHistoryMs: readonly number[]" },
+        { "name": "metrics", "path": "ts/packages/contracts/src/generated/telemetry.ts", "token": "metrics: readonly LiveTelemetryMetric[]" }
+      ],
+      "bridgeOperation": "read_projection_frame",
+      "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host" },
+      "consumerNeed": "asha-demo.telemetry-live-overlay",
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "liveTelemetrySnapshot" }
+    }
+  ],
+  "internalExemptions": [
+    {
+      "id": "internal.gameplay-read-assembler",
+      "owner": "rule-gameplay-fabric",
+      "reason": "The assembler consumes private Session stores and query providers; downstream modules receive only frozen declared read values.",
+      "evidence": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/facade.rs", "token": "Private stores" }
+    },
+    {
+      "id": "internal.mutable-gameplay-registry-builder",
+      "owner": "svc-gameplay-fabric",
+      "reason": "Registry mutation is construction-only engine authority; downstream code composes immutable providers through the public static builder.",
+      "evidence": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/facade.rs", "token": "mutable registry builders" }
+    }
+  ]
+}

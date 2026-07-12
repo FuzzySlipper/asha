@@ -27,7 +27,10 @@ Details and lower-priority findings below.
 
 ## Strengths worth preserving
 
-- **One authority, stated everywhere and mostly enforced.** The command → validation → event → state → projection pipeline is kept as distinct categories rather than a generic event bus.
+- **One authority plane, stated everywhere and mostly enforced.** The command →
+  validation → owner fact/state → gameplay-fabric delivery → projection pipeline
+  keeps its categories distinct rather than collapsing into an untyped ambient
+  bus.
 - **Contracts drift-checked in CI**, with error messages that tell the agent which of three causes applies and how to resolve each. The CI scripts throughout are unusually good at explaining failures — keep this bar.
 - **Ownership completeness is enforced on the Rust side**: every workspace member must have an ownership entry or a documented exemption. (The TS side lacks this — see finding 2.)
 - **Test discipline is broadly good**: 50 of 63 crates have tests, and most of the untested remainder are empty placeholders (see finding 6). TS packages pair nearly every module with a `.test.ts`.

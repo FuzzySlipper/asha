@@ -86,6 +86,14 @@ pub enum ManifestError {
     MissingArtifact { role: String, path: String },
     /// A durable artifact has no content hash (durable artifacts must be hashed).
     DurableMissingHash { path: String },
+    /// More than one artifact claims a singleton ProjectBundle role.
+    DuplicateArtifactRole { role: String },
+    /// An artifact role was stored with a durability class that cannot preserve it.
+    ArtifactClassMismatch {
+        path: String,
+        expected: String,
+        found: String,
+    },
 }
 
 impl core::fmt::Display for ManifestError {
@@ -108,6 +116,17 @@ impl core::fmt::Display for ManifestError {
             ManifestError::DurableMissingHash { path } => {
                 write!(f, "durable artifact `{path}` has no content hash")
             }
+            ManifestError::DuplicateArtifactRole { role } => {
+                write!(f, "multiple artifacts claim singleton role `{role}`")
+            }
+            ManifestError::ArtifactClassMismatch {
+                path,
+                expected,
+                found,
+            } => write!(
+                f,
+                "artifact `{path}` must use class `{expected}`, found `{found}`"
+            ),
         }
     }
 }
@@ -156,6 +175,26 @@ impl ProjectBundleManifest {
             if a.class == ArtifactClass::Durable && a.content_hash.is_none() {
                 return Err(ManifestError::DurableMissingHash {
                     path: a.path.clone(),
+                });
+            }
+        }
+
+        let prefab_registries: Vec<&ArtifactEntry> = self
+            .artifacts
+            .iter()
+            .filter(|artifact| artifact.role == crate::ArtifactRole::PrefabRegistry)
+            .collect();
+        if prefab_registries.len() > 1 {
+            return Err(ManifestError::DuplicateArtifactRole {
+                role: crate::ArtifactRole::PrefabRegistry.tag().to_string(),
+            });
+        }
+        if let Some(prefab_registry) = prefab_registries.first() {
+            if prefab_registry.class != ArtifactClass::Durable {
+                return Err(ManifestError::ArtifactClassMismatch {
+                    path: prefab_registry.path.clone(),
+                    expected: ArtifactClass::Durable.tag().to_string(),
+                    found: prefab_registry.class.tag().to_string(),
                 });
             }
         }

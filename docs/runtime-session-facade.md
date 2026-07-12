@@ -2,6 +2,11 @@
 
 Status: current public semantic facade. Rust-backed RuntimeSession authority is the product/live path; the explicit reference helper remains a fixture and compatibility surface only.
 
+Named input action contracts and the Rust Session-level resolver are described
+in [named-input-actions.md](named-input-actions.md). Browser platform samples,
+resolved gameplay/editor actions, and Session time control all converge on typed
+RuntimeSession proposals rather than browser-owned authority.
+
 ## Public Import Path
 
 Consumers import semantic RuntimeSession readouts, proposal envelopes, and helper
@@ -53,8 +58,14 @@ Rust-capable bridge and `mode: 'rust'`; reference fixtures use
 - `initialize(input)`: validates semantic session/project input, initializes the bridge, and loads a ProjectBundle-shaped request.
 - `loadEcrpProject(input)`: validates and loads ProjectBundle-shaped ECRP content (`ProjectBundle`, `EntityDefinition[]`, `SceneDocument` placements, and optional generated `GameRuleModuleManifest[]` declarations). Rust-backed sessions route bootstrap through the bridge authority surface, forward compatible game-rule module manifests to the FPS RuntimeSession load request, and return Rust provenance/read sets; reference sessions keep fixture/project-state compatibility. Malformed declarations and rejected loads mutate nothing.
 - `submitCommands(batch)`: submits generated `CommandBatch` values only.
-- `tick(input?)`: advances deterministic runtime ticks through the bridge.
+- `configureInputSession(request)`, `applyInputContextCommand(command)`, `submitRawInput(sample)`, `replayResolvedInputAction(record)`, and `readInputContextState()`: expose the Rust-owned named-input catalog, context stack, raw resolution, and platform-free semantic replay surface without granting DOM or TypeScript authority over consumption. Accepted raw receipts carry hash-bound `RecordedInputAction` values; direct replay validates catalog/context/action evidence and rejects repeat delivery.
+- `applyTimeControlCommand(command)`: applies generated pause, resume, cadence-multiplier, or exact-step commands through Rust Session authority. Exact steps require paused mode, advance precisely the requested fixed-tick count, and remain paused; invalid commands return atomic classified receipts.
+- `readTimeControlState()`: reads the hash-bound mode, cadence multiplier, revision, and authority tick without advancing simulation.
+- `tick(input?)`: requests one deterministic runtime tick through the bridge. While paused it returns the unchanged authority tick and no diff; speed changes host wall-clock cadence only and never scales the fixed tick delta.
 - `createCamera(request)`: creates a typed bridge-owned camera.
+- `applyCameraModeCommand(command)`: applies an expected-revision first-person, orbit, or top-down controller target. Accepted receipts expose the authoritative endpoint and optional renderer transition endpoints; stale, invalid, incompatible, and terrain-blocked proposals reject atomically.
+- `applyCameraNavigationInput(envelope)`: applies bounded orbit/top-down pan, rotation, and zoom to the authoritative pivot and distance/height state. Runtime terrain may shorten the requested distance and reports that constraint in the receipt.
+- `readCameraControllerState(request)`: reads the accepted controller mode, pivot, distance limits, camera snapshot, revision, and state hash. Renderer interpolation samples are not returned as authority state.
 - `applyFirstPersonCameraInput(envelope)`: applies unconstrained first-person camera motion/look input.
 - `applyCollisionConstrainedCameraInput(envelope)`: applies first-person camera motion/look input through the typed collision bridge surface. Every envelope selects `movementMode: 'grounded' | 'freeFlight'`; grounded movement derives forward/right from yaw, preserves vertical position, and rejects nonzero `moveUp`, while free flight explicitly retains pitch-aware and vertical locomotion. The receipt echoes the mode with collided, blocked axes, world/collision projection hashes, movement hash, and the generated before/attempted/after `CameraCollisionSnapshot`.
 - `submitRuntimeActionIntent(envelope)`: accepts a typed `RuntimeActionIntentEnvelope` proposal. Rust-backed sessions route accepted `primary_fire` pressed intents through the Rust bridge authority surface and return combat/fire/health provenance; reference sessions return labelled fixture/reference receipts. Unsupported action intents fail closed with typed receipts.
@@ -91,10 +102,38 @@ Rust-capable bridge and `mode: 'rust'`; reference fixtures use
 - `readVoxelAnnotationQuery(request)`: reads a loaded runtime annotation layer by cell, bounds, region id, or layer summary with `maxRegions` and optional expected-layer-hash guards. Missing layers, out-of-bounds queries, stale hashes, and quota truncation are represented in generated typed readouts.
 - `applyVoxelAnnotationEdit(request)`: applies one typed annotation edit operation to a loaded layer after checking the expected layer hash. Stale hashes, unknown regions, invalid edits, and post-edit validation failures return typed diagnostics; accepted edits return before/after layer hashes.
 - `exportVoxelAnnotationLayer(request)`: explicitly exports a loaded runtime annotation layer back to stored DTO/canonical JSON form after an expected-hash check. Runtime-to-stored promotion is receipt-driven and never implicit.
-- `readProjection()`: returns a render/projection summary from public render diff contracts.
+- `readProjection()`: returns the combined generated `RuntimeProjectionFrame`
+  plus its compatibility `frame` scene view, presentation operation count,
+  composition status, and stable summary hash. Audio, billboard, and later
+  non-scene domains remain ordered beside the scene and retain origin evidence; consumers
+  realize them through `@asha/renderer-host`, not through raw bridge transport.
 - `readEcrpRuntimeReadout()`: returns live Entity/CapabilityState/event readouts derived from the selected backend. Rust-backed readouts identify `mode: 'rust'`, `source: 'rust_bridge'`, authority surface, and declared read sets.
+- `loadGameplayRuntime(input)`: atomically activates generated module bindings,
+  trigger definitions, and an optional validated prefab registry plus authored
+  or accepted player placements through a consumer-owned, statically linked
+  Rust gameplay host.
+- `advanceGameplayRuntime(moment)`: advances one typed tick, collision-constrained actor movement, or accepted semantic owner-event moment through that host and returns bounded reaction-frame evidence.
+- `readGameplayRuntime()`: reads registry, binding, prefab placement/role,
+  module-state, trigger, reaction-frame, and composed host hashes without
+  exposing stores.
+- `saveGameplayRuntime()`: returns the canonical, hash-bound gameplay host snapshot.
+- `restoreGameplayRuntime(input, snapshot)`: restores matching authority/module/trigger/frame state through the same static composition. Reference sessions fail closed for all gameplay-host methods.
 - `readTelemetry()`: returns sequence/tick/composition/command/replay/hash summary.
 - `restart()`: unloads/reinitializes/reloads the same ProjectBundle input and resets tick/command counters and lifecycle state.
+
+See [`gameplay-runtime-host.md`](gameplay-runtime-host.md) for the downstream
+native-provider composition boundary and current Wave 1 limits.
+See
+[`prefab-authoring-and-placement.md`](prefab-authoring-and-placement.md) for
+the public draft-to-authority prefab path.
+Compiled Rust modules that need direct pre-commit Guard/Transform/React
+participation use the public `GameplayRuntimeHost::decide` and
+`GameplayRuntimeDecisionOwner` boundary inside their consumer-owned native
+provider; this is deliberately not a JavaScript callback on
+`RuntimeSessionFacade`. See
+[`gameplay-fabric-growth-recipes.md`](gameplay-fabric-growth-recipes.md).
+See [`camera-modes.md`](camera-modes.md) for camera authority, named-input
+controller exclusion, terrain constraints, and renderer-only transitions.
 
 Package-root helpers over the facade expose derived readouts without asking
 consumers to maintain parallel demo authority:

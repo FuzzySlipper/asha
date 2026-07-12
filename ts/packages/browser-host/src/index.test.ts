@@ -14,6 +14,7 @@ import {
 
 import {
   ASHA_BROWSER_HOST_BRIDGE_METHODS,
+  ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER,
   ASHA_BROWSER_HOST_COMMAND,
   ASHA_BROWSER_HOST_COMPATIBILITY_VERSION,
   describeNativeBrowserHostCommand,
@@ -128,6 +129,8 @@ void test('browser host serves a downstream UI root with provider status evidenc
         readonly createRuntimeBridge: () => Record<string, unknown>;
       };
       const browserBridge = browserProvider.createRuntimeBridge();
+      const secondBrowserBridge = browserProvider.createRuntimeBridge();
+      assert.notEqual(secondBrowserBridge, browserBridge);
       for (const { facadeMethod } of MANIFEST_OPERATIONS) {
         assert.equal(
           typeof browserBridge[facadeMethod],
@@ -143,6 +146,63 @@ void test('browser host serves a downstream UI root with provider status evidenc
       });
       assert.equal(invocation.status, 200);
       assert.deepEqual(await invocation.json(), { result: { called: true } });
+    } finally {
+      await host.close();
+    }
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+void test('browser host isolates RuntimeBridge factory clients and bounds their identities', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
+  const sessionCalls: string[][] = [];
+  try {
+    await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA demo</title>');
+    const host = await launchNativeBrowserHost({
+      uiRoot: tempRoot,
+      host: '127.0.0.1',
+      port: 0,
+      provider: {
+        globalScope: {},
+        createRuntimeBridge: () => {
+          const calls: string[] = [];
+          sessionCalls.push(calls);
+          return createFakeNativeRuntimeBridge(calls);
+        },
+      },
+    });
+    try {
+      const invoke = (client: string, method: string, args: readonly unknown[]) => fetch(
+        `${host.url}/asha/browser-host/runtime-bridge/${method}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            [ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER]: client,
+          },
+          body: JSON.stringify({ args }),
+        },
+      );
+
+      assert.equal((await invoke('0', 'initializeEngine', [{ seed: 17 }])).status, 200);
+      assert.equal((await invoke('1', 'initializeEngine', [{ seed: 23 }])).status, 200);
+      assert.equal(sessionCalls.length, 2);
+
+      assert.equal((await invoke('0', 'getProjectBundleCompositionStatus', [])).status, 200);
+      assert.equal((await invoke('1', 'getProjectBundleCompositionStatus', [])).status, 200);
+      assert.deepEqual(sessionCalls, [
+        ['initialize:17', 'compositionStatus'],
+        ['initialize:23', 'compositionStatus'],
+      ]);
+
+      const nonCanonical = await invoke('01', 'initializeEngine', [{ seed: 29 }]);
+      assert.equal(nonCanonical.status, 500);
+      assert.match(await nonCanonical.text(), /canonical non-negative integer/);
+      const overLimit = await invoke('8', 'initializeEngine', [{ seed: 31 }]);
+      assert.equal(overLimit.status, 500);
+      assert.match(await overLimit.text(), /8-Session host limit/);
+      assert.equal(sessionCalls.length, 2);
     } finally {
       await host.close();
     }
@@ -353,17 +413,28 @@ function createFakeRuntimeBridge(): RuntimeBridge {
   const operation = () => ({ called: true }) as never;
   return {
     initializeEngine: operation,
+    configureInputSession: operation,
+    applyInputContextCommand: operation,
+    submitRawInput: operation,
+    replayResolvedInputAction: operation,
+    readInputContextState: operation,
+    applyTimeControlCommand: operation,
+    readTimeControlState: operation,
     loadProjectBundle: operation, // vocab-allow: fake bridge must satisfy the legacy RuntimeBridge method name.
     getProjectBundleCompositionStatus: operation,
     submitCommands: operation,
     stepSimulation: operation,
     createCamera: operation,
+    applyCameraModeCommand: operation,
+    applyCameraNavigationInput: operation,
+    readCameraControllerState: operation,
     applyFirstPersonCameraInput: operation,
     readCameraProjection: operation,
     pickVoxel: operation,
     selectVoxel: operation,
     readVoxelMeshEvidence: operation,
     readRenderDiffs: operation,
+    readProjectionFrame: operation,
     saveProjectBundle: operation,
     applyCollisionConstrainedCameraInput: operation,
     applyGeneratedTunnelToRuntimeWorld: operation,

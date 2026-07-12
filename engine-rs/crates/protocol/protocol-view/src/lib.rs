@@ -33,7 +33,10 @@
 use core_space::{Face, VoxelCoord};
 
 /// Opaque bridge-owned camera handle for runtime view/projection state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(transparent)]
 pub struct CameraHandle(pub u64);
 
 impl CameraHandle {
@@ -49,7 +52,8 @@ impl CameraHandle {
 }
 
 /// Camera pose in world units/degrees.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CameraPose {
     pub position: [f32; 3],
     pub yaw_degrees: f32,
@@ -57,7 +61,8 @@ pub struct CameraPose {
 }
 
 /// Orthogonal basis vectors derived from a camera pose.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CameraBasis {
     pub forward: [f32; 3],
     pub right: [f32; 3],
@@ -65,7 +70,8 @@ pub struct CameraBasis {
 }
 
 /// Perspective projection parameters.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PerspectiveProjection {
     pub fov_y_degrees: f32,
     pub near: f32,
@@ -73,7 +79,8 @@ pub struct PerspectiveProjection {
 }
 
 /// Pixel viewport dimensions for projection evidence.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ViewportSize {
     pub width: u32,
     pub height: u32,
@@ -115,7 +122,8 @@ pub struct CameraProjectionRequest {
 }
 
 /// Camera pose/basis snapshot after create or input application.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CameraSnapshot {
     pub camera: CameraHandle,
     pub tick: u64,
@@ -123,6 +131,153 @@ pub struct CameraSnapshot {
     pub basis: CameraBasis,
     pub projection: PerspectiveProjection,
     pub viewport: ViewportSize,
+}
+
+pub const CAMERA_CONTROLLER_STATE_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CameraMode {
+    FirstPerson,
+    Orbit,
+    TopDown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CameraTransitionEasing {
+    Linear,
+    SmoothStep,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraTransitionSpec {
+    pub duration_milliseconds: u32,
+    pub easing: CameraTransitionEasing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(
+    tag = "mode",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum CameraModeTarget {
+    FirstPerson {
+        pose: CameraPose,
+    },
+    Orbit {
+        pivot: [f32; 3],
+        distance: f32,
+        min_distance: f32,
+        max_distance: f32,
+        yaw_degrees: f32,
+        pitch_degrees: f32,
+    },
+    TopDown {
+        pivot: [f32; 3],
+        height: f32,
+        min_height: f32,
+        max_height: f32,
+        yaw_degrees: f32,
+        pitch_degrees: f32,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraModeCommand {
+    pub camera: CameraHandle,
+    pub expected_revision: u64,
+    pub target: CameraModeTarget,
+    pub transition: Option<CameraTransitionSpec>,
+    pub tick: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraControllerState {
+    pub schema_version: u32,
+    pub revision: u64,
+    pub camera: CameraHandle,
+    pub mode: CameraMode,
+    pub pivot: Option<[f32; 3]>,
+    pub distance: Option<f32>,
+    pub min_distance: Option<f32>,
+    pub max_distance: Option<f32>,
+    pub snapshot: CameraSnapshot,
+    pub state_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraTransitionReadout {
+    pub from: CameraSnapshot,
+    pub to: CameraSnapshot,
+    pub duration_milliseconds: u32,
+    pub easing: CameraTransitionEasing,
+    pub transition_hash: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CameraControllerRejection {
+    StaleRevision,
+    InvalidTarget,
+    IncompatibleMode,
+    InvalidInput,
+    TerrainBlocked,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraModeChangeReceipt {
+    pub accepted: bool,
+    pub before: CameraControllerState,
+    pub after: CameraControllerState,
+    pub transition: Option<CameraTransitionReadout>,
+    pub terrain_constrained: bool,
+    pub rejection: Option<CameraControllerRejection>,
+    pub receipt_hash: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraNavigationInput {
+    pub pan_right: f32,
+    pub pan_forward: f32,
+    pub yaw_delta_degrees: f32,
+    pub pitch_delta_degrees: f32,
+    pub zoom_delta: f32,
+    pub dt_seconds: f32,
+    pub pan_speed_units_per_second: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraNavigationInputEnvelope {
+    pub camera: CameraHandle,
+    pub expected_revision: u64,
+    pub input: CameraNavigationInput,
+    pub tick: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraNavigationReceipt {
+    pub accepted: bool,
+    pub before: CameraControllerState,
+    pub after: CameraControllerState,
+    pub terrain_constrained: bool,
+    pub rejection: Option<CameraControllerRejection>,
+    pub receipt_hash: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CameraControllerReadRequest {
+    pub camera: CameraHandle,
 }
 
 /// Camera pose plus deterministic projection matrices.

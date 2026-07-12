@@ -42,7 +42,7 @@ For multi-repo checkout, consumer setup, and deployment-viable repo roles, see
 ## Repository layout
 
 <!-- workspace-counts:start -->
-Workspace inventory: **78 default Cargo workspace members, 1 explicit-build excluded crate (79 governed Rust crates total), and 24 pnpm workspace packages (workspace root excluded).**
+Workspace inventory: **93 default Cargo workspace members, 1 explicit-build excluded crate (94 governed Rust crates total), and 24 pnpm workspace packages (workspace root excluded).**
 <!-- workspace-counts:end -->
 
 ```text
@@ -52,7 +52,7 @@ engine-rs/          Rust workspace
     state/          authoritative state, entities, scene, catalog, voxel, commands, events, snapshots
     protocol/       Rust protocol schemas + codegen for TS contracts
     sim/            validation, event application, replay, runner
-    services/       deterministic services: rng, spatial, collision, mesh, volume, serialization, policy views
+    services/       deterministic services: rng, spatial, collision, mesh, volume, serialization, policy views, gameplay-fabric registry
     rules/          domain/rule lanes: lifecycle, process, scheduler, relationship, state machine, voxel edit, project bundle
     render/         render-bridge and render-debug projection lanes
     bridge/         runtime-bridge-api manifest and native-bridge napi addon
@@ -101,7 +101,9 @@ inputs / tools / policy / UI
   -> TypeScript renderer/UI/devtools projections
 ```
 
-Keep the categories separate. Do not collapse commands, events, render diffs, telemetry, and replay records into a generic event bus.
+Keep the categories separate. Do not collapse commands, owner facts, gameplay
+events, render diffs, telemetry, and replay records into an untyped ambient
+bus. Open gameplay meaning belongs on the statically composed gameplay fabric.
 
 ### Runtime bridge
 
@@ -230,13 +232,29 @@ Check the relevant package scripts before adding new commands; this workspace in
 | `docs/contract-governance.md` | Protocol/codegen change process |
 | `docs/replay-model.md` | Replay recording, playback, and determinism audit |
 | `docs/render-protocol.md` | Retained-mode render diff protocol |
+| `docs/particle-projection.md` | Typed burst/retained particle projection, renderer-owned simulation, budgets, and downstream proof |
+| `docs/live-telemetry-overlay.md` | Machine-readable live telemetry, unavailable-counter posture, G1 overlay lifecycle, and downstream proof |
 | `docs/determinism.md` | Determinism requirements and enforcement |
 | `docs/tunnel-generator-substrate.md` | Deterministic enclosed tunnel generator schema, import path, and projection evidence |
 | `docs/combat-authority-substrate.md` | Combat/health/fire-intent authority surface and replay evidence |
+| `docs/gameplay-fabric-contracts.md` | Open gameplay contracts, stable invocation roles, and immutable Session registry boundary |
+| `docs/gameplay-fabric-runtime.md` | Observe waves, pre-commit Guard/Transform/React, owner routing, budgets, and deterministic evidence |
+| `docs/gameplay-fabric-growth-recipes.md` | Paved downstream recipes for events, decisions, state, reads, bindings, shared proposals, triggers, and modules |
+| `docs/gameplay-module-state-replay.md` | Federated typed module state, Session snapshots, named views, playback, and verification replay |
+| `docs/gameplay-declared-reads.md` | Bounded event/entity/relationship/prefab/module/owner-query reads frozen for gameplay invocation waves |
+| `docs/gameplay-module-sdk.md` | Public Rust gameplay-module helpers, real static providers, downstream fixture, and scaffold command |
+| `docs/gameplay-owner-event-adapters.md` | Standard `asha.*` owner events, semantic-origin adapters, and bounded legacy weapon Transform migration |
+| `docs/kinematic-trigger-volumes.md` | Kinematic trigger ownership, enter/exit semantics, RuntimeSession persistence, declared reads, and dynamics non-claims |
+| `docs/gameplay-action-scheduler.md` | Replayable tick/event-conditioned gameplay actions and owner-routed outcomes |
 | `docs/ecrp-runtime-session-readout.md` | RuntimeSession ProjectBundle-shaped ECRP load/readout surface and CapabilityState behavior |
+| `docs/prefab-contracts.md` | Stored prefab registry, stable part-role references, one-level variants, and reuse ownership boundaries |
+| `docs/prefab-instantiation.md` | Deterministic prefab expansion, role maps, provenance, typed overrides, atomicity, and replay |
+| `docs/prefab-authoring-and-placement.md` | Public prefab draft commands/readouts, validated runtime bootstrap, stable gameplay addressing, downstream placement proof, and limits |
 | `docs/ecrp-fps-object-model.md` | Public FPS object-model map from generated-tunnel roles to ECRP capabilities and runtime surfaces |
 | `docs/ecrp-capability-rule-ownership.md` | ECRP rule-owner matrix and current FPS RuntimeSession authority slice |
+| `docs/capability-activation.md` | Typed collision/controller activation, lifecycle interaction, persistence, and owner gates |
 | `docs/runtime-session-facade.md` | Current `RuntimeSessionFacade` methods, non-claims, and reference/native boundary |
+| `docs/gameplay-runtime-host.md` | Public static gameplay RuntimeSession host, native-provider composition, authority loop, replay, and limits |
 | `docs/game-agent-code-organization.md` | Game consumer repo structure: `app.ts` entrypoint-only, TS source, ports/adapters, feature modules |
 | `docs/nav-pathfinding-substrate.md` | Read-only voxel navigation projection and deterministic path query evidence |
 | `docs/policy-authoring.md` | Policy package authoring and testing |

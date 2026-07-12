@@ -1,0 +1,608 @@
+{
+  "schemaVersion": 1,
+  "catalogEntryHashes": {
+    "reachabilityCapabilities": {
+      "audio.runtime-projection": "sha256:af145e2ea56e03175e95bd6f47544a81bafb22eba97c640c2ef17f3ccb72ebc0",
+      "billboard.runtime-projection": "sha256:99a805abfd9dd9882c71f77f46eff34a25a027147525e73375cbccb9701eb17e",
+      "bridge.camera-controller": "sha256:852e5bcf66f5d8dc7f48f21a73cc8fe1610e03f80a83ba88cde2dd9f4c1584db",
+      "bridge.project-bundle.load": "sha256:c441edcdf2e5a706aba7af56799b171275f3d14fb48213fa54a9e9c005af6f9c",
+      "bridge.session-input-replay": "sha256:74512c2f4d74f2c15f64c064820819c957fbecda3c0df0cf95d601c4fe609490",
+      "bridge.session-time-control": "sha256:fc033a7d335ebac561cd7f2b95140125165d3f1f145a9870074ac86a01e66782",
+      "gameplay.event-bound-read": "sha256:5e70092d44a9c710cf16fe37edcff04db2ddb23eeabcd3220fd22a28cce24f3d",
+      "gameplay.generic-event": "sha256:ef72e7596c2dc6fb3bfd3a19daef5b63a3552b347b02189b5d5fb3ee82df10bc",
+      "gameplay.module-binding": "sha256:f7b7b5884e4767d5269985c7354a0e58584efa36edcc8ff976a8ba665c943038",
+      "gameplay.module-conformance": "sha256:79590b056116e622d2cb1b40f25f17df70543da6063c39d7ec0a7518f8d12f2c",
+      "gameplay.module-named-read": "sha256:e6797d9404b6f4dc97ae7a4c49149c82fd1f6a7a4406ff5ecf1760505419a25a",
+      "gameplay.runtime-host": "sha256:e16cdb911d763262e4d373d24920c8a9244cce7574a2c9c5a5394002800fbaa1",
+      "gameplay.runtime-host.decision": "sha256:9c52125c2d17fcb435f51beccdb687e2b88d7b895463fdca7ca3640603345e8a",
+      "gameplay.runtime-host.transport": "sha256:06eb4ea80ba6e3b995dfed20d08eb1e6bd2f099dfaae407165f48e9f367c9a12",
+      "gameplay.trigger-lifecycle": "sha256:898bb29761692ef85614964f77d4849c71976be0bad296dae9b83f0825635c43",
+      "particle.runtime-projection": "sha256:7299ca9463516eebcd8ea332f772bdbd2314e89c268b6970afb1e62025127471",
+      "prefab.public-authoring": "sha256:1546d09b8d120d39e560855ebb1ee8867587f4ad11fa6463ddf7648199508ab7",
+      "prefab.runtime-placement": "sha256:8f065eb40df9d360c589f1fd6c06eb973f8faf3fdc7b21d4aca5671ef9a6688b",
+      "telemetry.live-snapshot-overlay": "sha256:955207022544a3c57d1a7b473efa9bc9e4946d45d08732709869973f4e06cd3e"
+    },
+    "deliveryRequirements": {
+      "asha-demo.audio-projection": "sha256:178a43433998fbebf614a2e984e1350ecd4636f5ee49b247fd14d017a3745412",
+      "asha-demo.billboard-projection": "sha256:1e5350d2374ab6fd415c17b25bd217fef42f35e9ae1c3d480df95d3fdd62de90",
+      "asha-demo.configure-input-session": "sha256:a373b35750a846ac79b9a3d991d28ecf898b36bd510b2814b6264605729e4994",
+      "asha-demo.conformance": "sha256:5dded0400e6ad77ac277bf07b6cd017ca1a3f55b522561b50916100316b1c276",
+      "asha-demo.game-workspace-prefab-authoring": "sha256:ee2968ac162f99d9b9f0175e9eea05101c2be3da392846a93e01edc42b93e84c",
+      "asha-demo.gameplay-runtime-host": "sha256:1ba02576fe3491ea9a5976827b3fd0ca02c98cd7c814cd533d4947d1577ca57d",
+      "asha-demo.input-context-state": "sha256:2107431ddad5f1878476a91d6a36d71bf8430aabd0ec8d50f3677a05fdb9dbfe",
+      "asha-demo.input-replay": "sha256:1d2576b6fe0f592da6a479624c66cf3764aa3ab18512355a5e8f4315f2235911",
+      "asha-demo.input-replay-receipt": "sha256:0829db0607cdff274ba45a5e6d515d674689e49abc96572785746caf842fef60",
+      "asha-demo.particle-projection": "sha256:d90a3043bdf3d84cad027be945133539719fd74ca2374e93a18a376cb811cded",
+      "asha-demo.playable-encounter-readout": "sha256:b02a888a1bfa46f40a90c9bf23b060aaf477b01e88e609335b0c06680706a6a6",
+      "asha-demo.prefab-part": "sha256:24900aa51b03603b90a750ab2a92936e7a23cbf0ef07752d5168ac7dcc8e751d",
+      "asha-demo.prefab-runtime-placement": "sha256:065c1591ca5152366407b85949f4879ed78eb2834ec48ee393997db65e3639f8",
+      "asha-demo.recorded-input-action": "sha256:e4149278d9b5bf4c6788e8f3a9632e39cabe17d1eaffba9e47d2281dd2b39222",
+      "asha-demo.renderer-host": "sha256:794290f0569f26bf5d081921bf0a8a7625de1f33ebea78702e71c110786164d0",
+      "asha-demo.runtime-load": "sha256:20a72218396b9ae8ea6ed34b0eff5e375c93d1b15dcc201f8226e3bede55eba3",
+      "asha-demo.submit-raw-input": "sha256:68f505ec8cb517a9a9f6bd7a2aff489c091be82b50ade5584e43524687e22993",
+      "asha-demo.telemetry-live-overlay": "sha256:cf9e022f3d9636b48f2e094061bd4441d9b480ee3ac2a1c76eb0eb20d6a70b89",
+      "asha-demo.time-control-command": "sha256:6ffaae73d19b4b50929235e50b756fcf4a1d4afd96c2add8d6fb8768ef201f2b",
+      "asha-demo.time-control-state": "sha256:35d5b88daffd5b78ff4b302c25e15cb212f33e5902bc22f1d399a9ef3af7cdd1",
+      "asha-demo.ui-dom": "sha256:f7fd72231ff20eac61a04ec6e9f9a22b35b27a3a6aa97097e8ec9a0c9a1d3c04",
+      "pulse.conformance": "sha256:e99733d00fd41458d366b158753a7c8c31a32375ea66fa61e510d17fb8ca0d06",
+      "pulse.configuration": "sha256:54eb9d357e8d7eda1cb114c2058051005f840b7fe60310b36799433b902e4684",
+      "pulse.module": "sha256:da28f8e2ca847fa03f7564540284eae4d94d0abaa2db6f09857981edf5d8bb9a",
+      "pulse.observe": "sha256:400daf758430aa400d96f929dd4ad18c47e520af690ee734e8fd9d55e2d7edee",
+      "pulse.public-sdk": "sha256:bd4583af8dfdc8e7d91b788cd7ca9ba1d5d6b82a1ee0847e9d8d639aed131cfc",
+      "pulse.runtime-host": "sha256:09a7143a6c82e6e180a01178d0549041a89dad94871d0e96438bd332d8172497",
+      "pulse.subscribe": "sha256:c0e452bb912d99cf79e330540c076ea735609e225fc095cacc0beff6a88088a3",
+      "pulse.trigger-lifecycle": "sha256:e73ab504ea0c8c78c6040d9b0fdd72a795a091bb8a3e3d1d8a51ede8db3863b3"
+    },
+    "publicSurfaces": {
+      "@asha/contracts": "sha256:6258a91ef1d41c86e63b3211632058c78c2e333397017aef7ba9f5bcc5692c97",
+      "@asha/game-workspace": "sha256:9d82f4c9262031bdcfea0a5ea84bad32889932918f112b1dcb66e04495111eaf",
+      "@asha/renderer-host": "sha256:23e8ea67816d3241a4f58a3520c2c8f12a07b9a2cca5cd3d11565fc399963329",
+      "@asha/runtime-bridge": "sha256:747dede3362b19f4ffff0bdb29f6276ab94f6f224a138f758db7b65777dd651f",
+      "@asha/runtime-session": "sha256:5bb3d39bb0dbbd94e49c6e7665b8edc67ee8c16c2c16969e918fe056497c28e4",
+      "@asha/smoke": "sha256:2cdf15f71b06a1dd3ed8fdb67a65add8b89bf9dfaaf3f920d754e5cdea147436",
+      "@asha/ui-dom": "sha256:464ed95af0885de029b2fca941fd27747875357e28258e5d74e71d19ecd4dbef",
+      "asha-gameplay-module-conformance": "sha256:ecd77d16c70b3bd8102a3a9a034c57d3fe0520b13283327cd3b97dc9f78f02e3",
+      "asha-gameplay-module-sdk": "sha256:6d142c50d3135168d726b6758727496266d1a193d73d85066133bca410b183f9",
+      "asha-gameplay-runtime-host": "sha256:c6268b131fa7aff7a66149a39b8207ed24e2abc4dcd6ccf82d6f2cb802d361fc"
+    }
+  },
+  "testCorpora": [
+    {
+      "id": "bridge.native-transport",
+      "executionClass": "nativeTransport",
+      "paths": ["engine-rs/crates/bridge/native-bridge/src/lib.rs"]
+    },
+    {
+      "id": "bridge.rust-authority",
+      "executionClass": "compiledRustAuthority",
+      "paths": [
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_history_tests.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/camera_modes.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/fps.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/mesh_import.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/time_control.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_unload.rs"
+      ]
+    }
+  ],
+  "suites": [
+    {
+      "id": "bridge.native-wrapper",
+      "executionClass": "nativeTransport",
+      "command": "cargo test --locked --offline --manifest-path engine-rs/crates/bridge/native-bridge/Cargo.toml --lib"
+    },
+    {
+      "id": "bridge.rust-authority",
+      "executionClass": "compiledRustAuthority",
+      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p runtime-bridge-api --lib"
+    },
+    {
+      "id": "gameplay.binding",
+      "executionClass": "compiledRustAuthority",
+      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p rule-project-bundle --test gameplay_bindings"
+    },
+    {
+      "id": "gameplay.downstream-module",
+      "executionClass": "compiledDownstreamConsumer",
+      "command": "cargo test --locked --offline --manifest-path harness/fixtures/gameplay-module-sdk/downstream-module/Cargo.toml"
+    },
+    {
+      "id": "gameplay.reads",
+      "executionClass": "compiledRustAuthority",
+      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p rule-gameplay-fabric --test reads"
+    },
+    {
+      "id": "gameplay.runtime-host",
+      "executionClass": "compiledDownstreamConsumer",
+      "command": "harness/ci/check-gameplay-runtime-host.sh"
+    },
+    {
+      "id": "gameplay.static-composition",
+      "executionClass": "compiledRustAuthority",
+      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p gameplay-module-sdk --test static_composition"
+    },
+    {
+      "id": "gameplay.triggers",
+      "executionClass": "compiledDownstreamConsumer",
+      "command": "harness/ci/check-trigger-volumes.sh"
+    },
+    {
+      "id": "public.audio",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+    },
+    {
+      "id": "public.billboard",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+    },
+    {
+      "id": "public.camera-flow",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/app test"
+    },
+    {
+      "id": "public.consumer",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/smoke test"
+    },
+    {
+      "id": "public.input-pause-demo",
+      "executionClass": "publicConsumer",
+      "command": "npm --prefix ../asha-demo test"
+    },
+    {
+      "id": "public.particle",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+    },
+    {
+      "id": "public.prefab-authoring",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/game-workspace test"
+    },
+    {
+      "id": "public.telemetry",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+    }
+  ],
+  "semanticProbes": [
+    {
+      "id": "gameplay.binding.bootstrap",
+      "suite": "gameplay.binding",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
+          "token": "bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authority"
+        },
+        {
+          "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
+          "token": "stale_contracts_foreign_modules_bad_roles_reads_outputs_and_overrides_reject"
+        }
+      ],
+      "capabilities": ["gameplay.module-binding"],
+      "consumerNeeds": ["pulse.configuration"],
+      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "claims": ["atomicRejection", "configuredProjectBundleBootstrap", "stablePrefabPartResolution"]
+    },
+    {
+      "id": "gameplay.downstream.invocation",
+      "suite": "gameplay.downstream-module",
+      "evidence": [
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "public_facade_executes_real_downstream_code_and_hashes_behavior"
+        }
+      ],
+      "capabilities": ["gameplay.generic-event"],
+      "consumerNeeds": ["pulse.module", "pulse.observe", "pulse.public-sdk", "pulse.subscribe"],
+      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "claims": ["actualModuleInvocation", "eventIdentity"]
+    },
+    {
+      "id": "gameplay.read.event-bound",
+      "suite": "gameplay.reads",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
+          "token": "downstream_read_plan_is_typed_bounded_frozen_and_stable"
+        },
+        {
+          "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
+          "token": "coordinator_delivers_declared_reads_and_binds_them_into_delivery_evidence"
+        }
+      ],
+      "capabilities": ["gameplay.event-bound-read"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "claims": ["eventBoundIdentity", "fieldSelection", "quota", "selectorResolution", "stableOrdering", "typedViewDelivery"]
+    },
+    {
+      "id": "gameplay.read.module-state",
+      "suite": "gameplay.static-composition",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs",
+          "token": "provider_state_adapters_initialize_and_apply_recorded_local_facts"
+        }
+      ],
+      "capabilities": ["gameplay.module-named-read"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "claims": ["fieldSelection", "quota", "selectorResolution", "stableOrdering", "typedViewDelivery"]
+    },
+    {
+      "id": "gameplay.read.zz-module-conformance",
+      "suite": "gameplay.downstream-module",
+      "evidence": [
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "one_command_conformance_covers_bootstrap_invocation_state_and_replay"
+        },
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "provider_drift_and_bad_config_fail_before_partial_bootstrap"
+        }
+      ],
+      "capabilities": ["gameplay.module-conformance"],
+      "consumerNeeds": ["pulse.conformance"],
+      "publicSurfaces": ["asha-gameplay-module-conformance"],
+      "claims": []
+    },
+    {
+      "id": "gameplay.runtime-host.decision",
+      "suite": "gameplay.runtime-host",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs",
+          "token": "public_decision_host_delivers_reads_persists_continuations_and_consumes_tokens"
+        },
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "approved_public_decision_host_resumes_exactly_once_with_declared_reads"
+        }
+      ],
+      "capabilities": ["gameplay.runtime-host.decision"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["asha-gameplay-runtime-host"],
+      "claims": ["actualModuleInvocation", "atomicRejection", "typedViewDelivery"]
+    },
+    {
+      "id": "gameplay.runtime-host.product-loop",
+      "suite": "gameplay.runtime-host",
+      "evidence": [
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "approved_public_runtime_host_links_real_downstream_behavior"
+        },
+        {
+          "path": "ts/packages/runtime-bridge/src/runtime-session-gameplay-host.test.ts",
+          "token": "Rust-backed RuntimeSession consumes a consumer-owned static gameplay host"
+        }
+      ],
+      "capabilities": ["gameplay.runtime-host", "gameplay.runtime-host.transport"],
+      "consumerNeeds": ["asha-demo.gameplay-runtime-host", "pulse.runtime-host"],
+      "publicSurfaces": ["@asha/runtime-bridge", "@asha/runtime-session", "asha-gameplay-runtime-host"],
+      "claims": ["actualModuleInvocation", "atomicRejection", "configuredProjectBundleBootstrap", "typedViewDelivery"]
+    },
+    {
+      "id": "gameplay.trigger.lifecycle",
+      "suite": "gameplay.triggers",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/rules/rule-trigger-volume/src/lib.rs",
+          "token": "enter_continue_exit_are_exactly_once_and_stably_hashed"
+        },
+        {
+          "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
+          "token": "runtime_session_reconciles_persists_and_restores_trigger_overlap_authority"
+        },
+        {
+          "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
+          "token": "current_trigger_overlaps_flow_through_declared_owner_query_boundary"
+        },
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "downstream_trigger_observer_proposes_visible_follow_up_without_collision_access"
+        }
+      ],
+      "capabilities": ["gameplay.trigger-lifecycle"],
+      "consumerNeeds": ["pulse.trigger-lifecycle"],
+      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "claims": []
+    },
+    {
+      "id": "public.audio-projection",
+      "suite": "public.audio",
+      "evidence": [
+        {
+          "path": "ts/packages/renderer-host/src/audio-host.test.ts",
+          "token": "Web Audio host emits catalog-hash-bound 3D cues and caches decoded clips"
+        },
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "audioProjectionEvidence"
+        }
+      ],
+      "capabilities": ["audio.runtime-projection"],
+      "consumerNeeds": ["asha-demo.audio-projection"],
+      "publicSurfaces": ["@asha/renderer-host"],
+      "claims": ["publicProjectionReadout"]
+    },
+    {
+      "id": "public.billboard-projection",
+      "suite": "public.billboard",
+      "evidence": [
+        {
+          "path": "ts/packages/renderer-host/src/billboard-host.test.ts",
+          "token": "billboard host creates updates localizes lays out and destroys multiple entity cues"
+        },
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "billboardProjectionEvidence"
+        }
+      ],
+      "capabilities": ["billboard.runtime-projection"],
+      "consumerNeeds": ["asha-demo.billboard-projection"],
+      "publicSurfaces": ["@asha/renderer-host"],
+      "claims": ["publicProjectionReadout"]
+    },
+    {
+      "id": "public.camera-controller",
+      "suite": "public.camera-flow",
+      "evidence": [
+        {
+          "path": "ts/packages/runtime-bridge/src/camera-modes.test.ts",
+          "token": "one resolved-input path switches FPS, orbit, and top-down without simultaneous controllers"
+        },
+        {
+          "path": "ts/packages/app/src/camera-editor-flow.test.ts",
+          "token": "editor selection drives the public orbit pan zoom and FPS return flow"
+        },
+        {
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/camera_modes.rs",
+          "token": "pivot_camera_distance_is_clamped_by_runtime_terrain_and_can_fail_closed"
+        },
+        {
+          "path": "ts/packages/renderer-host/src/camera-transition.test.ts",
+          "token": "camera transition sampling is disposable and preserves exact authority endpoints"
+        }
+      ],
+      "capabilities": ["bridge.camera-controller"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["@asha/runtime-session"],
+      "claims": ["atomicRejection", "publicProjectionReadout"]
+    },
+    {
+      "id": "public.input-pause-demo",
+      "suite": "public.input-pause-demo",
+      "evidence": [
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "resolved input owns pause, consumption, resume, and semantic replay"
+        },
+        {
+          "path": "../asha-demo/src/bootstrap/boot-game.ts",
+          "token": "duplicateRejected"
+        },
+        {
+          "path": "ts/packages/browser-host/src/index.test.ts",
+          "token": "browser host isolates RuntimeBridge factory clients and bounds their identities"
+        }
+      ],
+      "capabilities": ["bridge.session-input-replay", "bridge.session-time-control"],
+      "consumerNeeds": [
+        "asha-demo.configure-input-session",
+        "asha-demo.input-context-state",
+        "asha-demo.input-replay",
+        "asha-demo.input-replay-receipt",
+        "asha-demo.recorded-input-action",
+        "asha-demo.submit-raw-input",
+        "asha-demo.time-control-command",
+        "asha-demo.time-control-state"
+      ],
+      "publicSurfaces": ["@asha/contracts", "@asha/renderer-host", "@asha/runtime-bridge", "@asha/runtime-session"],
+      "claims": ["atomicRejection", "typedViewDelivery"]
+    },
+    {
+      "id": "public.particle-projection",
+      "suite": "public.particle",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/render/render-particle/src/lib.rs",
+          "token": "burst_and_retained_lifecycle_are_catalog_validated_and_budgeted"
+        },
+        {
+          "path": "ts/packages/renderer-host/src/particle-host.test.ts",
+          "token": "particle host realizes deterministic bursts and expires disposable billboards"
+        },
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "particleProjectionEvidence"
+        }
+      ],
+      "capabilities": ["particle.runtime-projection"],
+      "consumerNeeds": ["asha-demo.particle-projection"],
+      "publicSurfaces": ["@asha/renderer-host"],
+      "claims": ["publicProjectionReadout"]
+    },
+    {
+      "id": "public.prefab-authoring-and-placement",
+      "suite": "public.prefab-authoring",
+      "evidence": [
+        {
+          "path": "ts/packages/game-workspace/src/prefab-authoring.test.ts",
+          "token": "public prefab authoring creates edits places and inspects a multi-part definition"
+        },
+        {
+          "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs",
+          "token": "public_prefab_bootstrap_places_resolves_and_restores_multiple_instances"
+        },
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "prefabAuthoringReadout"
+        }
+      ],
+      "capabilities": ["prefab.public-authoring", "prefab.runtime-placement"],
+      "consumerNeeds": ["asha-demo.game-workspace-prefab-authoring", "asha-demo.prefab-part", "asha-demo.prefab-runtime-placement"],
+      "publicSurfaces": ["@asha/game-workspace", "@asha/runtime-session", "asha-gameplay-runtime-host"],
+      "claims": ["configuredProjectBundleBootstrap", "stablePrefabPartResolution"]
+    },
+    {
+      "id": "public.runtime-session.projection",
+      "suite": "public.consumer",
+      "evidence": [
+        {
+          "path": "ts/packages/smoke/src/public-consumer-compat.test.ts",
+          "token": "asha-demo public roots cover RuntimeSession readouts and HUD/menu projection"
+        }
+      ],
+      "capabilities": ["bridge.project-bundle.load"],
+      "consumerNeeds": ["asha-demo.conformance", "asha-demo.playable-encounter-readout", "asha-demo.renderer-host", "asha-demo.runtime-load", "asha-demo.ui-dom"],
+      "publicSurfaces": ["@asha/renderer-host", "@asha/runtime-bridge", "@asha/smoke", "@asha/ui-dom"],
+      "claims": ["publicProjectionReadout"]
+    },
+    {
+      "id": "public.session-input-replay",
+      "suite": "bridge.rust-authority",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/input.rs",
+          "token": "runtime_bridge_replays_authority_issued_actions_exactly_once_without_raw_input"
+        },
+        {
+          "path": "ts/packages/runtime-bridge/src/browser-input-host.test.ts",
+          "token": "resolved pause context records and replays without browser events or double delivery"
+        }
+      ],
+      "capabilities": ["bridge.session-input-replay", "bridge.session-time-control"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["@asha/runtime-session"],
+      "claims": ["atomicRejection", "publicProjectionReadout"]
+    },
+    {
+      "id": "public.session-time-control",
+      "suite": "bridge.rust-authority",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/time_control.rs",
+          "token": "exact_steps_advance_the_requested_count_and_remain_paused"
+        },
+        {
+          "path": "ts/packages/runtime-bridge/src/time-control.test.ts",
+          "token": "headless RuntimeSession pause and exact stepping use validated authority commands"
+        }
+      ],
+      "capabilities": ["bridge.session-time-control"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["@asha/runtime-session"],
+      "claims": ["atomicRejection"]
+    },
+    {
+      "id": "public.telemetry-snapshot-overlay",
+      "suite": "public.telemetry",
+      "evidence": [
+        {
+          "path": "engine-rs/crates/render/render-telemetry-overlay/src/lib.rs",
+          "token": "retained_overlay_lifecycle_is_typed_atomic_and_bounded"
+        },
+        {
+          "path": "ts/packages/renderer-host/src/telemetry-host.test.ts",
+          "token": "headless live telemetry omits unavailable counters and preserves bounded history"
+        },
+        {
+          "path": "../asha-demo/tests/live-ui.spec.mjs",
+          "token": "liveTelemetrySnapshot"
+        }
+      ],
+      "capabilities": ["telemetry.live-snapshot-overlay"],
+      "consumerNeeds": ["asha-demo.telemetry-live-overlay"],
+      "publicSurfaces": ["@asha/renderer-host"],
+      "claims": ["publicProjectionReadout"]
+    }
+  ],
+  "temporaryOperationExemptions": [
+    {
+      "operation": "apply_first_person_camera_input",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('apply_first_person_camera_input')"}
+    },
+    {
+      "operation": "apply_scene_object_command",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('apply_scene_object_command')"}
+    },
+    {
+      "operation": "get_buffer",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('get_buffer')"}
+    },
+    {
+      "operation": "pick_voxel",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('pick_voxel')"}
+    },
+    {
+      "operation": "read_camera_projection",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('read_camera_projection')"}
+    },
+    {
+      "operation": "read_model_material_preview",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('read_model_material_preview')"}
+    },
+    {
+      "operation": "read_scene_object_snapshot",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('read_scene_object_snapshot')"}
+    },
+    {
+      "operation": "read_voxel_mesh_evidence",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('read_voxel_mesh_evidence')"}
+    },
+    {
+      "operation": "release_buffer",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('release_buffer')"}
+    },
+    {
+      "operation": "select_voxel",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('select_voxel')"}
+    },
+    {
+      "operation": "unload_project_bundle",
+      "owner": "runtime-bridge",
+      "reason": "The stable facade deliberately fails closed because its native addon export has not yet been wired; reference behavior cannot count as conformance.",
+      "exitCriteria": "Wire and semantically exercise the napi export, then remove this exemption.",
+      "evidence": {"path": "ts/packages/runtime-bridge/src/native.ts", "token": "nativeUnimplemented('unload_project_bundle')"}
+    }
+  ]
+}

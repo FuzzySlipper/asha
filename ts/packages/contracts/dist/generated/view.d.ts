@@ -53,6 +53,95 @@ export interface CameraSnapshot {
     readonly projection: PerspectiveProjection;
     readonly viewport: ViewportSize;
 }
+export declare const CAMERA_CONTROLLER_STATE_SCHEMA_VERSION = 1;
+export type CameraMode = 'firstPerson' | 'orbit' | 'topDown';
+export type CameraTransitionEasing = 'linear' | 'smoothStep';
+export interface CameraTransitionSpec {
+    readonly durationMilliseconds: number;
+    readonly easing: CameraTransitionEasing;
+}
+export type CameraModeTarget = {
+    readonly mode: 'firstPerson';
+    readonly pose: CameraPose;
+} | {
+    readonly mode: 'orbit';
+    readonly pivot: readonly [number, number, number];
+    readonly distance: number;
+    readonly minDistance: number;
+    readonly maxDistance: number;
+    readonly yawDegrees: number;
+    readonly pitchDegrees: number;
+} | {
+    readonly mode: 'topDown';
+    readonly pivot: readonly [number, number, number];
+    readonly height: number;
+    readonly minHeight: number;
+    readonly maxHeight: number;
+    readonly yawDegrees: number;
+    readonly pitchDegrees: number;
+};
+export interface CameraModeCommand {
+    readonly camera: CameraHandle;
+    readonly expectedRevision: number;
+    readonly target: CameraModeTarget;
+    readonly transition: CameraTransitionSpec | null;
+    readonly tick: number;
+}
+export interface CameraControllerState {
+    readonly schemaVersion: number;
+    readonly revision: number;
+    readonly camera: CameraHandle;
+    readonly mode: CameraMode;
+    readonly pivot: readonly [number, number, number] | null;
+    readonly distance: number | null;
+    readonly minDistance: number | null;
+    readonly maxDistance: number | null;
+    readonly snapshot: CameraSnapshot;
+    readonly stateHash: string;
+}
+export interface CameraTransitionReadout {
+    readonly from: CameraSnapshot;
+    readonly to: CameraSnapshot;
+    readonly durationMilliseconds: number;
+    readonly easing: CameraTransitionEasing;
+    readonly transitionHash: string;
+}
+export type CameraControllerRejection = 'staleRevision' | 'invalidTarget' | 'incompatibleMode' | 'invalidInput' | 'terrainBlocked';
+export interface CameraModeChangeReceipt {
+    readonly accepted: boolean;
+    readonly before: CameraControllerState;
+    readonly after: CameraControllerState;
+    readonly transition: CameraTransitionReadout | null;
+    readonly terrainConstrained: boolean;
+    readonly rejection: CameraControllerRejection | null;
+    readonly receiptHash: string;
+}
+export interface CameraNavigationInput {
+    readonly panRight: number;
+    readonly panForward: number;
+    readonly yawDeltaDegrees: number;
+    readonly pitchDeltaDegrees: number;
+    readonly zoomDelta: number;
+    readonly dtSeconds: number;
+    readonly panSpeedUnitsPerSecond: number;
+}
+export interface CameraNavigationInputEnvelope {
+    readonly camera: CameraHandle;
+    readonly expectedRevision: number;
+    readonly input: CameraNavigationInput;
+    readonly tick: number;
+}
+export interface CameraNavigationReceipt {
+    readonly accepted: boolean;
+    readonly before: CameraControllerState;
+    readonly after: CameraControllerState;
+    readonly terrainConstrained: boolean;
+    readonly rejection: CameraControllerRejection | null;
+    readonly receiptHash: string;
+}
+export interface CameraControllerReadRequest {
+    readonly camera: CameraHandle;
+}
 export interface CameraProjectionSnapshot {
     readonly camera: CameraHandle;
     readonly tick: number;

@@ -1,0 +1,13 @@
+[package]
+name = "render-audio"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-assets = { path = "../../foundation/core-assets" }
+core-catalog = { path = "../../state/core-catalog" }
+protocol-presentation = { path = "../../protocol/protocol-presentation" }
+protocol-render = { path = "../../protocol/protocol-render" }

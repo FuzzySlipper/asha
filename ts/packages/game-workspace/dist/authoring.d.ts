@@ -1,6 +1,6 @@
 import type { AshaGameManifest } from './manifest.js';
-export type AshaAuthoringOperationKind = 'authoring.scene.save_source' | 'authoring.catalog.save_source' | 'authoring.asset.save_source' | 'authoring.policy.save_source';
-export type AshaAuthoringSourceFormat = 'proof-scene-json.v1' | 'asset-catalog-json.v1' | 'inline-asset-json.v1' | 'policy-json.deferred';
+export type AshaAuthoringOperationKind = 'authoring.scene.save_source' | 'authoring.prefab.save_source' | 'authoring.catalog.save_source' | 'authoring.asset.save_source' | 'authoring.policy.save_source';
+export type AshaAuthoringSourceFormat = 'proof-scene-json.v1' | 'prefab-registry-json.v1' | 'asset-catalog-json.v1' | 'inline-asset-json.v1' | 'policy-json.deferred';
 export type AshaAuthoringDiagnosticCode = 'unsupported_operation' | 'disallowed_path' | 'invalid_extension' | 'forbidden_generated_path' | 'private_transport_hint' | 'stale_file_hash' | 'invalid_schema';
 export interface AshaAuthoringDiagnostic {
     readonly code: AshaAuthoringDiagnosticCode;

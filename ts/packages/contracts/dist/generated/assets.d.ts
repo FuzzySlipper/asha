@@ -1,5 +1,5 @@
 import type { AssetReference } from './scene.js';
-export type AssetKind = 'material' | 'mesh' | 'sprite' | 'sprite-sheet' | 'texture' | 'voxel-volume' | 'voxel-object' | 'script' | 'scene';
+export type AssetKind = 'material' | 'mesh' | 'sprite' | 'sprite-sheet' | 'texture' | 'audio' | 'font' | 'voxel-volume' | 'voxel-object' | 'script' | 'scene';
 export type StructuralClass = 'decorative' | 'solid' | 'structural';
 export type UvStrategy = 'flat' | 'planar' | 'atlas';
 export type CatalogValidationCode = 'duplicate-asset-id' | 'material-payload-missing' | 'material-payload-on-non-material' | 'wrong-kind-reference' | 'unknown-dependency' | 'dependency-cycle' | 'empty-source-path';

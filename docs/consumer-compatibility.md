@@ -41,6 +41,14 @@ Downstream game repos must depend on that facade path, not on
 game-rule extension trait and generated extension DTOs while the implementation
 source of truth remains inside the engine workspace.
 
+Role-scoped observed consumption is recorded separately in
+`harness/consumer-needs/manifests/` under the schema documented in
+`docs/consumer-needs-manifests.md`. Public-surface manifests answer what a role
+may import; consumer-needs manifests answer which operations, types, providers,
+selectors, fields, quotas, bindings, and proof level a real consumer requires.
+`./harness/ci/check-consumer-needs.sh` validates both together without treating
+type existence as provider or delivery evidence.
+
 Tier 1 public packages carry `asha.compatibility` in `package.json` and a package-local
 `compatibility.json` file. Some unstable surfaces carry package-local compatibility
 metadata while their consumer role is still being ratified.
@@ -68,7 +76,7 @@ Additional unstable package statuses:
 - `@asha/renderer-host` is the unstable browser render surface host for human-facing demos. It exposes backend-neutral mount/lifecycle/projection handles and may use `@asha/renderer-three` internally while that remains the selected browser backend.
 - `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing only. It is not the long-term public renderer contract; human-facing demos should use `@asha/renderer-host` for browser mounting and `@asha/render-projection` for renderer-neutral retained semantics.
 - `@asha/ui-dom` is an unstable render-agnostic UI projection/control descriptor package. It can expose root-level HUD/menu projection helpers, but it does not execute runtime commands or own DOM framework state.
-- Browser/standalone FPS input ownership lives in `@asha/runtime-bridge` through `BrowserFpsInputCollector`. Demos, Studio, and renderer-host canvas wiring may adapt DOM events into this collector and consume either `drainInputFrame()` for runtime-neutral movement/look state or `drainFrame()` for typed RuntimeSession camera/action proposals. Consumers must not replace this with demo-local WASD/mouse-look globals, renderer-three imports, bare Three.js controls, raw runtime transports, or generated internals.
+- Browser input ownership lives in `@asha/runtime-bridge` through `BrowserInputHost`, which attaches DOM listeners and submits normalized samples through the public RuntimeSession input surface. FPS and editor code consume named actions through `BrowserFpsResolvedActionConsumer` and `EditorResolvedInputConsumer`; they do not own key codes. Consumers must not replace this with demo-local WASD/mouse-look globals, renderer-three imports, bare Three.js controls, raw runtime transports, or generated internals.
 - RuntimeSession ECRP loads may declare generated `GameRuleModuleManifest[]`
   values through `loadEcrpProject(input.gameRuleModules)`. Rust-backed
   sessions validate the declaration shape, forward compatible manifests to the
@@ -252,7 +260,11 @@ Consumer behavior:
   ```
 
 - Consumers import the Rust crate as `asha_game_rule_extension`.
-- Consumers implement `GameRuleModule` and use re-exported typed DTOs such as
+- Consumers may use the successor `GameplayModuleManifest`, namespaced
+  `GameplayContractRef`, invocation descriptors, and registry readout contracts
+  through the same facade while the legacy hook path migrates. These contracts
+  do not expose registry mutation or TypeScript callbacks.
+- Existing consumers maintaining the historical compatibility hook use re-exported typed DTOs such as
   `GameRuleModuleManifest`, `GameRuleModuleRef`, `WeaponEffectHookRequest`,
   `GameExtensionProposal`, `GameExtensionHookReceipt`, and replay evidence
   types.
@@ -263,6 +275,102 @@ Consumer behavior:
 This facade is a compile-time rule-module API only. RuntimeSession still
 validates declared manifests, invokes modules through an approved host path, and
 applies accepted effects through Rust authority.
+
+New gameplay authority should not add another hook to this surface. Use
+`asha-gameplay-module-sdk` plus `asha-gameplay-runtime-host`, following
+`docs/gameplay-fabric-growth-recipes.md`. The compatibility hook remains only
+until its existing callers migrate.
+
+## Rust gameplay module SDK compatibility log
+
+- 2026-07-11: Added generated gameplay-module configuration/binding contracts
+  and the deterministic public `GameplayModuleBindingRegistryBuilder`. This is
+  additive for module authors; executable behavior remains statically linked and
+  Session activation remains Rust-owned.
+
+### `asha-gameplay-module-sdk` — public static gameplay-module facade
+
+Status: task #5634 public Rust authoring and static-composition lane.
+
+- Public facade: `public-rust/gameplay-module-sdk`.
+- Engine source: `engine-rs/crates/rules/gameplay-module-sdk`.
+- Downstream dependency:
+
+  ```toml
+  asha-gameplay-module-sdk = { path = "../asha-engine/public-rust/gameplay-module-sdk" }
+  ```
+
+The facade exposes namespaced gameplay contracts, typed declared reads,
+configuration/state schema metadata, typed codec and state-adapter edges,
+boring event/proposal/local-fact helpers, and static provider composition. It
+does not expose raw Session/entity/module stores, mutable runtime registries,
+query-provider internals, or authority-owner implementations. Generated
+TypeScript remains a configuration/projection contract and cannot execute Rust
+authority behavior.
+
+The initial compatibility marker is the crate version plus exact SDK, contract,
+source, schema, and artifact hashes recorded in each module manifest. Wave 1 is
+static composition only; runtime plugin loading is not part of this surface.
+
+## Rust gameplay runtime host compatibility log
+
+- 2026-07-11: Added the public Rust `GameplayRuntimeHost::decide` path and
+  `GameplayRuntimeDecisionOwner` port. Decision invocations now receive frozen
+  declared reads; host snapshots preserve pending continuation generations and
+  a bounded decision receipt ledger. Missing, wrong, replayed, and stale resume
+  tokens fail before module invocation. This is additive and remains a
+  statically linked Rust authority boundary; no TypeScript callback or dynamic
+  owner registry is introduced.
+
+- 2026-07-11: Added `asha-gameplay-runtime-host` as the public static product
+  host for generated bindings/triggers, frozen declared reads, engine-owner
+  routing, collision-constrained actor movement, reaction frames, and
+  save/restore. Added the transport-neutral `GameplayRuntimeHostTransport` and
+  five `RuntimeSessionFacade` operations. The reference RuntimeSession fails
+  closed; downstream products supply a consumer-owned native provider that
+  statically links their real module crates.
+
+### `asha-gameplay-runtime-host` — static downstream RuntimeSession host
+
+Status: tasks #5674 and #5677 public Rust and transport-neutral host lane.
+
+- Public Rust facade: `public-rust/gameplay-runtime-host`.
+- Engine source: `engine-rs/crates/rules/gameplay-runtime-host`.
+- Browser contract: `@asha/runtime-session` package root.
+- Concrete facade construction: `@asha/runtime-bridge` package root.
+
+The compatibility boundary is additive and static. Consumers may use the
+generated `GameplayTriggerDefinition`, `GameplayModuleBindingRegistry`, host
+readout/frame hashes, validated prefab bootstrap/readouts, and the
+`GameplayRuntimeHostTransport` port. They may not
+import `engine-rs/crates/*`, install JavaScript authority callbacks, substitute
+the reference RuntimeSession, or route arbitrary JSON mutations.
+
+## Rust gameplay module conformance compatibility log
+
+- 2026-07-11: Added `asha-gameplay-module-conformance` as an additive public
+  build/dev tool. It consumes the existing SDK and ProjectBundle binding
+  contracts; it does not add runtime plugin loading or a new authority path.
+
+### `asha-gameplay-module-conformance` — public downstream proof runner
+
+Status: task #5635 public build, bootstrap, invocation, state, and replay proof.
+
+- Public facade: `public-rust/gameplay-module-conformance`.
+- Owning engine authority: `engine-rs/crates/rules/rule-project-bundle` plus the
+  existing gameplay fabric/state coordinators.
+- Downstream dependency:
+
+  ```toml
+  asha-gameplay-module-conformance = { path = "../asha-engine/public-rust/gameplay-module-conformance" }
+  ```
+
+This crate is intended as a development or conformance dependency. It accepts a
+statically linked `GameplayStaticComposition`, authored ProjectBundle-shaped
+binding content, and typed root events. Its report is additive and
+schema-versioned. Module code should depend only on
+`asha-gameplay-module-sdk`; shipping runtime code does not need the conformance
+runner.
 
 ### `contracts.v0` — initial local-path boundary
 
@@ -341,6 +449,10 @@ Breaking facade/operation changes require a migration note using the template be
 
 Additive notes under `runtime-bridge.v0`:
 
+- #5604 adds generated first-person/orbit/top-down controller state, revision-guarded mode/navigation receipts, and stable `apply_camera_mode_command`, `apply_camera_navigation_input`, and `read_camera_controller_state` operations through native and RuntimeSession. Rust owns accepted pivot, distance/height, angles, terrain clearance, pose, revision, and hashes. `BrowserInputHost` adds normalized wheel delivery plus a consuming `cameraNavigation` context, and `ResolvedCameraNavigationConsumer` sequences it with camera authority so FPS and pivot controllers cannot run together. `@asha/renderer-host` may sample receipt endpoints for disposable linear or smooth-step display, but interpolation never becomes authority or replay truth. The compatibility marker remains `runtime-bridge.v0` because the operations and named actions are additive; native addon and bridge packages must be rebuilt together.
+- #5613 adds generated Session time-control contracts plus stable `apply_time_control_command` / `read_time_control_state` bridge operations and matching `RuntimeSessionFacade` methods. Rust owns pause, resume, bounded wall-clock cadence multipliers, and exact paused steps. HUD pause/resume intents and resolved named-input actions map to the same generated commands; headless callers use the same facade. Paused simulation leaves projection/inspection reads live, exact stepping remains paused, and speed never scales deterministic tick delta or replay state. The native `stepSimulation` result now carries its authoritative returned tick as well as diff count so paused transports cannot falsely report advancement. The compatibility marker remains `runtime-bridge.v0` because the public additions are additive; native addon and bridge packages must be rebuilt together.
+- #5642 intentionally replaces the five-key `BrowserFpsInputCollector` compatibility surface with `BrowserInputHost`, `BrowserFpsResolvedActionConsumer`, and the stable RuntimeSession input operations. DOM normalization is centralized in the host; catalog validation, context priority/consumption, and resolution are Rust Session authority. Renderer controls now require an initialized public input port, and editor tools consume only resolved `editor.*` actions. This is a breaking v0 cleanup: there is no legacy collector export or fallback.
+- #5643 adds `RecordedInputAction`, `InputActionReplayReceipt`, and stable `replay_resolved_input_action` / `replayResolvedInputAction`. Accepted input receipts issue semantic records containing resolved action plus catalog/context/record hashes and no platform control or browser event. Rust validates record integrity, current catalog/context, declaration/binding lineage, phase/value shape, and per-input-Session repeat delivery before returning an action. The default browser catalog resolves `Escape` to `runtime.time.pause`/`runtime.time.resume`; `ResolvedPauseContextConsumer` sequences public context and #5613 time-control commands so menu priority consumes gameplay/camera input while projection and inspection remain live. Gamepad, touch, IME/text composition, accessibility switches, modifiers/chords, and rebinding UI remain explicit non-claims. The compatibility marker remains `runtime-bridge.v0` because the replay surface is additive, while the default Escape action ids intentionally move from menu labels to time-control intent labels.
 - #4547 starts the package decomposition campaign by moving transport-neutral RuntimeSession semantic readouts and proposal helper modules into `@asha/runtime-session`, while preserving the existing `@asha/runtime-bridge` root exports as compatibility re-exports. Runtime bridge still owns native transport access, launchers, render decode, generated bridge operations, reference helpers, and bridge-backed RuntimeSession facade adapters during this migration phase. Consumers may begin importing semantic readout/helper types from `@asha/runtime-session`, but existing approved `@asha/runtime-bridge` imports remain valid.
 - #5506 completes that migration as an intentional breaking cleanup: `RuntimeSessionFacade`, lifecycle/ECRP/gameplay contracts, shared operation DTOs, and semantic helpers now resolve only from `@asha/runtime-session`. `@asha/runtime-bridge` exports concrete `createRuntimeSessionFacade` construction plus transport/launcher surfaces and removes the compatibility semantic re-export. Engine consumers were updated in place; satellite consumers must make the same package-root import split.
 - #2564 adds three stable camera/view operations to the manifest-backed facade: `create_camera` / `createCamera`, `apply_first_person_camera_input` / `applyFirstPersonCameraInput`, and `read_camera_projection` / `readCameraProjection`. Native remains fail-closed with `operation_unimplemented` until a real native implementation lands; the mock/reference paths provide deterministic boundary evidence only. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
@@ -451,6 +563,13 @@ destination and publishes it with one atomic rename. Existing hosts retain their
 original mapped inode; newly launched hosts load the replacement. Build or test
 automation must never truncate or copy directly over a loaded `.node` file.
 
+#5674 adds optional static gameplay-host composition without changing the
+`browser-host.v0` command shape. A downstream host may supply the public
+`GameplayRuntimeHostTransport`; the injected provider exposes its closed
+load/advance/read/save/restore surface through host-owned HTTP transport. Games
+must continue to consume the typed RuntimeSession facade rather than inventing
+per-game bridge methods or browser-side authority.
+
 ## Command registry compatibility log
 
 ### `command-registry.v0` — unstable Studio command metadata
@@ -489,7 +608,8 @@ Consumer behavior:
 
 ### `game-workspace.v0` — unstable consumer workspace manifest
 
-Status: unstable typed manifest/workspace validation package for consumer repos.
+Status: unstable typed manifest/workspace and prefab-draft package for consumer
+repos.
 
 Consumer behavior:
 
@@ -497,6 +617,10 @@ Consumer behavior:
 - `asha-testing` uses it for synthetic conformance/proof workflows.
 - The new `asha-demo` may use it for human-facing project workspace setup, but should keep product identity separate from proof harness machinery.
 - Manifest validation rejects private transport hints, ASHA internals, generated paths, and unsupported backend/profile claims.
+- Prefab helpers expose explicit draft create/replace/delete/instantiate
+  commands, browser/selection/role/binding/configuration readouts, and canonical
+  source serialization. They do not own runtime authority; Rust still accepts
+  only a validated registry and authoritative placement commands.
 
 ## Catalog Core unstable status
 
@@ -563,6 +687,36 @@ Consumer behavior:
 
 Additive notes under `renderer-host.v0`:
 
+- #5606 adds `AshaLiveTelemetryCollector` and `AshaTelemetryOverlayHost`. The
+  collector exposes a bounded generated snapshot to headless and visual
+  consumers, omits unsupported counters with typed diagnostics, and preserves
+  stable names and units. The retained G1 overlay renders that exact snapshot
+  through an injected sink; visibility remains projection-local and a missing
+  overlay host cannot block scene or other presentation application. The
+  compatibility marker remains `renderer-host.v0` because the root change is
+  additive.
+- #5603 adds `AshaParticleHost` under the generated G1 frame. Rust validates
+  catalog-bound Sprite/SpriteSheet descriptors, burst and retained lifecycles,
+  curves, seeds, and projection budgets; the host owns bounded per-particle
+  simulation and sends renderer-neutral billboards to an injected sink. Missing
+  anchors/resources and budget drops are typed, domain-local diagnostics. A
+  one-way cosmetic adapter is available without turning particle realization
+  into authority or replay truth. The compatibility marker remains
+  `renderer-host.v0` because the root change is additive.
+- #5597 adds `AshaBillboardHost` under the same generated G1 frame application.
+  It realizes retained world/entity anchors as localized text, values, or
+  hash-validated texture icons; loads catalog Font bytes through `FontFace`;
+  and owns distance, viewport, depth-order, and renderer-supplied occlusion
+  culling. Missing billboard hosts/resources degrade independently after scene
+  application. Public descriptors and readouts contain no DOM or Three.js
+  types, so this browser realization remains replaceable.
+- #5595 adds `AshaAudioHost` and `applyAshaRuntimeProjectionFrame`. The host
+  consumes generated G1 audio operations, verifies resolved bytes against the
+  catalog SHA-256, owns SFX/ambient/UI buses and retained Web Audio graphs, and
+  exposes typed listener updates, diagnostics, and bounded readout. Scene
+  projection applies before presentation-domain realization, so unavailable
+  browser audio degrades independently. The compatibility marker remains
+  `renderer-host.v0` because the package-root change is additive.
 - #5537 adds the browser-safe animated-mesh resource and playback path. `mountAshaRendererAnimatedMeshSurface` accepts a typed resource manifest/resolver, verifies SHA-256 and named clips, mounts the engine-owned backend, applies subsequent `RenderFrameDiff` values, advances projection-only mixers from render-frame deltas, and exposes bounded playback diagnostics/readback. `createAshaRendererAnimatedMeshProjection` provides the same path without a canvas for integration tests. `RuntimeSessionAnimationIntentReadout.instanceHandle` carries the generated `RenderHandle` brand, so consumers importing only `@asha/runtime-session` and `@asha/renderer-host` can pass an intent directly to projection or surface playback readback without casts or a separate contracts import. The package ships the CC0 Kenney GLB and license behind `ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST`; consumers do not use `harness/` paths or import the concrete backend. The compatibility marker remains `renderer-host.v0` because existing surface callers are unaffected.
 
 ## Renderer Three unstable status

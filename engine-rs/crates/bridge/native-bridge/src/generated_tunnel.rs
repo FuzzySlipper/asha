@@ -1,7 +1,7 @@
 use napi_derive::napi;
 use runtime_bridge_api::{
-    GeneratedTunnelPreset, GeneratedTunnelRuntimeApplyRequest,
-    GeneratedTunnelRuntimeApplyReceipt, RuntimeBridge,
+    GeneratedTunnelPreset, GeneratedTunnelRuntimeApplyReceipt, GeneratedTunnelRuntimeApplyRequest,
+    RuntimeBridge,
 };
 
 use crate::{to_napi, with_bridge};
@@ -54,7 +54,11 @@ pub fn apply_generated_tunnel_to_runtime_world(
 ) -> napi::Result<NativeGeneratedTunnelRuntimeApplyReceipt> {
     let preset = match preset_id.as_str() {
         "tiny-enclosed" => GeneratedTunnelPreset::TinyEnclosed,
-        _ => return Err(napi::Error::from_reason("unsupported generated tunnel preset")),
+        _ => {
+            return Err(napi::Error::from_reason(
+                "unsupported generated tunnel preset",
+            ))
+        }
     };
     let seed = u64::try_from(seed)
         .map_err(|_| napi::Error::from_reason("generated tunnel seed must be non-negative"))?;

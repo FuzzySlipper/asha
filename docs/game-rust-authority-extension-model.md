@@ -1,8 +1,10 @@
 # Game Rust Authority Extension Model
 
-Status: architecture note for #4488. This is the intended direction for serious
-ASHA downstream game repos; it is not a claim that all extension points already
-exist.
+Status: historical foundation plus implemented gameplay-fabric successor. The
+original one-hook `GameRuleModule` slice remains compatibility evidence; new
+downstream authority should use the public static gameplay-module SDK and
+runtime host described under **Gameplay-Fabric Successor Foundation** below and
+in `docs/gameplay-fabric-growth-recipes.md`.
 
 ASHA keeps the central rule:
 
@@ -45,8 +47,9 @@ rule contributor that ASHA invokes through a public extension boundary.
 The durable model should be a boring compiled boundary, not a dynamic plugin
 system:
 
-1. ASHA exposes a small public `GameRuleModule` style Rust trait/API from an
-   extension crate.
+1. Historical compatibility exposed a small `GameRuleModule` Rust trait/API;
+   the implemented successor composes real `GameplayModuleBehavior` providers
+   with open contracts and declared reads.
 2. A game repo builds a Rust crate that implements that trait against generated
    ASHA view/request/receipt types.
 3. The game repo declares the compiled rule module in an ASHA game manifest with
@@ -166,6 +169,30 @@ This slice is intentionally not a dynamic plugin system. It proves the compiled
 rule-module invocation path with a narrow reference module and leaves downstream
 game-owned compiled modules to the demo/consumer follow-up.
 
+## Gameplay-Fabric Successor Foundation
+
+Task #5630 preserves the compiled Rust boundary while replacing the assumption
+that every new game meaning needs another bespoke engine hook. Open,
+namespaced/versioned `GameplayContractRef` values now describe events,
+proposals, views, facts, and module state. Stable Observe/Guard/Transform/React
+families describe invocation roles without granting mutation authority.
+
+`GameplayModuleManifest` and the immutable `svc-gameplay-fabric` registry form
+the successor bootstrap boundary. They validate linked provider agreement,
+typed codecs, subscriptions, exact authority owners, read-view providers,
+namespace ownership, budgets, and ordering before a Session can use the graph.
+The original `GameRuleModuleManifest` and weapon-effect trait remain as a
+compatibility path until the later invocation/migration tasks land. See
+`docs/gameplay-fabric-contracts.md` for the implemented boundary and non-goals.
+
+Task #5634 adds the public successor lane at
+`public-rust/gameplay-module-sdk`. Downstream crates now implement real
+`GameplayModuleBehavior`, use typed handler helpers and declared reads, and
+contribute a static provider containing their manifest, codecs, state/view
+adapters, configuration schema metadata, and behavior instance. Composition
+consumes the same immutable registry builder. The old weapon trait survives
+only through the named `LegacyWeaponEffectTransformBehavior` adapter.
+
 ## Remaining Extension Points
 
 ASHA still needs follow-up work before downstream games have the full boundary:
@@ -173,11 +200,10 @@ ASHA still needs follow-up work before downstream games have the full boundary:
 - Move the current bridge-level FPS RuntimeSession envelopes into generated
   `protocol_runtime` contracts instead of the existing explicit transitional
   bridge DTO allowlist.
-- Add a downstream compiled-module linking/loading lane for real game crates
-  beyond the in-engine reference module used by #4517.
-- Broaden hook contexts beyond the first weapon-effect damage modifier.
-- Add replay/golden fixtures that cover downstream compiled modules once the
-  demo-owned Rust crate exists.
+- Bind static providers and typed configuration from ProjectBundle-authored
+  content rather than hard-coded Session setup (#5661).
+- Add the full downstream conformance command and real consumer replay proofs
+  (#5635/#5636 and Rulebench #5638).
 
 ## Minimal `asha-demo` Candidate Slice
 

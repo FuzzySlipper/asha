@@ -1,4 +1,4 @@
-import type { CommandBatch, CommandResult, RenderFrameDiff } from '@asha/contracts';
+import type { CommandBatch, CommandResult, RenderFrameDiff, RuntimeProjectionFrame } from '@asha/contracts';
 import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
 import type { CompositionStatus, EngineHandle, FrameCursor, ProjectBundleLoadRequest, StepResult } from './transport-contracts.js';
 export type RuntimeSessionMode = 'reference' | 'rust';
@@ -52,13 +52,15 @@ export interface RuntimeSessionProjectionSummary {
     readonly sequenceId: number;
     readonly cursor: FrameCursor;
     readonly frame: RenderFrameDiff;
+    readonly runtimeFrame: RuntimeProjectionFrame;
     readonly composition: CompositionStatus;
     readonly renderDiffCount: number;
+    readonly presentationOpCount: number;
     readonly projectionHash: string;
 }
 export interface RuntimeSessionReplayRecord {
     readonly sequenceId: number;
-    readonly kind: 'initialize' | 'submitCommands' | 'tick' | 'createCamera' | 'applyFirstPersonCameraInput' | 'applyCollisionConstrainedCameraInput' | 'loadEcrpProject' | 'submitRuntimeActionIntent' | 'submitGameExtensionWeaponEffect' | 'validateGameRuleCatalog' | 'submitGameRuleEffectIntent' | 'lifecycleDeath' | 'runAutonomousPolicyTick' | 'requestGeneratedTunnelOperation' | 'requestEncounterTransition' | 'requestSessionRestart' | 'restart';
+    readonly kind: 'initialize' | 'submitCommands' | 'tick' | 'createCamera' | 'applyCameraModeCommand' | 'applyCameraNavigationInput' | 'applyFirstPersonCameraInput' | 'applyCollisionConstrainedCameraInput' | 'loadEcrpProject' | 'submitRuntimeActionIntent' | 'submitGameExtensionWeaponEffect' | 'validateGameRuleCatalog' | 'submitGameRuleEffectIntent' | 'lifecycleDeath' | 'runAutonomousPolicyTick' | 'requestGeneratedTunnelOperation' | 'requestEncounterTransition' | 'requestSessionRestart' | 'restart';
     readonly actionSource?: RuntimeActionIntentEnvelope['source'];
     readonly recordHash: string;
 }

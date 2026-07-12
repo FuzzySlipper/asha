@@ -1,11 +1,24 @@
 import type {
   CameraCreateRequest,
+  CameraControllerReadRequest,
+  CameraControllerState,
+  CameraModeChangeReceipt,
+  CameraModeCommand,
+  CameraNavigationInputEnvelope,
+  CameraNavigationReceipt,
   CameraProjectionRequest,
   CollisionConstrainedCameraInputEnvelope,
   CommandBatch,
   FirstPersonCameraInputEnvelope,
   GameRuleCatalog,
   GameRuleResolutionRequest,
+  InputActionReplayReceipt,
+  InputContextChangeReceipt,
+  InputContextCommand,
+  InputContextStackState,
+  InputResolutionReceipt,
+  InputSessionConfigureRequest,
+  InputSessionSnapshot,
   VoxelAnnotationEditReceipt,
   VoxelAnnotationEditRequest,
   VoxelAnnotationLayerExportReceipt,
@@ -55,6 +68,11 @@ import type {
   VoxelVolumeAuthoringInitializeReceipt,
   VoxelVolumeAuthoringInitializeRequest,
   WeaponEffectHookRequest,
+  RawInputSample,
+  RecordedInputAction,
+  TimeControlCommand,
+  TimeControlReceipt,
+  TimeControlState,
 } from '@asha/contracts';
 import type { CombatFeedbackProjection } from './combat-feedback.js';
 import type { CombatRuntimeReadout } from './combat-readout.js';
@@ -112,13 +130,31 @@ import type {
   FpsPrimaryFireRequest,
   GameRuleRuntimeReadout,
 } from './transport-contracts.js';
+import type {
+  GameplayRuntimeHostAdvanceReceipt,
+  GameplayRuntimeHostLoadInput,
+  GameplayRuntimeHostLoadReceipt,
+  GameplayRuntimeHostMoment,
+  GameplayRuntimeHostReadout,
+  GameplayRuntimeHostSnapshot,
+} from './gameplay-runtime-host.js';
 
 export interface RuntimeSessionFacade {
   initialize(input: RuntimeSessionInitializeInput): RuntimeSessionStateSummary;
+  configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot;
+  applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt;
+  submitRawInput(sample: RawInputSample): InputResolutionReceipt;
+  replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt;
+  readInputContextState(): InputContextStackState;
+  applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt;
+  readTimeControlState(): TimeControlState;
   loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt;
   submitCommands(batch: CommandBatch): RuntimeSessionCommandReceipt;
   tick(input?: RuntimeSessionTickInput): RuntimeSessionTickResult;
   createCamera(request: CameraCreateRequest): RuntimeSessionCameraCreateReceipt;
+  applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt;
+  applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt;
+  readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState;
   applyFirstPersonCameraInput(envelope: FirstPersonCameraInputEnvelope): RuntimeSessionCameraInputReceipt;
   applyCollisionConstrainedCameraInput(
     envelope: CollisionConstrainedCameraInputEnvelope,
@@ -177,6 +213,14 @@ export interface RuntimeSessionFacade {
   previewVoxelEditRevert(request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt; applyVoxelEditRevert(request: VoxelEditHistoryRevertRequest): VoxelEditHistoryRevertReceipt;
   undoVoxelEdit(request: VoxelEditHistoryUndoRequest): VoxelEditHistoryUndoReceipt; redoVoxelEdit(request: VoxelEditHistoryRedoRequest): VoxelEditHistoryRedoReceipt;
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
+  loadGameplayRuntime(input: GameplayRuntimeHostLoadInput): GameplayRuntimeHostLoadReceipt;
+  advanceGameplayRuntime(moment: GameplayRuntimeHostMoment): GameplayRuntimeHostAdvanceReceipt;
+  readGameplayRuntime(): GameplayRuntimeHostReadout;
+  saveGameplayRuntime(): GameplayRuntimeHostSnapshot;
+  restoreGameplayRuntime(
+    input: GameplayRuntimeHostLoadInput,
+    snapshot: GameplayRuntimeHostSnapshot,
+  ): GameplayRuntimeHostLoadReceipt;
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
   readAnimationIntent(): RuntimeSessionAnimationIntentReadout; readProjection(): RuntimeSessionProjectionSummary;
   readTelemetry(): RuntimeSessionTelemetrySummary;

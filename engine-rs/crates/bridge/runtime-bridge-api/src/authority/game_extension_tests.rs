@@ -76,6 +76,68 @@ fn weapon_effect_request_for(
     }
 }
 
+fn generic_game_rule_catalog() -> GameRuleCatalog {
+    GameRuleCatalog {
+        catalog: protocol_game_rules::GameRuleCatalogRef {
+            catalog_id: "catalog.conformance.game-rules".to_string(),
+            version: "1.0.0".to_string(),
+            content_hash: "fnv1a64:catalog-conformance".to_string(),
+        },
+        value_channels: vec![protocol_game_rules::GameRuleValueChannelRef {
+            channel_id: "value.health".to_string(),
+            display_name: Some("Health".to_string()),
+        }],
+        bundles: vec![protocol_game_rules::GameRuleEffectBundle {
+            bundle_id: "bundle.conformance.damage".to_string(),
+            effect_ops: vec![protocol_game_rules::GameRuleEffectOp::ApplyDelta {
+                op_id: "op.conformance.damage".to_string(),
+                channel_id: "value.health".to_string(),
+                amount: -7,
+                tags: vec!["conformance".to_string()],
+            }],
+            modifiers: Vec::new(),
+            tags: vec!["conformance".to_string()],
+            source_hash: "fnv1a64:bundle-conformance".to_string(),
+        }],
+    }
+}
+
+#[test]
+fn generic_game_rule_operations_validate_resolve_and_publish_runtime_readout() {
+    let mut bridge = init_bridge();
+    let catalog = generic_game_rule_catalog();
+
+    let validation = bridge.validate_game_rule_catalog(catalog.clone()).unwrap();
+    assert!(validation.accepted, "{:?}", validation.diagnostics);
+    assert_eq!(validation.evidence.len(), 1);
+
+    let resolution = bridge
+        .submit_game_rule_effect_intent(GameRuleEffectIntentRequest {
+            request: GameRuleResolutionRequest {
+                catalog: catalog.catalog.clone(),
+                bundle_id: "bundle.conformance.damage".to_string(),
+                source: EntityId::new(101),
+                target: EntityId::new(777),
+                values: vec![protocol_game_rules::GameRuleBoundedValue {
+                    channel_id: "value.health".to_string(),
+                    min: 0,
+                    current: 50,
+                    max: 100,
+                }],
+                tick: 9,
+            },
+            catalog,
+        })
+        .unwrap();
+    assert!(resolution.accepted, "{:?}", resolution.diagnostics);
+    assert_eq!(resolution.pending_value_deltas[0].amount, -7);
+
+    let readout = bridge.read_game_rule_runtime_readout().unwrap();
+    assert_eq!(readout.backend, "engine_bridge_rust");
+    assert_eq!(readout.latest_replay_hash, Some(resolution.replay_hash));
+    assert!(!readout.recent_trace.is_empty());
+}
+
 #[test]
 fn game_extension_weapon_effect_requires_declared_module() {
     let mut bridge = init_bridge();
@@ -137,6 +199,12 @@ fn game_extension_weapon_effect_applies_validated_proposal_through_combat_author
     );
     assert_eq!(result.replay_evidence.validation_status, "accepted");
     assert_eq!(
+        result.hook_receipt.trace[1].code,
+        "gameplayFabric.transformAccepted"
+    );
+    assert_eq!(result.hook_receipt.trace[1].refs.len(), 3);
+    assert!(result.hook_receipt.trace[1].refs[0].starts_with("fnv1a64:"));
+    assert_eq!(
         result.replay_evidence.event_hashes,
         vec![format!("fnv1a64:{:016x}", primary_fire.replay_hash)]
     );
@@ -151,6 +219,21 @@ fn game_extension_weapon_effect_applies_validated_proposal_through_combat_author
             current: 45,
             max: 75
         })
+    );
+    let projection = bridge
+        .read_projection_frame(0)
+        .expect("accepted extension fire publishes a projection frame");
+    assert_eq!(projection.authority_tick, 9);
+    assert_eq!(projection.presentation.ops.len(), 5);
+    let PresentationOp::Audio { meta, .. } = &projection.presentation.ops[0] else {
+        panic!("audio remains the first presentation operation")
+    };
+    assert_eq!(
+        meta.origin
+            .as_ref()
+            .expect("audio projection retains its authority origin")
+            .id,
+        format!("combat.primary-fire.accepted:{}", primary_fire.replay_hash)
     );
 }
 

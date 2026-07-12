@@ -471,7 +471,7 @@ impl EntityStore {
         if self.transform(id).is_none() {
             return Err(MovementError::NotSpatial { id });
         }
-        match self.collision(id) {
+        match self.active_collision(id) {
             None => return Err(MovementError::NoCollider { id }),
             Some(c) if c.static_collider => return Err(MovementError::Immovable { id }),
             Some(_) => {}
@@ -526,7 +526,7 @@ impl EntityStore {
             if id == mover || !core.lifecycle.is_alive() {
                 continue;
             }
-            let Some(collision) = self.collision(id) else {
+            let Some(collision) = self.active_collision(id) else {
                 continue; // rendered-but-non-colliding entities are not obstacles
             };
             if !collision.static_collider {

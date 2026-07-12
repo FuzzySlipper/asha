@@ -1,4 +1,9 @@
-import type { RenderFrameDiff } from '@asha/contracts';
+import type {
+  ParticleEmitterDescriptor,
+  ParticleEmitterPatch,
+  RenderFrameDiff,
+  RuntimeProjectionFrame,
+} from '@asha/contracts';
 import type { CompositionStatus, ProjectBundleLoadRequest } from './bridge.js';
 import type { EncounterDirectorState } from '@asha/runtime-session';
 import type {
@@ -88,6 +93,195 @@ export function renderFrameHashRecord(frame: RenderFrameDiff): RuntimeSessionHas
     opCount: frame.ops.length,
     opKinds: frame.ops.map((op) => op.op),
   };
+}
+
+export function runtimeProjectionFrameHashRecord(
+  frame: RuntimeProjectionFrame,
+): RuntimeSessionHashRecord {
+  return {
+    schemaVersion: frame.schemaVersion,
+    authorityTick: frame.authorityTick,
+    scene: renderFrameHashRecord(frame.scene),
+    replayScope: frame.presentation.replayScope,
+    presentationOps: frame.presentation.ops.map((operation) => {
+      const common = {
+        domain: operation.domain,
+        sequence: operation.meta.sequence,
+        originKind: operation.meta.origin?.kind ?? null,
+        originId: operation.meta.origin?.id ?? null,
+        causationId: operation.meta.origin?.causationId ?? null,
+        correlationId: operation.meta.origin?.correlationId ?? null,
+        op: operation.op.op,
+      };
+      if (operation.domain === 'audio') {
+        return {
+          ...common,
+          signalOrHandle:
+            operation.op.op === 'emit'
+              ? operation.op.signalId
+              : (operation.op.handle as number),
+          clip:
+            operation.op.op === 'emit' || operation.op.op === 'create'
+              ? operation.op.descriptor.clip.asset
+              : null,
+          contentHash:
+            operation.op.op === 'emit' || operation.op.op === 'create'
+              ? operation.op.descriptor.clip.contentHash
+              : null,
+        };
+      }
+      if (operation.domain === 'billboard') {
+        return {
+          ...common,
+          handle: operation.op.handle as number,
+          contentKind:
+            operation.op.op === 'create'
+              ? operation.op.descriptor.content.kind
+              : operation.op.op === 'update'
+                ? (operation.op.patch.content?.kind ?? null)
+                : null,
+        };
+      }
+      if (operation.domain === 'particle') {
+        return {
+          ...common,
+          signalOrHandle:
+            operation.op.op === 'emit'
+              ? operation.op.signalId
+              : (operation.op.handle as number),
+          descriptor:
+            operation.op.op === 'emit' || operation.op.op === 'create'
+              ? particleDescriptorHashRecord(operation.op.descriptor)
+              : null,
+          patch:
+            operation.op.op === 'update'
+              ? particlePatchHashRecord(operation.op.patch)
+              : null,
+        };
+      }
+      if (operation.domain === 'animation') {
+        return {
+          ...common,
+          handle: operation.op.handle as number,
+          target:
+            operation.op.op === 'create' ? (operation.op.descriptor.target as number) : null,
+          asset: operation.op.op === 'create' ? operation.op.descriptor.asset : null,
+          tickDurationMillis:
+            operation.op.op === 'create' ? operation.op.descriptor.tickDurationMillis : null,
+          controller:
+            operation.op.op === 'create'
+              ? animationControllerHashRecord(operation.op.descriptor.controller)
+              : operation.op.op === 'update'
+                ? animationControllerHashRecord(operation.op.controller)
+                : null,
+        };
+      }
+      return {
+        ...common,
+        handle: operation.op.handle as number,
+        title:
+          operation.op.op === 'create'
+            ? operation.op.descriptor.title
+            : operation.op.op === 'update'
+              ? (operation.op.patch.title ?? null)
+              : null,
+        visible:
+          operation.op.op === 'create'
+            ? operation.op.descriptor.visible
+            : operation.op.op === 'update'
+              ? (operation.op.patch.visible ?? null)
+              : null,
+      };
+    }),
+  };
+}
+
+function animationControllerHashRecord(
+  controller: import('@asha/contracts').AnimationControllerProjectionState,
+): RuntimeSessionHashRecord {
+  return {
+    graphId: controller.graphId,
+    graphVersion: controller.graphVersion,
+    graphHash: controller.graphHash,
+    stateId: controller.stateId,
+    revision: controller.revision,
+    stateHash: controller.stateHash,
+    motion: animationMotionHashRecord(controller.motion),
+    transition: controller.transition === null ? null : {
+      transitionId: controller.transition.transitionId,
+      fromStateId: controller.transition.fromStateId,
+      toStateId: controller.transition.toStateId,
+      elapsedTicks: controller.transition.elapsedTicks,
+      durationTicks: controller.transition.durationTicks,
+      targetMotion: animationMotionHashRecord(controller.transition.targetMotion),
+    },
+  };
+}
+
+function animationMotionHashRecord(
+  motion: import('@asha/contracts').AnimationResolvedMotion,
+): RuntimeSessionHashRecord {
+  return {
+    clipA: motion.clipA,
+    clipB: motion.clipB,
+    blendWeightMilli: motion.blendWeightMilli,
+    speedMilli: motion.speedMilli,
+  };
+}
+
+function particleDescriptorHashRecord(
+  descriptor: ParticleEmitterDescriptor,
+): RuntimeSessionHashRecord {
+  return {
+    anchor: particleAnchorHashRecord(descriptor.anchor),
+    sprite: {
+      asset: descriptor.sprite.asset,
+      contentHash: descriptor.sprite.contentHash,
+      frameCount: descriptor.sprite.frameCount,
+    },
+    ratePerSecond: descriptor.ratePerSecond,
+    burstCount: descriptor.burstCount,
+    lifetimeSeconds: descriptor.lifetimeSeconds,
+    velocityMin: descriptor.velocityMin,
+    velocityMax: descriptor.velocityMax,
+    acceleration: descriptor.acceleration,
+    sizeCurve: descriptor.sizeCurve.map((key) => ({ age: key.age, value: key.value })),
+    colorCurve: descriptor.colorCurve.map((key) => ({ age: key.age, color: key.color })),
+    flipbookFramesPerSecond: descriptor.flipbookFramesPerSecond,
+    seed: descriptor.seed,
+    maxParticles: descriptor.maxParticles,
+    visible: descriptor.visible,
+  };
+}
+
+function particlePatchHashRecord(patch: ParticleEmitterPatch): RuntimeSessionHashRecord {
+  return {
+    anchor: patch.anchor === null ? null : particleAnchorHashRecord(patch.anchor),
+    sprite: patch.sprite === null ? null : {
+      asset: patch.sprite.asset,
+      contentHash: patch.sprite.contentHash,
+      frameCount: patch.sprite.frameCount,
+    },
+    ratePerSecond: patch.ratePerSecond,
+    burstCount: patch.burstCount,
+    lifetimeSeconds: patch.lifetimeSeconds,
+    velocityMin: patch.velocityMin,
+    velocityMax: patch.velocityMax,
+    acceleration: patch.acceleration,
+    sizeCurve: patch.sizeCurve?.map((key) => ({ age: key.age, value: key.value })) ?? null,
+    colorCurve: patch.colorCurve?.map((key) => ({ age: key.age, color: key.color })) ?? null,
+    flipbookFramesPerSecond: patch.flipbookFramesPerSecond,
+    maxParticles: patch.maxParticles,
+    visible: patch.visible,
+  };
+}
+
+function particleAnchorHashRecord(
+  anchor: ParticleEmitterDescriptor['anchor'],
+): RuntimeSessionHashRecord {
+  return anchor.kind === 'world'
+    ? { kind: anchor.kind, position: anchor.position }
+    : { kind: anchor.kind, entity: anchor.entity, offset: anchor.offset };
 }
 
 export function stableHash(value: RuntimeSessionHashValue | undefined): string {

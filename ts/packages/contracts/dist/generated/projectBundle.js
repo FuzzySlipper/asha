@@ -5,5 +5,13 @@
 //
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
-export {};
+export const prefabId = (raw) => raw;
+export const prefabPartId = (raw) => raw;
+export const prefabInstanceId = (raw) => raw;
+// Durable schema for semantic trigger roles authored with a ProjectBundle.
+export const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION = 1;
+// Schema version for the prefab registry artifact carried by a ProjectBundle.
+export const PREFAB_REGISTRY_SCHEMA_VERSION = 1;
+// Schema version for each stored prefab definition.
+export const PREFAB_DEFINITION_SCHEMA_VERSION = 1;
 //# sourceMappingURL=projectBundle.js.map

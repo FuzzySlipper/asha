@@ -9,13 +9,17 @@
 // buffer-handle APIs — never raw addon exports, WASM memory, or JSON escape
 // hatches. The manifest-derived conformance tests keep these re-exports stable.
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
+export { ResolvedTimeControlConsumer, TIME_CONTROL_INPUT_ACTIONS, timeControlCommandFromResolvedAction, } from './resolved-time-control.js';
 // Render-diff decode (moved from the former @asha/wasm-bridge). Transport-neutral
 // payload -> contract types; backs `readRenderDiffs`. See render-decode.ts.
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export { RuntimeBridgeError, frameCursor } from './bridge.js';
 export { SelectedBackendGameRuntimeLauncher, createNativeGameRuntimeLauncher, createSelectedBackendGameRuntimeLauncher, nativeBackendProfile, validateGameRuntimeBackendProfile, } from './launcher.js';
 export * from './native.js';
-export * from './browser-fps-input.js';
+export * from './browser-input-host.js';
+export * from './browser-fps-resolved-actions.js';
+export * from './resolved-time-control.js';
+export * from './resolved-camera-navigation.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';

@@ -20,6 +20,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod activation;
 pub mod capability;
 pub mod command;
 pub mod core;
@@ -31,6 +32,11 @@ pub mod store;
 pub mod transform;
 pub mod value;
 
+pub use activation::{
+    ActivatableCapabilityKind, CapabilityActivationAction, CapabilityActivationCommand,
+    CapabilityActivationError, CapabilityActivationEvent, CapabilityActivationPresence,
+    CapabilityActivationReadout, CapabilityActivationState,
+};
 pub use capability::{
     AssetBindingCapability, BoundsCapability, CollisionCapability, ContainmentCapability,
     ControllerCapability, RenderProjectionCapability, TransformCapability,

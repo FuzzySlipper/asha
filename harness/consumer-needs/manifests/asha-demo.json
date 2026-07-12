@@ -1,0 +1,360 @@
+{
+  "schemaVersion": 1,
+  "consumer": {
+    "id": "asha-demo.current-browser-game",
+    "role": "asha-demo",
+    "source": "../asha-demo"
+  },
+  "requirements": [
+    {
+      "id": "asha-demo.audio-projection",
+      "kind": "projectionChannel",
+      "identity": "runtime.presentation.audio",
+      "provider": "@asha/renderer-host",
+      "symbols": ["AshaAudioHost", "applyAshaRuntimeProjectionFrame"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": ["ts/packages/renderer-host/src/audio-host.ts"],
+        "selector": ["../asha-demo/src/content/audio-resources.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.billboard-projection",
+      "kind": "projectionChannel",
+      "identity": "runtime.presentation.billboard",
+      "provider": "@asha/renderer-host",
+      "symbols": ["AshaBillboardHost", "applyAshaRuntimeProjectionFrame"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": ["ts/packages/renderer-host/src/billboard-host.ts"],
+        "selector": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.browser-host",
+      "kind": "typescriptPackage",
+      "identity": "@asha/browser-host",
+      "symbols": ["describeNativeBrowserHostCommand", "launchNativeBrowserHost"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["../asha-demo/scripts/serve-ui.mjs"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "asha-demo.catalog-core",
+      "kind": "typescriptPackage",
+      "identity": "@asha/catalog-core",
+      "symbols": ["findFpsEcrpObjectModelEntry", "readFpsEcrpObjectModel", "readFpsGameplayPresetCatalog"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["../asha-demo/src/content/project-content.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "asha-demo.renderer-host",
+      "kind": "projectionChannel",
+      "identity": "asha.render.frame",
+      "provider": "@asha/renderer-host",
+      "symbols": ["createAshaRendererGeneratedTunnelRoomSurfaceFrame", "mountAshaRendererAnimatedMeshSurface"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": ["harness/public-surface/ts-packages.json"],
+        "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+      }
+    },
+    {
+      "id": "asha-demo.runtime-bridge",
+      "kind": "typescriptPackage",
+      "identity": "@asha/runtime-bridge",
+      "symbols": ["ResolvedPauseContextConsumer", "RuntimeBridgeError", "assertNativeRustRuntimeBridgeAuthority", "createDefaultBrowserInputCatalog", "createRuntimeSessionFacade", "readRuntimeSessionPlayableEncounterTick", "readRuntimeSessionPlayableLoopState", "resolveNativeRustRuntimeBridgeProvider"],
+      "requiredLevel": "provider",
+      "evidence": {
+        "type": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
+        "provider": ["harness/public-surface/ts-packages.json"],
+        "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "asha-demo.configure-input-session",
+      "kind": "runtimeOperation",
+      "identity": "configureInputSession",
+      "provider": "@asha/runtime-session",
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["ts/packages/renderer-host/src/surface.ts"],
+        "delivery": ["../asha-demo/src/bootstrap/boot-game.ts", "../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.input-context-state",
+      "kind": "runtimeReadout",
+      "identity": "readInputContextState",
+      "provider": "@asha/runtime-session",
+      "fields": ["activeContexts", "revision", "schemaVersion", "stateHash"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.input-replay",
+      "kind": "runtimeOperation",
+      "identity": "replayResolvedInputAction",
+      "provider": "@asha/runtime-session",
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
+        "delivery": ["../asha-demo/src/bootstrap/boot-game.ts", "../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.input-replay-receipt",
+      "kind": "generatedType",
+      "identity": "InputActionReplayReceipt",
+      "provider": "@asha/contracts",
+      "fields": ["accepted", "action", "catalogHash", "contextHash", "diagnostics", "recordHash", "replayHash"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/input.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.recorded-input-action",
+      "kind": "generatedType",
+      "identity": "RecordedInputAction",
+      "provider": "@asha/contracts",
+      "fields": ["action", "catalogHash", "contextHash", "recordHash", "schemaVersion"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/input.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.submit-raw-input",
+      "kind": "runtimeOperation",
+      "identity": "submitRawInput",
+      "provider": "@asha/runtime-session",
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs"],
+        "selector": ["ts/packages/runtime-bridge/src/browser-input-host.ts"],
+        "delivery": ["../asha-demo/src/bootstrap/boot-game.ts", "../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.time-control-command",
+      "kind": "runtimeOperation",
+      "identity": "applyTimeControlCommand",
+      "provider": "@asha/runtime-session",
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/time_control.rs"],
+        "selector": ["ts/packages/runtime-bridge/src/resolved-time-control.ts"],
+        "delivery": ["../asha-demo/src/bootstrap/boot-game.ts", "../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.time-control-state",
+      "kind": "runtimeReadout",
+      "identity": "readTimeControlState",
+      "provider": "@asha/runtime-session",
+      "fields": ["authorityTick", "mode", "revision", "schemaVersion", "stateHash"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/facade.ts"],
+        "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/time_control.rs"],
+        "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.runtime-load",
+      "kind": "runtimeOperation",
+      "identity": "RuntimeSessionFacade.loadEcrpProject",
+      "provider": "@asha/runtime-bridge",
+      "fields": ["entityDefinitions", "gameRuleModules", "projectBundle", "sceneDocument"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
+        "provider": ["ts/packages/runtime-bridge/src/index.ts"],
+        "selector": ["../asha-demo/project/project-bundle.json"],
+        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+      }
+    },
+    {
+      "id": "asha-demo.game-workspace-prefab-authoring",
+      "kind": "typescriptPackage",
+      "identity": "@asha/game-workspace",
+      "symbols": [
+        "applyAshaPrefabAuthoringCommand",
+        "buildAshaPrefabDefinition",
+        "createAshaPrefabAuthoringState",
+        "instantiateAshaPrefabCommand",
+        "readAshaPrefabAuthoring",
+        "serializeAshaPrefabRegistrySource"
+      ],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/game-workspace/src/prefab-authoring.ts"],
+        "provider": ["ts/packages/game-workspace/src/index.ts"],
+        "selector": ["../asha-demo/src/content/prefab-authoring.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.gameplay-runtime-host",
+      "kind": "runtimeOperation",
+      "identity": "RuntimeSessionFacade.advanceGameplayRuntime",
+      "provider": "@asha/runtime-session",
+      "fields": ["actorMovement", "ownerEvent", "prefabInteraction", "tick"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/gameplay-runtime-host.ts"],
+        "provider": [
+          "public-rust/gameplay-runtime-host/src/lib.rs",
+          "ts/packages/browser-host/src/host.ts",
+          "ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts"
+        ],
+        "selector": ["../asha-demo/project/project-bundle.json"],
+        "delivery": [
+          "../asha-demo/demo-rs/crates/gameplay-host-native/src/lib.rs",
+          "../asha-demo/tests/live-ui.spec.mjs"
+        ]
+      }
+    },
+    {
+      "id": "asha-demo.particle-projection",
+      "kind": "projectionChannel",
+      "identity": "runtime.presentation.particle",
+      "provider": "@asha/renderer-host",
+      "symbols": ["AshaParticleHost", "applyAshaRuntimeProjectionFrame"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": ["ts/packages/renderer-host/src/particle-host.ts"],
+        "selector": ["../asha-demo/src/content/particle-resources.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.prefab-part",
+      "kind": "prefabPart",
+      "identity": "prefab:70/role:interaction/sensor",
+      "provider": "asha-gameplay-runtime-host",
+      "target": { "prefab": 70, "role": "interaction/sensor" },
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/projectBundle.ts"],
+        "provider": ["engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs"],
+        "selector": ["../asha-demo/prefabs/registry.json"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.prefab-runtime-placement",
+      "kind": "runtimeReadout",
+      "identity": "GameplayRuntimePrefabReadout",
+      "provider": "@asha/runtime-session",
+      "fields": ["acceptedCommands", "instances", "moduleStates", "prefabs"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/runtime-session/src/gameplay-runtime-host.ts"],
+        "provider": ["public-rust/gameplay-runtime-host/src/lib.rs"],
+        "selector": ["../asha-demo/src/content/prefab-authoring.ts"],
+        "delivery": [
+          "../asha-demo/demo-rs/crates/gameplay-host-native/src/lib.rs",
+          "../asha-demo/tests/live-ui.spec.mjs"
+        ]
+      }
+    },
+    {
+      "id": "asha-demo.playable-encounter-readout",
+      "kind": "runtimeReadout",
+      "identity": "readRuntimeSessionPlayableEncounterTick",
+      "provider": "@asha/runtime-bridge",
+      "fields": ["combat", "interaction", "lifecycle", "movement"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
+        "provider": ["ts/packages/runtime-bridge/src/index.ts"],
+        "selector": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
+        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+      }
+    },
+    {
+      "id": "asha-demo.runtime-session-fixture",
+      "kind": "generatedType",
+      "identity": "GeneratedTunnelReadout",
+      "provider": "@asha/runtime-session",
+      "fields": ["collisionProjection", "corridors", "fixture", "generator", "materials", "renderProjection", "replayHash", "rooms", "runtimeFrame", "spawnMarkers", "status", "volume"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "asha-demo.telemetry-live-overlay",
+      "kind": "projectionChannel",
+      "identity": "runtime.presentation.telemetryOverlay",
+      "provider": "@asha/renderer-host",
+      "symbols": ["AshaLiveTelemetryCollector", "AshaTelemetryOverlayHost", "applyAshaRuntimeProjectionFrame"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
+        "provider": ["ts/packages/renderer-host/src/telemetry-host.ts"],
+        "selector": ["../asha-demo/src/projection/telemetry-overlay-sink.ts"],
+        "delivery": ["../asha-demo/tests/live-ui.spec.mjs"]
+      }
+    },
+    {
+      "id": "asha-demo.ui-dom",
+      "kind": "typescriptPackage",
+      "identity": "@asha/ui-dom",
+      "symbols": ["GameHudProjection", "GameHudProjectionInput", "HudMenuIntent", "buildGameHudProjection", "hudControlToIntent"],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["../asha-demo/src/projection/hud-view.ts"],
+        "provider": ["harness/public-surface/ts-packages.json"],
+        "selector": ["../asha-demo/src/projection/hud-view.ts"],
+        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+      }
+    },
+    {
+      "id": "asha-demo.conformance",
+      "kind": "conformanceEntrypoint",
+      "identity": "asha-demo.public-consumer-proof",
+      "provider": "@asha/smoke",
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/smoke/src/public-consumer-compat.test.ts"],
+        "provider": ["ts/packages/smoke/package.json"],
+        "selector": ["harness/public-surface/ts-packages.json"],
+        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+      }
+    }
+  ]
+}

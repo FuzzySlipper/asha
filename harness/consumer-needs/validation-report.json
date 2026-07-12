@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "valid": true,
+  "manifestCount": 2,
+  "requirementCount": 34,
+  "manifests": [
+    {
+      "manifest": "harness/consumer-needs/manifests/asha-demo.json",
+      "manifestHash": "sha256:7c7b35fe5ca7f8e465b5e8ba9ff4f83351a3363cbd9e29338948dd5088b8ad3c",
+      "consumerId": "asha-demo.current-browser-game",
+      "consumerRole": "asha-demo",
+      "requirementCount": 25
+    },
+    {
+      "manifest": "harness/consumer-needs/manifests/gameplay-module-fixture.json",
+      "manifestHash": "sha256:5ef9bb261f9259ed70ab15343eb5dd6db3d4e774ec03a9f87a1bb6d66b7a1418",
+      "consumerId": "gameplay-module-sdk.pulse-fixture",
+      "consumerRole": "asha-testing",
+      "requirementCount": 9
+    }
+  ],
+  "gaps": []
+}

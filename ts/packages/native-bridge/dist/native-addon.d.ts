@@ -1,4 +1,4 @@
-import type { CameraCollisionSnapshot, CameraCreateRequest, CameraSnapshot, CollisionConstrainedCameraInputEnvelope, CommandResult, RenderFrameDiff } from '@asha/contracts';
+import type { CameraCollisionSnapshot, CameraCreateRequest, CameraSnapshot, CollisionConstrainedCameraInputEnvelope, CommandResult, RenderFrameDiff, RuntimeProjectionFrame } from '@asha/contracts';
 export interface NativeVec3 {
     readonly x: number;
     readonly y: number;
@@ -188,8 +188,21 @@ export interface NativeAddon {
         blocksLoad: boolean;
     };
     submitCommands(handle: number, commandsJson: string): CommandResult;
-    stepSimulation(handle: number, tick: number): number;
+    stepSimulation(handle: number, tick: number): {
+        readonly tick: number;
+        readonly diffCount: number;
+    };
+    configureInputSession(handle: number, requestJson: string): string;
+    applyInputContextCommand(handle: number, commandJson: string): string;
+    submitRawInput(handle: number, sampleJson: string): string;
+    replayResolvedInputAction(handle: number, recordJson: string): string;
+    readInputContextState(handle: number): string;
+    applyTimeControlCommand(handle: number, commandJson: string): string;
+    readTimeControlState(handle: number): string;
     createCamera(handle: number, request: CameraCreateRequest): CameraSnapshot;
+    applyCameraModeCommand(handle: number, commandJson: string): string;
+    applyCameraNavigationInput(handle: number, envelopeJson: string): string;
+    readCameraControllerState(handle: number, requestJson: string): string;
     applyCollisionConstrainedCameraInput(handle: number, envelope: CollisionConstrainedCameraInputEnvelope): CameraCollisionSnapshot;
     applyGeneratedTunnelToRuntimeWorld(handle: number, presetId: string, seed: number): NativeGeneratedTunnelRuntimeApplyReceipt;
     applyEnemyDirectNavMovement(handle: number, entity: number, seedPosition: NativeVec3, target: NativeVec3, maxStepUnits: number): NativeEnemyDirectNavMovementResult;
@@ -204,6 +217,7 @@ export interface NativeAddon {
     readFpsEncounterDirector(handle: number, lifecycle: NativeFpsEncounterLifecycleInput): NativeFpsEncounterDirectorSnapshot;
     applyFpsEncounterTransition(handle: number, request: NativeFpsEncounterTransitionRequest): NativeFpsEncounterTransitionResult;
     readRenderDiffs(handle: number, cursor: number): RenderFrameDiff;
+    readProjectionFrame(handle: number, cursor: number): RuntimeProjectionFrame;
     saveProjectBundle(handle: number): {
         artifactsWritten: number;
         compactedEdits: number;
@@ -242,6 +256,6 @@ export interface NativeAddon {
     undoVoxelEdit(handle: number, requestJson: string): string;
     redoVoxelEdit(handle: number, requestJson: string): string;
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "createCamera", "applyCollisionConstrainedCameraInput", "applyGeneratedTunnelToRuntimeWorld", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "importVoxelConversionMeshSource", "readVoxelConversionSourceMetadata", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "updateVoxelVolumeAssetPalette", "initializeVoxelVolumeAuthoring", "loadVoxelVolumeAsset", "unloadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer", "readVoxelEditHistory", "previewVoxelEditRevert", "applyVoxelEditRevert", "undoVoxelEdit", "redoVoxelEdit"];
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "configureInputSession", "applyInputContextCommand", "submitRawInput", "replayResolvedInputAction", "readInputContextState", "applyTimeControlCommand", "readTimeControlState", "createCamera", "applyCameraModeCommand", "applyCameraNavigationInput", "readCameraControllerState", "applyCollisionConstrainedCameraInput", "applyGeneratedTunnelToRuntimeWorld", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "readProjectionFrame", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "importVoxelConversionMeshSource", "readVoxelConversionSourceMetadata", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "updateVoxelVolumeAssetPalette", "initializeVoxelVolumeAuthoring", "loadVoxelVolumeAsset", "unloadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer", "readVoxelEditHistory", "previewVoxelEditRevert", "applyVoxelEditRevert", "undoVoxelEdit", "redoVoxelEdit"];
 export {};
 //# sourceMappingURL=native-addon.d.ts.map

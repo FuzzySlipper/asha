@@ -20,7 +20,10 @@
 
 pub mod compose;
 pub mod durability;
+pub mod gameplay_binding;
 pub mod load;
+pub mod prefab_instance;
+mod prefab_snapshot;
 pub mod regen;
 pub mod session_state;
 
@@ -32,17 +35,25 @@ pub use compose::{
 pub use durability::{
     build_durability_evidence, voxel_state_fingerprint, DurabilityError, DurabilityEvidence,
 };
+pub use gameplay_binding::*;
 pub use load::{
     execute_load_plan, execute_load_plan_with, ArtifactSource, BundleArtifacts, LoadExecutionError,
-    ProjectBundleLoadResult, ProjectBundleStage, StageOutcome,
+    ProjectBundleLoadResult, ProjectBundlePrefabError, ProjectBundleStage, StageOutcome,
 };
+pub use prefab_instance::{
+    InstantiatePrefabCommand, PrefabInstanceAuthority, PrefabInstanceSnapshot,
+    PrefabInstantiationCatalog, PrefabInstantiationError, PrefabInstantiationFact,
+    PrefabInstantiationReceipt, PrefabPartResolution, PrefabPlacementOrigin,
+    ResolvedPrefabInstance, ResolvedPrefabPart, PREFAB_INSTANCE_SNAPSHOT_VERSION,
+};
+pub use prefab_snapshot::PrefabSnapshotDecodeError;
 pub use regen::{
     check_generator, regenerate_and_replay, replay_against, EditConflict, GeneratorMismatch,
     GeneratorPolicy, RegenReplayReport, SuggestedAction,
 };
 pub use session_state::{
-    compose_session_state_snapshot, runtime_diverged, SessionStateArtifact,
-    SESSION_STATE_SNAPSHOT_PATH,
+    compose_session_state_snapshot, compose_session_state_snapshot_with_prefabs, runtime_diverged,
+    SessionStateArtifact, SESSION_STATE_SNAPSHOT_PATH,
 };
 
 #[cfg(test)]

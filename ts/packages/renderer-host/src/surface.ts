@@ -14,7 +14,12 @@ import {
   mountAshaRendererBrowserSurface as mountThreeBackedBrowserSurface,
   type AnimatedMeshAssetSource,
 } from '@asha/renderer-three/backend';
-import { BrowserFpsInputCollector } from '@asha/runtime-bridge';
+import {
+  BrowserFpsResolvedActionConsumer,
+  BrowserInputHost,
+  type BrowserInputHostReadout,
+  type BrowserInputSessionPort,
+} from '@asha/runtime-bridge';
 import {
   animationPlaybackReadout,
   loadRendererAnimatedMeshSource,
@@ -56,6 +61,9 @@ export interface AshaRendererSurfaceControlsOptions {
   readonly mouseSensitivity?: number;
   readonly movementAuthority?: AshaRendererSurfaceMovementAuthority;
   readonly moveSpeed?: number;
+  /** Public RuntimeSession input surface. Controls stay inactive when omitted. */
+  readonly inputSession?: BrowserInputSessionPort;
+  readonly initialInputContexts?: readonly string[];
 }
 
 export interface AshaRendererSurfaceCameraPose {
@@ -168,6 +176,7 @@ export interface AshaRendererSurface {
   readonly lockPointer: () => void;
   readonly movementState: () => AshaRendererSurfaceMovementState;
   readonly pointerLocked: () => boolean;
+  readonly inputReadout: () => BrowserInputHostReadout | null;
   readonly projectRenderTargetProjection: (
     target: AshaRendererSurfaceRenderTargetIdentity,
     options?: { readonly lastEvent?: string },
@@ -344,6 +353,7 @@ function mountPreparedAshaRendererSurface(
     lockPointer: () => controls.lockPointer(),
     movementState: () => controls.movementState(),
     pointerLocked: () => controls.pointerLocked(),
+    inputReadout: () => controls.inputReadout(),
     projectRenderTargetProjection: (target, targetProjectionOptions) =>
       interactions.projectRenderTargetProjection(
         surfaceTargetProjectionFromRenderTarget(target, targetProjectionOptions),
@@ -378,6 +388,7 @@ interface AshaRendererSurfaceFirstPersonControls {
   readonly lockPointer: () => void;
   readonly movementState: () => AshaRendererSurfaceMovementState;
   readonly pointerLocked: () => boolean;
+  readonly inputReadout: () => BrowserInputHostReadout | null;
   readonly resetCamera: () => void;
   readonly update: (deltaSeconds: number) => void;
 }
@@ -386,18 +397,32 @@ function createAshaRendererSurfaceFirstPersonControls(
   canvas: HTMLCanvasElement,
   options: AshaRendererSurfaceControlsOptions | undefined,
 ): AshaRendererSurfaceFirstPersonControls {
-  const enabled = options?.enabled !== false;
+  const enabled = options?.enabled !== false && options?.inputSession !== undefined;
   const ownerDocument = canvas.ownerDocument;
   const moveSpeed = options?.moveSpeed ?? 5.8;
   const mouseSensitivity = options?.mouseSensitivity ?? 0.0021;
   const eyeHeight = options?.eyeHeight ?? 1.62;
   const initialPosition = options?.initialPosition ?? [0, eyeHeight, 8];
   const movementAuthority = options?.movementAuthority;
-  const inputCollector = new BrowserFpsInputCollector({
-    moveSpeedUnitsPerSecond: moveSpeed,
-    mouseSensitivityDegreesPerPixel: radiansToDegrees(mouseSensitivity),
-    shellState: { mode: enabled ? 'active' : 'disabled' },
-  });
+  const actionConsumer = new BrowserFpsResolvedActionConsumer();
+  const inputHost = options?.inputSession === undefined
+    ? null
+    : new BrowserInputHost({
+        session: options.inputSession,
+        initialContexts: options.initialInputContexts ?? ['gameplay'],
+        consumers: {
+          'gameplay.move.forward': 'renderer.fpsCamera',
+          'gameplay.move.backward': 'renderer.fpsCamera',
+          'gameplay.move.left': 'renderer.fpsCamera',
+          'gameplay.move.right': 'renderer.fpsCamera',
+          'gameplay.look': 'renderer.fpsCamera',
+          'gameplay.primaryFire': 'runtime.gameplay',
+          'menu.open': 'shell.menu',
+          'menu.close': 'shell.menu',
+        },
+        onResolvedAction: (action) => actionConsumer.accept(action),
+        onContextChanged: () => actionConsumer.reset(),
+      });
   let authorityBasis: AshaRendererSurfaceCameraBasis | null = null;
   let controlTick = 0;
   let pitchRadians = degreesToRadians(options?.initialPitchDegrees ?? 0);
@@ -430,6 +455,16 @@ function createAshaRendererSurfaceFirstPersonControls(
     }
   };
 
+  const detachInput = inputHost?.attachDom({
+    pointerTarget: canvas,
+    keyboardTarget: ownerDocument,
+    acceptsKeyboard: () => controlsHaveKeyboardFocus(canvas, inputHost.readout().pointerLocked),
+    onPointerLockIntent: (intent, event) => {
+      if (intent.kind === 'requestPointerLock') requestLock(event);
+      else ownerDocument.exitPointerLock();
+    },
+  });
+
   const cameraPose = (): AshaRendererSurfaceCameraPose => ({
     position: [round4(position[0]), round4(position[1]), round4(position[2])],
     pitchDegrees: round2(radiansToDegrees(pitchRadians)),
@@ -437,7 +472,7 @@ function createAshaRendererSurfaceFirstPersonControls(
   });
 
   const resetCamera = (): void => {
-    inputCollector.reset();
+    actionConsumer.reset();
     authorityBasis = null;
     controlTick = 0;
     pitchRadians = degreesToRadians(options?.initialPitchDegrees ?? 0);
@@ -453,56 +488,24 @@ function createAshaRendererSurfaceFirstPersonControls(
 
   const onPointerLockChange = (): void => {
     const pointerLocked = ownerDocument.pointerLockElement === canvas;
-    inputCollector.setPointerLockActive(pointerLocked);
+    inputHost?.setPointerLockActive(pointerLocked);
     if (!pointerLocked) {
-      inputCollector.reset();
+      actionConsumer.reset();
     }
-  };
-
-  const onPointerDown = (event: PointerEvent): void => {
-    inputCollector.handlePointerDown(event);
-    if (event.button === 0) {
-      requestLock(event);
-    }
-  };
-
-  const onClick = (event: MouseEvent): void => {
-    requestLock(event);
-  };
-
-  const onMouseMove = (event: MouseEvent): void => {
-    inputCollector.handleMouseMove(event);
-  };
-
-  const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
-      inputCollector.handleKeyDown(event);
-      ownerDocument.exitPointerLock();
-      return;
-    }
-    if (!controlsHaveKeyboardFocus(canvas, inputCollector.readout().pointerLocked)) {
-      return;
-    }
-    inputCollector.handleKeyDown(event);
-  };
-
-  const onKeyUp = (event: KeyboardEvent): void => {
-    inputCollector.handleKeyUp(event);
   };
 
   const update = (deltaSeconds: number): void => {
-    if (!enabled || !controlsHaveKeyboardFocus(canvas, inputCollector.readout().pointerLocked)) {
+    if (!enabled || inputHost === null || !controlsHaveKeyboardFocus(canvas, inputHost.readout().pointerLocked)) {
       return;
     }
 
-    const frame = inputCollector.drainInputFrame({
-      dtSeconds: Math.max(0, deltaSeconds),
-      tick: controlTick + 1,
-    });
-    const input = frame.input;
-    const forward = input.moveForward;
-    const strafe = input.moveRight;
-    const hasLookDelta = input.yawDeltaDegrees !== 0 || input.pitchDeltaDegrees !== 0;
+    const frame = actionConsumer.drain();
+    const safeDeltaSeconds = Math.max(0, deltaSeconds);
+    const forward = frame.moveForward;
+    const strafe = frame.moveRight;
+    const yawDeltaDegrees = frame.yawDeltaPixels * radiansToDegrees(mouseSensitivity);
+    const pitchDeltaDegrees = -frame.pitchDeltaPixels * radiansToDegrees(mouseSensitivity);
+    const hasLookDelta = yawDeltaDegrees !== 0 || pitchDeltaDegrees !== 0;
     if (forward === 0 && strafe === 0 && !hasLookDelta) {
       return;
     }
@@ -510,15 +513,15 @@ function createAshaRendererSurfaceFirstPersonControls(
     if (movementAuthority !== undefined) {
       controlTick += 1;
       const authorityResult = movementAuthority({
-        dtSeconds: input.dtSeconds,
+        dtSeconds: safeDeltaSeconds,
         moveForward: forward,
         moveRight: strafe,
-        moveSpeedUnitsPerSecond: input.moveSpeedUnitsPerSecond,
-        moveUp: input.moveUp,
-        pitchDeltaDegrees: input.pitchDeltaDegrees,
+        moveSpeedUnitsPerSecond: moveSpeed,
+        moveUp: 0,
+        pitchDeltaDegrees,
         poseBefore: cameraPose(),
         tick: controlTick,
-        yawDeltaDegrees: input.yawDeltaDegrees,
+        yawDeltaDegrees,
       });
       position = authorityResult.pose.position;
       yawRadians = degreesToRadians(authorityResult.pose.yawDegrees);
@@ -533,14 +536,14 @@ function createAshaRendererSurfaceFirstPersonControls(
       return;
     }
 
-    yawRadians += degreesToRadians(input.yawDeltaDegrees);
+    yawRadians += degreesToRadians(yawDeltaDegrees);
     pitchRadians = clamp(
-      pitchRadians + degreesToRadians(input.pitchDeltaDegrees),
+      pitchRadians + degreesToRadians(pitchDeltaDegrees),
       degreesToRadians(-85),
       degreesToRadians(85),
     );
     authorityBasis = null;
-    if (input.dtSeconds <= 0) {
+    if (safeDeltaSeconds <= 0) {
       return;
     }
 
@@ -548,7 +551,7 @@ function createAshaRendererSurfaceFirstPersonControls(
     if (movement === null) {
       return;
     }
-    const step = input.moveSpeedUnitsPerSecond * input.dtSeconds;
+    const step = moveSpeed * safeDeltaSeconds;
     position = [position[0] + movement[0] * step, eyeHeight, position[2] + movement[2] * step];
     lastMovementState = {
       authority: 'free_camera',
@@ -564,23 +567,14 @@ function createAshaRendererSurfaceFirstPersonControls(
   });
 
   const dispose = (): void => {
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('click', onClick);
     ownerDocument.removeEventListener('pointerlockchange', onPointerLockChange);
-    ownerDocument.removeEventListener('mousemove', onMouseMove);
-    ownerDocument.removeEventListener('keydown', onKeyDown);
-    ownerDocument.removeEventListener('keyup', onKeyUp);
+    detachInput?.();
     if (ownerDocument.pointerLockElement === canvas) {
       ownerDocument.exitPointerLock();
     }
   };
 
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('click', onClick);
   ownerDocument.addEventListener('pointerlockchange', onPointerLockChange);
-  ownerDocument.addEventListener('mousemove', onMouseMove);
-  ownerDocument.addEventListener('keydown', onKeyDown);
-  ownerDocument.addEventListener('keyup', onKeyUp);
 
   return {
     cameraPose,
@@ -588,7 +582,8 @@ function createAshaRendererSurfaceFirstPersonControls(
     dispose,
     lockPointer: () => requestLock(),
     movementState: () => lastMovementState,
-    pointerLocked: () => inputCollector.readout().pointerLocked,
+    pointerLocked: () => inputHost?.readout().pointerLocked ?? false,
+    inputReadout: () => inputHost?.readout() ?? null,
     resetCamera,
     update,
   };

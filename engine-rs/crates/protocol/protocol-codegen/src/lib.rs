@@ -9,8 +9,7 @@
 //!
 //! # What this does
 //!
-//! The Rust protocol crates are the source of truth for border shapes.
-//! [`crate::source`] parses their declarations into a small TypeScript IR
+//! The Rust protocol crates are the source of truth for border shapes. [`crate::source`] parses their declarations into a small TypeScript IR
 //! ([`crate::schema`]), and [`generated_files`] renders that IR to deterministic
 //! `.ts` source. The generator never reads the existing TypeScript; it produces
 //! canonical bytes from Rust source every time, so output is reproducible.
@@ -21,7 +20,6 @@
 
 pub mod schema;
 pub mod source;
-
 use std::path::{Path, PathBuf};
 
 /// Directory (relative to the repo root) that generated contracts are written to.
@@ -133,14 +131,26 @@ mod tests {
     use serde_json::{json, Value};
     use std::collections::{BTreeMap, BTreeSet};
 
+    #[path = "camera_controller_tests.rs"]
+    mod camera_controller_tests;
+    #[path = "entity_authoring_activation_tests.rs"]
+    mod entity_authoring_activation_tests;
     #[path = "game_extension_tests.rs"]
     mod game_extension_tests;
     #[path = "game_rules_tests.rs"]
     mod game_rules_tests;
+    #[path = "input_tests.rs"]
+    mod input_tests;
+    #[path = "presentation_tests.rs"]
+    mod presentation_tests;
+    #[path = "project_bundle_tests.rs"]
+    mod project_bundle_tests;
     #[path = "render_tests.rs"]
     mod render_tests;
     #[path = "telemetry_tests.rs"]
     mod telemetry_tests;
+    #[path = "time_control_tests.rs"]
+    mod time_control_tests;
     #[path = "voxel_edit_history_tests.rs"]
     mod voxel_edit_history_tests;
 
@@ -162,6 +172,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/ids.ts"),
                 format!("{OUTPUT_DIR}/script.ts"),
                 format!("{OUTPUT_DIR}/render.ts"),
+                format!("{OUTPUT_DIR}/presentation.ts"),
                 format!("{OUTPUT_DIR}/replay.ts"),
                 format!("{OUTPUT_DIR}/voxel.ts"),
                 format!("{OUTPUT_DIR}/voxelConversion.ts"),
@@ -176,6 +187,8 @@ mod tests {
                 format!("{OUTPUT_DIR}/diagnostics.ts"),
                 format!("{OUTPUT_DIR}/policyView.ts"),
                 format!("{OUTPUT_DIR}/telemetry.ts"),
+                format!("{OUTPUT_DIR}/input.ts"),
+                format!("{OUTPUT_DIR}/timeControl.ts"),
                 format!("{OUTPUT_DIR}/view.ts"),
                 format!("{OUTPUT_DIR}/entityAuthoring.ts"),
                 format!("{OUTPUT_DIR}/index.ts"),
@@ -304,7 +317,7 @@ mod tests {
     }
 
     fn rust_round_trip_sample_coverage() -> BTreeSet<String> {
-        [
+        let mut coverage = [
             interface_coverage_key("policyView", "PolicyWorldView"),
             interface_coverage_key("policyView", "PolicyWorldSummary"),
             interface_coverage_key("policyView", "PolicyEntityView"),
@@ -459,7 +472,16 @@ mod tests {
             interface_coverage_key("voxelEditHistory", "VoxelEditHistoryRedoReceipt"),
         ]
         .into_iter()
-        .collect()
+        .collect();
+        game_extension_tests::extend_round_trip_coverage(&mut coverage);
+        entity_authoring_activation_tests::extend_round_trip_coverage(&mut coverage);
+        presentation_tests::extend_round_trip_coverage(&mut coverage);
+        project_bundle_tests::extend_round_trip_coverage(&mut coverage);
+        telemetry_tests::extend_round_trip_coverage(&mut coverage);
+        input_tests::extend_round_trip_coverage(&mut coverage);
+        camera_controller_tests::extend_round_trip_coverage(&mut coverage);
+        time_control_tests::extend_round_trip_coverage(&mut coverage);
+        coverage
     }
 
     const LEGACY_GAP_REASON: &str = "pre-ratchet legacy IR entry covered only by existing rendered-file/vocabulary checks; add a direct Rust serde round-trip sample before removing this exemption";
@@ -730,11 +752,33 @@ mod tests {
                 "projectBundle.SceneSection",
                 "projectBundle.AssetLockSection",
                 "projectBundle.ProjectBundleManifest",
+                "projectBundle.PrefabTransform",
+                "projectBundle.PrefabPartSource.scene",
+                "projectBundle.PrefabPartSource.entityDefinition",
+                "projectBundle.PrefabPartSource.voxelObject",
+                "projectBundle.PrefabPart",
+                "projectBundle.PrefabPartRoleBinding",
+                "projectBundle.PrefabOverrideValue.transform",
+                "projectBundle.PrefabOverrideValue.entityDefinition",
+                "projectBundle.PrefabOverrideValue.asset",
+                "projectBundle.PrefabOverrideValue.material",
+                "projectBundle.PrefabOverrideValue.activation",
+                "projectBundle.PrefabOverride",
+                "projectBundle.PrefabVariantDelta",
+                "projectBundle.PrefabDefinition",
+                "projectBundle.PrefabRegistry",
+                "projectBundle.PrefabInstanceRecord",
+                "projectBundle.PrefabPartReference",
+                "projectBundle.PrefabDiagnostic",
+                "projectBundle.PrefabValidationOutcome.valid",
+                "projectBundle.PrefabValidationOutcome.invalid",
                 "projectBundle.ManifestError.unsupportedSchema",
                 "projectBundle.ManifestError.unsupportedProtocol",
                 "projectBundle.ManifestError.duplicateArtifact",
                 "projectBundle.ManifestError.missingArtifact",
                 "projectBundle.ManifestError.durableMissingHash",
+                "projectBundle.ManifestError.duplicateArtifactRole",
+                "projectBundle.ManifestError.artifactClassMismatch",
                 "projectBundle.ManifestValidationReport",
                 "projectBundle.LoadStep.validateVersions",
                 "projectBundle.LoadStep.loadAssetLock",
@@ -902,14 +946,14 @@ mod tests {
             for item in &module.items {
                 match item {
                     Item::Interface { name, .. } => {
-                        let key = interface_coverage_key(&module.name, name);
+                        let key = interface_coverage_key(module.name, name);
                         if !covered.contains(&key) && !exemptions.contains_key(key.as_str()) {
                             missing.push(key);
                         }
                     }
                     Item::Union { name, variants, .. } => {
                         for variant in variants {
-                            let key = variant_coverage_key(&module.name, name, &variant.tag);
+                            let key = variant_coverage_key(module.name, name, &variant.tag);
                             if !covered.contains(&key) && !exemptions.contains_key(key.as_str()) {
                                 missing.push(key);
                             }
@@ -1413,43 +1457,6 @@ mod tests {
         assert!(s.contains("export interface BootstrapRecord {"));
         // Scene reuses the runtime EntityId brand from ids.ts for source traces.
         assert!(s.contains("import type { EntityId } from './ids.js';"));
-    }
-
-    /// Focused behavior test for the `projectBundle` family: artifact classes,
-    /// load stages, and suggested actions are sourced from `protocol-project-bundle`,
-    /// and the manifest/load-plan/save/regen shapes exist with the right imports.
-    /// This is the "Rust and generated TS project-bundle contracts agree" guard (#2366).
-    #[test]
-    fn project_bundle_family_emits_vocab_and_shapes() {
-        let w = file("projectBundle.ts");
-        for class in protocol_project_bundle::ARTIFACT_CLASSES {
-            assert!(
-                w.contains(&format!("'{class}'")),
-                "missing artifact class {class}"
-            );
-        }
-        for stage in protocol_project_bundle::LOAD_STAGES {
-            assert!(
-                w.contains(&format!("'{stage}'")),
-                "missing load stage {stage}"
-            );
-        }
-        for action in protocol_project_bundle::SUGGESTED_ACTIONS {
-            assert!(
-                w.contains(&format!("'{action}'")),
-                "missing suggested action {action}"
-            );
-        }
-        assert!(w.contains("export interface ProjectBundleManifest {"));
-        assert!(w.contains("export interface LoadPlan {"));
-        assert!(w.contains("export type LoadStep ="));
-        assert!(w.contains("export type LoadPlanError ="));
-        assert!(w.contains("export interface SaveSummary {"));
-        assert!(w.contains("export interface RegenConflictReport {"));
-        assert!(
-            w.contains("import type { ProjectId, RuntimeSessionId, SceneId } from './scene.js';")
-        );
-        assert!(w.contains("import type { VoxelCoord, VoxelValue } from './voxel.js';"));
     }
 
     /// Focused behavior test for the `assets` family: kind/validation/lock/uv/

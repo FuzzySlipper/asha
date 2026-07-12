@@ -26,4 +26,25 @@ export interface TelemetryEnvelope {
     readonly emittedAtTick: number;
     readonly events: readonly TelemetryEvent[];
 }
+export type LiveTelemetryCounter = 'frameTimeMs' | 'entityCount' | 'activeCapabilityCount' | 'residentChunkCount' | 'dirtyChunkCount' | 'renderDiffCount' | 'renderHandleCount' | 'drawCallCount' | 'activeAudioSourceCount' | 'activeBillboardCount' | 'activeParticleCount' | 'droppedFeedbackCount';
+export interface LiveTelemetryMetric {
+    readonly counter: LiveTelemetryCounter;
+    readonly kind: TelemetryMetricKind;
+    readonly value: number;
+    readonly unit: string;
+}
+export type LiveTelemetryDiagnosticCode = 'counterUnavailable' | 'invalidSample';
+export interface LiveTelemetryDiagnostic {
+    readonly code: LiveTelemetryDiagnosticCode;
+    readonly counter: LiveTelemetryCounter | null;
+    readonly message: string;
+}
+export interface LiveTelemetrySnapshot {
+    readonly schemaVersion: number;
+    readonly authorityTick: number;
+    readonly sampleSequence: number;
+    readonly metrics: readonly LiveTelemetryMetric[];
+    readonly frameTimeHistoryMs: readonly number[];
+    readonly diagnostics: readonly LiveTelemetryDiagnostic[];
+}
 //# sourceMappingURL=telemetry.d.ts.map

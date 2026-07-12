@@ -1,0 +1,24 @@
+[package]
+name = "asha-gameplay-module-conformance"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.asha.public-surface]
+status = "public"
+role = "downstream-gameplay-module-conformance"
+source-of-truth = "engine-rs/crates/rules/rule-project-bundle"
+allowed-consumer-roles = ["asha-demo", "asha-testing", "asha-rulebench"]
+
+[dependencies]
+asha-gameplay-module-sdk = { path = "../gameplay-module-sdk" }
+core-ids = { path = "../../engine-rs/crates/foundation/core-ids" }
+core-scene = { path = "../../engine-rs/crates/state/core-scene" }
+rule-gameplay-fabric = { path = "../../engine-rs/crates/rules/rule-gameplay-fabric" }
+rule-project-bundle = { path = "../../engine-rs/crates/rules/rule-project-bundle" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+svc-serialization = { path = "../../engine-rs/crates/services/svc-serialization" }
+svc-gameplay-fabric = { path = "../../engine-rs/crates/services/svc-gameplay-fabric" }
+
+[workspace]

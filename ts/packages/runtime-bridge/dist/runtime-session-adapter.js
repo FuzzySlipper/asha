@@ -9,14 +9,14 @@ import { GENERATED_TUNNEL_NAV_POLICY_VIEW, GENERATED_TUNNEL_NAV_PROJECTION, GENE
 import { buildRuntimeSessionEnemyNavPath, ecrpActorPosition, ecrpEntityTransform, runtimeTransformHashRecord, } from './runtime-session-enemy-authority.js';
 import { buildEcrpProjectState, buildEcrpRuntimeReadout, defaultRuntimeSessionEcrpProjectLoadInput, lifecycleStateFromEcrpProject, validateEcrpProjectLoadInput, } from './runtime-session-ecrp.js';
 import { acceptedAutonomousMovementReceipt, applyReferenceCombatReadoutToLifecycleState, buildReferenceRuntimeSessionPrimaryFireReadout, combatReadoutTick, generatedTunnelEnemyDefeatedLifecycleState, generatedTunnelPlayerDefeatedLifecycleState, initialRuntimeSessionLifecycleState, lifecycleStatusReadout, lifecycleStatusToEncounterLifecycle, rejectedAutonomousPolicyProposalReceipt, runtimeActionReceiptToAutonomousReceipt, validateAutonomousPolicyProposal, validateAutonomousPolicyTickInput, validateGeneratedTunnelOperationRequest, validateGeneratedTunnelReadoutRequest, validateInitializeInput, validateLifecycleStatusRequest, validateRestartIntent, validateRuntimeActionIntentEnvelope, } from './runtime-session-lifecycle.js';
-import { compositionHashRecord, encounterStateHashRecord, identityHashRecord, lifecycleStateHashRecord, referenceRuntimeSessionNonClaims, renderFrameHashRecord, stableHash, } from './runtime-session-hash.js';
+import { compositionHashRecord, encounterStateHashRecord, identityHashRecord, lifecycleStateHashRecord, referenceRuntimeSessionNonClaims, renderFrameHashRecord, runtimeProjectionFrameHashRecord, stableHash, } from './runtime-session-hash.js';
 import { RustBackedRuntimeSessionFacade } from './runtime-session-rust-facade.js';
 import { buildRuntimeSessionAnimationIntentReadout } from './runtime-session-animation.js';
 export function createRuntimeSessionFacade(options) {
     if (options.mode === 'reference') {
         return new ReferenceRuntimeSessionFacade(options.bridge);
     }
-    return new RustBackedRuntimeSessionFacade(options.bridge);
+    return new RustBackedRuntimeSessionFacade(options.bridge, options.gameplayHost);
 }
 class ReferenceRuntimeSessionFacade {
     #bridge;
@@ -63,6 +63,34 @@ class ReferenceRuntimeSessionFacade {
         this.#replayRecords = [];
         this.#record('initialize');
         return this.#stateSummary(composition);
+    }
+    configureInputSession(request) {
+        this.#requireInitialized('configureInputSession');
+        return this.#bridge.configureInputSession(request);
+    }
+    applyInputContextCommand(command) {
+        this.#requireInitialized('applyInputContextCommand');
+        return this.#bridge.applyInputContextCommand(command);
+    }
+    submitRawInput(sample) {
+        this.#requireInitialized('submitRawInput');
+        return this.#bridge.submitRawInput(sample);
+    }
+    replayResolvedInputAction(record) {
+        this.#requireInitialized('replayResolvedInputAction');
+        return this.#bridge.replayResolvedInputAction(record);
+    }
+    readInputContextState() {
+        this.#requireInitialized('readInputContextState');
+        return this.#bridge.readInputContextState();
+    }
+    applyTimeControlCommand(command) {
+        this.#requireInitialized('applyTimeControlCommand');
+        return this.#bridge.applyTimeControlCommand(command);
+    }
+    readTimeControlState() {
+        this.#requireInitialized('readTimeControlState');
+        return this.#bridge.readTimeControlState();
     }
     loadEcrpProject(input) {
         const identity = this.#requireInitialized('loadEcrpProject');
@@ -148,6 +176,24 @@ class ReferenceRuntimeSessionFacade {
             snapshot,
             sessionHash: this.#sessionHash(),
         };
+    }
+    applyCameraModeCommand(command) {
+        this.#requireInitialized('applyCameraModeCommand');
+        const receipt = this.#bridge.applyCameraModeCommand(command);
+        this.#sequenceId += 1;
+        this.#record('applyCameraModeCommand');
+        return receipt;
+    }
+    applyCameraNavigationInput(input) {
+        this.#requireInitialized('applyCameraNavigationInput');
+        const receipt = this.#bridge.applyCameraNavigationInput(input);
+        this.#sequenceId += 1;
+        this.#record('applyCameraNavigationInput');
+        return receipt;
+    }
+    readCameraControllerState(request) {
+        this.#requireInitialized('readCameraControllerState');
+        return this.#bridge.readCameraControllerState(request);
     }
     applyFirstPersonCameraInput(envelope) {
         this.#requireInitialized('applyFirstPersonCameraInput');
@@ -619,6 +665,25 @@ class ReferenceRuntimeSessionFacade {
             sessionHash: this.#sessionHash(),
         });
     }
+    loadGameplayRuntime(_input) {
+        void _input;
+        return this.#unsupportedOperation('loadGameplayRuntime', 'Reference RuntimeSession cannot host statically linked Rust gameplay modules');
+    }
+    advanceGameplayRuntime(_moment) {
+        void _moment;
+        return this.#unsupportedOperation('advanceGameplayRuntime', 'Reference RuntimeSession cannot execute Rust gameplay-module authority');
+    }
+    readGameplayRuntime() {
+        return this.#unsupportedOperation('readGameplayRuntime', 'Reference RuntimeSession has no gameplay RuntimeSession host');
+    }
+    saveGameplayRuntime() {
+        return this.#unsupportedOperation('saveGameplayRuntime', 'Reference RuntimeSession has no gameplay RuntimeSession host');
+    }
+    restoreGameplayRuntime(_input, _snapshot) {
+        void _input;
+        void _snapshot;
+        return this.#unsupportedOperation('restoreGameplayRuntime', 'Reference RuntimeSession cannot restore Rust gameplay-module authority');
+    }
     readCameraProjection(request) {
         this.#requireInitialized('readCameraProjection');
         const snapshot = this.#bridge.readCameraProjection(request);
@@ -632,19 +697,23 @@ class ReferenceRuntimeSessionFacade {
     readAnimationIntent() { this.#requireInitialized('readAnimationIntent'); return buildRuntimeSessionAnimationIntentReadout({ sequenceId: this.#sequenceId, tick: this.#tick, lifecycleState: this.#lifecycleState }); }
     readProjection() {
         this.#requireInitialized('readProjection');
-        const cursor = frameCursor(this.#sequenceId);
-        const frame = this.#bridge.readRenderDiffs(cursor);
+        const cursor = frameCursor(this.#tick);
+        const runtimeFrame = this.#bridge.readProjectionFrame(cursor);
+        const frame = runtimeFrame.scene;
         const composition = this.#bridge.getProjectBundleCompositionStatus();
         return {
             sequenceId: this.#sequenceId,
             cursor,
             frame,
+            runtimeFrame,
             composition,
             renderDiffCount: frame.ops.length,
+            presentationOpCount: runtimeFrame.presentation.ops.length,
             projectionHash: stableHash({
                 sequenceId: this.#sequenceId,
                 composition: compositionHashRecord(composition),
                 frame: renderFrameHashRecord(frame),
+                runtimeFrame: runtimeProjectionFrameHashRecord(runtimeFrame),
             }),
         };
     }

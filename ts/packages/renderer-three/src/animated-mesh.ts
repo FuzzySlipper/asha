@@ -41,6 +41,13 @@ export interface AnimatedMeshPlaybackReadout {
   readonly commandSelected: boolean;
   readonly poseSample: AnimatedMeshPoseSample;
   readonly diagnostics: readonly string[];
+  readonly controllerClips: readonly AnimatedMeshControllerClip[];
+}
+
+export interface AnimatedMeshControllerClip {
+  readonly clip: string;
+  readonly weight: number;
+  readonly speed: number;
 }
 
 export interface AnimatedMeshPoseSample {
@@ -71,6 +78,7 @@ interface AnimatedMeshInstanceRecord {
   loop: AnimatedMeshPlaybackReadout['loop'];
   speed: number | null;
   weight: number | null;
+  controllerClips: readonly AnimatedMeshControllerClip[];
 }
 
 export class MapAnimatedMeshAssetSource implements AnimatedMeshAssetSource {
@@ -164,6 +172,7 @@ export class AnimatedMeshRegistry {
       loop: null,
       speed: null,
       weight: null,
+      controllerClips: [],
     };
     this.#instances.set(handle, instanceRecord);
     record.refCount += 1;
@@ -176,6 +185,31 @@ export class AnimatedMeshRegistry {
   setPlayback(handle: RenderHandle, command: AnimatedMeshPlaybackCommand): void {
     const instance = this.#requireInstance(handle, 'setAnimatedMeshPlayback');
     applyPlaybackCommand(instance, command);
+  }
+
+  setControllerWeights(
+    handle: RenderHandle,
+    clips: readonly AnimatedMeshControllerClip[],
+  ): void {
+    const instance = this.#requireInstance(handle, 'setAnimationControllerWeights');
+    applyControllerWeights(instance, clips);
+  }
+
+  hasClips(handle: RenderHandle, clipIds: readonly string[]): boolean {
+    const instance = this.#instances.get(handle);
+    return instance !== undefined && clipIds.every((clipId) => instance.actions.has(clipId));
+  }
+
+  clearControllerWeights(handle: RenderHandle): void {
+    const instance = this.#requireInstance(handle, 'clearAnimationControllerWeights');
+    instance.mixer.stopAllAction();
+    instance.currentClip = null;
+    instance.controllerClips = [];
+    instance.commandSelected = false;
+    instance.status = 'stopped';
+    instance.loop = null;
+    instance.speed = null;
+    instance.weight = null;
   }
 
   advance(deltaSeconds: number): void {
@@ -208,6 +242,7 @@ export class AnimatedMeshRegistry {
       commandSelected: instance.commandSelected,
       poseSample: poseSample(instance.object),
       diagnostics: playbackDiagnostics(instance, action),
+      controllerClips: instance.controllerClips,
     };
   }
 
@@ -284,6 +319,62 @@ function applyPlaybackCommand(
   }
 }
 
+function applyControllerWeights(
+  instance: AnimatedMeshInstanceRecord,
+  clips: readonly AnimatedMeshControllerClip[],
+): void {
+  if (clips.length === 0 || clips.length > 4) {
+    throw new AnimatedMeshApplyError('setAnimationControllerWeights: expected one to four clips');
+  }
+  const byClip = new Map<string, AnimatedMeshControllerClip>();
+  let totalWeight = 0;
+  for (const clip of clips) {
+    if (
+      byClip.has(clip.clip)
+      || !Number.isFinite(clip.weight)
+      || clip.weight < 0
+      || clip.weight > 1
+      || !Number.isFinite(clip.speed)
+      || clip.speed <= 0
+    ) {
+      throw new AnimatedMeshApplyError('setAnimationControllerWeights: invalid clip sample');
+    }
+    if (!instance.actions.has(clip.clip)) {
+      throw new AnimatedMeshApplyError(
+        `setAnimationControllerWeights: missing clip ${clip.clip} on ${instance.asset}`,
+      );
+    }
+    byClip.set(clip.clip, clip);
+    totalWeight += clip.weight;
+  }
+  if (Math.abs(totalWeight - 1) > 0.001) {
+    throw new AnimatedMeshApplyError(
+      `setAnimationControllerWeights: weights must sum to 1, received ${totalWeight}`,
+    );
+  }
+  for (const [clipId, action] of instance.actions) {
+    const sample = byClip.get(clipId);
+    if (sample === undefined) {
+      action.stop();
+      continue;
+    }
+    action.enabled = true;
+    action.paused = false;
+    action.setLoop(THREE.LoopRepeat, Infinity);
+    action.setEffectiveTimeScale(sample.speed);
+    action.setEffectiveWeight(sample.weight);
+    action.play();
+  }
+  instance.currentClip = clips.reduce((selected, clip) =>
+    selected === null || clip.weight > selected.weight ? clip : selected, null as AnimatedMeshControllerClip | null)?.clip ?? null;
+  instance.commandSelected = false;
+  instance.status = 'playing';
+  instance.loop = 'repeat';
+  instance.speed = null;
+  instance.weight = null;
+  instance.controllerClips = clips.map((clip) => ({ ...clip }));
+}
+
 function playClip(
   instance: AnimatedMeshInstanceRecord,
   command: Extract<AnimatedMeshPlaybackCommand, { readonly action: 'play' }>,
@@ -311,6 +402,7 @@ function playClip(
   }
   action.play();
   instance.currentClip = command.clip;
+  instance.controllerClips = [];
   instance.commandSelected = true;
   instance.status = 'playing';
   instance.loop = command.loop;

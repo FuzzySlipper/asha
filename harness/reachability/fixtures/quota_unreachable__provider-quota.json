@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [{
+    "id": "fixture.quota",
+    "kind": "gameplayRead",
+    "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayReadViewRequirement" },
+    "provider": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "GameplayReadViewProviderRegistration" },
+    "quotas": [{ "name": "maxItems", "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "max_items: 999" }],
+    "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayReadViewRequirement" },
+    "delivery": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "provider_state_adapters_initialize_and_apply_recorded_local_facts" }
+  }],
+  "internalExemptions": []
+}

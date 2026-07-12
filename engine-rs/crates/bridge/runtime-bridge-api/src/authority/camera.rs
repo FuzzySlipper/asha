@@ -1,6 +1,8 @@
 use super::*;
 
 const MAX_COLLISION_CAMERA_AXIS_TRAVEL: f32 = 256.0;
+const MAX_CAMERA_TRANSITION_MILLISECONDS: u32 = 10_000;
+const CAMERA_TERRAIN_CLEARANCE: f32 = 0.25;
 
 impl EngineBridge {
     pub(super) fn collision_projection(&self, world: &VoxelWorld) -> CollisionProjection {
@@ -63,6 +65,648 @@ impl EngineBridge {
             ));
         }
         Ok(())
+    }
+
+    pub(super) fn initial_camera_controller(snapshot: CameraSnapshot) -> CameraControllerState {
+        Self::camera_controller_state(0, CameraMode::FirstPerson, None, None, None, None, snapshot)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn camera_controller_state(
+        revision: u64,
+        mode: CameraMode,
+        pivot: Option<[f32; 3]>,
+        distance: Option<f32>,
+        min_distance: Option<f32>,
+        max_distance: Option<f32>,
+        snapshot: CameraSnapshot,
+    ) -> CameraControllerState {
+        let state_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{:?}|{:?}|{:?}|{:?}|{:?}|{}|{:?}|{:?}|{:?}",
+                CAMERA_CONTROLLER_STATE_SCHEMA_VERSION,
+                revision,
+                mode,
+                pivot.map(|value| value.map(f32::to_bits)),
+                distance.map(f32::to_bits),
+                min_distance.map(f32::to_bits),
+                max_distance.map(f32::to_bits),
+                snapshot.tick,
+                snapshot.pose.position.map(f32::to_bits),
+                snapshot.pose.yaw_degrees.to_bits(),
+                snapshot.pose.pitch_degrees.to_bits(),
+            ))
+        );
+        CameraControllerState {
+            schema_version: CAMERA_CONTROLLER_STATE_SCHEMA_VERSION,
+            revision,
+            camera: snapshot.camera,
+            mode,
+            pivot,
+            distance,
+            min_distance,
+            max_distance,
+            snapshot,
+            state_hash,
+        }
+    }
+
+    pub(super) fn sync_first_person_controller(
+        controller: &CameraControllerState,
+        snapshot: CameraSnapshot,
+    ) -> Result<CameraControllerState, CameraControllerRejection> {
+        if controller.mode != CameraMode::FirstPerson {
+            return Err(CameraControllerRejection::IncompatibleMode);
+        }
+        Ok(Self::camera_controller_state(
+            controller.revision.saturating_add(1),
+            CameraMode::FirstPerson,
+            None,
+            None,
+            None,
+            None,
+            snapshot,
+        ))
+    }
+
+    pub(super) fn validate_transition(
+        transition: Option<CameraTransitionSpec>,
+    ) -> Result<(), CameraControllerRejection> {
+        if transition.is_some_and(|value| {
+            value.duration_milliseconds == 0
+                || value.duration_milliseconds > MAX_CAMERA_TRANSITION_MILLISECONDS
+        }) {
+            return Err(CameraControllerRejection::InvalidInput);
+        }
+        Ok(())
+    }
+
+    pub(super) fn resolve_camera_mode_target(
+        &self,
+        before: &CameraControllerState,
+        target: CameraModeTarget,
+        tick: u64,
+    ) -> Result<(CameraControllerState, bool), CameraControllerRejection> {
+        let (mode, pivot, requested_distance, min_distance, max_distance, pose) = match target {
+            CameraModeTarget::FirstPerson { pose } => {
+                if !Self::valid_pose(pose) {
+                    return Err(CameraControllerRejection::InvalidTarget);
+                }
+                (CameraMode::FirstPerson, None, None, None, None, pose)
+            }
+            CameraModeTarget::Orbit {
+                pivot,
+                distance,
+                min_distance,
+                max_distance,
+                yaw_degrees,
+                pitch_degrees,
+            } => {
+                if !Self::valid_pivot_distance(pivot, distance, min_distance, max_distance)
+                    || !yaw_degrees.is_finite()
+                    || !pitch_degrees.is_finite()
+                    || !(-89.0..=89.0).contains(&pitch_degrees)
+                {
+                    return Err(CameraControllerRejection::InvalidTarget);
+                }
+                let pose = Self::orbit_pose(pivot, distance, yaw_degrees, pitch_degrees);
+                (
+                    CameraMode::Orbit,
+                    Some(pivot),
+                    Some(distance),
+                    Some(min_distance),
+                    Some(max_distance),
+                    pose,
+                )
+            }
+            CameraModeTarget::TopDown {
+                pivot,
+                height,
+                min_height,
+                max_height,
+                yaw_degrees,
+                pitch_degrees,
+            } => {
+                if !Self::valid_pivot_distance(pivot, height, min_height, max_height)
+                    || !yaw_degrees.is_finite()
+                    || !pitch_degrees.is_finite()
+                    || !(-89.0..=-30.0).contains(&pitch_degrees)
+                {
+                    return Err(CameraControllerRejection::InvalidTarget);
+                }
+                let pose = Self::top_down_pose(pivot, height, yaw_degrees, pitch_degrees);
+                (
+                    CameraMode::TopDown,
+                    Some(pivot),
+                    Some(height),
+                    Some(min_height),
+                    Some(max_height),
+                    pose,
+                )
+            }
+        };
+        let (pose, actual_distance, terrain_constrained) =
+            match (pivot, requested_distance, min_distance, mode) {
+                (Some(pivot), Some(distance), Some(minimum), mode) => {
+                    self.constrain_camera_to_terrain(pivot, pose, distance, minimum, mode)?
+                }
+                _ => (pose, requested_distance, false),
+            };
+        let snapshot = CameraSnapshot {
+            tick,
+            pose,
+            basis: Self::basis_from_pose(pose),
+            ..before.snapshot
+        };
+        Ok((
+            Self::camera_controller_state(
+                before.revision.saturating_add(1),
+                mode,
+                pivot,
+                actual_distance,
+                min_distance,
+                max_distance,
+                snapshot,
+            ),
+            terrain_constrained,
+        ))
+    }
+
+    pub(super) fn resolve_camera_navigation(
+        &self,
+        before: &CameraControllerState,
+        input: CameraNavigationInput,
+        tick: u64,
+    ) -> Result<(CameraControllerState, bool), CameraControllerRejection> {
+        if before.mode == CameraMode::FirstPerson {
+            return Err(CameraControllerRejection::IncompatibleMode);
+        }
+        if !Self::valid_navigation_input(input) {
+            return Err(CameraControllerRejection::InvalidInput);
+        }
+        let mut pivot = before
+            .pivot
+            .ok_or(CameraControllerRejection::InvalidTarget)?;
+        let distance = before
+            .distance
+            .ok_or(CameraControllerRejection::InvalidTarget)?;
+        let minimum = before
+            .min_distance
+            .ok_or(CameraControllerRejection::InvalidTarget)?;
+        let maximum = before
+            .max_distance
+            .ok_or(CameraControllerRejection::InvalidTarget)?;
+        let yaw = before.snapshot.pose.yaw_degrees + input.yaw_delta_degrees;
+        let pitch = match before.mode {
+            CameraMode::Orbit => {
+                (before.snapshot.pose.pitch_degrees + input.pitch_delta_degrees).clamp(-89.0, 89.0)
+            }
+            CameraMode::TopDown => {
+                (before.snapshot.pose.pitch_degrees + input.pitch_delta_degrees).clamp(-89.0, -30.0)
+            }
+            CameraMode::FirstPerson => unreachable!(),
+        };
+        let pan_basis = Self::basis_from_pose(CameraPose {
+            position: pivot,
+            yaw_degrees: yaw,
+            pitch_degrees: 0.0,
+        });
+        let pan_distance = input.dt_seconds * input.pan_speed_units_per_second;
+        pivot[0] += (pan_basis.right[0] * input.pan_right
+            + pan_basis.forward[0] * input.pan_forward)
+            * pan_distance;
+        pivot[2] += (pan_basis.right[2] * input.pan_right
+            + pan_basis.forward[2] * input.pan_forward)
+            * pan_distance;
+        let requested_distance = (distance - input.zoom_delta).clamp(minimum, maximum);
+        let requested_pose = match before.mode {
+            CameraMode::Orbit => Self::orbit_pose(pivot, requested_distance, yaw, pitch),
+            CameraMode::TopDown => Self::top_down_pose(pivot, requested_distance, yaw, pitch),
+            CameraMode::FirstPerson => unreachable!(),
+        };
+        let (pose, actual_distance, terrain_constrained) = self.constrain_camera_to_terrain(
+            pivot,
+            requested_pose,
+            requested_distance,
+            minimum,
+            before.mode,
+        )?;
+        let snapshot = CameraSnapshot {
+            tick,
+            pose,
+            basis: Self::basis_from_pose(pose),
+            ..before.snapshot
+        };
+        Ok((
+            Self::camera_controller_state(
+                before.revision.saturating_add(1),
+                before.mode,
+                Some(pivot),
+                actual_distance,
+                Some(minimum),
+                Some(maximum),
+                snapshot,
+            ),
+            terrain_constrained,
+        ))
+    }
+
+    fn valid_pose(pose: CameraPose) -> bool {
+        pose.position.iter().all(|value| value.is_finite())
+            && pose.yaw_degrees.is_finite()
+            && pose.pitch_degrees.is_finite()
+            && (-89.0..=89.0).contains(&pose.pitch_degrees)
+    }
+
+    fn valid_pivot_distance(pivot: [f32; 3], value: f32, minimum: f32, maximum: f32) -> bool {
+        pivot.iter().all(|item| item.is_finite())
+            && value.is_finite()
+            && minimum.is_finite()
+            && maximum.is_finite()
+            && minimum > 0.0
+            && minimum <= value
+            && value <= maximum
+            && maximum <= 10_000.0
+    }
+
+    fn valid_navigation_input(input: CameraNavigationInput) -> bool {
+        input.pan_right.is_finite()
+            && input.pan_forward.is_finite()
+            && input.yaw_delta_degrees.is_finite()
+            && input.pitch_delta_degrees.is_finite()
+            && input.zoom_delta.is_finite()
+            && input.dt_seconds.is_finite()
+            && input.pan_speed_units_per_second.is_finite()
+            && input.dt_seconds >= 0.0
+            && input.dt_seconds <= 1.0
+            && input.pan_speed_units_per_second >= 0.0
+            && input.pan_speed_units_per_second <= 1_000.0
+    }
+
+    fn orbit_pose(pivot: [f32; 3], distance: f32, yaw: f32, pitch: f32) -> CameraPose {
+        let basis = Self::basis_from_pose(CameraPose {
+            position: pivot,
+            yaw_degrees: yaw,
+            pitch_degrees: pitch,
+        });
+        CameraPose {
+            position: [
+                pivot[0] - basis.forward[0] * distance,
+                pivot[1] - basis.forward[1] * distance,
+                pivot[2] - basis.forward[2] * distance,
+            ],
+            yaw_degrees: yaw,
+            pitch_degrees: pitch,
+        }
+    }
+
+    fn top_down_pose(pivot: [f32; 3], height: f32, yaw: f32, pitch: f32) -> CameraPose {
+        let basis = Self::basis_from_pose(CameraPose {
+            position: pivot,
+            yaw_degrees: yaw,
+            pitch_degrees: pitch,
+        });
+        let radial_distance = height / (-basis.forward[1]).max(0.001);
+        Self::orbit_pose(pivot, radial_distance, yaw, pitch)
+    }
+
+    fn constrain_camera_to_terrain(
+        &self,
+        pivot: [f32; 3],
+        desired_pose: CameraPose,
+        desired_metric: f32,
+        minimum_metric: f32,
+        mode: CameraMode,
+    ) -> Result<(CameraPose, Option<f32>, bool), CameraControllerRejection> {
+        let Some(world) = self.voxel.as_ref() else {
+            return Ok((desired_pose, Some(desired_metric), false));
+        };
+        let delta = [
+            desired_pose.position[0] - pivot[0],
+            desired_pose.position[1] - pivot[1],
+            desired_pose.position[2] - pivot[2],
+        ];
+        let radial_distance =
+            (delta[0] * delta[0] + delta[1] * delta[1] + delta[2] * delta[2]).sqrt();
+        if !radial_distance.is_finite() || radial_distance <= 0.0 {
+            return Err(CameraControllerRejection::InvalidTarget);
+        }
+        let direction = [
+            delta[0] / radial_distance,
+            delta[1] / radial_distance,
+            delta[2] / radial_distance,
+        ];
+        let origin_offset = 0.05_f32.min(radial_distance / 2.0);
+        let origin = WorldPos::new(
+            f64::from(pivot[0] + direction[0] * origin_offset),
+            f64::from(pivot[1] + direction[1] * origin_offset),
+            f64::from(pivot[2] + direction[2] * origin_offset),
+        );
+        let ray = Ray::new(
+            origin,
+            WorldVec::new(
+                f64::from(direction[0]),
+                f64::from(direction[1]),
+                f64::from(direction[2]),
+            ),
+        );
+        let projection = self.collision_projection(world);
+        let Some(hit) = projection.raycast(ray, f64::from(radial_distance - origin_offset)) else {
+            return Ok((desired_pose, Some(desired_metric), false));
+        };
+        let allowed_radial =
+            (hit.distance as f32 + origin_offset - CAMERA_TERRAIN_CLEARANCE).max(0.0);
+        let forward_down = (-Self::basis_from_pose(desired_pose).forward[1]).max(0.001);
+        let allowed_metric = match mode {
+            CameraMode::TopDown => allowed_radial * forward_down,
+            CameraMode::Orbit | CameraMode::FirstPerson => allowed_radial,
+        };
+        if allowed_metric < minimum_metric {
+            return Err(CameraControllerRejection::TerrainBlocked);
+        }
+        let pose = CameraPose {
+            position: [
+                pivot[0] + direction[0] * allowed_radial,
+                pivot[1] + direction[1] * allowed_radial,
+                pivot[2] + direction[2] * allowed_radial,
+            ],
+            ..desired_pose
+        };
+        Ok((pose, Some(allowed_metric), true))
+    }
+
+    pub(super) fn camera_transition_readout(
+        from: CameraSnapshot,
+        to: CameraSnapshot,
+        spec: CameraTransitionSpec,
+    ) -> CameraTransitionReadout {
+        let transition_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{:?}|{:?}|{}|{:?}",
+                from.camera.raw(),
+                from.tick,
+                from.pose,
+                to.pose,
+                spec.duration_milliseconds,
+                spec.easing
+            ))
+        );
+        CameraTransitionReadout {
+            from,
+            to,
+            duration_milliseconds: spec.duration_milliseconds,
+            easing: spec.easing,
+            transition_hash,
+        }
+    }
+
+    pub(super) fn camera_mode_receipt(
+        before: CameraControllerState,
+        after: CameraControllerState,
+        transition: Option<CameraTransitionReadout>,
+        terrain_constrained: bool,
+        rejection: Option<CameraControllerRejection>,
+    ) -> CameraModeChangeReceipt {
+        let accepted = rejection.is_none();
+        let receipt_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{}|{}|{}|{:?}|{:?}",
+                accepted,
+                before.state_hash,
+                after.state_hash,
+                transition
+                    .as_ref()
+                    .map(|value| value.transition_hash.as_str())
+                    .unwrap_or("none"),
+                terrain_constrained,
+                rejection,
+                after.mode,
+            ))
+        );
+        CameraModeChangeReceipt {
+            accepted,
+            before,
+            after,
+            transition,
+            terrain_constrained,
+            rejection,
+            receipt_hash,
+        }
+    }
+
+    pub(super) fn camera_navigation_receipt(
+        before: CameraControllerState,
+        after: CameraControllerState,
+        terrain_constrained: bool,
+        rejection: Option<CameraControllerRejection>,
+    ) -> CameraNavigationReceipt {
+        let accepted = rejection.is_none();
+        let receipt_hash = format!(
+            "fnv1a64:{}",
+            Self::fnv1a64(&format!(
+                "{}|{}|{}|{}|{:?}",
+                accepted, before.state_hash, after.state_hash, terrain_constrained, rejection,
+            ))
+        );
+        CameraNavigationReceipt {
+            accepted,
+            before,
+            after,
+            terrain_constrained,
+            rejection,
+            receipt_hash,
+        }
+    }
+
+    pub(super) fn apply_camera_mode_authority(
+        &mut self,
+        command: CameraModeCommand,
+    ) -> BridgeResult<CameraModeChangeReceipt> {
+        self.require_initialized("apply_camera_mode_command")?;
+        let before = self
+            .camera_controllers
+            .get(&command.camera.raw())
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::UnknownHandle,
+                    "unknown camera handle",
+                )
+            })?;
+        if command.expected_revision != before.revision {
+            return Ok(Self::camera_mode_receipt(
+                before.clone(),
+                before,
+                None,
+                false,
+                Some(CameraControllerRejection::StaleRevision),
+            ));
+        }
+        if let Err(rejection) = Self::validate_transition(command.transition) {
+            return Ok(Self::camera_mode_receipt(
+                before.clone(),
+                before,
+                None,
+                false,
+                Some(rejection),
+            ));
+        }
+        let (after, terrain_constrained) =
+            match self.resolve_camera_mode_target(&before, command.target, command.tick) {
+                Ok(result) => result,
+                Err(rejection) => {
+                    return Ok(Self::camera_mode_receipt(
+                        before.clone(),
+                        before,
+                        None,
+                        false,
+                        Some(rejection),
+                    ));
+                }
+            };
+        let transition = command
+            .transition
+            .map(|spec| Self::camera_transition_readout(before.snapshot, after.snapshot, spec));
+        self.cameras.insert(command.camera.raw(), after.snapshot);
+        self.camera_controllers
+            .insert(command.camera.raw(), after.clone());
+        Ok(Self::camera_mode_receipt(
+            before,
+            after,
+            transition,
+            terrain_constrained,
+            None,
+        ))
+    }
+
+    pub(super) fn create_camera_authority(
+        &mut self,
+        request: CameraCreateRequest,
+    ) -> BridgeResult<CameraSnapshot> {
+        self.require_initialized("create_camera")?;
+        Self::validate_create_request(&request)?;
+        let camera = protocol_view::CameraHandle::new(self.next_camera);
+        self.next_camera += 1;
+        let snapshot = CameraSnapshot {
+            camera,
+            tick: 0,
+            pose: request.initial_pose,
+            basis: Self::basis_from_pose(request.initial_pose),
+            projection: request.projection,
+            viewport: request.viewport,
+        };
+        self.cameras.insert(camera.raw(), snapshot);
+        self.camera_controllers
+            .insert(camera.raw(), Self::initial_camera_controller(snapshot));
+        Ok(snapshot)
+    }
+
+    pub(super) fn apply_first_person_camera_authority(
+        &mut self,
+        envelope: FirstPersonCameraInputEnvelope,
+    ) -> BridgeResult<CameraSnapshot> {
+        self.require_initialized("apply_first_person_camera_input")?;
+        let prior = *self.cameras.get(&envelope.camera.raw()).ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::UnknownHandle,
+                "unknown camera handle",
+            )
+        })?;
+        let input = envelope.input;
+        let controller = self
+            .camera_controllers
+            .get(&envelope.camera.raw())
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::UnknownHandle,
+                    "unknown camera controller",
+                )
+            })?;
+        if controller.mode != CameraMode::FirstPerson {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "first-person camera input requires firstPerson camera mode",
+            ));
+        }
+        Self::validate_camera_input(input)?;
+        let snapshot = Self::integrate_camera_snapshot(prior, input, envelope.tick);
+        self.cameras.insert(envelope.camera.raw(), snapshot);
+        let controller =
+            Self::sync_first_person_controller(&controller, snapshot).map_err(|_| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    "first-person camera input requires firstPerson camera mode",
+                )
+            })?;
+        self.camera_controllers
+            .insert(envelope.camera.raw(), controller);
+        Ok(snapshot)
+    }
+
+    pub(super) fn apply_camera_navigation_authority(
+        &mut self,
+        envelope: CameraNavigationInputEnvelope,
+    ) -> BridgeResult<CameraNavigationReceipt> {
+        self.require_initialized("apply_camera_navigation_input")?;
+        let before = self
+            .camera_controllers
+            .get(&envelope.camera.raw())
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::UnknownHandle,
+                    "unknown camera handle",
+                )
+            })?;
+        if envelope.expected_revision != before.revision {
+            return Ok(Self::camera_navigation_receipt(
+                before.clone(),
+                before,
+                false,
+                Some(CameraControllerRejection::StaleRevision),
+            ));
+        }
+        let (after, terrain_constrained) =
+            match self.resolve_camera_navigation(&before, envelope.input, envelope.tick) {
+                Ok(result) => result,
+                Err(rejection) => {
+                    return Ok(Self::camera_navigation_receipt(
+                        before.clone(),
+                        before,
+                        false,
+                        Some(rejection),
+                    ));
+                }
+            };
+        self.cameras.insert(envelope.camera.raw(), after.snapshot);
+        self.camera_controllers
+            .insert(envelope.camera.raw(), after.clone());
+        Ok(Self::camera_navigation_receipt(
+            before,
+            after,
+            terrain_constrained,
+            None,
+        ))
+    }
+
+    pub(super) fn read_camera_controller_authority(
+        &self,
+        request: CameraControllerReadRequest,
+    ) -> BridgeResult<CameraControllerState> {
+        self.require_initialized("read_camera_controller_state")?;
+        self.camera_controllers
+            .get(&request.camera.raw())
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::UnknownHandle,
+                    "unknown camera handle",
+                )
+            })
     }
 
     pub(super) fn matrix_key(values: &[f32]) -> String {

@@ -267,6 +267,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "gameplay-module-sdk"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "core-time",
+ "game-rule-extension",
+ "protocol-game-extension",
+ "rule-gameplay-fabric",
+ "serde",
+ "serde_json",
+ "svc-gameplay-fabric",
+ "svc-rng",
+]
+
+[[package]]
+name = "gameplay-runtime-host"
+version = "0.1.0"
+dependencies = [
+ "core-entity",
+ "core-ids",
+ "core-math",
+ "core-scene",
+ "gameplay-module-sdk",
+ "protocol-entity-authoring",
+ "protocol-game-extension",
+ "protocol-project-bundle",
+ "rule-gameplay-fabric",
+ "rule-project-bundle",
+ "rule-trigger-volume",
+ "serde",
+ "serde_json",
+ "svc-entity-authoring",
+ "svc-gameplay-fabric",
+ "svc-serialization",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -516,12 +553,15 @@ dependencies = [
  "protocol-game-extension",
  "protocol-game-rules",
  "protocol-ids",
+ "protocol-input",
  "protocol-policy-view",
+ "protocol-presentation",
  "protocol-project-bundle",
  "protocol-render",
  "protocol-replay",
  "protocol-scene",
  "protocol-telemetry",
+ "protocol-time-control",
  "protocol-view",
  "protocol-voxel-annotation",
  "protocol-voxel-asset",
@@ -558,6 +598,7 @@ version = "0.1.0"
 dependencies = [
  "core-ids",
  "protocol-diagnostics",
+ "protocol-project-bundle",
  "serde",
  "serde_json",
 ]
@@ -580,6 +621,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-input"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "protocol-policy-view"
 version = "0.1.0"
 dependencies = [
@@ -589,10 +638,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-presentation"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "protocol-render",
+ "serde",
+]
+
+[[package]]
 name = "protocol-project-bundle"
 version = "0.1.0"
 dependencies = [
  "core-ids",
+ "serde",
 ]
 
 [[package]]
@@ -601,6 +660,7 @@ version = "0.1.0"
 dependencies = [
  "core-ids",
  "protocol-assets",
+ "serde",
 ]
 
 [[package]]
@@ -629,6 +689,14 @@ dependencies = [
 
 [[package]]
 name = "protocol-telemetry"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "protocol-time-control"
 version = "0.1.0"
 dependencies = [
  "serde",
@@ -689,6 +757,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "render-animation"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "protocol-presentation",
+ "protocol-render",
+ "rule-animation-controller",
+]
+
+[[package]]
+name = "render-audio"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-catalog",
+ "protocol-presentation",
+ "protocol-render",
+]
+
+[[package]]
+name = "render-billboard"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-catalog",
+ "protocol-presentation",
+]
+
+[[package]]
 name = "render-bridge"
 version = "0.1.0"
 dependencies = [
@@ -718,6 +815,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "render-particle"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-catalog",
+ "protocol-presentation",
+]
+
+[[package]]
+name = "render-telemetry-overlay"
+version = "0.1.0"
+dependencies = [
+ "protocol-presentation",
+]
+
+[[package]]
 name = "replay-tool"
 version = "0.1.0"
 dependencies = [
@@ -743,6 +856,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rule-animation-controller"
+version = "0.1.0"
+dependencies = [
+ "core-ids",
+ "rule-state-machine",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rule-game-modifier"
 version = "0.1.0"
 dependencies = [
@@ -754,6 +877,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "rule-gameplay-fabric"
+version = "0.1.0"
+dependencies = [
+ "core-entity",
+ "core-events",
+ "core-game-rules",
+ "core-ids",
+ "core-math",
+ "game-rule-extension",
+ "protocol-game-extension",
+ "protocol-game-rules",
+ "protocol-project-bundle",
+ "rule-state-machine",
+ "rule-trigger-volume",
+ "serde",
+ "serde_json",
+ "svc-combat",
+ "svc-game-rules",
+ "svc-gameplay-fabric",
+ "svc-serialization",
+]
+
+[[package]]
+name = "rule-input"
+version = "0.1.0"
+dependencies = [
+ "protocol-input",
+ "serde_json",
+]
+
+[[package]]
 name = "rule-lifecycle"
 version = "0.1.0"
 dependencies = [
@@ -761,7 +915,9 @@ dependencies = [
  "core-ids",
  "core-space",
  "protocol-entity-authoring",
+ "protocol-game-extension",
  "protocol-game-rules",
+ "rule-gameplay-fabric",
  "svc-collision",
  "svc-combat",
  "svc-entity-authoring",
@@ -793,9 +949,15 @@ dependencies = [
  "core-scene",
  "core-space",
  "core-voxel",
+ "gameplay-module-sdk",
+ "protocol-game-extension",
  "protocol-voxel-annotation",
+ "rule-gameplay-fabric",
+ "rule-trigger-volume",
  "rule-voxel-edit",
+ "serde",
  "serde_json",
+ "svc-gameplay-fabric",
  "svc-serialization",
  "svc-spatial",
  "svc-volume",
@@ -816,6 +978,11 @@ name = "rule-scheduler"
 version = "0.1.0"
 dependencies = [
  "core-space",
+ "protocol-game-extension",
+ "rule-gameplay-fabric",
+ "serde",
+ "serde_json",
+ "svc-gameplay-fabric",
 ]
 
 [[package]]
@@ -825,6 +992,17 @@ dependencies = [
  "core-error",
  "core-events",
  "core-ids",
+]
+
+[[package]]
+name = "rule-trigger-volume"
+version = "0.1.0"
+dependencies = [
+ "core-entity",
+ "core-ids",
+ "core-math",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -844,6 +1022,8 @@ dependencies = [
 name = "runtime-bridge-api"
 version = "0.1.0"
 dependencies = [
+ "core-assets",
+ "core-catalog",
  "core-commands",
  "core-entity",
  "core-error",
@@ -855,16 +1035,26 @@ dependencies = [
  "protocol-diagnostics",
  "protocol-entity-authoring",
  "protocol-game-rules",
+ "protocol-input",
+ "protocol-presentation",
  "protocol-render",
+ "protocol-time-control",
  "protocol-view",
  "protocol-voxel-annotation",
  "protocol-voxel-asset",
  "protocol-voxel-conversion",
  "protocol-voxel-edit-history",
+ "render-audio",
+ "render-billboard",
+ "render-particle",
+ "render-telemetry-overlay",
+ "rule-gameplay-fabric",
+ "rule-input",
  "rule-lifecycle",
  "rule-voxel-edit",
  "serde",
  "serde_json",
+ "sim-runner",
  "svc-collision",
  "svc-combat",
  "svc-game-rules",
@@ -1124,6 +1314,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc-gameplay-fabric"
+version = "0.1.0"
+dependencies = [
+ "protocol-diagnostics",
+ "protocol-game-extension",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "svc-levelgen"
 version = "0.1.0"
 dependencies = [
@@ -1199,6 +1399,7 @@ dependencies = [
  "core-error",
  "core-ids",
  "core-scene",
+ "serde_json",
 ]
 
 [[package]]

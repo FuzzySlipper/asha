@@ -9,6 +9,8 @@ operations are replay/devtools-only.
 |---|---|---|---|---|
 | `initialize_engine` | stable | `protocol_runtime::EngineConfig` | `EngineHandle` | `RuntimeBridgeError` |
 | `step_simulation` | stable | `protocol_runtime::StepInputEnvelope` | `protocol_runtime::StepResult` | `RuntimeBridgeError` |
+| `apply_time_control_command` | stable | `protocol_time_control::TimeControlCommand` | `protocol_time_control::TimeControlReceipt` | `RuntimeBridgeError` |
+| `read_time_control_state` | stable | `Unit` | `protocol_time_control::TimeControlState` | `RuntimeBridgeError` |
 | `submit_commands` | stable | `protocol_voxel::CommandBatch` | `protocol_voxel::CommandResult` | `RuntimeBridgeError` |
 | `pick_voxel` | stable | `protocol_voxel::PickRay` | `protocol_voxel::PickResult` | `RuntimeBridgeError` |
 | `apply_collision_constrained_camera_input` | stable | `protocol_view::CollisionConstrainedCameraInputEnvelope` | `protocol_view::CameraCollisionSnapshot` | `RuntimeBridgeError` |
@@ -51,11 +53,20 @@ operations are replay/devtools-only.
 | `restart_fps_runtime_session` | stable | `protocol_runtime::FpsRuntimeSessionRestartRequest` | `protocol_runtime::FpsRuntimeSessionSnapshot` | `RuntimeBridgeError` |
 | `read_fps_encounter_director` | stable | `protocol_runtime::FpsEncounterLifecycleInput` | `protocol_runtime::FpsEncounterDirectorSnapshot` | `RuntimeBridgeError` |
 | `apply_fps_encounter_transition` | stable | `protocol_runtime::FpsEncounterTransitionRequest` | `protocol_runtime::FpsEncounterTransitionResult` | `RuntimeBridgeError` |
+| `read_projection_frame` | stable | `FrameCursor` | `protocol_presentation::RuntimeProjectionFrame` | `RuntimeBridgeError` |
 | `read_render_diffs` | stable | `FrameCursor` | `protocol_render::RenderFrameDiffDescriptor` | `RuntimeBridgeError` |
 | `read_model_material_preview` | stable | `protocol_render::ModelMaterialPreviewRequest` | `protocol_render::ModelMaterialPreviewSnapshot` | `RuntimeBridgeError` |
 | `read_scene_object_snapshot` | stable | `Unit` | `protocol_scene::SceneObjectSnapshot` | `RuntimeBridgeError` |
 | `apply_scene_object_command` | stable | `protocol_scene::SceneObjectCommandRequest` | `protocol_scene::SceneObjectCommandResult` | `RuntimeBridgeError` |
+| `configure_input_session` | stable | `protocol_input::InputSessionConfigureRequest` | `protocol_input::InputSessionSnapshot` | `RuntimeBridgeError` |
+| `apply_input_context_command` | stable | `protocol_input::InputContextCommand` | `protocol_input::InputContextChangeReceipt` | `RuntimeBridgeError` |
+| `submit_raw_input` | stable | `protocol_input::RawInputSample` | `protocol_input::InputResolutionReceipt` | `RuntimeBridgeError` |
+| `replay_resolved_input_action` | stable | `protocol_input::RecordedInputAction` | `protocol_input::InputActionReplayReceipt` | `RuntimeBridgeError` |
+| `read_input_context_state` | stable | `Unit` | `protocol_input::InputContextStackState` | `RuntimeBridgeError` |
 | `create_camera` | stable | `protocol_view::CameraCreateRequest` | `protocol_view::CameraSnapshot` | `RuntimeBridgeError` |
+| `apply_camera_mode_command` | stable | `protocol_view::CameraModeCommand` | `protocol_view::CameraModeChangeReceipt` | `RuntimeBridgeError` |
+| `apply_camera_navigation_input` | stable | `protocol_view::CameraNavigationInputEnvelope` | `protocol_view::CameraNavigationReceipt` | `RuntimeBridgeError` |
+| `read_camera_controller_state` | stable | `protocol_view::CameraControllerReadRequest` | `protocol_view::CameraControllerState` | `RuntimeBridgeError` |
 | `apply_first_person_camera_input` | stable | `protocol_view::FirstPersonCameraInputEnvelope` | `protocol_view::CameraSnapshot` | `RuntimeBridgeError` |
 | `apply_enemy_direct_nav_movement` | stable | `protocol_runtime::EnemyDirectNavMovementRequest` | `protocol_runtime::EnemyDirectNavMovementResult` | `RuntimeBridgeError` |
 | `read_camera_projection` | stable | `protocol_view::CameraProjectionRequest` | `protocol_view::CameraProjectionSnapshot` | `RuntimeBridgeError` |

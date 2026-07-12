@@ -1,0 +1,13 @@
+[package]
+name = "rule-input"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+protocol-input = { path = "../../protocol/protocol-input" }
+
+[dev-dependencies]
+serde_json = "1"

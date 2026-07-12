@@ -13,7 +13,8 @@ void test('validates the golden asha.game.toml manifest', () => {
     assert.equal(result.manifest.runtime.backendMode, 'reference');
     assert.equal(result.manifest.runtime.backendProfile, 'reference');
     assert.deepEqual(result.manifest.runtime.backendProofRefs, []);
-    assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'assets', 'packages/game-catalogs']);
+    assert.deepEqual(result.manifest.workspace.prefabRoots, ['prefabs']);
+    assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'prefabs', 'assets', 'packages/game-catalogs']);
     assert.deepEqual(result.manifest.devResourceProfile.localRoots, ['assets', 'packages/game-catalogs']);
     assert.equal(result.manifest.devResourceProfile.cacheDir, 'dist/dev-cache');
     assert.equal(result.manifest.devResourceProfile.resolutionPolicy, 'prefer-source');

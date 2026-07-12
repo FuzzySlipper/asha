@@ -6,7 +6,9 @@
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export { decodeRenderDiff, decodeRenderFrameDiff, RenderDecodeError, RenderDiffStream, FrameMemory, } from './render-decode.js';
 export { RuntimeBridgeError, frameCursor } from './bridge.js';
-export * from './browser-fps-input.js';
+export * from './browser-input-host.js';
+export * from './browser-fps-resolved-actions.js';
+export * from './resolved-time-control.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';

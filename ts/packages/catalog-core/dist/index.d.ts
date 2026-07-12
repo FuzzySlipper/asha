@@ -103,7 +103,7 @@ export interface FpsGameplayPresetReadout {
         readonly referenceHash: string;
     };
     readonly migration: {
-        readonly playerControllerConstants: 'BrowserFpsInputCollector options';
+        readonly playerControllerConstants: 'BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options';
         readonly weaponConstants: 'RuntimeSession primary_fire combat readout defaults';
         readonly enemyConstants: 'generated tunnel enemy policy fixture';
         readonly encounterConstants: 'generated-tunnel-small-encounter';
@@ -182,7 +182,7 @@ export type FpsEcrpRuleOwner = 'EntityBootstrap' | 'LifecycleRule' | 'TransformR
 export type FpsEcrpPolicyRef = 'browser_fps_input_collector.v0' | 'policy.enemy.generated_tunnel.v0' | 'generated_tunnel_enemy_policy_loop.v0';
 export type FpsEcrpDomainEventRef = 'runtime_session.bootstrap_entity.v0' | 'runtime_session.camera_input.v0' | 'runtime_session.collision_constrained_camera_input.v0' | 'runtime_action.primary_fire.v0' | 'runtime_lifecycle.enemy_defeated.v0' | 'enemy_policy.move_toward_target.v0' | 'enemy_policy.primary_fire_intent.v0';
 export type FpsEcrpProjectionRef = 'runtime_session.ecrp_readout.v0' | 'runtime_session.camera_projection.v0' | 'runtime_session.combat_readout.v0' | 'runtime_session.combat_feedback_projection.v0' | 'runtime_session.lifecycle_status.v0' | 'runtime_session.generated_tunnel_readout.v0' | 'runtime_session.nav_projection.v0' | 'renderer_three.browser_surface.v0' | 'demo_hud_overlay.v0';
-export type FpsEcrpRuntimeSurfaceRef = 'RuntimeSessionFacade.readEcrpRuntimeReadout' | 'RuntimeSessionFacade.applyCollisionConstrainedCameraInput' | 'RuntimeSessionFacade.submitRuntimeActionIntent' | 'RuntimeSessionFacade.readCameraProjection' | 'RuntimeSessionFacade.readCombatReadout' | 'RuntimeSessionFacade.readCombatFeedbackProjection' | 'RuntimeSessionFacade.readLifecycleStatus' | 'RuntimeSessionFacade.readGeneratedTunnelReadout' | 'RuntimeSessionFacade.runAutonomousPolicyTick' | 'RuntimeSessionFacade.readNavProjection' | 'BrowserFpsInputCollector' | 'mountAshaRendererBrowserSurface';
+export type FpsEcrpRuntimeSurfaceRef = 'RuntimeSessionFacade.readEcrpRuntimeReadout' | 'RuntimeSessionFacade.applyCollisionConstrainedCameraInput' | 'RuntimeSessionFacade.submitRuntimeActionIntent' | 'RuntimeSessionFacade.readCameraProjection' | 'RuntimeSessionFacade.readCombatReadout' | 'RuntimeSessionFacade.readCombatFeedbackProjection' | 'RuntimeSessionFacade.readLifecycleStatus' | 'RuntimeSessionFacade.readGeneratedTunnelReadout' | 'RuntimeSessionFacade.runAutonomousPolicyTick' | 'RuntimeSessionFacade.readNavProjection' | 'BrowserInputHost' | 'mountAshaRendererBrowserSurface';
 export interface FpsEcrpObjectModelEntry {
     readonly runtimeRole: FpsEcrpRuntimeRole;
     readonly entityDefinitionId: string;

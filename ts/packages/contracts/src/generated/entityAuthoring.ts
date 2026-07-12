@@ -31,6 +31,51 @@ export type AuthoringCapability =
   | { readonly kind: 'collision'; readonly staticCollider: boolean }
   | { readonly kind: 'bounds'; readonly min: readonly [number, number, number]; readonly max: readonly [number, number, number] };
 
+export type ActivatableCapabilityKind = 'collision' | 'controller';
+
+export type CapabilityActivationAction = 'activate' | 'deactivate';
+
+export type CapabilityActivationPresence = 'absent' | 'inactive' | 'active';
+
+export type CapabilityActivationEntityLifecycle = 'active' | 'disabled' | 'tombstoned';
+
+export type CapabilityActivationDiagnosticCode = 'unknownEntity' | 'tombstoned' | 'capabilityAbsent' | 'alreadyInState' | 'forbiddenOwner';
+
+// Typed proposal shape. Rust still checks the named Rule owner before applying the requested activation transition.
+export interface CapabilityActivationRequest {
+  readonly entity: EntityId;
+  readonly capability: ActivatableCapabilityKind;
+  readonly action: CapabilityActivationAction;
+}
+
+export interface CapabilityActivationEvent {
+  readonly entity: EntityId;
+  readonly capability: ActivatableCapabilityKind;
+  readonly from: CapabilityActivationPresence;
+  readonly to: CapabilityActivationPresence;
+}
+
+// Projection distinguishes attachment state from the entity lifecycle axis.
+export interface CapabilityActivationReadout {
+  readonly entity: EntityId;
+  readonly capability: ActivatableCapabilityKind;
+  readonly presence: CapabilityActivationPresence;
+  readonly entityLifecycle: CapabilityActivationEntityLifecycle;
+  readonly effectiveActive: boolean;
+}
+
+export interface CapabilityActivationDiagnostic {
+  readonly code: CapabilityActivationDiagnosticCode;
+  readonly entity: EntityId;
+  readonly capability: ActivatableCapabilityKind;
+  readonly message: string;
+}
+
+export type CapabilityActivationOutcome =
+  | { readonly status: 'accepted'; readonly event: CapabilityActivationEvent; readonly readout: CapabilityActivationReadout }
+  | { readonly status: 'rejected'; readonly diagnostic: CapabilityActivationDiagnostic }
+  | { readonly status: 'forbidden'; readonly diagnostic: CapabilityActivationDiagnostic };
+
 // Where a stored entity definition was read from inside a durable ProjectBundle.
 export interface EntityDefinitionSourceTrace {
   readonly projectBundle: string;

@@ -8,6 +8,10 @@
 
 #![forbid(unsafe_code)]
 
+mod fabric;
+
+pub use fabric::*;
+
 use core_ids::EntityId;
 use protocol_diagnostics::DiagnosticSeverity;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};

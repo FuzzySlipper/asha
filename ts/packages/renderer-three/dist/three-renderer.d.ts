@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { type RuntimeBufferHandle, type RuntimeBufferView } from '@asha/runtime-bridge';
 import type { MeshPickHit, RenderDiff, RenderFrameDiff, RenderHandle, RenderMaterialDescriptor, SpriteAtlasDescriptor, SpritePickHit, TextureDescriptor } from '@asha/contracts';
-import { type AnimatedMeshAssetSource, type AnimatedMeshPlaybackReadout } from './animated-mesh.js';
+import { type AnimatedMeshAssetSource, type AnimatedMeshControllerClip, type AnimatedMeshPlaybackReadout } from './animated-mesh.js';
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export declare class RenderApplyError extends Error {
     constructor(message: string);
@@ -58,6 +58,10 @@ export declare class ThreeRenderer {
     advanceAnimation(deltaSeconds: number): void;
     /** Projection/debug readback for animated mesh playback; never authority. */
     animatedMeshPlayback(handle: RenderHandle): AnimatedMeshPlaybackReadout | undefined;
+    /** Apply renderer-local clip weights resolved from an authority controller projection. */
+    setAnimationControllerWeights(handle: RenderHandle, clips: readonly AnimatedMeshControllerClip[]): void;
+    hasAnimationControllerClips(handle: RenderHandle, clipIds: readonly string[]): boolean;
+    clearAnimationControllerWeights(handle: RenderHandle): void;
     /**
      * A deterministic textual snapshot of the rendered scene — one line per live
      * handle (sorted), capturing layer, shape, transform, visibility, and colour.

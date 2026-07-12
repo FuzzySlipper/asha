@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [{
+    "id": "fixture.protocol",
+    "kind": "gameplayEvent",
+    "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "MissingGeneratedContract" },
+    "provider": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/composition.rs", "token": "GameplayStaticInvocationHost" },
+    "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayEventEnvelope" },
+    "delivery": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "two_real_modules_execute_and_behavior_changes_evidence" }
+  }],
+  "internalExemptions": []
+}

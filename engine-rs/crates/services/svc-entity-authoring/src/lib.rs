@@ -18,6 +18,9 @@
 
 #![forbid(unsafe_code)]
 
+mod activation;
+pub use activation::{apply_rule_owned_capability_activation, project_capability_activation};
+
 use std::collections::BTreeSet;
 
 use core_assets::{AssetId, AssetReference, AssetVersionReq};
@@ -148,6 +151,7 @@ pub enum EcrpRuleOwner {
     TransformRule,
     MovementRule,
     CollisionRule,
+    ControllerRule,
     RenderProjectionRule,
     RelationRule,
 }
@@ -159,6 +163,8 @@ pub enum EcrpCapabilityMutation {
     AttachBounds,
     AttachRenderProjection,
     AttachCollision,
+    ActivateCollision,
+    ActivateController,
     SetTransform,
     Move,
     Relation,
@@ -251,7 +257,7 @@ fn command_mutation(command: &EntityAuthoringCommand) -> EcrpCapabilityMutation 
     }
 }
 
-fn rule_owner_allows(owner: EcrpRuleOwner, mutation: EcrpCapabilityMutation) -> bool {
+pub(crate) fn rule_owner_allows(owner: EcrpRuleOwner, mutation: EcrpCapabilityMutation) -> bool {
     match owner {
         EcrpRuleOwner::EntityBootstrap => matches!(
             mutation,
@@ -266,8 +272,13 @@ fn rule_owner_allows(owner: EcrpRuleOwner, mutation: EcrpCapabilityMutation) -> 
         EcrpRuleOwner::MovementRule => matches!(mutation, EcrpCapabilityMutation::Move),
         EcrpRuleOwner::CollisionRule => matches!(
             mutation,
-            EcrpCapabilityMutation::AttachCollision | EcrpCapabilityMutation::AttachBounds
+            EcrpCapabilityMutation::AttachCollision
+                | EcrpCapabilityMutation::AttachBounds
+                | EcrpCapabilityMutation::ActivateCollision
         ),
+        EcrpRuleOwner::ControllerRule => {
+            matches!(mutation, EcrpCapabilityMutation::ActivateController)
+        }
         EcrpRuleOwner::RenderProjectionRule => {
             matches!(mutation, EcrpCapabilityMutation::AttachRenderProjection)
         }

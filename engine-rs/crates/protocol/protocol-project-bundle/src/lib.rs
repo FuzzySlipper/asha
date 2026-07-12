@@ -60,6 +60,7 @@ pub const ALL_ARTIFACT_CLASSES: &[ArtifactClass] = &[
 pub const KNOWN_ARTIFACT_ROLES: &[&str] = &[
     "sceneDocument",
     "assetLock",
+    "prefabRegistry",
     "sessionStateSnapshot",
     "voxelChunkSnapshot",
     "voxelEditLog",
@@ -156,6 +157,8 @@ pub const MANIFEST_ERROR_CODES: &[&str] = &[
     "duplicateArtifact",
     "missingArtifact",
     "durableMissingHash",
+    "duplicateArtifactRole",
+    "artifactClassMismatch",
 ];
 
 /// Stable load-plan error codes. Mirrors `svc_serialization::LoadPlanError`.
@@ -196,7 +199,20 @@ pub const ALL_SUGGESTED_ACTIONS: &[SuggestedAction] =
 // may use richer internal types, but generated consumers derive only from these
 // inert declarations.
 
-use core_ids::{ProjectId, RuntimeSessionId, SceneId};
+use core_ids::{PrefabId, PrefabInstanceId, PrefabPartId, ProjectId, RuntimeSessionId, SceneId};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+/// Durable schema for semantic trigger roles authored with a ProjectBundle.
+pub const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GameplayTriggerDefinition {
+    pub schema_version: u32,
+    pub entity: u64,
+    pub scope: String,
+    pub tags: Vec<String>,
+}
 
 /// Project-bundle border form of a voxel coordinate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,14 +280,221 @@ pub struct ProjectBundleManifest {
     pub artifacts: Vec<ArtifactEntry>,
 }
 
+// ── Durable prefab registry ──────────────────────────────────────────────────
+
+/// Schema version for the prefab registry artifact carried by a ProjectBundle.
+pub const PREFAB_REGISTRY_SCHEMA_VERSION: u32 = 1;
+
+/// Schema version for each stored prefab definition.
+pub const PREFAB_DEFINITION_SCHEMA_VERSION: u32 = 1;
+
+/// Stable classified prefab validation codes.
+pub const PREFAB_DIAGNOSTIC_CODES: &[&str] = &[
+    "unsupportedRegistrySchema",
+    "unsupportedDefinitionSchema",
+    "duplicatePrefabId",
+    "missingDisplayName",
+    "duplicatePartId",
+    "invalidPartNamespace",
+    "duplicatePartNamespace",
+    "missingParentPart",
+    "partHierarchyCycle",
+    "invalidPartTransform",
+    "unknownAsset",
+    "assetKindMismatch",
+    "unknownEntityDefinition",
+    "invalidPartRole",
+    "duplicatePartRole",
+    "danglingPartRole",
+    "missingBasePrefab",
+    "variantCycle",
+    "variantDepthExceeded",
+    "variantDefinesParts",
+    "unknownRemovedRole",
+    "duplicateRemovedRole",
+    "unsafePartRemoval",
+    "invalidOverrideTarget",
+    "duplicateOverride",
+    "invalidOverrideValue",
+    "deletedRoleReferenced",
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PrefabDiagnosticCode {
+    UnsupportedRegistrySchema,
+    UnsupportedDefinitionSchema,
+    DuplicatePrefabId,
+    MissingDisplayName,
+    DuplicatePartId,
+    InvalidPartNamespace,
+    DuplicatePartNamespace,
+    MissingParentPart,
+    PartHierarchyCycle,
+    InvalidPartTransform,
+    UnknownAsset,
+    AssetKindMismatch,
+    UnknownEntityDefinition,
+    InvalidPartRole,
+    DuplicatePartRole,
+    DanglingPartRole,
+    MissingBasePrefab,
+    VariantCycle,
+    VariantDepthExceeded,
+    VariantDefinesParts,
+    UnknownRemovedRole,
+    DuplicateRemovedRole,
+    UnsafePartRemoval,
+    InvalidOverrideTarget,
+    DuplicateOverride,
+    InvalidOverrideValue,
+    DeletedRoleReferenced,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PrefabTransform {
+    pub translation: [f32; 3],
+    pub rotation: [f32; 4],
+    pub scale: [f32; 3],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PrefabPartSource {
+    Scene { asset: String },
+    EntityDefinition { stable_id: String },
+    VoxelObject { asset: String },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabPart {
+    pub id: PrefabPartId,
+    pub namespace: String,
+    pub display_name: String,
+    pub parent: Option<PrefabPartId>,
+    pub transform: PrefabTransform,
+    pub source: PrefabPartSource,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrefabPartRoleBinding {
+    pub role: String,
+    pub part: PrefabPartId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrefabOverrideValue {
+    Transform { transform: PrefabTransform },
+    EntityDefinition { stable_id: String },
+    Asset { asset: String },
+    Material { asset: String },
+    Activation { active: bool },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabOverride {
+    pub target_role: String,
+    pub value: PrefabOverrideValue,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabVariantDelta {
+    pub base: PrefabId,
+    pub removed_roles: Vec<String>,
+    pub overrides: Vec<PrefabOverride>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabDefinition {
+    pub id: PrefabId,
+    pub schema_version: u32,
+    pub display_name: String,
+    pub parts: Vec<PrefabPart>,
+    pub part_roles: Vec<PrefabPartRoleBinding>,
+    pub variant: Option<PrefabVariantDelta>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabRegistry {
+    pub schema_version: u32,
+    pub definitions: Vec<PrefabDefinition>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrefabInstanceRecord {
+    pub instance: PrefabInstanceId,
+    pub prefab: PrefabId,
+    pub seed: u64,
+    pub transform: PrefabTransform,
+    pub overrides: Vec<PrefabOverride>,
+}
+
+/// Durable selector used by declared reads and authored module bindings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrefabPartReference {
+    #[serde(
+        serialize_with = "serialize_prefab_id",
+        deserialize_with = "deserialize_prefab_id"
+    )]
+    pub prefab: PrefabId,
+    pub role: String,
+}
+
+fn serialize_prefab_id<S>(id: &PrefabId, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_u64(id.raw())
+}
+
+fn deserialize_prefab_id<'de, D>(deserializer: D) -> Result<PrefabId, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    u64::deserialize(deserializer).map(PrefabId::new)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrefabDiagnostic {
+    pub code: PrefabDiagnosticCode,
+    pub path: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PrefabValidationOutcome {
+    Valid,
+    Invalid { diagnostics: Vec<PrefabDiagnostic> },
+}
+
 /// Classified manifest validation failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ManifestError {
-    UnsupportedSchema { found: u32, supported: u32 },
-    UnsupportedProtocol { found: u32, supported: u32 },
-    DuplicateArtifact { path: String },
-    MissingArtifact { role: String, path: String },
-    DurableMissingHash { path: String },
+    UnsupportedSchema {
+        found: u32,
+        supported: u32,
+    },
+    UnsupportedProtocol {
+        found: u32,
+        supported: u32,
+    },
+    DuplicateArtifact {
+        path: String,
+    },
+    MissingArtifact {
+        role: String,
+        path: String,
+    },
+    DurableMissingHash {
+        path: String,
+    },
+    DuplicateArtifactRole {
+        role: String,
+    },
+    ArtifactClassMismatch {
+        path: String,
+        expected: String,
+        found: String,
+    },
 }
 
 /// All manifest errors produced by one validation pass.

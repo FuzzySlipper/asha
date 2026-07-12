@@ -130,6 +130,62 @@ pub struct TelemetryEnvelope {
     pub events: Vec<TelemetryEvent>,
 }
 
+/// Stable low-frequency counters shared by live snapshots and offline perf
+/// records where their semantics match.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LiveTelemetryCounter {
+    FrameTimeMs,
+    EntityCount,
+    ActiveCapabilityCount,
+    ResidentChunkCount,
+    DirtyChunkCount,
+    RenderDiffCount,
+    RenderHandleCount,
+    DrawCallCount,
+    ActiveAudioSourceCount,
+    ActiveBillboardCount,
+    ActiveParticleCount,
+    DroppedFeedbackCount,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveTelemetryMetric {
+    pub counter: LiveTelemetryCounter,
+    pub kind: TelemetryMetricKind,
+    pub value: f64,
+    pub unit: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LiveTelemetryDiagnosticCode {
+    CounterUnavailable,
+    InvalidSample,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveTelemetryDiagnostic {
+    pub code: LiveTelemetryDiagnosticCode,
+    pub counter: Option<LiveTelemetryCounter>,
+    pub message: String,
+}
+
+/// Machine-readable current telemetry. Unsupported counters are omitted from
+/// `metrics` and named by diagnostics rather than filled with invented zeros.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LiveTelemetrySnapshot {
+    pub schema_version: u16,
+    pub authority_tick: u64,
+    pub sample_sequence: u64,
+    pub metrics: Vec<LiveTelemetryMetric>,
+    pub frame_time_history_ms: Vec<f64>,
+    pub diagnostics: Vec<LiveTelemetryDiagnostic>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

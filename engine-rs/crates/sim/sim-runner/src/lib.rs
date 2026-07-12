@@ -32,6 +32,153 @@ use sim_replay::{
 };
 use sim_validator::validate;
 
+pub const MAX_TIME_SPEED_MULTIPLIER: u8 = 16;
+pub const MAX_EXACT_STEP_TICKS: u32 = 10_000;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeControlMode {
+    Paused,
+    Running,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TimeControlState {
+    pub mode: TimeControlMode,
+    pub speed_multiplier: u8,
+    pub revision: u64,
+}
+
+impl Default for TimeControlState {
+    fn default() -> Self {
+        Self {
+            mode: TimeControlMode::Running,
+            speed_multiplier: 1,
+            revision: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeControlCommand {
+    Pause,
+    Resume,
+    SetSpeedMultiplier { multiplier: u8 },
+    StepTicks { ticks: u32 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TimeControlRejection {
+    AlreadyPaused,
+    AlreadyRunning,
+    NotPausedForExactStep,
+    InvalidSpeedMultiplier,
+    InvalidStepCount,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimeControlReceipt {
+    pub accepted: bool,
+    pub before: TimeControlState,
+    pub after: TimeControlState,
+    pub exact_ticks_to_advance: u32,
+    pub rejection: Option<TimeControlRejection>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct TimeController {
+    state: TimeControlState,
+}
+
+impl TimeController {
+    pub fn state(&self) -> TimeControlState {
+        self.state
+    }
+
+    /// Number of fixed ticks a wall-clock cadence pulse may advance. This never
+    /// changes the fixed tick delta; speed changes only cadence density.
+    pub fn cadence_tick_budget(&self) -> u8 {
+        match self.state.mode {
+            TimeControlMode::Paused => 0,
+            TimeControlMode::Running => self.state.speed_multiplier,
+        }
+    }
+
+    pub fn apply(&mut self, command: TimeControlCommand) -> TimeControlReceipt {
+        let before = self.state;
+        let (candidate, exact_ticks_to_advance, rejection) = match command {
+            TimeControlCommand::Pause if before.mode == TimeControlMode::Paused => {
+                (before, 0, Some(TimeControlRejection::AlreadyPaused))
+            }
+            TimeControlCommand::Pause => (
+                TimeControlState {
+                    mode: TimeControlMode::Paused,
+                    revision: before.revision + 1,
+                    ..before
+                },
+                0,
+                None,
+            ),
+            TimeControlCommand::Resume if before.mode == TimeControlMode::Running => {
+                (before, 0, Some(TimeControlRejection::AlreadyRunning))
+            }
+            TimeControlCommand::Resume => (
+                TimeControlState {
+                    mode: TimeControlMode::Running,
+                    revision: before.revision + 1,
+                    ..before
+                },
+                0,
+                None,
+            ),
+            TimeControlCommand::SetSpeedMultiplier { multiplier }
+                if multiplier == 0 || multiplier > MAX_TIME_SPEED_MULTIPLIER =>
+            {
+                (
+                    before,
+                    0,
+                    Some(TimeControlRejection::InvalidSpeedMultiplier),
+                )
+            }
+            TimeControlCommand::SetSpeedMultiplier { multiplier } => (
+                TimeControlState {
+                    speed_multiplier: multiplier,
+                    revision: before.revision + 1,
+                    ..before
+                },
+                0,
+                None,
+            ),
+            TimeControlCommand::StepTicks { .. } if before.mode != TimeControlMode::Paused => {
+                (before, 0, Some(TimeControlRejection::NotPausedForExactStep))
+            }
+            TimeControlCommand::StepTicks { ticks }
+                if ticks == 0 || ticks > MAX_EXACT_STEP_TICKS =>
+            {
+                (before, 0, Some(TimeControlRejection::InvalidStepCount))
+            }
+            TimeControlCommand::StepTicks { ticks } => (
+                TimeControlState {
+                    revision: before.revision + 1,
+                    ..before
+                },
+                ticks,
+                None,
+            ),
+        };
+        let accepted = rejection.is_none();
+        if accepted {
+            self.state = candidate;
+        }
+        TimeControlReceipt {
+            accepted,
+            before,
+            after: self.state,
+            exact_ticks_to_advance,
+            rejection,
+        }
+    }
+}
+
 /// Execute one authority tick: validate all proposed commands, apply accepted
 /// event batches to `store` in order, and return the tick summary.
 ///
@@ -275,6 +422,60 @@ mod tests {
     };
     use core_ids::{EntityId, ModeId, ProcessId, TagId};
     use sim_kernel::TickInput;
+
+    #[test]
+    fn pause_resume_and_speed_change_only_cadence_budget() {
+        let mut controller = TimeController::default();
+        assert_eq!(controller.cadence_tick_budget(), 1);
+        let speed = controller.apply(TimeControlCommand::SetSpeedMultiplier { multiplier: 4 });
+        assert!(speed.accepted);
+        assert_eq!(controller.cadence_tick_budget(), 4);
+        let pause = controller.apply(TimeControlCommand::Pause);
+        assert!(pause.accepted);
+        assert_eq!(controller.cadence_tick_budget(), 0);
+        assert!(!controller.apply(TimeControlCommand::Pause).accepted);
+        assert!(controller.apply(TimeControlCommand::Resume).accepted);
+        assert_eq!(controller.cadence_tick_budget(), 4);
+    }
+
+    #[test]
+    fn exact_step_is_bounded_requires_pause_and_remains_paused() {
+        let mut controller = TimeController::default();
+        let running = controller.apply(TimeControlCommand::StepTicks { ticks: 2 });
+        assert_eq!(
+            running.rejection,
+            Some(TimeControlRejection::NotPausedForExactStep)
+        );
+        controller.apply(TimeControlCommand::Pause);
+        let step = controller.apply(TimeControlCommand::StepTicks { ticks: 3 });
+        assert!(step.accepted);
+        assert_eq!(step.exact_ticks_to_advance, 3);
+        assert_eq!(step.after.mode, TimeControlMode::Paused);
+        assert_eq!(controller.cadence_tick_budget(), 0);
+        assert!(
+            !controller
+                .apply(TimeControlCommand::StepTicks { ticks: 0 })
+                .accepted
+        );
+        assert!(
+            !controller
+                .apply(TimeControlCommand::StepTicks {
+                    ticks: MAX_EXACT_STEP_TICKS + 1,
+                })
+                .accepted
+        );
+    }
+
+    #[test]
+    fn rejected_commands_never_mutate_time_control_state() {
+        let mut controller = TimeController::default();
+        let before = controller.state();
+        let rejected = controller.apply(TimeControlCommand::SetSpeedMultiplier { multiplier: 0 });
+        assert!(!rejected.accepted);
+        assert_eq!(rejected.before, before);
+        assert_eq!(rejected.after, before);
+        assert_eq!(controller.state(), before);
+    }
 
     fn sys(cmd: Command) -> core_commands::CommandEnvelope {
         core_commands::CommandEnvelope::new(CommandKind::System, cmd)

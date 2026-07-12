@@ -1,6 +1,8 @@
 import type { VoxelCommand, VoxelCoord, Face } from '@asha/contracts';
 export * from './scene-authoring.js';
 export * from './scene-object-hierarchy.js';
+export * from './resolved-input.js';
+export * from './camera-navigation.js';
 export * from './entity-authoring.js';
 export type ToolMode = 'place' | 'remove' | 'paint' | 'select' | 'inspect';
 export type SelectionMode = 'voxel' | 'face';

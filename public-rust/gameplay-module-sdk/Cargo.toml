@@ -1,0 +1,14 @@
+[package]
+name = "asha-gameplay-module-sdk"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.asha.public-surface]
+status = "public"
+role = "downstream-gameplay-module-sdk"
+source-of-truth = "engine-rs/crates/rules/gameplay-module-sdk"
+allowed-consumer-roles = ["asha-demo", "asha-testing", "asha-rulebench"]
+
+[dependencies]
+gameplay-module-sdk = { path = "../../engine-rs/crates/rules/gameplay-module-sdk" }

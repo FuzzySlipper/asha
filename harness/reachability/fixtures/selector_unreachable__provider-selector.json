@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [{
+    "id": "fixture.selector",
+    "kind": "gameplayRead",
+    "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayReadViewRequirement" },
+    "provider": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "GameplayReadViewProviderRegistration" },
+    "selectors": [{ "name": "missingSelector", "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "MissingSelector" }],
+    "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayReadViewRequirement" },
+    "delivery": { "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs", "token": "provider_state_adapters_initialize_and_apply_recorded_local_facts" }
+  }],
+  "internalExemptions": []
+}

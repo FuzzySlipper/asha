@@ -1,7 +1,11 @@
 export const COSMETIC_AUTHORITY_BOUNDARY = {
     packageRole: '@asha/cosmetic',
     owns: ['transient_effect_descriptors', 'local_view_models'],
-    consumes: ['generated_render_frame_diff_descriptors', 'local_ui_events'],
+    consumes: [
+        'generated_render_frame_diff_descriptors',
+        'generated_particle_projection',
+        'local_ui_events',
+    ],
     doesNotProduce: ['authority_commands', 'replay_records', 'state_mutations', 'renderer_backend_calls'],
 };
 export const COSMETIC_NON_AUTHORITY_READOUT = {
@@ -40,6 +44,44 @@ export function createHitSparkDescriptor(input) {
         anchor: input.anchor,
         replayScope: 'excluded_from_replay_truth',
     };
+}
+export function adaptParticleBurstToHitSparkDescriptor(input) {
+    if (input.operation.op.op !== 'emit') {
+        return null;
+    }
+    const descriptor = input.operation.op.descriptor;
+    const anchor = descriptor.anchor.kind === 'world'
+        ? descriptor.anchor.position
+        : resolveAttachedParticleAnchor(descriptor.anchor.entity, descriptor.anchor.offset, input.resolveEntityPosition);
+    if (anchor === null || !Number.isFinite(input.ticksPerSecond) || input.ticksPerSecond <= 0) {
+        return null;
+    }
+    const lifetime = descriptor.lifetimeSeconds[1];
+    return {
+        effectId: `particle:${input.operation.op.signalId}`,
+        kind: 'hit_spark',
+        source: {
+            kind: 'particle_projection',
+            signalId: input.operation.op.signalId,
+            originId: input.operation.meta.origin?.id ?? null,
+        },
+        startsAtTick: input.startsAtTick,
+        durationTicks: Math.max(1, Math.ceil(lifetime * input.ticksPerSecond)),
+        intensity: Math.min(1, descriptor.burstCount / 16),
+        color: descriptor.colorCurve[0]?.color ?? [1, 0.85, 0.35, 1],
+        anchor,
+        replayScope: 'excluded_from_replay_truth',
+    };
+}
+function resolveAttachedParticleAnchor(entity, offset, resolveEntityPosition) {
+    const position = resolveEntityPosition?.(entity) ?? null;
+    return position === null
+        ? null
+        : [
+            position[0] + offset[0],
+            position[1] + offset[1],
+            position[2] + offset[2],
+        ];
 }
 export function projectCosmeticFrame(descriptors, tick) {
     const diagnostics = descriptors.flatMap(validateDescriptor);

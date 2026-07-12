@@ -20,6 +20,8 @@
 
 pub(crate) use std::collections::{BTreeMap, BTreeSet};
 
+pub(crate) use core_assets::{AssetHash, AssetId};
+pub(crate) use core_catalog::{Catalog, CatalogEntry};
 pub(crate) use core_commands::VoxelCommand;
 pub(crate) use core_entity::{
     EntityLifecycleCommand, EntitySource, EntityStore, EntityTransform, TransformCommand,
@@ -51,17 +53,51 @@ pub use protocol_game_rules::{
     GameRuleModifierState, GameRuleResolutionReceipt, GameRuleResolutionRequest,
     GameRuleTraceEntry,
 };
+pub use protocol_input::{
+    InputActionReplayReceipt, InputBindingCatalog, InputContextChangeReceipt, InputContextCommand,
+    InputContextStackState, InputResolutionReceipt, InputSessionConfigureRequest,
+    InputSessionSnapshot, RawInputSample, RecordedInputAction,
+};
+pub use protocol_presentation::{
+    AnimationControllerProjectionState, AnimationProjectionDescriptor,
+    AnimationProjectionDiagnostic, AnimationProjectionDiagnosticCode, AnimationProjectionHandle,
+    AnimationProjectionOp, AnimationProjectionReadout, AnimationResolvedMotion,
+    AnimationTransitionProjection, AudioBus, AudioClipRef, AudioEmitter, AudioHandle,
+    AudioProjectionDiagnostic, AudioProjectionDiagnosticCode, AudioProjectionOp,
+    AudioProjectionReadout, AudioSourceDescriptor, AudioSourcePatch, BillboardAnchor,
+    BillboardContent, BillboardDescriptor, BillboardFontRef, BillboardHandle, BillboardLayer,
+    BillboardPatch, BillboardProjectionDiagnostic, BillboardProjectionDiagnosticCode,
+    BillboardProjectionOp, BillboardProjectionReadout, BillboardTemplateArgument,
+    BillboardTextureRef, ParticleAnchor, ParticleColorKey, ParticleEmitterDescriptor,
+    ParticleEmitterHandle, ParticleEmitterPatch, ParticleProjectionDiagnostic,
+    ParticleProjectionDiagnosticCode, ParticleProjectionOp, ParticleProjectionReadout,
+    ParticleScalarKey, ParticleSpriteRef, PresentationFrameDiff, PresentationOp,
+    PresentationOpMeta, PresentationOriginKind, PresentationOriginRef, ProjectionReplayScope,
+    RuntimeProjectionFrame, TelemetryOverlayCorner, TelemetryOverlayDescriptor,
+    TelemetryOverlayDiagnostic, TelemetryOverlayDiagnosticCode, TelemetryOverlayHandle,
+    TelemetryOverlayPatch, TelemetryOverlayProjectionOp, TelemetryOverlayReadout,
+    RUNTIME_PROJECTION_SCHEMA_VERSION,
+};
 pub(crate) use protocol_render::{
     MeshAttribute, MeshAttributeKind, MeshAttributeName, MeshBoundsDescriptor, MeshBufferLayout,
     MeshCollisionPolicy, MeshGroupDescriptor, MeshIndexWidth, MeshMaterialSlot,
     MeshPayloadDescriptor, MeshPayloadSource, MeshProvenance, StaticMeshAsset,
 };
+pub use protocol_time_control::{
+    TimeControlCommand, TimeControlMode, TimeControlReceipt, TimeControlRejection,
+    TimeControlState, TIME_CONTROL_STATE_SCHEMA_VERSION,
+};
 #[cfg(test)]
 pub(crate) use protocol_view::CameraCollisionPolicy;
 pub use protocol_view::{
-    CameraBasis, CameraCreateRequest, CameraPose, CameraSnapshot, GeneratedTunnelPreset,
+    CameraBasis, CameraControllerReadRequest, CameraControllerRejection, CameraControllerState,
+    CameraCreateRequest, CameraHandle, CameraMode, CameraModeChangeReceipt, CameraModeCommand,
+    CameraModeTarget, CameraNavigationInput, CameraNavigationInputEnvelope,
+    CameraNavigationReceipt, CameraPose, CameraSnapshot, CameraTransitionEasing,
+    CameraTransitionReadout, CameraTransitionSpec, GeneratedTunnelPreset,
     GeneratedTunnelRuntimeApplyReceipt, GeneratedTunnelRuntimeApplyRequest,
     GeneratedTunnelRuntimeFrame, PerspectiveProjection, ViewportSize,
+    CAMERA_CONTROLLER_STATE_SCHEMA_VERSION,
 };
 pub(crate) use protocol_view::{
     CameraCollisionEvidence, CameraCollisionPolicyMode, CameraCollisionShape,
@@ -123,6 +159,11 @@ pub use protocol_voxel_edit_history::{
     VoxelEditHistoryRevertReceipt, VoxelEditHistoryRevertRequest, VoxelEditHistorySummary,
     VoxelEditHistoryUndoReceipt, VoxelEditHistoryUndoRequest,
 };
+pub(crate) use render_audio::AudioProjector;
+pub(crate) use render_billboard::BillboardProjector;
+pub(crate) use render_particle::{ParticleProjectionLimits, ParticleProjector};
+pub(crate) use render_telemetry_overlay::TelemetryOverlayProjector;
+pub(crate) use rule_input::InputSessionResolver;
 pub(crate) use rule_lifecycle::{
     load_fps_project_bundle, FpsEncounterLastTransition,
     FpsEncounterLifecycleInput as RuleFpsEncounterLifecycleInput, FpsEncounterState,
@@ -132,6 +173,7 @@ pub(crate) use rule_lifecycle::{
     FpsStoredEntityDefinition, FpsWeaponMount,
 };
 pub use rule_voxel_edit::VoxelEditRejection;
+pub(crate) use sim_runner::TimeController;
 pub(crate) use svc_collision::{CollisionProjection, Ray};
 pub(crate) use svc_combat::HealthState;
 pub(crate) use svc_game_rules::{resolve_protocol_request, validate_catalog};

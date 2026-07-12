@@ -9,11 +9,23 @@
 import type { ProjectId, RuntimeSessionId, SceneId } from './scene.js';
 import type { VoxelCoord, VoxelValue } from './voxel.js';
 
+// Branded `PrefabId` border identifier.
+export type PrefabId = number & { readonly __brand: 'PrefabId' };
+export const prefabId = (raw: number): PrefabId => raw as PrefabId;
+
+// Branded `PrefabPartId` border identifier.
+export type PrefabPartId = number & { readonly __brand: 'PrefabPartId' };
+export const prefabPartId = (raw: number): PrefabPartId => raw as PrefabPartId;
+
+// Branded `PrefabInstanceId` border identifier.
+export type PrefabInstanceId = number & { readonly __brand: 'PrefabInstanceId' };
+export const prefabInstanceId = (raw: number): PrefabInstanceId => raw as PrefabInstanceId;
+
 // What an artifact's persistence guarantee is.
 export type ArtifactClass = 'durable' | 'generated' | 'cache';
 
 // The artifact roles this build names. The wire role is an open string (unknown roles are carried verbatim by `svc_serialization::ArtifactRole::Other`), so the border types the field as `string`; this table is the *known* vocabulary for routing/display. Mirrors `svc_serialization::ArtifactRole::tag`.
-export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'voxelEditHistory' | 'voxelAnnotationLayer' | 'replayRecord' | 'generatedMetadata' | 'cache';
+export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'prefabRegistry' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'voxelEditHistory' | 'voxelAnnotationLayer' | 'replayRecord' | 'generatedMetadata' | 'cache';
 
 // One ordered stage of an authority load.
 export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'voxelAnnotations' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
@@ -66,13 +78,115 @@ export interface ProjectBundleManifest {
   readonly artifacts: readonly ArtifactEntry[];
 }
 
+// Durable schema for semantic trigger roles authored with a ProjectBundle.
+export const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION = 1;
+
+export interface GameplayTriggerDefinition {
+  readonly schemaVersion: number;
+  readonly entity: number;
+  readonly scope: string;
+  readonly tags: readonly string[];
+}
+
+// Schema version for the prefab registry artifact carried by a ProjectBundle.
+export const PREFAB_REGISTRY_SCHEMA_VERSION = 1;
+
+// Schema version for each stored prefab definition.
+export const PREFAB_DEFINITION_SCHEMA_VERSION = 1;
+
+// Stable classified prefab validation codes.
+export type PrefabDiagnosticCode = 'unsupportedRegistrySchema' | 'unsupportedDefinitionSchema' | 'duplicatePrefabId' | 'missingDisplayName' | 'duplicatePartId' | 'invalidPartNamespace' | 'duplicatePartNamespace' | 'missingParentPart' | 'partHierarchyCycle' | 'invalidPartTransform' | 'unknownAsset' | 'assetKindMismatch' | 'unknownEntityDefinition' | 'invalidPartRole' | 'duplicatePartRole' | 'danglingPartRole' | 'missingBasePrefab' | 'variantCycle' | 'variantDepthExceeded' | 'variantDefinesParts' | 'unknownRemovedRole' | 'duplicateRemovedRole' | 'unsafePartRemoval' | 'invalidOverrideTarget' | 'duplicateOverride' | 'invalidOverrideValue' | 'deletedRoleReferenced';
+
+export interface PrefabTransform {
+  readonly translation: readonly [number, number, number];
+  readonly rotation: readonly [number, number, number, number];
+  readonly scale: readonly [number, number, number];
+}
+
+export type PrefabPartSource =
+  | { readonly kind: 'scene'; readonly asset: string }
+  | { readonly kind: 'entityDefinition'; readonly stableId: string }
+  | { readonly kind: 'voxelObject'; readonly asset: string };
+
+export interface PrefabPart {
+  readonly id: PrefabPartId;
+  readonly namespace: string;
+  readonly displayName: string;
+  readonly parent: PrefabPartId | null;
+  readonly transform: PrefabTransform;
+  readonly source: PrefabPartSource;
+}
+
+export interface PrefabPartRoleBinding {
+  readonly role: string;
+  readonly part: PrefabPartId;
+}
+
+export type PrefabOverrideValue =
+  | { readonly field: 'transform'; readonly transform: PrefabTransform }
+  | { readonly field: 'entityDefinition'; readonly stableId: string }
+  | { readonly field: 'asset'; readonly asset: string }
+  | { readonly field: 'material'; readonly asset: string }
+  | { readonly field: 'activation'; readonly active: boolean };
+
+export interface PrefabOverride {
+  readonly targetRole: string;
+  readonly value: PrefabOverrideValue;
+}
+
+export interface PrefabVariantDelta {
+  readonly base: PrefabId;
+  readonly removedRoles: readonly string[];
+  readonly overrides: readonly PrefabOverride[];
+}
+
+export interface PrefabDefinition {
+  readonly id: PrefabId;
+  readonly schemaVersion: number;
+  readonly displayName: string;
+  readonly parts: readonly PrefabPart[];
+  readonly partRoles: readonly PrefabPartRoleBinding[];
+  readonly variant: PrefabVariantDelta | null;
+}
+
+export interface PrefabRegistry {
+  readonly schemaVersion: number;
+  readonly definitions: readonly PrefabDefinition[];
+}
+
+export interface PrefabInstanceRecord {
+  readonly instance: PrefabInstanceId;
+  readonly prefab: PrefabId;
+  readonly seed: number;
+  readonly transform: PrefabTransform;
+  readonly overrides: readonly PrefabOverride[];
+}
+
+// Durable selector used by declared reads and authored module bindings.
+export interface PrefabPartReference {
+  readonly prefab: PrefabId;
+  readonly role: string;
+}
+
+export interface PrefabDiagnostic {
+  readonly code: PrefabDiagnosticCode;
+  readonly path: string;
+  readonly message: string;
+}
+
+export type PrefabValidationOutcome =
+  | { readonly status: 'valid' }
+  | { readonly status: 'invalid'; readonly diagnostics: readonly PrefabDiagnostic[] };
+
 // Classified manifest validation failure.
 export type ManifestError =
   | { readonly code: 'unsupportedSchema'; readonly found: number; readonly supported: number }
   | { readonly code: 'unsupportedProtocol'; readonly found: number; readonly supported: number }
   | { readonly code: 'duplicateArtifact'; readonly path: string }
   | { readonly code: 'missingArtifact'; readonly role: string; readonly path: string }
-  | { readonly code: 'durableMissingHash'; readonly path: string };
+  | { readonly code: 'durableMissingHash'; readonly path: string }
+  | { readonly code: 'duplicateArtifactRole'; readonly role: string }
+  | { readonly code: 'artifactClassMismatch'; readonly path: string; readonly expected: string; readonly found: string };
 
 // All manifest errors produced by one validation pass.
 export interface ManifestValidationReport {

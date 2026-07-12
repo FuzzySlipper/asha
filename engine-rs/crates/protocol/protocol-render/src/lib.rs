@@ -37,6 +37,7 @@
 
 use core_ids::{EntityId, TagId};
 use protocol_assets::{CatalogEntry, MaterialProjection};
+use serde::{Deserialize, Serialize};
 
 mod pick;
 pub use pick::{MeshPickHit, SpritePickHit};
@@ -48,7 +49,7 @@ pub use pick::{MeshPickHit, SpritePickHit};
 /// A handle is allocated when a node is created and stays valid until the node
 /// is destroyed. It is distinct from an [`EntityId`]: many render nodes may
 /// project a single sim entity, and some nodes (overlays, gizmos) project none.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct RenderHandle(pub u64);
 
 impl RenderHandle {

@@ -1,4 +1,9 @@
-import type { CommandBatch, CommandResult, RenderFrameDiff } from '@asha/contracts';
+import type {
+  CommandBatch,
+  CommandResult,
+  RenderFrameDiff,
+  RuntimeProjectionFrame,
+} from '@asha/contracts';
 import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
 import type {
   CompositionStatus,
@@ -74,8 +79,10 @@ export interface RuntimeSessionProjectionSummary {
   readonly sequenceId: number;
   readonly cursor: FrameCursor;
   readonly frame: RenderFrameDiff;
+  readonly runtimeFrame: RuntimeProjectionFrame;
   readonly composition: CompositionStatus;
   readonly renderDiffCount: number;
+  readonly presentationOpCount: number;
   readonly projectionHash: string;
 }
 
@@ -86,6 +93,8 @@ export interface RuntimeSessionReplayRecord {
     | 'submitCommands'
     | 'tick'
     | 'createCamera'
+    | 'applyCameraModeCommand'
+    | 'applyCameraNavigationInput'
     | 'applyFirstPersonCameraInput'
     | 'applyCollisionConstrainedCameraInput'
     | 'loadEcrpProject'

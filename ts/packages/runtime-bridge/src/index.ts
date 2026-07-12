@@ -11,6 +11,11 @@
 
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
 export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
+export {
+  ResolvedTimeControlConsumer,
+  TIME_CONTROL_INPUT_ACTIONS,
+  timeControlCommandFromResolvedAction,
+} from './resolved-time-control.js';
 
 // `submit_commands` / `pick_voxel` carry the generated voxel border (manifest
 // `protocol_voxel::{CommandBatch, CommandResult, PickRay, PickResult}`). Re-exported
@@ -91,6 +96,11 @@ export type {
   SceneObjectCommandRequest,
   SceneObjectCommandResult,
   SceneObjectSnapshot,
+  TimeControlCommand,
+  TimeControlMode,
+  TimeControlReceipt,
+  TimeControlRejection,
+  TimeControlState,
 } from '@asha/contracts';
 
 // Render-diff decode (moved from the former @asha/wasm-bridge). Transport-neutral
@@ -191,7 +201,10 @@ export type {
   SelectedBackendLauncherOptions,
 } from './launcher.js';
 export * from './native.js';
-export * from './browser-fps-input.js';
+export * from './browser-input-host.js';
+export * from './browser-fps-resolved-actions.js';
+export * from './resolved-time-control.js';
+export * from './resolved-camera-navigation.js';
 export * from './native-runtime-provider.js';
 export * from './playable-encounter-tick.js';
 export * from './playable-loop-state.js';
@@ -199,3 +212,12 @@ export {
   createRuntimeSessionFacade,
   type RuntimeSessionFacadeOptions,
 } from './runtime-session-adapter.js';
+export type {
+  GameplayRuntimeHostAdvanceReceipt,
+  GameplayRuntimeHostLoadInput,
+  GameplayRuntimeHostLoadReceipt,
+  GameplayRuntimeHostMoment,
+  GameplayRuntimeHostReadout,
+  GameplayRuntimeHostSnapshot,
+  GameplayRuntimeHostTransport,
+} from '@asha/runtime-session';

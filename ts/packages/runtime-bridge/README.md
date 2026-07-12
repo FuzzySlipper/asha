@@ -64,23 +64,15 @@ The package root is the production-safe transport surface. `@asha/runtime-bridge
 
 The package declares its Tier 1 role in `package.json` under `asha.publicSurface`. The CI bridge check runs `harness/public-surface/check-public-boundary.py` to keep the engine-owned TS public surface manifest, compatibility anchors, raw transport status, and the Rust `runtime-bridge-api` metadata aligned with the Den public-surface design.
 
-## Browser FPS Input
+## Browser named input
 
-`BrowserFpsInputCollector` is the package-root browser input surface for early FPS
-demo wiring. It accepts structural event objects compatible with DOM keyboard,
-mouse, and pointer events, then drains one typed command per tick:
+`BrowserInputHost` is the package-root browser normalization surface. It owns
+keyboard/mouse DOM listener attachment and submits generated `RawInputSample`
+values through an initialized `RuntimeSessionFacade`. Context priority,
+consumption, and named-action resolution remain in the Rust Session rule.
 
-```ts
-{
-  kind: 'runtime.apply_first_person_camera_input',
-  envelope: FirstPersonCameraInputEnvelope
-}
-```
-
-The envelope is accepted by `RuntimeSessionFacade.applyFirstPersonCameraInput`.
-Pointer-lock request/release are returned separately as typed shell intents because
-the browser owns pointer-lock side effects. Primary fire press/release is returned
-as `runtime.propose_runtime_action_intent` with a `RuntimeActionIntentEnvelope`;
-`RuntimeSessionFacade.submitRuntimeActionIntent` accepts primary-fire press
-proposals and returns typed combat/fire/health readout evidence in the reference
-slice.
+`BrowserFpsResolvedActionConsumer` adapts only resolved `gameplay.*` actions to
+camera movement/look state. The renderer host accepts a public RuntimeSession
+input port and does not keep a parallel WASD table. Editor tools similarly
+consume only `editor.*` actions. See `docs/named-input-actions.md` for the
+catalog, modal-context, diagnostics, and non-claim details.

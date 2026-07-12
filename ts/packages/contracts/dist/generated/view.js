@@ -6,4 +6,5 @@
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
 export const cameraHandle = (raw) => raw;
+export const CAMERA_CONTROLLER_STATE_SCHEMA_VERSION = 1;
 //# sourceMappingURL=view.js.map

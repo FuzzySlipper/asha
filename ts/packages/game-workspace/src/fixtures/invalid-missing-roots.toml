@@ -8,6 +8,7 @@ engine_source = "../asha-engine"
 
 [workspace]
 scene_roots = []
+prefab_roots = ["prefabs"]
 asset_roots = ["assets"]
 replay_roots = ["replays"]
 catalog_packages = ["packages/game-catalogs"]

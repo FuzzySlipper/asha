@@ -55,6 +55,7 @@ function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestVali
     },
     workspace: {
       sceneRoots: getStringArray(document, 'workspace', 'scene_roots', diagnostics),
+      prefabRoots: getStringArray(document, 'workspace', 'prefab_roots', diagnostics),
       assetRoots: getStringArray(document, 'workspace', 'asset_roots', diagnostics),
       replayRoots: getStringArray(document, 'workspace', 'replay_roots', diagnostics),
       catalogPackages: getStringArray(document, 'workspace', 'catalog_packages', diagnostics),
@@ -100,6 +101,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
   validateVersion(manifest.asha.runtimeBridgeVersion, 'asha.runtime_bridge_version', diagnostics);
 
   validateNonEmptyRoots(manifest.workspace.sceneRoots, 'workspace.scene_roots', diagnostics);
+  validateNonEmptyRoots(manifest.workspace.prefabRoots, 'workspace.prefab_roots', diagnostics);
   validateNonEmptyRoots(manifest.workspace.assetRoots, 'workspace.asset_roots', diagnostics);
   validateNonEmptyRoots(manifest.workspace.replayRoots, 'workspace.replay_roots', diagnostics);
   validateEngineSource(manifest.asha.engineSource, 'asha.engine_source', diagnostics);
@@ -114,6 +116,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
 
   const writeRoots = [
     ...manifest.workspace.sceneRoots,
+    ...manifest.workspace.prefabRoots,
     ...manifest.workspace.assetRoots,
     ...manifest.workspace.catalogPackages,
     ...manifest.workspace.policyPackages,
@@ -134,6 +137,7 @@ function validateResourceProfiles(manifest: AshaGameManifest, diagnostics: AshaG
 
   const workspaceRoots = [
     ...manifest.workspace.sceneRoots,
+    ...manifest.workspace.prefabRoots,
     ...manifest.workspace.assetRoots,
     ...manifest.workspace.replayRoots,
     ...manifest.workspace.catalogPackages,

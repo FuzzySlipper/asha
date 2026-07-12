@@ -343,48 +343,6 @@ impl EngineBridge {
         }
     }
 
-    pub(super) fn validated_damage_modifier_delta(
-        request: &WeaponEffectHookRequest,
-        receipt: &GameExtensionHookReceipt,
-    ) -> Result<i64, GameExtensionDiagnostic> {
-        let Some(GameExtensionProposal::DamageModifier {
-            target,
-            channel_id,
-            amount_delta,
-            proposal_hash,
-            ..
-        }) = &receipt.proposal
-        else {
-            return Err(Self::game_extension_diagnostic(
-                GameExtensionDiagnosticCode::InvalidProposal,
-                "proposal.kind",
-                "weapon-effect hook must return a damageModifier proposal",
-            ));
-        };
-        if Some(*target) != request.target {
-            return Err(Self::game_extension_diagnostic(
-                GameExtensionDiagnosticCode::InvalidProposal,
-                "proposal.target",
-                "damageModifier target must match the hook target",
-            ));
-        }
-        if channel_id != "combat.primary_fire.damage" {
-            return Err(Self::game_extension_diagnostic(
-                GameExtensionDiagnosticCode::InvalidProposal,
-                "proposal.channelId",
-                "damageModifier channel must be combat.primary_fire.damage",
-            ));
-        }
-        if !proposal_hash.starts_with("fnv1a64:") {
-            return Err(Self::game_extension_diagnostic(
-                GameExtensionDiagnosticCode::InvalidProposal,
-                "proposal.proposalHash",
-                "damageModifier proposal hash must be deterministic",
-            ));
-        }
-        Ok(*amount_delta)
-    }
-
     pub(super) fn extension_replay_evidence(
         receipt: &GameExtensionHookReceipt,
         validation_status: impl Into<String>,
@@ -777,5 +735,468 @@ impl EngineBridge {
             transform.scale.z
         );
         u64::from_str_radix(&Self::fnv1a64(&key), 16).expect("fnv1a64 emits hex")
+    }
+
+    pub(super) fn project_primary_fire_audio(
+        &mut self,
+        request: FpsPrimaryFireRequest,
+        result: &FpsPrimaryFireResult,
+    ) -> BridgeResult<()> {
+        let sequence = self
+            .projection_frame
+            .as_ref()
+            .filter(|frame| frame.authority_tick == request.tick)
+            .map_or(0, |frame| frame.presentation.ops.len() as u32);
+        let meta = PresentationOpMeta {
+            sequence,
+            origin: Some(PresentationOriginRef {
+                kind: PresentationOriginKind::OwnerFact,
+                id: format!("combat.primary-fire.accepted:{}", result.replay_hash),
+                authority_tick: request.tick,
+                causation_id: Some(format!("fps.primary-fire:{}", result.replay_hash)),
+                correlation_id: Some(format!("fps.session:{}", self.fps_epoch)),
+            }),
+        };
+        let op = AudioProjectionOp::Emit {
+            signal_id: format!("primary-fire:{}:{}", self.fps_epoch, result.replay_hash),
+            descriptor: AudioSourceDescriptor {
+                clip: AudioClipRef {
+                    asset: "audio/asha-primary-fire-pulse".to_string(),
+                    content_hash:
+                        "9de44d49edeab1dba3c78b42a602d8d1c5dcf92f752638995adda894a5b3ccba"
+                            .to_string(),
+                },
+                bus: AudioBus::Sfx,
+                volume: 0.7,
+                pitch: 1.0,
+                looping: false,
+                spatial_blend: 1.0,
+                attenuation: 24.0,
+                pan: 0.0,
+                emitter: AudioEmitter::World3d {
+                    position: [
+                        request.origin[0] as f32,
+                        request.origin[1] as f32,
+                        request.origin[2] as f32,
+                    ],
+                },
+            },
+        };
+        let projected = self
+            .audio_projector
+            .as_mut()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    "audio projector is unavailable after initialization",
+                )
+            })?
+            .project(meta, op)
+            .map_err(|diagnostic| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!(
+                        "built-in primary-fire audio projection rejected: {:?}",
+                        diagnostic.code
+                    ),
+                )
+            })?;
+
+        if self
+            .projection_frame
+            .as_ref()
+            .is_none_or(|frame| frame.authority_tick != request.tick)
+        {
+            self.projection_frame = Some(RuntimeProjectionFrame::empty(request.tick));
+        }
+        self.projection_frame
+            .as_mut()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .push(projected);
+        Ok(())
+    }
+
+    pub(super) fn project_primary_fire_billboards(
+        &mut self,
+        request: FpsPrimaryFireRequest,
+        result: &FpsPrimaryFireResult,
+    ) -> BridgeResult<()> {
+        let player_handle =
+            BillboardHandle::new(result.shooter.checked_mul(2).ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    "player entity id cannot be represented as a billboard handle",
+                )
+            })?);
+        if self
+            .billboard_projector
+            .as_ref()
+            .is_some_and(|projector| projector.descriptor(player_handle).is_none())
+        {
+            let player_descriptor = BillboardDescriptor {
+                anchor: BillboardAnchor::EntityAttached {
+                    entity: result.shooter,
+                    offset: [0.0, 1.9, 0.0],
+                },
+                content: BillboardContent::Text {
+                    localization_key: "asha.fps.player.name".to_string(),
+                    fallback_text: "Player".to_string(),
+                    arguments: Vec::new(),
+                },
+                font: BillboardFontRef::System {
+                    family: "sans-serif".to_string(),
+                },
+                height_pixels: 20.0,
+                color: [0.8, 0.95, 1.0, 1.0],
+                background: [0.03, 0.08, 0.12, 0.8],
+                max_distance: 35.0,
+                layer: BillboardLayer::AlwaysOnTop,
+                visible: true,
+            };
+            self.project_billboard_operation(
+                request.tick,
+                PresentationOriginRef {
+                    kind: PresentationOriginKind::CapabilityState,
+                    id: format!("entity:{}:player-identity", result.shooter),
+                    authority_tick: request.tick,
+                    causation_id: None,
+                    correlation_id: Some(format!("fps.session:{}", self.fps_epoch)),
+                },
+                BillboardProjectionOp::Create {
+                    handle: player_handle,
+                    descriptor: player_descriptor,
+                },
+            )?;
+        }
+
+        let Some(target) = result.target else {
+            return Ok(());
+        };
+        let target_handle = BillboardHandle::new(
+            target
+                .checked_mul(2)
+                .and_then(|value| value.checked_add(1))
+                .ok_or_else(|| {
+                    RuntimeBridgeError::new(
+                        RuntimeBridgeErrorKind::Internal,
+                        "target entity id cannot be represented as a billboard handle",
+                    )
+                })?,
+        );
+        let health = result.target_health_after;
+        let content = BillboardContent::Value {
+            label_key: "asha.fps.enemy.health".to_string(),
+            fallback_label: "Enemy health".to_string(),
+            value: health
+                .map(|state| format!("{}/{}", state.current, state.max))
+                .unwrap_or_else(|| "unknown".to_string()),
+            unit_key: None,
+            fallback_unit: None,
+        };
+        let operation = if self
+            .billboard_projector
+            .as_ref()
+            .is_some_and(|projector| projector.descriptor(target_handle).is_some())
+        {
+            BillboardProjectionOp::Update {
+                handle: target_handle,
+                patch: BillboardPatch {
+                    content: Some(content),
+                    ..BillboardPatch::default()
+                },
+            }
+        } else {
+            BillboardProjectionOp::Create {
+                handle: target_handle,
+                descriptor: BillboardDescriptor {
+                    anchor: BillboardAnchor::EntityAttached {
+                        entity: target,
+                        offset: [0.0, 1.9, 0.0],
+                    },
+                    content,
+                    font: BillboardFontRef::System {
+                        family: "sans-serif".to_string(),
+                    },
+                    height_pixels: 24.0,
+                    color: [1.0, 0.9, 0.75, 1.0],
+                    background: [0.18, 0.04, 0.03, 0.85],
+                    max_distance: 45.0,
+                    layer: BillboardLayer::Occluded,
+                    visible: true,
+                },
+            }
+        };
+        self.project_billboard_operation(
+            request.tick,
+            PresentationOriginRef {
+                kind: PresentationOriginKind::CapabilityState,
+                id: format!("entity:{target}:health:{}", result.health_hash),
+                authority_tick: request.tick,
+                causation_id: Some(format!("combat.primary-fire:{}", result.replay_hash)),
+                correlation_id: Some(format!("fps.session:{}", self.fps_epoch)),
+            },
+            operation,
+        )
+    }
+
+    pub(super) fn project_primary_fire_particles(
+        &mut self,
+        request: FpsPrimaryFireRequest,
+        result: &FpsPrimaryFireResult,
+    ) -> BridgeResult<()> {
+        let authority_tick = request.tick;
+        if self
+            .projection_frame
+            .as_ref()
+            .is_none_or(|frame| frame.authority_tick != authority_tick)
+        {
+            self.projection_frame = Some(RuntimeProjectionFrame::empty(authority_tick));
+        }
+        let sequence = self
+            .projection_frame
+            .as_ref()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .len() as u32;
+        let anchor = result.target.map_or_else(
+            || ParticleAnchor::World {
+                position: request.origin.map(|value| value as f32),
+            },
+            |entity| ParticleAnchor::EntityAttached {
+                entity,
+                offset: [0.0, 1.0, 0.0],
+            },
+        );
+        let projected = self
+            .particle_projector
+            .as_mut()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    "particle projector is unavailable after initialization",
+                )
+            })?
+            .project(
+                PresentationOpMeta {
+                    sequence,
+                    origin: Some(PresentationOriginRef {
+                        kind: PresentationOriginKind::GameplayEvent,
+                        id: format!("combat.primary-fire.feedback:{}", result.replay_hash),
+                        authority_tick,
+                        causation_id: Some(format!("combat.primary-fire:{}", result.replay_hash)),
+                        correlation_id: Some(format!("fps.session:{}", self.fps_epoch)),
+                    }),
+                },
+                ParticleProjectionOp::Emit {
+                    signal_id: format!(
+                        "primary-fire-particles:{}:{}",
+                        self.fps_epoch, result.replay_hash
+                    ),
+                    descriptor: ParticleEmitterDescriptor {
+                        anchor,
+                        sprite: ParticleSpriteRef {
+                            asset: "sprite/asha-primary-fire-spark".to_string(),
+                            content_hash:
+                                "0541e102a0dc20342819a3fb9024de73f3249269fed374b68c6aa8fc5dd2f5c1"
+                                    .to_string(),
+                            frame_count: 1,
+                        },
+                        rate_per_second: 0.0,
+                        burst_count: 12,
+                        lifetime_seconds: [0.6, 1.1],
+                        velocity_min: [-1.8, 0.8, -1.8],
+                        velocity_max: [1.8, 3.2, 1.8],
+                        acceleration: [0.0, -5.5, 0.0],
+                        size_curve: vec![
+                            ParticleScalarKey {
+                                age: 0.0,
+                                value: 0.22,
+                            },
+                            ParticleScalarKey {
+                                age: 1.0,
+                                value: 0.0,
+                            },
+                        ],
+                        color_curve: vec![
+                            ParticleColorKey {
+                                age: 0.0,
+                                color: [1.0, 0.9, 0.3, 1.0],
+                            },
+                            ParticleColorKey {
+                                age: 1.0,
+                                color: [1.0, 0.15, 0.0, 0.0],
+                            },
+                        ],
+                        flipbook_frames_per_second: 0.0,
+                        seed: result.replay_hash & ((1_u64 << 53) - 1),
+                        max_particles: 32,
+                        visible: true,
+                    },
+                },
+            )
+            .map_err(|diagnostic| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!(
+                        "built-in primary-fire particle projection rejected: {:?}",
+                        diagnostic.code
+                    ),
+                )
+            })?;
+        self.projection_frame
+            .as_mut()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .push(projected);
+        Ok(())
+    }
+
+    fn project_billboard_operation(
+        &mut self,
+        authority_tick: u64,
+        origin: PresentationOriginRef,
+        op: BillboardProjectionOp,
+    ) -> BridgeResult<()> {
+        if self
+            .projection_frame
+            .as_ref()
+            .is_none_or(|frame| frame.authority_tick != authority_tick)
+        {
+            self.projection_frame = Some(RuntimeProjectionFrame::empty(authority_tick));
+        }
+        let sequence = self
+            .projection_frame
+            .as_ref()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .len() as u32;
+        let projected = self
+            .billboard_projector
+            .as_mut()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    "billboard projector is unavailable after initialization",
+                )
+            })?
+            .project(
+                PresentationOpMeta {
+                    sequence,
+                    origin: Some(origin),
+                },
+                op,
+            )
+            .map_err(|diagnostic| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!(
+                        "built-in FPS billboard projection rejected: {:?}",
+                        diagnostic.code
+                    ),
+                )
+            })?;
+        self.projection_frame
+            .as_mut()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .push(projected);
+        Ok(())
+    }
+
+    pub(super) fn project_primary_fire_telemetry_overlay(
+        &mut self,
+        authority_tick: u64,
+    ) -> BridgeResult<()> {
+        if self
+            .projection_frame
+            .as_ref()
+            .is_none_or(|frame| frame.authority_tick != authority_tick)
+        {
+            self.projection_frame = Some(RuntimeProjectionFrame::empty(authority_tick));
+        }
+        let sequence = self
+            .projection_frame
+            .as_ref()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .len() as u32;
+        let handle = TelemetryOverlayHandle::new(1);
+        let projector = self.telemetry_overlay_projector.as_mut().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "telemetry overlay projector is unavailable after initialization",
+            )
+        })?;
+        let op = if projector.descriptor(handle).is_some() {
+            TelemetryOverlayProjectionOp::Update {
+                handle,
+                patch: TelemetryOverlayPatch {
+                    visible: Some(true),
+                    ..TelemetryOverlayPatch::default()
+                },
+            }
+        } else {
+            TelemetryOverlayProjectionOp::Create {
+                handle,
+                descriptor: TelemetryOverlayDescriptor {
+                    title: "ASHA runtime".to_string(),
+                    corner: TelemetryOverlayCorner::TopRight,
+                    refresh_interval_ms: 250,
+                    max_frame_time_samples: 60,
+                    visible: true,
+                },
+            }
+        };
+        let projected = projector
+            .project(
+                PresentationOpMeta {
+                    sequence,
+                    origin: None,
+                },
+                op,
+            )
+            .map_err(|diagnostic| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!(
+                        "built-in telemetry overlay projection rejected: {:?}",
+                        diagnostic.code
+                    ),
+                )
+            })?;
+        self.projection_frame
+            .as_mut()
+            .expect("projection frame was initialized")
+            .presentation
+            .ops
+            .push(projected);
+        Ok(())
+    }
+
+    pub(super) fn reset_presentation_projection(&mut self) {
+        self.projection_frame = Some(RuntimeProjectionFrame::empty(0));
+        self.audio_projector
+            .as_mut()
+            .expect("audio projector exists after initialization")
+            .reset();
+        self.billboard_projector
+            .as_mut()
+            .expect("billboard projector exists after initialization")
+            .reset();
+        self.particle_projector
+            .as_mut()
+            .expect("particle projector exists after initialization")
+            .reset();
+        self.telemetry_overlay_projector
+            .as_mut()
+            .expect("telemetry overlay projector exists after initialization")
+            .reset();
     }
 }

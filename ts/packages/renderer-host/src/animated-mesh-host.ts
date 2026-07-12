@@ -95,6 +95,7 @@ export interface AshaRendererAnimatedMeshPlaybackReadout {
   readonly poseSample: AshaRendererAnimatedMeshPoseSample | null;
   readonly diagnostics: readonly AshaRendererHostDiagnostic[];
   readonly projectionOnly: true;
+  readonly controllerClips: readonly AshaRendererAnimationControllerClip[];
 }
 
 export interface AshaRendererAnimatedMeshProjection {
@@ -103,6 +104,19 @@ export interface AshaRendererAnimatedMeshProjection {
   readonly advance: (deltaSeconds: number) => AshaRendererAnimatedMeshFrameReceipt;
   readonly playback: (handle: RenderHandle) => AshaRendererAnimatedMeshPlaybackReadout;
   readonly snapshot: () => string;
+  readonly hasAnimationTarget: (handle: RenderHandle) => boolean;
+  readonly setAnimationControllerWeights: (
+    handle: RenderHandle,
+    clips: readonly AshaRendererAnimationControllerClip[],
+  ) => void;
+  readonly hasAnimationClips: (handle: RenderHandle, clipIds: readonly string[]) => boolean;
+  readonly clearAnimationControllerWeights: (handle: RenderHandle) => void;
+}
+
+export interface AshaRendererAnimationControllerClip {
+  readonly clip: string;
+  readonly weight: number;
+  readonly speed: number;
 }
 
 export interface AshaRendererAnimatedMeshProjectionOptions {
@@ -173,6 +187,7 @@ export function animationPlaybackReadout(
       poseSample: null,
       diagnostics: [diagnostic('animated_mesh_handle_unavailable', null, handle, `animated mesh handle ${handle} is unavailable`)],
       projectionOnly: true,
+      controllerClips: [],
     };
   }
   return {
@@ -191,6 +206,7 @@ export function animationPlaybackReadout(
     poseSample: readout.poseSample,
     diagnostics: readout.diagnostics.map((code) => diagnostic(animationDiagnosticCode(code), readout.asset, handle, code)),
     projectionOnly: true,
+    controllerClips: readout.controllerClips,
   };
 }
 
@@ -208,6 +224,7 @@ interface BackendAnimatedMeshPlaybackReadout {
   readonly weight: number | null;
   readonly poseSample: AshaRendererAnimatedMeshPoseSample;
   readonly diagnostics: readonly string[];
+  readonly controllerClips: readonly AshaRendererAnimationControllerClip[];
 }
 
 function createProjectionController(renderer: ThreeRenderer): AshaRendererAnimatedMeshProjection {
@@ -217,6 +234,12 @@ function createProjectionController(renderer: ThreeRenderer): AshaRendererAnimat
     advance: (deltaSeconds) => applyRendererOperation(() => renderer.advanceAnimation(deltaSeconds)),
     playback: (handle) => animationPlaybackReadout(handle, renderer.animatedMeshPlayback(handle)),
     snapshot: () => renderer.snapshot(),
+    hasAnimationTarget: (handle) => renderer.has(handle),
+    setAnimationControllerWeights: (handle, clips) => {
+      renderer.setAnimationControllerWeights(handle, clips);
+    },
+    hasAnimationClips: (handle, clipIds) => renderer.hasAnimationControllerClips(handle, clipIds),
+    clearAnimationControllerWeights: (handle) => renderer.clearAnimationControllerWeights(handle),
   };
 }
 

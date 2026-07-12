@@ -1,4 +1,5 @@
 import type { EditorControl } from './index.js';
+import type { TimeControlCommand } from '@asha/contracts';
 
 // ── HUD/menu projection (pure rusty-view-style model; proposals only) ─────────
 
@@ -50,6 +51,12 @@ export type HudMenuIntent =
   | { readonly kind: 'ui.open_options_intent'; readonly source: 'hud_menu' }
   | { readonly kind: 'ui.exit_to_menu_intent'; readonly source: 'hud_menu' }
   | { readonly kind: 'ui.resume_intent'; readonly source: 'hud_menu' };
+
+export function hudIntentToTimeControlCommand(intent: HudMenuIntent): TimeControlCommand | null {
+  if (intent.kind === 'ui.pause_intent') return { operation: 'pause' };
+  if (intent.kind === 'ui.resume_intent') return { operation: 'resume' };
+  return null;
+}
 
 export type GameHudHealthRole = 'player' | 'target' | 'ally' | 'neutral';
 

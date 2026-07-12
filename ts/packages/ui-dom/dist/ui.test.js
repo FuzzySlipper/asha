@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EditorStore, initialEditorContext, reduce } from '@asha/editor-tools';
-import { defaultCamera, cameraPointerRay, orbitYaw, dolly, clampCameraOutOfSolid, inspect, previewOverlayDiffs, materialPalette, buildEditorControls, buildGameHudProjection, controlToAction, buildHudProjection, hudControlToIntent, MAX_BRUSH_SIZE, OVERLAY_HANDLE_BASE, } from './index.js';
+import { defaultCamera, cameraPointerRay, orbitYaw, dolly, clampCameraOutOfSolid, inspect, previewOverlayDiffs, materialPalette, buildEditorControls, buildGameHudProjection, controlToAction, buildHudProjection, hudControlToIntent, hudIntentToTimeControlCommand, MAX_BRUSH_SIZE, OVERLAY_HANDLE_BASE, } from './index.js';
 function selectedContext(over = {}) {
     return {
         ...initialEditorContext(0),
@@ -227,6 +227,9 @@ void test('HUD menu controls map to typed intents only', () => {
         source: 'hud_menu',
     });
     assert.equal(hudControlToIntent('commit'), null);
+    assert.deepEqual(hudIntentToTimeControlCommand({ kind: 'ui.pause_intent', source: 'hud_menu' }), { operation: 'pause' });
+    assert.deepEqual(hudIntentToTimeControlCommand({ kind: 'ui.resume_intent', source: 'hud_menu' }), { operation: 'resume' });
+    assert.equal(hudIntentToTimeControlCommand({ kind: 'ui.open_options_intent', source: 'hud_menu' }), null);
     const restart = hudControlToIntent('hud-restart');
     assert.ok(restart);
     assert.equal('payload' in restart, false);

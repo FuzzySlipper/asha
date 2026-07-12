@@ -1,6 +1,12 @@
 import type {
   CameraCollisionSnapshot,
+  CameraControllerReadRequest,
+  CameraControllerState,
   CameraCreateRequest,
+  CameraModeChangeReceipt,
+  CameraModeCommand,
+  CameraNavigationInputEnvelope,
+  CameraNavigationReceipt,
   CameraProjectionRequest,
   CameraProjectionSnapshot,
   CameraSnapshot,
@@ -10,13 +16,26 @@ import type {
   FirstPersonCameraInputEnvelope,
   GameRuleCatalog,
   GameRuleResolutionReceipt,
+  InputActionReplayReceipt,
+  InputContextChangeReceipt,
+  InputContextCommand,
+  InputContextStackState,
+  InputResolutionReceipt,
+  InputSessionConfigureRequest,
+  InputSessionSnapshot,
   GeneratedTunnelRuntimeApplyReceipt,
   GeneratedTunnelRuntimeApplyRequest,
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   PickRay,
   PickResult,
+  RawInputSample,
+  RecordedInputAction,
   RenderFrameDiff,
+  RuntimeProjectionFrame,
+  TimeControlCommand,
+  TimeControlReceipt,
+  TimeControlState,
   SceneObjectCommandRequest,
   SceneObjectCommandResult,
   SceneObjectSnapshot,
@@ -281,6 +300,13 @@ export interface VoxelMeshEvidenceSnapshot {
 
 export interface RuntimeBridge {
   initializeEngine(config: EngineConfig): EngineHandle;
+  configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot;
+  applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt;
+  submitRawInput(sample: RawInputSample): InputResolutionReceipt;
+  replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt;
+  readInputContextState(): InputContextStackState;
+  applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt;
+  readTimeControlState(): TimeControlState;
   stepSimulation(input: StepInputEnvelope): StepResult;
   submitCommands(batch: CommandBatch): CommandResult;
   pickVoxel(ray: PickRay): PickResult;
@@ -332,7 +358,11 @@ export interface RuntimeBridge {
   readSceneObjectSnapshot(): SceneObjectSnapshot;
   applySceneObjectCommand(request: SceneObjectCommandRequest): SceneObjectCommandResult;
   readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
+  readProjectionFrame(cursor: FrameCursor): RuntimeProjectionFrame;
   createCamera(request: CameraCreateRequest): CameraSnapshot;
+  applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt;
+  applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt;
+  readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState;
   applyFirstPersonCameraInput(input: FirstPersonCameraInputEnvelope): CameraSnapshot;
   applyEnemyDirectNavMovement(request: EnemyDirectNavMovementRequest): EnemyDirectNavMovementResult;
   readCameraProjection(request: CameraProjectionRequest): CameraProjectionSnapshot;

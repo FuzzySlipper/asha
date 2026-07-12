@@ -26,6 +26,27 @@ This local file is bootstrap context for agents entering the repository. It is n
 
 See `docs/design.md`, `docs/agent-code-atlas.md` when present, and `README.md` for current repo orientation.
 
+## Gameplay Possibility
+
+ASHA's structural rails are meant to support expressive games, not only clean
+fixtures. A downstream Game Project may compile its own typed Rust gameplay
+modules, own persistent domain state, observe semantic owner facts, participate
+in Guard/Transform/React decisions, suspend and resume reactions, and route
+shared mutations through existing engine owners. ProjectBundle bindings and
+declared reads make that composition authored and inspectable.
+
+Use the gameplay fabric when game meaning must cross owner or downstream
+boundaries. It is not a generic event bus: topology is closed at bootstrap,
+reads and outputs are declared, dispatch is bounded, continuations are
+host-owned, and receipts/snapshots make behavior replay-visible. Normal module
+code receives typed events, frozen reads, configuration, and proposal/fact
+helpers—not raw SessionState, arbitrary ECS access, or mutable callbacks.
+
+Start with `docs/gameplay-fabric-growth-recipes.md`, then use the public
+`asha-gameplay-module-sdk`, `asha-gameplay-runtime-host`, and conformance roots.
+Keep domain semantics downstream until they prove generic; promote compatible
+typed authority rather than rebuilding it in parallel.
+
 ## Repository Structure
 
 ```text
@@ -79,6 +100,9 @@ See `docs/design.md`, `docs/agent-code-atlas.md` when present, and `README.md` f
 ./harness/ci/check-render-goldens.sh
 ./harness/ci/check-bridge.sh
 ./harness/ci/check-vocabulary.sh # ECRP term-gravity gate: bans *Component/*Archetype type names; gates legacy World* naming behind harness/vocab/legacy-term-allowlist.txt
+./harness/ci/check-gameplay-module-sdk.sh
+./harness/ci/check-gameplay-module-conformance.sh
+./harness/ci/check-gameplay-runtime-host.sh
 
 # Rust lane quick checks when a full Rust gate is too broad
 (cd engine-rs && cargo clippy --workspace -- -D warnings)

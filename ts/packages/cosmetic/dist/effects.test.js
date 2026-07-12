@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COSMETIC_NON_AUTHORITY_READOUT, createHitSparkDescriptor, createScreenFlashDescriptor, projectCosmeticFrame, readCosmeticAuthorityBoundary, validateCosmeticEffectDescriptor, } from './index.js';
+import { COSMETIC_NON_AUTHORITY_READOUT, adaptParticleBurstToHitSparkDescriptor, createHitSparkDescriptor, createScreenFlashDescriptor, projectCosmeticFrame, readCosmeticAuthorityBoundary, validateCosmeticEffectDescriptor, } from './index.js';
 const EMPTY_RENDER_FRAME = { ops: [] };
 void test('screen flash descriptor consumes generated render frame descriptors only', () => {
     const descriptor = createScreenFlashDescriptor({
@@ -95,5 +95,65 @@ void test('cosmetic boundary does not expose authority commands or replay record
     });
     assert.equal('commands' in frame, false);
     assert.equal('replayRecords' in frame, false);
+});
+void test('particle burst adapts one way into the existing hit-spark view model', () => {
+    const operation = {
+        domain: 'particle',
+        meta: {
+            sequence: 0,
+            origin: {
+                kind: 'gameplayEvent',
+                id: 'combat.primary-fire.feedback:44',
+                authorityTick: 9,
+                causationId: 'combat.primary-fire:44',
+                correlationId: 'fps.session:1',
+            },
+        },
+        op: {
+            op: 'emit',
+            signalId: 'impact:44',
+            descriptor: {
+                anchor: { kind: 'entityAttached', entity: 42, offset: [0, 1, 0] },
+                sprite: { asset: 'sprite/spark', contentHash: 'aabb', frameCount: 1 },
+                ratePerSecond: 0,
+                burstCount: 12,
+                lifetimeSeconds: [0.2, 0.8],
+                velocityMin: [-1, 1, -1],
+                velocityMax: [1, 3, 1],
+                acceleration: [0, -4, 0],
+                sizeCurve: [{ age: 0, value: 0.2 }, { age: 1, value: 0 }],
+                colorCurve: [
+                    { age: 0, color: [1, 0.8, 0.2, 1] },
+                    { age: 1, color: [1, 0.2, 0, 0] },
+                ],
+                flipbookFramesPerSecond: 0,
+                seed: 44,
+                maxParticles: 32,
+                visible: true,
+            },
+        },
+    };
+    const adapted = adaptParticleBurstToHitSparkDescriptor({
+        operation,
+        startsAtTick: 9,
+        ticksPerSecond: 60,
+        resolveEntityPosition: () => [10, 11, 12],
+    });
+    assert.deepEqual(adapted, {
+        effectId: 'particle:impact:44',
+        kind: 'hit_spark',
+        source: {
+            kind: 'particle_projection',
+            signalId: 'impact:44',
+            originId: 'combat.primary-fire.feedback:44',
+        },
+        startsAtTick: 9,
+        durationTicks: 48,
+        intensity: 0.75,
+        color: [1, 0.8, 0.2, 1],
+        anchor: [10, 12, 12],
+        replayScope: 'excluded_from_replay_truth',
+    });
+    assert.equal('commands' in (adapted ?? {}), false);
 });
 //# sourceMappingURL=effects.test.js.map

@@ -1,5 +1,9 @@
 use crate::*;
 
+mod initialization;
+mod input;
+mod time_control;
+
 // Product authority coordinator behind native transport marshaling.
 //
 // Domain mutation remains delegated to the owning rules and services. This type
@@ -26,6 +30,9 @@ pub struct EngineBridge {
     materials: MaterialCatalog,
     /// Bridge-owned runtime view cameras (view/projection evidence, not gameplay authority).
     cameras: BTreeMap<u64, CameraSnapshot>,
+    /// Deterministic controller/mode state for each bridge-owned camera. The
+    /// renderer may interpolate receipts, but this map owns the accepted pose.
+    camera_controllers: BTreeMap<u64, CameraControllerState>,
     next_camera: u64,
     /// Minimal authority-owned runtime entity state for bridge-level actor
     /// movement verbs. TypeScript may propose targets, but transform mutation is
@@ -36,10 +43,28 @@ pub struct EngineBridge {
     fps_session: Option<FpsRuntimeSessionState>,
     fps_seed: Option<FpsRuntimeSessionLoadRequest>,
     fps_epoch: u64,
+    /// Session-owned named input catalog and active context stack. Platform
+    /// hosts submit normalized samples; Entity state never owns this resolver.
+    input_session: Option<InputSessionResolver>,
+    /// Session-level authority pacing. Fixed-tick simulation stays deterministic;
+    /// this controller governs pause, wall-clock cadence density, and exact steps.
+    time_controller: TimeController,
+    authority_tick: u64,
     game_rule_modules: BTreeMap<String, GameRuleModuleManifest>,
     game_rule_active_modifiers: Vec<GameRuleModifierState>,
     game_rule_recent_trace: Vec<GameRuleTraceEntry>,
     game_rule_recent_replay_hashes: Vec<String>,
+    /// Latest disposable scene+presentation frame. This is projection state,
+    /// never Session authority or replay truth.
+    projection_frame: Option<RuntimeProjectionFrame>,
+    /// Catalog and retained-handle validator for admitted audio operations.
+    audio_projector: Option<AudioProjector>,
+    /// Catalog and retained-handle validator for admitted billboard operations.
+    billboard_projector: Option<BillboardProjector>,
+    /// Catalog and budget validator for disposable particle operations.
+    particle_projector: Option<ParticleProjector>,
+    /// Retained lifecycle validator for the disposable developer telemetry overlay.
+    telemetry_overlay_projector: Option<TelemetryOverlayProjector>,
     /// Last planned voxel conversion. This is bridge-owned authority state used
     /// by preview/apply hash guards; callers cannot provide their own output.
     voxel_conversion_sources: BTreeMap<String, StaticMeshSource>,
@@ -256,6 +281,19 @@ impl ResolvedGameRuleModule {
     }
 }
 
+impl GameRuleModule for ResolvedGameRuleModule {
+    fn manifest(&self) -> &GameRuleModuleManifest {
+        ResolvedGameRuleModule::manifest(self)
+    }
+
+    fn evaluate_weapon_effect(
+        &self,
+        request: &WeaponEffectHookRequest,
+    ) -> GameRuleExtensionResult<GameExtensionProposal> {
+        ResolvedGameRuleModule::evaluate_weapon_effect(self, request)
+    }
+}
+
 #[cfg(test)]
 fn built_in_game_rule_module_ref() -> GameRuleModuleRef {
     GameRuleModuleRef {
@@ -290,6 +328,7 @@ fn built_in_game_rule_declared_manifest() -> GameRuleModuleManifest {
 
 mod camera;
 mod fps_and_rules;
+mod presentation_catalog;
 mod project_and_sources;
 mod runtime_bridge_impl;
 mod voxel_annotations;

@@ -1,0 +1,28 @@
+[package]
+name = "rule-gameplay-fabric"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-entity = { path = "../../state/core-entity" }
+core-events = { path = "../../state/core-events" }
+core-game-rules = { path = "../../state/core-game-rules" }
+core-ids = { path = "../../foundation/core-ids" }
+game-rule-extension = { path = "../game-rule-extension" }
+protocol-game-rules = { path = "../../protocol/protocol-game-rules" }
+protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
+rule-state-machine = { path = "../rule-state-machine" }
+rule-trigger-volume = { path = "../rule-trigger-volume" }
+svc-combat = { path = "../../services/svc-combat" }
+svc-gameplay-fabric = { path = "../../services/svc-gameplay-fabric" }
+svc-game-rules = { path = "../../services/svc-game-rules" }
+svc-serialization = { path = "../../services/svc-serialization" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+core-math = { path = "../../foundation/core-math" }

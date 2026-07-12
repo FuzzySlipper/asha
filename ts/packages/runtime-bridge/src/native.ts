@@ -1,6 +1,12 @@
 import type {
   CameraCollisionSnapshot,
+  CameraControllerReadRequest,
+  CameraControllerState,
   CameraCreateRequest,
+  CameraModeChangeReceipt,
+  CameraModeCommand,
+  CameraNavigationInputEnvelope,
+  CameraNavigationReceipt,
   CameraProjectionSnapshot,
   CameraSnapshot,
   CommandBatch,
@@ -9,7 +15,12 @@ import type {
   ModelMaterialPreviewRequest,
   ModelMaterialPreviewSnapshot,
   PickResult,
+  PresentationOp,
   RenderFrameDiff,
+  RuntimeProjectionFrame,
+  TimeControlCommand,
+  TimeControlReceipt,
+  TimeControlState,
   SceneObjectCommandResult,
   SceneObjectSnapshot,
   VoxelConversionApplyRequest,
@@ -65,6 +76,15 @@ import type {
   GameExtensionReplayEvidence,
   GameRuleCatalog,
   GameRuleResolutionReceipt,
+  InputActionReplayReceipt,
+  InputContextChangeReceipt,
+  InputContextCommand,
+  InputContextStackState,
+  InputResolutionReceipt,
+  InputSessionConfigureRequest,
+  InputSessionSnapshot,
+  RawInputSample,
+  RecordedInputAction,
 } from '@asha/contracts';
 import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha/native-bridge';
 import { MANIFEST_OPERATIONS } from './generated/operations.js';
@@ -129,10 +149,20 @@ import {
  */
 export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'initialize_engine',
+  'configure_input_session',
+  'apply_input_context_command',
+  'submit_raw_input',
+  'replay_resolved_input_action',
+  'read_input_context_state',
+  'apply_time_control_command',
+  'read_time_control_state',
   'load_project_bundle',
   'submit_commands',
   'step_simulation',
   'create_camera',
+  'apply_camera_mode_command',
+  'apply_camera_navigation_input',
+  'read_camera_controller_state',
   'apply_collision_constrained_camera_input',
   'apply_generated_tunnel_to_runtime_world',
   'apply_enemy_direct_nav_movement',
@@ -173,6 +203,7 @@ export const NATIVE_WIRED_OPERATIONS: ReadonlySet<string> = new Set<string>([
   'undo_voxel_edit',
   'redo_voxel_edit',
   'read_render_diffs',
+  'read_projection_frame',
   'save_project_bundle',
   'get_project_bundle_composition_status',
 ]);
@@ -393,6 +424,120 @@ function normalizeEncounterTransition(value: FpsEncounterTransitionResult): FpsE
   };
 }
 
+type AudioPresentationOp = Extract<PresentationOp, { readonly domain: 'audio' }>;
+type BillboardPresentationOp = Extract<PresentationOp, { readonly domain: 'billboard' }>;
+type ParticlePresentationOp = Extract<PresentationOp, { readonly domain: 'particle' }>;
+type TelemetryOverlayPresentationOp = Extract<
+  PresentationOp,
+  { readonly domain: 'telemetryOverlay' }
+>;
+type AnimationPresentationOp = Extract<PresentationOp, { readonly domain: 'animation' }>;
+
+interface NativePresentationOpDto {
+  readonly domain: string;
+  readonly meta: PresentationOp['meta'];
+  readonly audioOp?: AudioPresentationOp['op'];
+  readonly billboardOp?: BillboardPresentationOp['op'];
+  readonly particleOp?: ParticlePresentationOp['op'];
+  readonly telemetryOverlayOp?: TelemetryOverlayPresentationOp['op'];
+  readonly animationOp?: AnimationPresentationOp['op'];
+}
+
+interface NativeRuntimeProjectionFrameDto {
+  readonly schemaVersion: number;
+  readonly authorityTick: number;
+  readonly scene: RuntimeProjectionFrame['scene'];
+  readonly presentation: {
+    readonly replayScope: RuntimeProjectionFrame['presentation']['replayScope'];
+    readonly ops: readonly NativePresentationOpDto[];
+  };
+}
+
+function projectionFrameFromNative(native: NativeRuntimeProjectionFrameDto): RuntimeProjectionFrame {
+  if (native.schemaVersion !== 1 || !Number.isSafeInteger(native.authorityTick)) {
+    throw new RuntimeBridgeError('internal', 'native projection frame header is invalid');
+  }
+  if (native.presentation?.replayScope !== 'excludedFromReplayTruth') {
+    throw new RuntimeBridgeError('internal', 'native projection replay scope is invalid');
+  }
+  if (!Array.isArray(native.presentation.ops)) {
+    throw new RuntimeBridgeError('internal', 'native projection operations must be an array');
+  }
+  const nativeOperations = native.presentation.ops as unknown as readonly NativePresentationOpDto[];
+  const ops = nativeOperations.map((operation, index): PresentationOp => {
+    if (operation.meta?.sequence !== index) {
+      throw new RuntimeBridgeError('internal', 'native presentation sequence is not contiguous');
+    }
+    if (
+      operation.domain === 'audio'
+      && operation.audioOp !== undefined
+      && operation.billboardOp === undefined
+      && operation.particleOp === undefined
+      && operation.telemetryOverlayOp === undefined
+      && operation.animationOp === undefined
+    ) {
+      return { domain: 'audio', meta: operation.meta, op: operation.audioOp };
+    }
+    if (
+      operation.domain === 'billboard'
+      && operation.billboardOp !== undefined
+      && operation.audioOp === undefined
+      && operation.particleOp === undefined
+      && operation.telemetryOverlayOp === undefined
+      && operation.animationOp === undefined
+    ) {
+      return { domain: 'billboard', meta: operation.meta, op: operation.billboardOp };
+    }
+    if (
+      operation.domain === 'particle'
+      && operation.particleOp !== undefined
+      && operation.audioOp === undefined
+      && operation.billboardOp === undefined
+      && operation.telemetryOverlayOp === undefined
+      && operation.animationOp === undefined
+    ) {
+      return { domain: 'particle', meta: operation.meta, op: operation.particleOp };
+    }
+    if (
+      operation.domain === 'telemetryOverlay'
+      && operation.telemetryOverlayOp !== undefined
+      && operation.audioOp === undefined
+      && operation.billboardOp === undefined
+      && operation.particleOp === undefined
+      && operation.animationOp === undefined
+    ) {
+      return {
+        domain: 'telemetryOverlay',
+        meta: operation.meta,
+        op: operation.telemetryOverlayOp,
+      };
+    }
+    if (
+      operation.domain === 'animation'
+      && operation.animationOp !== undefined
+      && operation.audioOp === undefined
+      && operation.billboardOp === undefined
+      && operation.particleOp === undefined
+      && operation.telemetryOverlayOp === undefined
+    ) {
+      return { domain: 'animation', meta: operation.meta, op: operation.animationOp };
+    }
+    throw new RuntimeBridgeError(
+      'internal',
+      `native presentation operation ${index} has an invalid closed-domain payload`,
+    );
+  });
+  return {
+    schemaVersion: native.schemaVersion,
+    authorityTick: native.authorityTick,
+    scene: native.scene,
+    presentation: {
+      replayScope: native.presentation.replayScope,
+      ops,
+    },
+  };
+}
+
 function nativeFpsLoadRequest(request: FpsRuntimeSessionLoadRequest) {
   if (request.projectBundle.trim() === '') {
     throw new RuntimeBridgeError('invalid_input', 'projectBundle is required');
@@ -505,6 +650,56 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     return this.#engineHandle;
   }
 
+  configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot {
+    const handle = this.#requireHandle('configureInputSession');
+    const payload = callNative(() =>
+      this.#addon.configureInputSession(handle, JSON.stringify(request)),
+    );
+    return parseNativeJson<InputSessionSnapshot>(payload, 'input session snapshot');
+  }
+
+  applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt {
+    const handle = this.#requireHandle('applyInputContextCommand');
+    const payload = callNative(() =>
+      this.#addon.applyInputContextCommand(handle, JSON.stringify(command)),
+    );
+    return parseNativeJson<InputContextChangeReceipt>(payload, 'input context change receipt');
+  }
+
+  submitRawInput(sample: RawInputSample): InputResolutionReceipt {
+    const handle = this.#requireHandle('submitRawInput');
+    const payload = callNative(() => this.#addon.submitRawInput(handle, JSON.stringify(sample)));
+    return parseNativeJson<InputResolutionReceipt>(payload, 'input resolution receipt');
+  }
+
+  replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt {
+    const handle = this.#requireHandle('replayResolvedInputAction');
+    const payload = callNative(() =>
+      this.#addon.replayResolvedInputAction(handle, JSON.stringify(record)),
+    );
+    return parseNativeJson<InputActionReplayReceipt>(payload, 'input action replay receipt');
+  }
+
+  readInputContextState(): InputContextStackState {
+    const handle = this.#requireHandle('readInputContextState');
+    const payload = callNative(() => this.#addon.readInputContextState(handle));
+    return parseNativeJson<InputContextStackState>(payload, 'input context state');
+  }
+
+  applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt {
+    const handle = this.#requireHandle('applyTimeControlCommand');
+    const payload = callNative(() =>
+      this.#addon.applyTimeControlCommand(handle, JSON.stringify(command)),
+    );
+    return parseNativeJson<TimeControlReceipt>(payload, 'time control receipt');
+  }
+
+  readTimeControlState(): TimeControlState {
+    const handle = this.#requireHandle('readTimeControlState');
+    const payload = callNative(() => this.#addon.readTimeControlState(handle));
+    return parseNativeJson<TimeControlState>(payload, 'time control state');
+  }
+
   loadProjectBundle(request: ProjectBundleLoadRequest): CompositionStatus {
     const handle = this.#requireHandle('loadProjectBundle');
     const bundleSchemaVersion = u32(request.bundleSchemaVersion, 'bundleSchemaVersion');
@@ -524,8 +719,11 @@ export class NativeRuntimeBridge implements RuntimeBridge {
   stepSimulation(input: StepInputEnvelope): StepResult {
     const handle = this.#requireHandle('stepSimulation');
     const tick = nonNegativeSafeInteger(input.tick, 'tick');
-    const diffCount = callNative(() => this.#addon.stepSimulation(handle, tick));
-    return { tick, diffCount };
+    const result = callNative(() => this.#addon.stepSimulation(handle, tick));
+    return {
+      tick: nonNegativeSafeInteger(result.tick, 'native step tick'),
+      diffCount: u32(result.diffCount, 'native step diffCount'),
+    };
   }
 
   applyEnemyDirectNavMovement(request: EnemyDirectNavMovementRequest): EnemyDirectNavMovementResult {
@@ -709,6 +907,15 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('readRenderDiffs');
     const frame = nonNegativeSafeInteger(cursor as number, 'frame cursor') as FrameCursor;
     return callNative(() => this.#addon.readRenderDiffs(handle, frame) as RenderFrameDiff);
+  }
+
+  readProjectionFrame(cursor: FrameCursor): RuntimeProjectionFrame {
+    const handle = this.#requireHandle('readProjectionFrame');
+    const frame = nonNegativeSafeInteger(cursor as number, 'frame cursor') as FrameCursor;
+    const nativeFrame = callNative(
+      () => this.#addon.readProjectionFrame(handle, frame) as NativeRuntimeProjectionFrameDto,
+    );
+    return projectionFrameFromNative(nativeFrame);
   }
 
   saveProjectBundle(): ProjectBundleSaveSummary {
@@ -966,6 +1173,30 @@ export class NativeRuntimeBridge implements RuntimeBridge {
   createCamera(request: CameraCreateRequest): CameraSnapshot {
     const handle = this.#requireHandle('createCamera');
     return callNative(() => this.#addon.createCamera(handle, request));
+  }
+
+  applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt {
+    const handle = this.#requireHandle('applyCameraModeCommand');
+    const payload = callNative(() =>
+      this.#addon.applyCameraModeCommand(handle, JSON.stringify(command)),
+    );
+    return parseNativeJson<CameraModeChangeReceipt>(payload, 'camera mode change receipt');
+  }
+
+  applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt {
+    const handle = this.#requireHandle('applyCameraNavigationInput');
+    const payload = callNative(() =>
+      this.#addon.applyCameraNavigationInput(handle, JSON.stringify(input)),
+    );
+    return parseNativeJson<CameraNavigationReceipt>(payload, 'camera navigation receipt');
+  }
+
+  readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState {
+    const handle = this.#requireHandle('readCameraControllerState');
+    const payload = callNative(() =>
+      this.#addon.readCameraControllerState(handle, JSON.stringify(request)),
+    );
+    return parseNativeJson<CameraControllerState>(payload, 'camera controller state');
   }
 
   applyFirstPersonCameraInput(): CameraSnapshot {

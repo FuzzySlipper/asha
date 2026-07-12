@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [{
+    "id": "fixture.binding-adapter",
+    "kind": "gameplayBinding",
+    "protocol": { "path": "ts/packages/contracts/src/generated/gameExtension.ts", "symbol": "GameplayModuleBindingRegistry" },
+    "provider": { "path": "engine-rs/crates/rules/rule-project-bundle/src/gameplay_binding.rs", "token": "GameplayBoundProjectBundleSession" },
+    "bootstrapAdapter": { "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs", "token": "MissingBootstrapAdapter" },
+    "publicSurface": { "kind": "rust", "identity": "asha-gameplay-module-sdk", "symbol": "GameplayModuleBindingRegistryBuilder" },
+    "delivery": { "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs", "token": "bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authority" }
+  }],
+  "internalExemptions": []
+}

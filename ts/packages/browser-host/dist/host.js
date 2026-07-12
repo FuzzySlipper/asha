@@ -6,8 +6,17 @@ import { createNativeRuntimeBridge, installNativeRustRuntimeBridgeProvider, MANI
 export const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = 'browser-host.v0';
 export const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = 'ashaRuntimeBridge';
 export const ASHA_BROWSER_HOST_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
+export const ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER = 'X-ASHA-Runtime-Bridge-Client';
+export const ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS = 8;
 export const ASHA_BROWSER_HOST_COMMAND = 'asha-browser-host --ui-root dist/ui --host 0.0.0.0 --port 5173';
 export const ASHA_BROWSER_HOST_BRIDGE_METHODS = MANIFEST_OPERATIONS.map(({ facadeMethod }) => facadeMethod);
+export const ASHA_BROWSER_HOST_GAMEPLAY_METHODS = [
+    'load',
+    'advance',
+    'read',
+    'save',
+    'restore',
+];
 export function describeNativeBrowserHostCommand() {
     return {
         command: ASHA_BROWSER_HOST_COMMAND,
@@ -27,6 +36,7 @@ export function installNativeBrowserHostProvider(options = {}) {
         globalScope,
         providerGlobalName: ASHA_BROWSER_HOST_PROVIDER_GLOBAL,
         createRuntimeBridge: options.createRuntimeBridge ?? createNativeRuntimeBridge,
+        ...(options.gameplayHost === undefined ? {} : { gameplayHost: options.gameplayHost }),
     });
 }
 export async function readNativeBrowserHostProviderStatus(globalScope = defaultGlobalScope()) {
@@ -54,10 +64,13 @@ export async function readNativeBrowserHostProviderStatus(globalScope = defaultG
 }
 export async function launchNativeBrowserHost(options) {
     const providerScope = options.provider?.globalScope ?? defaultGlobalScope();
-    installNativeBrowserHostProvider({
+    const installation = installNativeBrowserHostProvider({
         globalScope: providerScope,
         ...(options.provider?.createRuntimeBridge !== undefined
             ? { createRuntimeBridge: options.provider.createRuntimeBridge }
+            : {}),
+        ...(options.provider?.gameplayHost !== undefined
+            ? { gameplayHost: options.provider.gameplayHost }
             : {}),
     });
     const bridgeResolution = await resolveNativeRustRuntimeBridgeProvider({
@@ -75,14 +88,15 @@ export async function launchNativeBrowserHost(options) {
         diagnostics: [],
         profile: bridgeResolution.profile,
         providerGlobal: bridgeResolution.providerGlobal,
-    }, bridgeResolution.bridge);
+    }, bridgeResolution.bridge, bridgeResolution.provider.gameplayHost, installation.provider.createRuntimeBridge);
 }
-export async function startNativeBrowserHost(options, provider, bridge) {
+export async function startNativeBrowserHost(options, provider, bridge, gameplayHost, createRuntimeBridge) {
     const host = options.host ?? '0.0.0.0';
     const port = options.port ?? 5173;
     const uiRoot = resolve(options.uiRoot);
+    const bridgePool = createNativeBrowserHostBridgePool(bridge, createRuntimeBridge);
     const server = createServer((request, response) => {
-        void handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridge).catch((error) => {
+        void handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridgePool, gameplayHost).catch((error) => {
             handleNativeBrowserHostRequestFailure(response, error);
         });
     });
@@ -111,7 +125,7 @@ function handleNativeBrowserHostRequestFailure(response, error) {
         },
     });
 }
-async function handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridge) {
+async function handleNativeBrowserHostRequest(request, response, options, provider, uiRoot, bridgePool, gameplayHost) {
     response.setHeader('X-ASHA-Browser-Host', ASHA_BROWSER_HOST_COMPATIBILITY_VERSION);
     if (request.url === '/health') {
         sendJson(response, 200, {
@@ -126,15 +140,55 @@ async function handleNativeBrowserHostRequest(request, response, options, provid
         return;
     }
     if (request.url === '/asha/browser-host/native-provider.js') {
-        sendText(response, 200, nativeBrowserHostProviderScript(), 'text/javascript; charset=utf-8');
+        sendText(response, 200, nativeBrowserHostProviderScript(gameplayHost !== undefined), 'text/javascript; charset=utf-8');
+        return;
+    }
+    if (request.url?.startsWith('/asha/browser-host/gameplay-runtime-host/')) {
+        await handleGameplayHostInvocation(request, response, gameplayHost);
         return;
     }
     if (request.url?.startsWith('/asha/browser-host/runtime-bridge/')) {
-        await handleRuntimeBridgeInvocation(request, response, bridge);
+        await handleRuntimeBridgeInvocation(request, response, bridgePool);
         return;
     }
     const assetPath = request.url === '/' ? '/index.html' : decodeURIComponent(request.url ?? '/index.html');
-    await sendStaticAssetFromRoot(response, uiRoot, assetPath, bridge !== undefined);
+    await sendStaticAssetFromRoot(response, uiRoot, assetPath, bridgePool.bridges.has('0'));
+}
+async function handleGameplayHostInvocation(request, response, gameplayHost) {
+    if (gameplayHost === undefined) {
+        sendJson(response, 503, { error: { message: 'Gameplay RuntimeSession host is not installed in this browser host.' } });
+        return;
+    }
+    if (request.method !== 'POST') {
+        sendJson(response, 405, { error: { message: 'Gameplay RuntimeSession host endpoint requires POST.' } });
+        return;
+    }
+    const methodName = readGameplayHostMethodName(request.url ?? '');
+    if (methodName === null) {
+        sendJson(response, 404, { error: { message: 'Unknown gameplay RuntimeSession host operation.' } });
+        return;
+    }
+    try {
+        const invocation = await readInvocationBody(request);
+        const method = gameplayHost[methodName];
+        const result = Reflect.apply(method, gameplayHost, invocation.args ?? []);
+        sendJson(response, 200, { result: result ?? null });
+    }
+    catch (error) {
+        sendJson(response, 500, {
+            error: { message: error instanceof Error ? error.message : String(error) },
+        });
+    }
+}
+function readGameplayHostMethodName(url) {
+    const prefix = '/asha/browser-host/gameplay-runtime-host/';
+    if (!url.startsWith(prefix)) {
+        return null;
+    }
+    const candidate = decodeURIComponent(url.slice(prefix.length));
+    return ASHA_BROWSER_HOST_GAMEPLAY_METHODS.includes(candidate)
+        ? candidate
+        : null;
 }
 function defaultGlobalScope() {
     return globalThis;
@@ -202,11 +256,7 @@ function isPathInsideRoot(root, filePath) {
     const relativePath = relative(root, filePath);
     return relativePath === '' || (!relativePath.startsWith('..') && !isAbsolute(relativePath));
 }
-async function handleRuntimeBridgeInvocation(request, response, bridge) {
-    if (bridge === undefined) {
-        sendJson(response, 503, { error: { message: 'Native RuntimeBridge is not installed in this browser host.' } });
-        return;
-    }
+async function handleRuntimeBridgeInvocation(request, response, bridgePool) {
     if (request.method !== 'POST') {
         sendJson(response, 405, { error: { message: 'RuntimeBridge host endpoint requires POST.' } });
         return;
@@ -217,6 +267,7 @@ async function handleRuntimeBridgeInvocation(request, response, bridge) {
         return;
     }
     try {
+        const bridge = await readNativeBrowserHostBridge(request, bridgePool);
         const invocation = await readInvocationBody(request);
         const method = bridge[methodName];
         const result = Reflect.apply(method, bridge, invocation.args ?? []);
@@ -229,6 +280,49 @@ async function handleRuntimeBridgeInvocation(request, response, bridge) {
             },
         });
     }
+}
+function createNativeBrowserHostBridgePool(bridge, createRuntimeBridge) {
+    const bridges = new Map();
+    if (bridge !== undefined) {
+        bridges.set('0', Promise.resolve(bridge));
+    }
+    return {
+        bridges,
+        ...(createRuntimeBridge === undefined ? {} : { createRuntimeBridge }),
+    };
+}
+async function readNativeBrowserHostBridge(request, pool) {
+    const header = request.headers[ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER.toLowerCase()];
+    const clientId = header === undefined ? '0' : readBridgeClientId(header);
+    const existing = pool.bridges.get(clientId);
+    if (existing !== undefined) {
+        return await existing;
+    }
+    if (pool.createRuntimeBridge === undefined) {
+        throw new Error(`RuntimeBridge client ${clientId} requested a new Session, but this host has no bridge factory.`);
+    }
+    const pending = Promise.resolve().then(pool.createRuntimeBridge);
+    pool.bridges.set(clientId, pending);
+    try {
+        return await pending;
+    }
+    catch (error) {
+        pool.bridges.delete(clientId);
+        throw error;
+    }
+}
+function readBridgeClientId(header) {
+    if (Array.isArray(header)) {
+        throw new Error('RuntimeBridge client identity must be a single header value.');
+    }
+    if (!/^(?:0|[1-9][0-9]*)$/u.test(header)) {
+        throw new Error('RuntimeBridge client identity must be a canonical non-negative integer.');
+    }
+    const client = Number(header);
+    if (!Number.isSafeInteger(client) || client >= ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS) {
+        throw new Error(`RuntimeBridge client identity exceeds the ${ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS}-Session host limit.`);
+    }
+    return String(client);
 }
 function readRuntimeBridgeMethodName(url) {
     const prefix = '/asha/browser-host/runtime-bridge/';
@@ -286,13 +380,18 @@ function injectNativeProviderScript(html) {
     }
     return `${scriptTag}\n${html}`;
 }
-function nativeBrowserHostProviderScript() {
+function nativeBrowserHostProviderScript(hasGameplayHost) {
     return `(() => {
   const methods = ${JSON.stringify(ASHA_BROWSER_HOST_BRIDGE_METHODS)};
-  const invoke = (method, args) => {
+  const gameplayMethods = ${JSON.stringify(ASHA_BROWSER_HOST_GAMEPLAY_METHODS)};
+  let nextBridgeClient = 0;
+  const invoke = (surface, method, args, bridgeClient = null) => {
     const request = new XMLHttpRequest();
-    request.open('POST', '/asha/browser-host/runtime-bridge/' + encodeURIComponent(method), false);
+    request.open('POST', '/asha/browser-host/' + surface + '/' + encodeURIComponent(method), false);
     request.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+    if (bridgeClient !== null) {
+      request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER}', String(bridgeClient));
+    }
     request.send(JSON.stringify({ args }));
     const payload = JSON.parse(request.responseText || '{}');
     if (request.status < 200 || request.status >= 300) {
@@ -300,16 +399,26 @@ function nativeBrowserHostProviderScript() {
     }
     return payload.result;
   };
-  const bridge = {};
-  for (const method of methods) {
-    bridge[method] = (...args) => invoke(method, args);
+  const createRuntimeBridge = () => {
+    const bridgeClient = nextBridgeClient;
+    nextBridgeClient += 1;
+    const bridge = {};
+    for (const method of methods) {
+      bridge[method] = (...args) => invoke('runtime-bridge', method, args, bridgeClient);
+    }
+    return bridge;
+  };
+  const gameplayHost = {};
+  for (const method of gameplayMethods) {
+    gameplayHost[method] = (...args) => invoke('gameplay-runtime-host', method, args);
   }
   globalThis.${ASHA_BROWSER_HOST_PROVIDER_GLOBAL} = {
     kind: '${ASHA_BROWSER_HOST_PROVIDER_KIND}',
     backend: 'native_rust',
     productAuthority: true,
     referenceFallback: false,
-    createRuntimeBridge: () => bridge,
+    createRuntimeBridge,
+    ${hasGameplayHost ? 'gameplayHost,' : ''}
   };
 })();\n`;
 }

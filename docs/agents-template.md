@@ -65,6 +65,9 @@ Allowed surfaces depend on the project role, but common public/approved roots in
 
 - `@asha/contracts` — generated DTO/type border from Rust protocol crates.
 - `@asha/runtime-bridge` — public runtime bridge/facade surface and typed errors.
+- `asha-gameplay-module-sdk` — public local-path Rust facade for compiled,
+  statically composed gameplay modules; use the engine public-surface manifest
+  for the approved path and consumer roles.
 - `@asha/runtime-session` — transport-neutral RuntimeSession semantic readouts/proposal vocabulary.
 - `@asha/command-registry` — Studio/tool command metadata, not authority execution.
 - `@asha/devtools` — observational diagnostics/readout models.
@@ -157,7 +160,9 @@ Every meaningful change should leave evidence that another agent or reviewer can
 - Prefer boring, explicit code over clever abstractions.
 - Make boundaries visible in imports, function names, and tests.
 - Keep mutation local and obvious.
-- Avoid hidden global registries, ambient state, generic event buses, and framework magic.
+- Avoid hidden global registries, ambient state, untyped/ambient event buses,
+  and framework magic. Use the statically composed gameplay fabric for open
+  typed game meanings.
 - Favor small typed data shapes and deterministic functions.
 - Add tests for behavior and for fail-closed boundary cases.
 
@@ -179,7 +184,8 @@ Rust authority code should live upstream in `asha-engine` unless this repository
 When working in Rust authority lanes:
 
 - Prefer explicit state, explicit errors, explicit events, and narrow crate APIs.
-- Avoid `unsafe`, `Rc<RefCell>`, unexplained clones, framework-ECS adoption, and generic event buses unless explicitly approved by the engine owner.
+- Avoid `unsafe`, `Rc<RefCell>`, unexplained clones, framework-ECS adoption, and
+  untyped/ambient event buses unless explicitly approved by the engine owner.
 - Keep crate dependencies aligned with the assignment-cell dependency direction.
 - Add golden fixtures/replay evidence for state, protocol, and replay changes.
 

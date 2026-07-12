@@ -33,6 +33,7 @@ import {
   AnimatedMeshApplyError,
   AnimatedMeshRegistry,
   type AnimatedMeshAssetSource,
+  type AnimatedMeshControllerClip,
   type AnimatedMeshPlaybackReadout,
 } from './animated-mesh.js';
 
@@ -258,6 +259,32 @@ export class ThreeRenderer {
   /** Projection/debug readback for animated mesh playback; never authority. */
   animatedMeshPlayback(handle: RenderHandle): AnimatedMeshPlaybackReadout | undefined {
     return this.#animatedMeshes.playback(handle);
+  }
+
+  /** Apply renderer-local clip weights resolved from an authority controller projection. */
+  setAnimationControllerWeights(
+    handle: RenderHandle,
+    clips: readonly AnimatedMeshControllerClip[],
+  ): void {
+    try {
+      this.#animatedMeshes.setControllerWeights(handle, clips);
+      this.#syncAnimatedMeshPlayback(handle, this.#require(handle, 'setAnimationControllerWeights'));
+    } catch (cause) {
+      throw animatedMeshError(cause);
+    }
+  }
+
+  hasAnimationControllerClips(handle: RenderHandle, clipIds: readonly string[]): boolean {
+    return this.#animatedMeshes.hasClips(handle, clipIds);
+  }
+
+  clearAnimationControllerWeights(handle: RenderHandle): void {
+    try {
+      this.#animatedMeshes.clearControllerWeights(handle);
+      this.#syncAnimatedMeshPlayback(handle, this.#require(handle, 'clearAnimationControllerWeights'));
+    } catch (cause) {
+      throw animatedMeshError(cause);
+    }
   }
 
   /**

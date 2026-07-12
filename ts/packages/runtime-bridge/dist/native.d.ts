@@ -1,4 +1,4 @@
-import type { CameraCollisionSnapshot, CameraCreateRequest, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, CollisionConstrainedCameraInputEnvelope, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickResult, RenderFrameDiff, SceneObjectCommandResult, SceneObjectSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest, VoxelConversionMeshSourceImportReceipt, VoxelConversionMeshSourceImportRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceMetadataReadout, VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelSelectionSnapshot, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelModelWindowReadout, VoxelModelWindowRequest, VoxelAnnotationEditReceipt, VoxelAnnotationEditRequest, VoxelAnnotationLayerExportReceipt, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadReceipt, VoxelAnnotationLayerLoadRequest, VoxelAnnotationLayerValidationReport, VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryReadout, VoxelAnnotationQueryRequest, VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertReceipt, VoxelEditHistoryRevertRequest, VoxelEditHistorySummary, VoxelEditHistoryUndoReceipt, VoxelEditHistoryUndoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetUnloadReceipt, VoxelVolumeAssetUnloadRequest, VoxelVolumeAssetPaletteUpdateReceipt, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveReceipt, VoxelVolumeAssetSaveRequest, VoxelVolumeAuthoringInitializeReceipt, VoxelVolumeAuthoringInitializeRequest, GameRuleCatalog, GameRuleResolutionReceipt } from '@asha/contracts';
+import type { CameraCollisionSnapshot, CameraControllerReadRequest, CameraControllerState, CameraCreateRequest, CameraModeChangeReceipt, CameraModeCommand, CameraNavigationInputEnvelope, CameraNavigationReceipt, CameraProjectionSnapshot, CameraSnapshot, CommandBatch, CommandResult, CollisionConstrainedCameraInputEnvelope, ModelMaterialPreviewRequest, ModelMaterialPreviewSnapshot, PickResult, RenderFrameDiff, RuntimeProjectionFrame, TimeControlCommand, TimeControlReceipt, TimeControlState, SceneObjectCommandResult, SceneObjectSnapshot, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest, VoxelConversionMeshSourceImportReceipt, VoxelConversionMeshSourceImportRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceMetadataReadout, VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelSelectionSnapshot, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelModelWindowReadout, VoxelModelWindowRequest, VoxelAnnotationEditReceipt, VoxelAnnotationEditRequest, VoxelAnnotationLayerExportReceipt, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadReceipt, VoxelAnnotationLayerLoadRequest, VoxelAnnotationLayerValidationReport, VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryReadout, VoxelAnnotationQueryRequest, VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertReceipt, VoxelEditHistoryRevertRequest, VoxelEditHistorySummary, VoxelEditHistoryUndoReceipt, VoxelEditHistoryUndoRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetUnloadReceipt, VoxelVolumeAssetUnloadRequest, VoxelVolumeAssetPaletteUpdateReceipt, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveReceipt, VoxelVolumeAssetSaveRequest, VoxelVolumeAuthoringInitializeReceipt, VoxelVolumeAuthoringInitializeRequest, GameRuleCatalog, GameRuleResolutionReceipt, InputActionReplayReceipt, InputContextChangeReceipt, InputContextCommand, InputContextStackState, InputResolutionReceipt, InputSessionConfigureRequest, InputSessionSnapshot, RawInputSample, RecordedInputAction } from '@asha/contracts';
 import { type NativeAddon } from '@asha/native-bridge';
 import { type CompositionStatus, type EnemyDirectNavMovementRequest, type EnemyDirectNavMovementResult, type EngineConfig, type EngineHandle, type FrameCursor, type FpsEncounterDirectorSnapshot, type FpsEncounterLifecycleInput, type FpsEncounterTransitionRequest, type FpsEncounterTransitionResult, type GameExtensionWeaponEffectInvocationRequest, type GameExtensionWeaponEffectInvocationResult, type GameRuleCatalogValidationReceipt, type GameRuleEffectIntentRequest, type GameRuleRuntimeReadout, type GeneratedTunnelRuntimeApplyReceipt, type GeneratedTunnelRuntimeApplyRequest, type FpsPrimaryFireRequest, type FpsPrimaryFireResult, type FpsRuntimeSessionLoadRequest, type FpsRuntimeSessionRestartRequest, type FpsRuntimeSessionSnapshot, type ReplaySessionHandle, type ReplayStepReport, type RuntimeBridge, type RuntimeBufferView, type StepInputEnvelope, type StepResult, type VoxelMeshEvidenceSnapshot, type ProjectBundleLoadRequest, type ProjectBundleSaveSummary } from './bridge.js';
 /**
@@ -13,6 +13,13 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     #private;
     constructor(addon: NativeAddon);
     initializeEngine(config: EngineConfig): EngineHandle;
+    configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot;
+    applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt;
+    submitRawInput(sample: RawInputSample): InputResolutionReceipt;
+    replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt;
+    readInputContextState(): InputContextStackState;
+    applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt;
+    readTimeControlState(): TimeControlState;
     loadProjectBundle(request: ProjectBundleLoadRequest): CompositionStatus;
     submitCommands(batch: CommandBatch): CommandResult;
     stepSimulation(input: StepInputEnvelope): StepResult;
@@ -31,6 +38,7 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     readSceneObjectSnapshot(): SceneObjectSnapshot;
     applySceneObjectCommand(): SceneObjectCommandResult;
     readRenderDiffs(cursor: FrameCursor): RenderFrameDiff;
+    readProjectionFrame(cursor: FrameCursor): RuntimeProjectionFrame;
     saveProjectBundle(): ProjectBundleSaveSummary;
     getProjectBundleCompositionStatus(): CompositionStatus;
     planVoxelConversion(request: VoxelConversionPlanRequest): VoxelConversionPlan;
@@ -65,6 +73,9 @@ export declare class NativeRuntimeBridge implements RuntimeBridge {
     undoVoxelEdit(request: VoxelEditHistoryUndoRequest): VoxelEditHistoryUndoReceipt;
     redoVoxelEdit(request: VoxelEditHistoryRedoRequest): VoxelEditHistoryRedoReceipt;
     createCamera(request: CameraCreateRequest): CameraSnapshot;
+    applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt;
+    applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt;
+    readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState;
     applyFirstPersonCameraInput(): CameraSnapshot;
     readCameraProjection(): CameraProjectionSnapshot;
     getBuffer(): RuntimeBufferView;

@@ -1,0 +1,731 @@
+{
+  "schemaVersion": 1,
+  "valid": true,
+  "inventory": "harness/conformance/probe-inventory.json",
+  "inventoryHash": "sha256:6ec5083dbe10c835c47156e00969a48923ae9343482340ca1226acf8b7449e22",
+  "catalogs": [
+    {
+      "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
+      "hash": "sha256:2e51db06dc21a906ba33f28c7a1db3818db0a727655a24350a2852ff0df29c7f"
+    },
+    {
+      "path": "harness/consumer-needs/validation-report.json",
+      "hash": "sha256:9e9e57add1dda3c803e5561f19fab8bedbd16f1abb44d1f60a8c2fdfab69c06b"
+    },
+    {
+      "path": "harness/public-surface/rust-crates.json",
+      "hash": "sha256:3e75ea37fb9b9de16364246c2084f51857bdb79bcccea9c58e500d90e09c4800"
+    },
+    {
+      "path": "harness/public-surface/ts-packages.json",
+      "hash": "sha256:46f8aeb3f9ecccaadb68bbdb504c18c8333d44b88b444a23bc965e24e2cccb4d"
+    },
+    {
+      "path": "harness/reachability/validation-report.json",
+      "hash": "sha256:9203004de143f148ce33629118810cea4895ddd3a6e8fbf3e39047b0dc543499"
+    },
+    {
+      "path": "ts/packages/runtime-bridge/src/native.ts",
+      "hash": "sha256:b54ba23a701dd7398f9ebfdb7a6c5883fe0cd59458ffd07b7c5a40e61a828594"
+    }
+  ],
+  "summary": {
+    "stableOperationCount": 69,
+    "realOperationProbeCount": 58,
+    "temporaryOperationExemptionCount": 11,
+    "semanticProbeCount": 18,
+    "deliveryRequirementCount": 29,
+    "publicSurfaceCount": 10
+  },
+  "operations": [
+    {
+      "operation": "apply_camera_mode_command",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_camera_navigation_input",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_collision_constrained_camera_input",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_enemy_direct_nav_movement",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_first_person_camera_input",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_fps_encounter_transition",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_fps_primary_fire",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_generated_tunnel_to_runtime_world",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_input_context_command",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "apply_scene_object_command",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": []
+    },
+    {
+      "operation": "apply_time_control_command",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_voxel_annotation_edit",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_voxel_conversion",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "apply_voxel_edit_revert",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "configure_input_session",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "create_camera",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "export_voxel_annotation_layer",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "export_voxel_conversion_evidence",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "export_voxel_volume_asset",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "get_buffer",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "get_project_bundle_composition_status",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "import_voxel_conversion_mesh_source",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "initialize_engine",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "initialize_voxel_volume_authoring",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "invoke_game_extension_weapon_effect",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "load_fps_runtime_session",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "load_project_bundle",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "load_voxel_annotation_layer",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "load_voxel_volume_asset",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "pick_voxel",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "plan_voxel_conversion",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "preview_voxel_conversion",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "preview_voxel_edit_revert",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_camera_controller_state",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_camera_projection",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_fps_encounter_director",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_fps_runtime_session",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_game_rule_runtime_readout",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_input_context_state",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "read_model_material_preview",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": []
+    },
+    {
+      "operation": "read_projection_frame",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_render_diffs",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "read_scene_object_snapshot",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": []
+    },
+    {
+      "operation": "read_time_control_state",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_annotation_query",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_conversion_source_metadata",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_edit_history",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_mesh_evidence",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_model_info",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "read_voxel_model_window",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "redo_voxel_edit",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "register_voxel_conversion_mesh_asset",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "register_voxel_conversion_source",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "release_buffer",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": []
+    },
+    {
+      "operation": "replay_resolved_input_action",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "restart_fps_runtime_session",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "save_project_bundle",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "save_voxel_volume_asset",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "select_voxel",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "step_simulation",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "submit_commands",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "submit_game_rule_effect_intent",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "submit_raw_input",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport"
+      ]
+    },
+    {
+      "operation": "undo_voxel_edit",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "unload_project_bundle",
+      "status": "temporaryExemption",
+      "nativeWired": false,
+      "evidenceCorpora": [
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "unload_voxel_volume_asset",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "update_voxel_volume_asset_palette",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "validate_game_rule_catalog",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    },
+    {
+      "operation": "validate_voxel_annotation_layer",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceCorpora": [
+        "bridge.native-transport",
+        "bridge.rust-authority"
+      ]
+    }
+  ],
+  "semanticProbes": [
+    {
+      "id": "gameplay.binding.bootstrap",
+      "suite": "gameplay.binding",
+      "passed": true
+    },
+    {
+      "id": "gameplay.downstream.invocation",
+      "suite": "gameplay.downstream-module",
+      "passed": true
+    },
+    {
+      "id": "gameplay.read.event-bound",
+      "suite": "gameplay.reads",
+      "passed": true
+    },
+    {
+      "id": "gameplay.read.module-state",
+      "suite": "gameplay.static-composition",
+      "passed": true
+    },
+    {
+      "id": "gameplay.read.zz-module-conformance",
+      "suite": "gameplay.downstream-module",
+      "passed": true
+    },
+    {
+      "id": "gameplay.runtime-host.decision",
+      "suite": "gameplay.runtime-host",
+      "passed": true
+    },
+    {
+      "id": "gameplay.runtime-host.product-loop",
+      "suite": "gameplay.runtime-host",
+      "passed": true
+    },
+    {
+      "id": "gameplay.trigger.lifecycle",
+      "suite": "gameplay.triggers",
+      "passed": true
+    },
+    {
+      "id": "public.audio-projection",
+      "suite": "public.audio",
+      "passed": true
+    },
+    {
+      "id": "public.billboard-projection",
+      "suite": "public.billboard",
+      "passed": true
+    },
+    {
+      "id": "public.camera-controller",
+      "suite": "public.camera-flow",
+      "passed": true
+    },
+    {
+      "id": "public.input-pause-demo",
+      "suite": "public.input-pause-demo",
+      "passed": true
+    },
+    {
+      "id": "public.particle-projection",
+      "suite": "public.particle",
+      "passed": true
+    },
+    {
+      "id": "public.prefab-authoring-and-placement",
+      "suite": "public.prefab-authoring",
+      "passed": true
+    },
+    {
+      "id": "public.runtime-session.projection",
+      "suite": "public.consumer",
+      "passed": true
+    },
+    {
+      "id": "public.session-input-replay",
+      "suite": "bridge.rust-authority",
+      "passed": true
+    },
+    {
+      "id": "public.session-time-control",
+      "suite": "bridge.rust-authority",
+      "passed": true
+    },
+    {
+      "id": "public.telemetry-snapshot-overlay",
+      "suite": "public.telemetry",
+      "passed": true
+    }
+  ],
+  "gaps": []
+}

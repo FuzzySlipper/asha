@@ -4,12 +4,12 @@ entity 2  lifecycle active  source imported(mesh/static-fixture-a)  labels []  c
 entity 3  lifecycle active  source sceneBootstrap(node=10)  labels []  caps [transform(5,0,0),render(visible=true)]
 
 # family spatial_non_rendered
-entity 1  lifecycle active  source runtimeCreated  labels []  caps [bounds(0,0,0..2,2,2),collision(static=false)]
+entity 1  lifecycle active  source runtimeCreated  labels []  caps [bounds(0,0,0..2,2,2),collision(static=false,activation=active)]
 entity 2  lifecycle active  source runtimeCreated  labels []  caps [transform(0,1,0)]
 entity 3  lifecycle active  source runtimeCreated  labels []  caps [bounds(-1,-1,-1..1,1,1)]
 
 # family non_spatial_logical
-entity 1  lifecycle active  source runtimeCreated  labels [7,8]  caps [controller(process=42)]
+entity 1  lifecycle active  source runtimeCreated  labels [7,8]  caps [controller(process=42,activation=active)]
 entity 2  lifecycle active  source runtimeCreated  labels []  caps []
 entity 3  lifecycle active  source policyProposed(by=5)  labels []  caps []
 
@@ -31,22 +31,22 @@ entity 3  lifecycle active  source runtimeCreated  labels []  caps []
 entity 4  lifecycle active  source runtimeCreated  labels []  caps [contained_in(3)]
 entity 5  lifecycle active  source runtimeCreated  labels []  caps []
 entity 6  lifecycle active  source runtimeCreated  labels []  caps []  rels [derived_from(5)]
-entity 7  lifecycle active  source runtimeCreated  labels []  caps [controller(process=99)]
+entity 7  lifecycle active  source runtimeCreated  labels []  caps [controller(process=99,activation=active)]
 
 # family movement
-entity 1  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,0),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=false)]
-entity 2  lifecycle active  source runtimeCreated  labels []  caps [transform(1,0,0),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=true)]
+entity 1  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,0),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=false,activation=active)]
+entity 2  lifecycle active  source runtimeCreated  labels []  caps [transform(1,0,0),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=true,activation=active)]
 entity 3  lifecycle active  source runtimeCreated  labels []  caps []
-entity 4  lifecycle active  source runtimeCreated  labels []  caps [transform(5,0,0),collision(static=true)]
+entity 4  lifecycle active  source runtimeCreated  labels []  caps [transform(5,0,0),collision(static=true,activation=active)]
 entity 5  lifecycle active  source runtimeCreated  labels []  caps [transform(0,5,0),render(visible=true)]
-entity 6  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,5),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=false)]
+entity 6  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,5),bounds(-0.5,-0.5,-0.5..0.5,0.5,0.5),collision(static=false,activation=active)]
 
 # family static_room_collision
-entity 1  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,0),bounds(-0.25,-0.25,-0.25..0.25,0.25,0.25),render(visible=true),collision(static=false)]
-entity 2  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,-2.5),bounds(-3,-1,-0.5..3,2,0.5),collision(static=true)]
-entity 3  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,2.5),bounds(-3,-1,-0.5..3,2,0.5),collision(static=true)]
-entity 4  lifecycle active  source runtimeCreated  labels []  caps [transform(-2.5,0,0),bounds(-0.5,-1,-3..0.5,2,3),collision(static=true)]
-entity 5  lifecycle active  source runtimeCreated  labels []  caps [transform(2.5,0,0),bounds(-0.5,-1,-3..0.5,2,3),collision(static=true)]
+entity 1  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,0),bounds(-0.25,-0.25,-0.25..0.25,0.25,0.25),render(visible=true),collision(static=false,activation=active)]
+entity 2  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,-2.5),bounds(-3,-1,-0.5..3,2,0.5),collision(static=true,activation=active)]
+entity 3  lifecycle active  source runtimeCreated  labels []  caps [transform(0,0,2.5),bounds(-3,-1,-0.5..3,2,0.5),collision(static=true,activation=active)]
+entity 4  lifecycle active  source runtimeCreated  labels []  caps [transform(-2.5,0,0),bounds(-0.5,-1,-3..0.5,2,3),collision(static=true,activation=active)]
+entity 5  lifecycle active  source runtimeCreated  labels []  caps [transform(2.5,0,0),bounds(-0.5,-1,-3..0.5,2,3),collision(static=true,activation=active)]
 
 # family lifecycle_scenario
 entity 1  lifecycle tombstoned  source sceneBootstrap(node=100)  labels []  caps []

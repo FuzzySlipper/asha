@@ -32,7 +32,11 @@ The entire repository is shaped so that crates and packages become **agent assig
 
 ### 2.1 Authority is centralized, expression is constrained
 
-There is one authoritative state owner: the Rust core. Other layers may propose, display, inspect, or author catalogs, but they do not become parallel truth systems.
+There is one authoritative plane: statically composed Rust. Ownership inside
+that plane is federated across typed engine owners and compiled downstream
+gameplay modules; it is not a single mutable god object. TypeScript and
+presentation layers may propose, display, inspect, or author catalogs, but they
+do not become parallel truth systems.
 
 The engine distinguishes between:
 
@@ -43,7 +47,29 @@ The engine distinguishes between:
 - **Render diffs:** display projections emitted by Rust and consumed by the renderer.
 - **Telemetry events:** observations for debugging, tracing, and tooling.
 
-These categories must never collapse into one generic event bus.
+These categories must never collapse into one untyped, ambient event bus.
+
+### 2.1.1 Gameplay meaning is open through governed composition
+
+The authority model does not require every game meaning to become a central
+engine enum or a new RuntimeSession method. Downstream Game Projects may compile
+typed Rust gameplay modules that publish namespaced gameplay events, own typed
+domain state, consume declared frozen reads, participate in
+Guard/Transform/React decisions, and propose shared mutations to registered
+owners.
+
+This gameplay fabric preserves the category boundaries above. An accepted
+owner fact may be adapted into a gameplay event; a module invocation may return
+events, module-local facts, or proposals; only the registered owner may commit
+a shared mutation; projections may fan the accepted origin out to UI, audio,
+rendering, telemetry, and tools. Static topology, bounded dispatch, generated
+contracts, snapshots, and evidence hashes keep this expressive path
+machine-reviewable.
+
+The prohibited shape is an ambient bus where arbitrary handlers discover one
+another, query raw SessionState, and mutate authority. The implemented fabric
+is the paved alternative, not an exception to the authority rules. See
+`docs/gameplay-fabric-growth-recipes.md`.
 
 ### 2.2 Contracts are borders
 
@@ -243,6 +269,13 @@ Render diffs + telemetry + replay records
 ```
 
 This model keeps mutation centralized and makes each stage testable.
+
+Platform input reaches this flow through named Session actions, not raw key
+codes owned by gameplay consumers. Rust validates the binding catalog and owns
+the active context stack and deterministic priority/consumption decision;
+browser or other hosts only normalize platform samples. Resolved actions remain
+proposals, distinct from accepted domain facts and gameplay events. See
+[`named-input-actions.md`](named-input-actions.md).
 
 ### 5.4 Event taxonomy
 
@@ -1284,7 +1317,8 @@ Rust tripwires:
 - unexplained clones in authoritative paths
 - new public API without review note
 - framework-shaped abstractions over `StateStore`
-- generic event buses
+- untyped or ambient event buses that collapse commands, accepted facts,
+  gameplay events, projections, and telemetry
 - renderer concepts leaking into state/sim crates
 - protocol types gaining convenience behavior
 

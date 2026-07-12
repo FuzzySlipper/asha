@@ -2,12 +2,14 @@ import type { AshaGameManifest } from './manifest.js';
 
 export type AshaAuthoringOperationKind =
   | 'authoring.scene.save_source'
+  | 'authoring.prefab.save_source'
   | 'authoring.catalog.save_source'
   | 'authoring.asset.save_source'
   | 'authoring.policy.save_source';
 
 export type AshaAuthoringSourceFormat =
   | 'proof-scene-json.v1'
+  | 'prefab-registry-json.v1'
   | 'asset-catalog-json.v1'
   | 'inline-asset-json.v1'
   | 'policy-json.deferred';
@@ -160,6 +162,12 @@ function authoringWriteScopes(manifest: AshaGameManifest): readonly AshaAuthorin
       requiredValidator: 'validateAshaProofSceneSourceDocument',
     },
     {
+      operationKind: 'authoring.prefab.save_source',
+      allowedRoots: allowedRoots(manifest.workspace.prefabRoots),
+      format: 'prefab-registry-json.v1',
+      requiredValidator: 'validateAshaPrefabRegistrySourceDocument',
+    },
+    {
       operationKind: 'authoring.catalog.save_source',
       allowedRoots: allowedRoots(manifest.workspace.catalogPackages),
       format: 'asset-catalog-json.v1',
@@ -217,6 +225,12 @@ function validateAuthoringExtension(
 ): void {
   if (scope.operationKind === 'authoring.scene.save_source' && !normalizedPath.endsWith('.scene.json')) {
     diagnostics.push(authoringDiag('invalid_extension', 'relativePath', 'scene authoring saves must target *.scene.json'));
+  }
+  if (scope.operationKind === 'authoring.prefab.save_source') {
+    const registryPathAllowed = scope.allowedRoots.some((root) => normalizedPath === `${root}/registry.json`);
+    if (!registryPathAllowed) {
+      diagnostics.push(authoringDiag('invalid_extension', 'relativePath', 'prefab authoring saves must target registry.json in a prefab root'));
+    }
   }
   if (scope.operationKind === 'authoring.catalog.save_source') {
     const catalogPathAllowed = scope.allowedRoots.some((root) => normalizedPath === `${root}/catalog.json`);

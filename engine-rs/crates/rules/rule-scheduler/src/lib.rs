@@ -1,4 +1,8 @@
-//! Deterministic chunk work scheduler (voxel-capability-13).
+//! Deterministic scheduling authorities.
+//!
+//! The crate keeps two deliberately separate queues: transient/versioned chunk
+//! work and replayable owner-gated gameplay actions. The latter uses gameplay
+//! fabric contracts and never turns the chunk worker queue into Session state.
 //!
 //! # Lane
 //!
@@ -24,9 +28,13 @@
 
 #![forbid(unsafe_code)]
 
+mod gameplay;
+
 use std::collections::BTreeMap;
 
 use core_space::ChunkCoord;
+
+pub use gameplay::*;
 
 /// The kind of work scheduled for a chunk. The variant order is the deterministic
 /// tie-break within a priority (generation precedes meshing precedes collision

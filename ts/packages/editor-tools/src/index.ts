@@ -8,7 +8,6 @@
 // It imports `@asha/contracts` ONLY — no DOM, `three`, policy, bridge, or renderer.
 // It produces proposals; it never submits them and never mutates authority (the
 // `app` command-submission path does that). See docs/voxel-ui-architecture.md.
-
 import type { VoxelCommand, VoxelCoord, Face, VoxelValue } from '@asha/contracts';
 
 // Proposal-only scene authoring controls with Rust validation feedback (#2380).
@@ -16,6 +15,8 @@ export * from './scene-authoring.js';
 
 // Canonical scene-object hierarchy snapshot/proposal helpers over FlatSceneDocument.
 export * from './scene-object-hierarchy.js';
+export * from './resolved-input.js';
+export * from './camera-navigation.js';
 
 // Proposal-only generic entity authoring controls with Rust validation feedback (#2485).
 export * from './entity-authoring.js';
@@ -241,7 +242,6 @@ export function previewTargets(ctx: EditorContext): VoxelCoord[] {
   const { min, max } = brushBox(target.center, ctx.brushSize);
   return boxCells(min, max);
 }
-
 /**
  * Turn the editor context + selection into a generated `VoxelCommand` proposal, or
  * `null` when there is nothing to commit (no selection, or a non-editing tool).

@@ -1,0 +1,62 @@
+{
+  "definitions": [
+    {
+      "displayName": "Fixture",
+      "id": 7,
+      "partRoles": [
+        {
+          "part": 3,
+          "role": "gameplay-root"
+        },
+        {
+          "part": 3,
+          "role": "root-alias"
+        }
+      ],
+      "parts": [
+        {
+          "displayName": "Root",
+          "id": 3,
+          "namespace": "root",
+          "parent": null,
+          "source": {
+            "kind": "entityDefinition",
+            "stableId": "fixture.root"
+          },
+          "transform": {
+            "rotation": [0.0, 0.0, 0.0, 1.0],
+            "scale": [1.0, 1.0, 1.0],
+            "translation": [0.0, 0.0, 0.0]
+          }
+        }
+      ],
+      "schemaVersion": 1,
+      "variant": null
+    },
+    {
+      "displayName": "Invalid Alias Removal",
+      "id": 8,
+      "partRoles": [],
+      "parts": [],
+      "schemaVersion": 1,
+      "variant": {
+        "base": 7,
+        "overrides": [
+          {
+            "targetRole": "root-alias",
+            "value": {
+              "field": "transform",
+              "transform": {
+                "rotation": [0.0, 0.0, 0.0, 1.0],
+                "scale": [1.0, 1.0, 1.0],
+                "translation": [0.0, 0.0, 0.0]
+              }
+            }
+          }
+        ],
+        "removedRoles": ["gameplay-root"]
+      }
+    }
+  ],
+  "schemaVersion": 1
+}

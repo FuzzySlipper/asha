@@ -158,6 +158,28 @@ export class ThreeRenderer {
     animatedMeshPlayback(handle) {
         return this.#animatedMeshes.playback(handle);
     }
+    /** Apply renderer-local clip weights resolved from an authority controller projection. */
+    setAnimationControllerWeights(handle, clips) {
+        try {
+            this.#animatedMeshes.setControllerWeights(handle, clips);
+            this.#syncAnimatedMeshPlayback(handle, this.#require(handle, 'setAnimationControllerWeights'));
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+    }
+    hasAnimationControllerClips(handle, clipIds) {
+        return this.#animatedMeshes.hasClips(handle, clipIds);
+    }
+    clearAnimationControllerWeights(handle) {
+        try {
+            this.#animatedMeshes.clearControllerWeights(handle);
+            this.#syncAnimatedMeshPlayback(handle, this.#require(handle, 'clearAnimationControllerWeights'));
+        }
+        catch (cause) {
+            throw animatedMeshError(cause);
+        }
+    }
     /**
      * A deterministic textual snapshot of the rendered scene — one line per live
      * handle (sorted), capturing layer, shape, transform, visibility, and colour.

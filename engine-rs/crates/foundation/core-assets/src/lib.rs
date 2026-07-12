@@ -70,6 +70,10 @@ pub enum AssetKind {
     SpriteSheet,
     /// A standalone texture image.
     Texture,
+    /// A decoded-at-realization audio clip (for example WAV or OGG content).
+    AudioClip,
+    /// A font resource loaded by a presentation host (for example WOFF2).
+    Font,
     /// An authored voxel volume (grid of cells).
     VoxelVolume,
     /// A reusable voxel object instanced into scenes.
@@ -88,6 +92,8 @@ impl AssetKind {
         AssetKind::Sprite,
         AssetKind::SpriteSheet,
         AssetKind::Texture,
+        AssetKind::AudioClip,
+        AssetKind::Font,
         AssetKind::VoxelVolume,
         AssetKind::VoxelObject,
         AssetKind::Script,
@@ -103,6 +109,8 @@ impl AssetKind {
             AssetKind::Sprite => "sprite",
             AssetKind::SpriteSheet => "sprite-sheet",
             AssetKind::Texture => "texture",
+            AssetKind::AudioClip => "audio",
+            AssetKind::Font => "font",
             AssetKind::VoxelVolume => "voxel-volume",
             AssetKind::VoxelObject => "voxel-object",
             AssetKind::Script => "script",

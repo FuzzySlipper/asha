@@ -9,7 +9,7 @@
 import type { AssetReference } from './scene.js';
 
 // Stable kind-prefix tags for every asset kind, sourced from `core_assets::AssetKind::prefix` (see the drift test below).
-export type AssetKind = 'material' | 'mesh' | 'sprite' | 'sprite-sheet' | 'texture' | 'voxel-volume' | 'voxel-object' | 'script' | 'scene';
+export type AssetKind = 'material' | 'mesh' | 'sprite' | 'sprite-sheet' | 'texture' | 'audio' | 'font' | 'voxel-volume' | 'voxel-object' | 'script' | 'scene';
 
 // Stable structural-class tags (authority/collision side of a material).
 export type StructuralClass = 'decorative' | 'solid' | 'structural';

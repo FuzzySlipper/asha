@@ -4,10 +4,6 @@
     "ts/packages/runtime-bridge/src/mock.ts": {
       "maxLines": 1620,
       "justification": "MockRuntimeBridge remains the single fail-closed implementation of the RuntimeBridge interface; additive manifest verbs must be explicit here until runtime-bridge mock capability modules are split."
-    },
-    "ts/packages/runtime-bridge/src/native-fail-closed.test.ts": {
-      "maxLines": 1720,
-      "justification": "Native fail-closed conformance intentionally enumerates every wired manifest verb and addon fixture; split when generated native invocation fixtures replace the hand-maintained operation table."
     }
   },
   "rootBarrelExemptions": {

@@ -103,7 +103,11 @@ importers:
 
   packages/electron-main: {}
 
-  packages/game-workspace: {}
+  packages/game-workspace:
+    dependencies:
+      '@asha/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/native-bridge:
     dependencies:

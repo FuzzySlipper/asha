@@ -1,6 +1,60 @@
 use super::*;
 
 impl EngineBridge {
+    pub(super) fn load_project_bundle_authority(
+        &mut self,
+        request: ProjectBundleLoadRequest,
+    ) -> BridgeResult<CompositionStatus> {
+        // Fail closed on a newer bundle; the prior loaded ProjectBundle is left untouched.
+        if request.bundle_schema_version > ENGINE_SUPPORTED_VERSION
+            || request.protocol_version > ENGINE_SUPPORTED_VERSION
+        {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "unsupported bundle schema {} / protocol {}",
+                    request.bundle_schema_version, request.protocol_version
+                ),
+            ));
+        }
+        self.loaded_project_bundle = Some(request.scene_id);
+        Ok(CompositionStatus {
+            loaded_project_bundle: Some(request.scene_id),
+            ..CompositionStatus::empty()
+        })
+    }
+
+    pub(super) fn save_project_bundle_authority(
+        &mut self,
+    ) -> BridgeResult<ProjectBundleSaveSummary> {
+        if self.loaded_project_bundle.is_none() {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "save_project_bundle called with no ProjectBundle loaded",
+            ));
+        }
+        Ok(ProjectBundleSaveSummary {
+            artifacts_written: 3,
+            compacted_edits: 0,
+            retained_edits: 0,
+        })
+    }
+
+    pub(super) fn project_bundle_composition_status_authority(
+        &self,
+    ) -> BridgeResult<CompositionStatus> {
+        Ok(CompositionStatus {
+            loaded_project_bundle: self.loaded_project_bundle,
+            ..CompositionStatus::empty()
+        })
+    }
+
+    pub(super) fn unload_project_bundle_authority(&mut self) -> BridgeResult<()> {
+        self.loaded_project_bundle = None;
+        self.input_session = None;
+        Ok(())
+    }
+
     pub(super) fn register_voxel_conversion_mesh_asset_authority(
         &mut self,
         request: VoxelConversionMeshAssetRegistrationRequest,

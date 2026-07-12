@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "capabilities": [],
+  "internalExemptions": [{
+    "id": "internal.fixture",
+    "owner": "fixture",
+    "reason": "private",
+    "evidence": { "path": "engine-rs/crates/rules/gameplay-module-sdk/src/facade.rs", "token": "Private stores" }
+  }]
+}

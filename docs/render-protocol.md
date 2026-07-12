@@ -63,6 +63,24 @@ The renderer consumes diffs. It does not:
 diff protocol, so the renderer can route them into a separate layer group and
 toggle them without changing the core diff stream.
 
+## Non-scene presentation
+
+Audio, world-space UI, particles, animation-controller realization, and the
+live telemetry overlay do not add unrelated variants to scene `RenderDiff`.
+Their shared typed envelope, lifecycle, ordering, replay stance, handle
+namespaces, and compatibility posture are fixed by
+[`non-scene-projection-channel.md`](non-scene-projection-channel.md).
+
+The implementation contract keeps scene diffs intact and places them beside an
+ordered, generated `PresentationFrameDiff` for the same authority tick.
+The implemented domains are the catalog-validated Web Audio path described in
+[`audio-projection.md`](audio-projection.md) and retained world-space status/name
+projection described in [`billboard-projection.md`](billboard-projection.md),
+plus typed burst/retained emitters with renderer-owned particle simulation
+described in [`particle-projection.md`](particle-projection.md), and the
+machine-readable live snapshot plus disposable overlay described in
+[`live-telemetry-overlay.md`](live-telemetry-overlay.md).
+
 ## Phase 5 dataflow and failure routing
 
 The implemented dataflow, end to end:

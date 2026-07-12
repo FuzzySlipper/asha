@@ -5,6 +5,7 @@ import type {
   CollisionConstrainedCameraInputEnvelope,
   CommandResult,
   RenderFrameDiff,
+  RuntimeProjectionFrame,
 } from '@asha/contracts';
 
 export interface NativeVec3 {
@@ -201,8 +202,18 @@ export interface NativeAddon {
     blocksLoad: boolean;
   };
   submitCommands(handle: number, commandsJson: string): CommandResult;
-  stepSimulation(handle: number, tick: number): number;
+  stepSimulation(handle: number, tick: number): { readonly tick: number; readonly diffCount: number };
+  configureInputSession(handle: number, requestJson: string): string;
+  applyInputContextCommand(handle: number, commandJson: string): string;
+  submitRawInput(handle: number, sampleJson: string): string;
+  replayResolvedInputAction(handle: number, recordJson: string): string;
+  readInputContextState(handle: number): string;
+  applyTimeControlCommand(handle: number, commandJson: string): string;
+  readTimeControlState(handle: number): string;
   createCamera(handle: number, request: CameraCreateRequest): CameraSnapshot;
+  applyCameraModeCommand(handle: number, commandJson: string): string;
+  applyCameraNavigationInput(handle: number, envelopeJson: string): string;
+  readCameraControllerState(handle: number, requestJson: string): string;
   applyCollisionConstrainedCameraInput(
     handle: number,
     envelope: CollisionConstrainedCameraInputEnvelope,
@@ -256,6 +267,7 @@ export interface NativeAddon {
     request: NativeFpsEncounterTransitionRequest,
   ): NativeFpsEncounterTransitionResult;
   readRenderDiffs(handle: number, cursor: number): RenderFrameDiff;
+  readProjectionFrame(handle: number, cursor: number): RuntimeProjectionFrame;
   saveProjectBundle(handle: number): {
     artifactsWritten: number;
     compactedEdits: number;
@@ -300,7 +312,17 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'loadProjectBundle',
   'submitCommands',
   'stepSimulation',
+  'configureInputSession',
+  'applyInputContextCommand',
+  'submitRawInput',
+  'replayResolvedInputAction',
+  'readInputContextState',
+  'applyTimeControlCommand',
+  'readTimeControlState',
   'createCamera',
+  'applyCameraModeCommand',
+  'applyCameraNavigationInput',
+  'readCameraControllerState',
   'applyCollisionConstrainedCameraInput',
   'applyGeneratedTunnelToRuntimeWorld',
   'applyEnemyDirectNavMovement',
@@ -315,6 +337,7 @@ export const REQUIRED_NATIVE_ADDON_EXPORTS = [
   'readFpsEncounterDirector',
   'applyFpsEncounterTransition',
   'readRenderDiffs',
+  'readProjectionFrame',
   'saveProjectBundle',
   'getProjectBundleCompositionStatus',
   'planVoxelConversion',

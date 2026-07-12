@@ -1,12 +1,15 @@
 import { type Server } from 'node:http';
-import { type NativeRustRuntimeBridgeProviderCandidate, type NativeRustRuntimeBridgeProviderDiagnostic, type NativeRustRuntimeBridgeProviderInstallation, type NativeRustRuntimeBridgeProviderProfile, type RuntimeBridge } from '@asha/runtime-bridge';
+import { type GameplayRuntimeHostTransport, type NativeRustRuntimeBridgeProviderCandidate, type NativeRustRuntimeBridgeProviderDiagnostic, type NativeRustRuntimeBridgeProviderInstallation, type NativeRustRuntimeBridgeProviderProfile, type RuntimeBridge } from '@asha/runtime-bridge';
 export declare const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = "browser-host.v0";
 export declare const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = "ashaRuntimeBridge";
 export declare const ASHA_BROWSER_HOST_PROVIDER_KIND = "asha.runtime_bridge.native_rust_provider.v1";
+export declare const ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER = "X-ASHA-Runtime-Bridge-Client";
+export declare const ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS = 8;
 export declare const ASHA_BROWSER_HOST_COMMAND = "asha-browser-host --ui-root dist/ui --host 0.0.0.0 --port 5173";
 export type NativeBrowserHostProviderScope = Record<string, NativeRustRuntimeBridgeProviderCandidate | null | undefined>;
 export interface NativeBrowserHostProviderInstallOptions {
     readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
+    readonly gameplayHost?: GameplayRuntimeHostTransport;
     readonly globalScope?: NativeBrowserHostProviderScope;
 }
 export type NativeBrowserHostProviderStatus = {
@@ -52,10 +55,11 @@ export interface NativeBrowserHostCommandShape {
 }
 type NativeBrowserHostBridgeMethod = Extract<keyof RuntimeBridge, string>;
 export declare const ASHA_BROWSER_HOST_BRIDGE_METHODS: readonly NativeBrowserHostBridgeMethod[];
+export declare const ASHA_BROWSER_HOST_GAMEPLAY_METHODS: readonly ["load", "advance", "read", "save", "restore"];
 export declare function describeNativeBrowserHostCommand(): NativeBrowserHostCommandShape;
 export declare function installNativeBrowserHostProvider(options?: NativeBrowserHostProviderInstallOptions): NativeRustRuntimeBridgeProviderInstallation;
 export declare function readNativeBrowserHostProviderStatus(globalScope?: NativeBrowserHostProviderScope): Promise<NativeBrowserHostProviderStatus>;
 export declare function launchNativeBrowserHost(options: NativeBrowserHostLaunchOptions): Promise<NativeBrowserHostServer>;
-export declare function startNativeBrowserHost(options: NativeBrowserHostServeOptions, provider: NativeBrowserHostProviderStatus, bridge?: RuntimeBridge): Promise<NativeBrowserHostServer>;
+export declare function startNativeBrowserHost(options: NativeBrowserHostServeOptions, provider: NativeBrowserHostProviderStatus, bridge?: RuntimeBridge, gameplayHost?: GameplayRuntimeHostTransport, createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>): Promise<NativeBrowserHostServer>;
 export {};
 //# sourceMappingURL=host.d.ts.map

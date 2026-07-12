@@ -99,6 +99,108 @@ impl AuthoringCapability {
     }
 }
 
+/// Only these capability families support owner-controlled temporary
+/// inactivity without detachment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActivatableCapabilityKind {
+    Collision,
+    Controller,
+}
+
+pub const ACTIVATABLE_CAPABILITY_KINDS: &[&str] = &["collision", "controller"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapabilityActivationAction {
+    Activate,
+    Deactivate,
+}
+
+pub const CAPABILITY_ACTIVATION_ACTIONS: &[&str] = &["activate", "deactivate"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapabilityActivationPresence {
+    Absent,
+    Inactive,
+    Active,
+}
+
+pub const CAPABILITY_ACTIVATION_PRESENCE_VALUES: &[&str] = &["absent", "inactive", "active"];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapabilityActivationEntityLifecycle {
+    Active,
+    Disabled,
+    Tombstoned,
+}
+
+pub const CAPABILITY_ACTIVATION_ENTITY_LIFECYCLES: &[&str] = &["active", "disabled", "tombstoned"];
+
+/// Typed proposal shape. Rust still checks the named Rule owner before applying
+/// the requested activation transition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityActivationRequest {
+    pub entity: EntityId,
+    pub capability: ActivatableCapabilityKind,
+    pub action: CapabilityActivationAction,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityActivationEvent {
+    pub entity: EntityId,
+    pub capability: ActivatableCapabilityKind,
+    pub from: CapabilityActivationPresence,
+    pub to: CapabilityActivationPresence,
+}
+
+/// Projection distinguishes attachment state from the entity lifecycle axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CapabilityActivationReadout {
+    pub entity: EntityId,
+    pub capability: ActivatableCapabilityKind,
+    pub presence: CapabilityActivationPresence,
+    pub entity_lifecycle: CapabilityActivationEntityLifecycle,
+    pub effective_active: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapabilityActivationDiagnosticCode {
+    UnknownEntity,
+    Tombstoned,
+    CapabilityAbsent,
+    AlreadyInState,
+    ForbiddenOwner,
+}
+
+pub const CAPABILITY_ACTIVATION_DIAGNOSTIC_CODES: &[&str] = &[
+    "unknownEntity",
+    "tombstoned",
+    "capabilityAbsent",
+    "alreadyInState",
+    "forbiddenOwner",
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapabilityActivationDiagnostic {
+    pub code: CapabilityActivationDiagnosticCode,
+    pub entity: EntityId,
+    pub capability: ActivatableCapabilityKind,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CapabilityActivationOutcome {
+    Accepted {
+        event: CapabilityActivationEvent,
+        readout: CapabilityActivationReadout,
+    },
+    Rejected {
+        diagnostic: CapabilityActivationDiagnostic,
+    },
+    Forbidden {
+        diagnostic: CapabilityActivationDiagnostic,
+    },
+}
+
 // ── Stored EntityDefinition schema ───────────────────────────────────────────
 
 /// Where a stored entity definition was read from inside a durable ProjectBundle.

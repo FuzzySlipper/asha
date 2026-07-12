@@ -239,6 +239,7 @@ struct SourceCounts {
     scene_bootstrap: usize,
     runtime_created: usize,
     imported: usize,
+    prefab_instance: usize,
     diagnostic_tooling: usize,
     policy_proposed: usize,
 }
@@ -249,6 +250,7 @@ impl SourceCounts {
             EntitySource::SceneBootstrap { .. } => self.scene_bootstrap += 1,
             EntitySource::RuntimeCreated { .. } => self.runtime_created += 1,
             EntitySource::Imported { .. } => self.imported += 1,
+            EntitySource::PrefabInstance { .. } => self.prefab_instance += 1,
             EntitySource::DiagnosticTooling => self.diagnostic_tooling += 1,
             EntitySource::PolicyProposed { .. } => self.policy_proposed += 1,
         }
@@ -293,10 +295,11 @@ fn write_summary<O: Write>(report: &SnapshotReport, out: &mut O) {
     );
     let _ = writeln!(
         out,
-        "sources: sceneBootstrap={} runtimeCreated={} imported={} diagnosticTooling={} policyProposed={}",
+        "sources: sceneBootstrap={} runtimeCreated={} imported={} prefabInstance={} diagnosticTooling={} policyProposed={}",
         report.source_counts.scene_bootstrap,
         report.source_counts.runtime_created,
         report.source_counts.imported,
+        report.source_counts.prefab_instance,
         report.source_counts.diagnostic_tooling,
         report.source_counts.policy_proposed
     );
@@ -461,7 +464,7 @@ mod tests {
         assert_eq!(code, 0);
         assert!(err.is_empty());
         assert!(out.contains("artifact: session-state-snapshot"));
-        assert!(out.contains("entity_hash: 52a209a7aa37a092"));
+        assert!(out.contains("entity_hash: ae70a7d6771ffcd8"));
         assert!(out.contains("entities: total=6 active=5 disabled=0 tombstoned=1"));
         assert!(out.contains("entity_ids: [1,2,3,4,5,6]"));
     }

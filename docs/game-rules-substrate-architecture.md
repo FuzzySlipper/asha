@@ -175,7 +175,7 @@ replays the resulting typed facts.
 
 ## Non-Goals
 
-- No ECS framework, hidden scheduler, generic event bus, or dynamic plugin
+- No ECS framework, hidden scheduler, untyped ambient event bus, or dynamic plugin
   registry.
 - No TypeScript authority callbacks or `call_rule(json)` style hatches.
 - No turn, round, initiative, power, feat, saving throw, class, or action

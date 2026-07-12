@@ -170,7 +170,7 @@
       "package": "@asha/game-workspace",
       "status": "unstable",
       "ownershipKey": "ts/packages/game-workspace",
-      "intendedConsumerRole": "Typed game/workspace manifest validation for consumer repos.",
+      "intendedConsumerRole": "Typed game/workspace manifest validation plus non-authoritative prefab draft commands, browser/selection readouts, placement records, and canonical source serialization for consumer repos.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
       "compatibilityMarker": "game-workspace.v0",
       "changelog": "docs/consumer-compatibility.md#game-workspace-compatibility-log"
@@ -188,7 +188,7 @@
       "package": "@asha/renderer-host",
       "status": "unstable",
       "ownershipKey": "ts/packages/renderer-host",
-      "intendedConsumerRole": "Backend-neutral browser render surface host for demos; concrete renderer packages stay behind this facade.",
+      "intendedConsumerRole": "Backend-neutral browser render surface plus generated audio, billboard, particle, and live telemetry projection hosts for demos; concrete renderer packages stay behind this facade.",
       "allowedConsumerRoles": ["asha-demo"],
       "compatibilityMarker": "renderer-host.v0",
       "changelog": "docs/consumer-compatibility.md#renderer-host-compatibility-log"

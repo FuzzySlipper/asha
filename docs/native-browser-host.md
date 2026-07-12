@@ -34,6 +34,14 @@ The host owns the browser-to-native method transport behind bounded
 upstream ASHA host implementation detail; game projects still see only the public
 RuntimeBridge provider object and typed RuntimeSession facade.
 
+A Game Project that statically links Rust gameplay modules may also pass a
+`GameplayRuntimeHostTransport` in `launchNativeBrowserHost({ provider })`. The
+same provider script then exposes its five closed operations through
+`provider.gameplayHost`, backed by bounded
+`/asha/browser-host/gameplay-runtime-host/<method>` endpoints. This is one
+capability-height transport for load, advance, read, save, and restore; gameplay
+events, views, facts, and proposals remain typed payloads owned by the Rust host.
+
 ## Status Readout
 
 The static host exposes:
@@ -55,7 +63,10 @@ An ASHA Game Project should keep its own app boot as ordinary browser code:
 2. launch that root with `asha-browser-host`;
 3. resolve `globalThis.ashaRuntimeBridge` from `@asha/runtime-bridge` inside the
    app before creating `RuntimeSession`;
-4. fail closed when the resolver does not report native authority.
+4. pass the resolved `provider.gameplayHost` to `createRuntimeSessionFacade`
+   when the product links gameplay modules;
+5. fail closed when the resolver does not report native authority or the
+   required gameplay host is absent.
 
 The game project should not add a local browser/native bridge, JSON method
 tunnel, reference RuntimeSession fallback, or private package import.

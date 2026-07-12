@@ -17,9 +17,12 @@
 //! round-trip tests pin.
 
 use core_assets::{AssetHash, AssetId, AssetReference, AssetVersionReq};
-use core_ids::{EntityId, ProcessId, SceneNodeId, SubjectId, TagId};
+use core_ids::{
+    EntityId, PrefabId, PrefabInstanceId, PrefabPartId, ProcessId, SceneNodeId, SubjectId, TagId,
+};
 use core_math::Vec3;
 
+use crate::activation::CapabilityActivationState;
 use crate::capability::{
     AssetBindingCapability, BoundsCapability, CollisionCapability, ContainmentCapability,
     ControllerCapability, RenderProjectionCapability, TransformCapability,
@@ -30,7 +33,7 @@ use crate::value::{Aabb, EntityTransform, Quat};
 
 /// Compatibility marker for the on-disk session-state snapshot. A snapshot whose
 /// schema version is newer than this build understands fails closed at decode.
-pub const SNAPSHOT_SCHEMA_VERSION: u32 = 1;
+pub const SNAPSHOT_SCHEMA_VERSION: u32 = 2;
 
 // ── Encode ──────────────────────────────────────────────────────────────────--
 
@@ -93,6 +96,7 @@ fn encode_record(out: &mut String, record: &EntityRecord) {
         Some(c) => out.push_str(&format!("{{ \"staticCollider\": {} }}", c.static_collider)),
         None => out.push_str("null"),
     }
+    encode_activation(out, "collisionActivation", record.collision_activation);
     out.push_str(", \"containment\": ");
     match &record.containment {
         Some(c) => out.push_str(&format!("{{ \"container\": {} }}", c.container.raw())),
@@ -108,6 +112,7 @@ fn encode_record(out: &mut String, record: &EntityRecord) {
         }
         None => out.push_str("null"),
     }
+    encode_activation(out, "controllerActivation", record.controller_activation);
     out.push_str(", \"assetBinding\": ");
     match &record.asset_binding {
         Some(a) => {
@@ -141,6 +146,24 @@ fn encode_source(out: &mut String, source: &EntitySource) {
         EntitySource::Imported { asset } => {
             out.push_str("{ \"kind\": \"imported\", \"asset\": ");
             encode_asset_ref(out, asset);
+            out.push_str(" }");
+        }
+        EntitySource::PrefabInstance {
+            prefab,
+            instance,
+            part,
+            role,
+        } => {
+            out.push_str(&format!(
+                "{{ \"kind\": \"prefabInstance\", \"prefab\": {}, \"instance\": {}, \"part\": {}, \"role\": ",
+                prefab.raw(),
+                instance.raw(),
+                part.raw()
+            ));
+            match role {
+                Some(role) => out.push_str(&format!("\"{role}\"")),
+                None => out.push_str("null"),
+            }
             out.push_str(" }");
         }
         EntitySource::DiagnosticTooling => out.push_str("{ \"kind\": \"diagnosticTooling\" }"),
@@ -329,6 +352,7 @@ fn decode_record(j: &Json) -> Result<EntityRecord, SnapshotDecodeError> {
         }),
         None => None,
     };
+    let collision_activation = decode_activation(j, "collisionActivation", collision.is_some())?;
     let containment = match opt_obj(j, "containment")? {
         Some(c) => Some(ContainmentCapability {
             container: EntityId::new(field_u64(c, "container")?),
@@ -339,6 +363,7 @@ fn decode_record(j: &Json) -> Result<EntityRecord, SnapshotDecodeError> {
         Some(c) => Some(decode_controller(c)?),
         None => None,
     };
+    let controller_activation = decode_activation(j, "controllerActivation", controller.is_some())?;
     let asset_binding = match opt_obj(j, "assetBinding")? {
         Some(a) => Some(AssetBindingCapability {
             asset: decode_asset_ref(field(a, "asset")?)?,
@@ -354,12 +379,40 @@ fn decode_record(j: &Json) -> Result<EntityRecord, SnapshotDecodeError> {
         bounds,
         render,
         collision,
+        collision_activation,
         containment,
         controller,
+        controller_activation,
         asset_binding,
         transform_parent,
         derived_from,
     })
+}
+
+fn encode_activation(out: &mut String, key: &str, state: Option<CapabilityActivationState>) {
+    out.push_str(&format!(", \"{key}\": "));
+    match state {
+        Some(state) => out.push_str(&format!("\"{}\"", state.label())),
+        None => out.push_str("null"),
+    }
+}
+
+fn decode_activation(
+    j: &Json,
+    key: &str,
+    attached: bool,
+) -> Result<Option<CapabilityActivationState>, SnapshotDecodeError> {
+    match j.get(key) {
+        None | Some(Json::Null) if attached => Ok(Some(CapabilityActivationState::Active)),
+        None | Some(Json::Null) => Ok(None),
+        Some(Json::Str(value)) if value == "active" => Ok(Some(CapabilityActivationState::Active)),
+        Some(Json::Str(value)) if value == "inactive" => {
+            Ok(Some(CapabilityActivationState::Inactive))
+        }
+        Some(_) => Err(SnapshotDecodeError::UnknownVariant(format!(
+            "capability activation `{key}`"
+        ))),
+    }
 }
 
 fn decode_lifecycle(tag: &str) -> Result<EntityLifecycle, SnapshotDecodeError> {
@@ -394,6 +447,23 @@ fn decode_source(j: &Json) -> Result<EntitySource, SnapshotDecodeError> {
         "imported" => Ok(EntitySource::Imported {
             asset: decode_asset_ref(field(j, "asset")?)?,
         }),
+        "prefabInstance" => {
+            let role = match j.get("role") {
+                None | Some(Json::Null) => None,
+                Some(Json::Str(role)) => Some(role.clone()),
+                Some(_) => {
+                    return Err(SnapshotDecodeError::Field(
+                        "source.role must be a string or null".into(),
+                    ))
+                }
+            };
+            Ok(EntitySource::PrefabInstance {
+                prefab: PrefabId::new(field_u64(j, "prefab")?),
+                instance: PrefabInstanceId::new(field_u64(j, "instance")?),
+                part: PrefabPartId::new(field_u64(j, "part")?),
+                role,
+            })
+        }
         "diagnosticTooling" => Ok(EntitySource::DiagnosticTooling),
         "policyProposed" => Ok(EntitySource::PolicyProposed {
             by: SubjectId::new(field_u64(j, "by")?),
@@ -925,12 +995,12 @@ mod tests {
     #[test]
     fn newer_schema_fails_closed() {
         let text = encode_snapshot(&EntityStore::new().snapshot())
-            .replace("\"schemaVersion\": 1", "\"schemaVersion\": 2");
+            .replace("\"schemaVersion\": 2", "\"schemaVersion\": 3");
         assert!(matches!(
             decode_snapshot(&text),
             Err(SnapshotDecodeError::UnsupportedSchema {
-                found: 2,
-                supported: 1
+                found: 3,
+                supported: 2
             })
         ));
     }

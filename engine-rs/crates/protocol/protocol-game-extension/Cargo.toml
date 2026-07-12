@@ -12,6 +12,7 @@ workspace = true
 [dependencies]
 core-ids = { path = "../../foundation/core-ids" }
 protocol-diagnostics = { path = "../protocol-diagnostics" }
+protocol-project-bundle = { path = "../protocol-project-bundle" }
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

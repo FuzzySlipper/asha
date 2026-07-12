@@ -39,7 +39,8 @@ fn map_manifest_error(err: &ManifestError) -> DiagnosticReport {
         }
         ManifestError::DuplicateArtifact { path }
         | ManifestError::MissingArtifact { path, .. }
-        | ManifestError::DurableMissingHash { path } => DiagnosticReport::new(
+        | ManifestError::DurableMissingHash { path }
+        | ManifestError::ArtifactClassMismatch { path, .. } => DiagnosticReport::new(
             DiagnosticCode::CorruptBundleArtifact,
             path.clone(),
             DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
@@ -48,6 +49,16 @@ fn map_manifest_error(err: &ManifestError) -> DiagnosticReport {
         .with_remedy(SuggestedRemedy::new(
             RemedyAction::RestoreArtifact,
             "restore the bundle's artifact table from a known-good copy",
+        )),
+        ManifestError::DuplicateArtifactRole { role } => DiagnosticReport::new(
+            DiagnosticCode::CorruptBundleArtifact,
+            role.clone(),
+            DiagnosticSourceRef::empty(),
+            message,
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::Inspect,
+            "retain one authoritative artifact for the singleton bundle role",
         )),
     }
 }

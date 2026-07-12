@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "consumer": { "id": "invalid.delivery", "role": "asha-testing", "source": "fixture" },
+  "requirements": [{
+    "id": "missing.delivery", "kind": "rustCrate", "identity": "asha-gameplay-module-sdk",
+    "symbols": ["GameplayModuleBehavior"], "requiredLevel": "delivery",
+    "evidence": {
+      "type": ["public-rust/gameplay-module-sdk/src/lib.rs"],
+      "provider": ["harness/public-surface/rust-crates.json"],
+      "selector": ["harness/public-surface/rust-crates.json"],
+      "delivery": []
+    }
+  }]
+}

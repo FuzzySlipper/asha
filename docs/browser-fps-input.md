@@ -1,85 +1,40 @@
-# Browser FPS Input
+# Browser Named Input
 
-Status: task #4404 upstream browser FPS input surface for `asha-demo`,
-Studio, and renderer-host canvas wiring.
+Status: superseded by #5642. The five-key FPS collector described by earlier
+versions of this document has been removed.
 
-Public import path:
+Browser keyboard and mouse integration now uses `BrowserInputHost` from
+`@asha/runtime-bridge`. The host attaches the raw DOM listeners, normalizes
+events into generated `RawInputSample` values, and submits them through an
+initialized public `RuntimeSessionFacade`.
 
-```ts
-import {
-  BrowserFpsInputCollector,
-} from '@asha/runtime-bridge';
-import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
-```
+FPS camera code consumes `gameplay.*` resolver output through
+`BrowserFpsResolvedActionConsumer`. Editor camera/tool code consumes `editor.*`
+resolver output through `EditorResolvedInputConsumer`. Neither consumer owns a
+key-code union or binding table.
 
-Typed runtime command emitted per drain:
+Orbit and top-down interaction uses `ResolvedCameraNavigationConsumer` and the
+high-priority `cameraNavigation` context. Pointer delta, wheel, and pan keys are
+resolved as named actions; while this context is active it consumes the lower
+FPS bindings, and returning to first person restores gameplay resolution. See
+[Camera Modes, Navigation, and Transitions](camera-modes.md).
 
-```ts
-{
-  kind: 'runtime.apply_first_person_camera_input',
-  envelope: FirstPersonCameraInputEnvelope
-}
-```
+Menu and dialog contexts are pushed and popped through
+`RuntimeSessionFacade.applyInputContextCommand`. Their Rust-owned priority and
+consumption rules prevent lower gameplay delivery while preserving their own UI
+bindings. `BrowserInputHost.readout()` exposes normalized samples, active
+contexts, resolution evidence, consumer identity, and rejection/consumption
+reason.
 
-The envelope is accepted by `RuntimeSessionFacade.applyFirstPersonCameraInput`.
-Primary fire press/release is emitted as typed runtime action intent proposals:
+The default `Escape` bindings resolve `runtime.time.pause` from gameplay and
+`runtime.time.resume` from the menu context. `ResolvedPauseContextConsumer`
+combines those resolved actions with the public input-context and time-control
+commands. This is downstream composition, not UI-owned pause authority.
 
-```ts
-{
-  kind: 'runtime.propose_runtime_action_intent',
-  envelope: RuntimeActionIntentEnvelope
-}
-```
+Accepted receipts expose platform-free `RecordedInputAction` values.
+`RuntimeSessionFacade.replayResolvedInputAction` validates and delivers those
+semantic records directly, so replay does not synthesize DOM events or key
+codes. See the named-input document for hash, context, and exactly-once rules.
 
-The envelope is accepted by `RuntimeSessionFacade.submitRuntimeActionIntent`;
-the reference RuntimeSession returns typed combat/fire/health readout evidence
-for primary-fire press intents.
-Surfaces that do not own a RuntimeSession camera handle, such as
-`@asha/renderer-host`, use the same collector through `drainInputFrame()`:
-
-```ts
-{
-  tick: number,
-  input: {
-    moveForward: number,
-    moveRight: number,
-    moveUp: number,
-    yawDeltaDegrees: number,
-    pitchDeltaDegrees: number,
-    dtSeconds: number,
-    moveSpeedUnitsPerSecond: number
-  }
-}
-```
-
-This runtime-neutral frame is the durable browser/standalone input lane.
-Renderer hosts may adapt DOM events into it and apply the resulting camera pose
-or forward it to a movement authority, but they should not keep separate WASD,
-mouse-look, or primary-fire state machines.
-The collector also emits typed shell intents:
-
-- `{ kind: 'request_pointer_lock', reason: 'primary_button' | 'programmatic' }`
-- `{ kind: 'release_pointer_lock', reason: 'escape_key' | 'programmatic' }`
-
-Shell state is explicit:
-
-- `active` accepts keyboard, pointer-lock, mouse-look, and primary-fire input.
-- `disabled` emits zero movement/look and no pointer/fire intents.
-- `paused` emits zero movement/look and no pointer/fire intents.
-
-Input mapping:
-
-- `KeyW` / `KeyS` map to `moveForward` `1` / `-1`.
-- `KeyD` / `KeyA` map to `moveRight` `1` / `-1`.
-- Mouse movement is accumulated only while pointer lock is active.
-- `yawDeltaDegrees = movementX * mouseSensitivityDegreesPerPixel`.
-- `pitchDeltaDegrees = -movementY * mouseSensitivityDegreesPerPixel`.
-- `Escape` emits pointer-lock release intent and records `releaseRequestedByEscape`.
-
-Non-claims:
-
-- No gameplay movement, collision, or physics.
-- No authority mutation from browser input.
-- Primary fire is a typed proposal/readout path, not local browser authority.
-- No gameplay movement, collision, or physics authority; Rust/runtime movement
-  surfaces still validate the submitted camera/action envelopes.
+See [Named Input Actions and Session Contexts](named-input-actions.md) for the
+complete contracts, ownership, replay posture, and current non-claims.

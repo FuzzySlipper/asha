@@ -313,7 +313,7 @@ mod tests {
         let (code, out, err) = run_str(&["list"]);
         assert_eq!(code, 0);
         assert!(err.is_empty());
-        assert!(out.starts_with("protocol-modules: 20 modules"));
+        assert!(out.starts_with("protocol-modules: 23 modules"));
         assert!(out.contains("module ids generated=ts/packages/contracts/src/generated/ids.ts"));
         assert!(out.contains(
             "module voxelAsset generated=ts/packages/contracts/src/generated/voxelAsset.ts"
@@ -323,6 +323,10 @@ mod tests {
         ));
         assert!(out.contains(
             "module voxelEditHistory generated=ts/packages/contracts/src/generated/voxelEditHistory.ts"
+        ));
+        assert!(out.contains("module input generated=ts/packages/contracts/src/generated/input.ts"));
+        assert!(out.contains(
+            "module timeControl generated=ts/packages/contracts/src/generated/timeControl.ts"
         ));
         assert!(out.contains("  branded-id EntityId"));
     }

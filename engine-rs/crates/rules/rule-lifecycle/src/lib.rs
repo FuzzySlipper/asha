@@ -18,6 +18,9 @@
 
 #![forbid(unsafe_code)]
 
+mod gameplay_events;
+pub use gameplay_events::FpsPrimaryFireReceipt;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use core_entity::{EntityLifecycle, EntityStore, EntityTransform};
@@ -139,6 +142,7 @@ pub enum FpsRuntimeError {
         command: &'static str,
     },
     CombatRejected(CombatRejectionReason),
+    GameplayEventAdaptation(String),
     UnknownEncounterPreset {
         preset_id: String,
     },
@@ -231,20 +235,6 @@ pub struct FpsReplayRecord {
     pub entity_hash: u64,
     pub health_hash: u64,
     pub record_hash: u64,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct FpsPrimaryFireReceipt {
-    pub shooter: EntityId,
-    pub target: Option<EntityId>,
-    pub target_health_before: Option<HealthState>,
-    pub target_health_after: Option<HealthState>,
-    pub combat: CombatReadout,
-    pub lifecycle_status: FpsLifecycleStatus,
-    pub target_render_visible: Option<bool>,
-    pub entity_hash: u64,
-    pub health_hash: u64,
-    pub replay_hash: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -500,6 +490,7 @@ impl FpsRuntimeSessionState {
             tick,
         )?;
         let combat_target = self.combat_target(target)?;
+        let combat_before = self.combat.clone();
         let combat = apply_fire_intent(
             &mut self.combat,
             projection,
@@ -517,6 +508,12 @@ impl FpsRuntimeSessionState {
             },
         )
         .map_err(FpsRuntimeError::CombatRejected)?;
+        let gameplay_events =
+            gameplay_events::adapt_primary_fire(tick, self.replay_records.len() as u64, &combat)
+                .map_err(|error| {
+                    self.combat = combat_before;
+                    FpsRuntimeError::GameplayEventAdaptation(error.to_string())
+                })?;
 
         let hit_target = match combat.outcome {
             CombatFireOutcome::Hit { target, .. } => Some(target),
@@ -550,6 +547,7 @@ impl FpsRuntimeSessionState {
             target_health_before: target_before,
             target_health_after: target_after,
             combat,
+            gameplay_events,
             lifecycle_status: self.lifecycle_status,
             target_render_visible: self
                 .render_projection
@@ -1235,6 +1233,7 @@ mod tests {
         assert!(receipt.combat.events.iter().any(
             |event| matches!(event, CombatEvent::EntityDefeated { target } if *target == enemy)
         ));
+        gameplay_events::assert_primary_fire_events(&receipt);
         assert_eq!(receipt.health_hash, session.combat.health_hash());
         assert_ne!(receipt.health_hash, 0);
         assert_ne!(receipt.replay_hash, 0);

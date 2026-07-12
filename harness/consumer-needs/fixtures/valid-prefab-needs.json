@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "consumer": { "id": "valid.prefab-needs", "role": "asha-testing", "source": "fixture" },
+  "requirements": [
+    {
+      "id": "prefab.definition-type",
+      "kind": "generatedType",
+      "identity": "PrefabDefinition",
+      "provider": "@asha/contracts",
+      "fields": ["displayName", "id", "partRoles", "parts", "schemaVersion", "variant"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/projectBundle.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "prefab.id-values",
+      "kind": "generatedType",
+      "identity": "PrefabId",
+      "provider": "@asha/contracts",
+      "values": ["10"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/ids.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "prefab.part-reference-type",
+      "kind": "generatedType",
+      "identity": "PrefabPartReference",
+      "provider": "@asha/contracts",
+      "fields": ["prefab", "role"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/projectBundle.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "prefab.registry-type",
+      "kind": "generatedType",
+      "identity": "PrefabRegistry",
+      "provider": "@asha/contracts",
+      "fields": ["definitions", "schemaVersion"],
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/projectBundle.ts"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "prefab.registry-artifact",
+      "kind": "projectBundleArtifact",
+      "identity": "ProjectBundle.prefabRegistry",
+      "artifactRole": "prefabRegistry",
+      "requiredLevel": "type",
+      "evidence": {
+        "type": ["docs/prefab-contracts.md"],
+        "provider": [], "selector": [], "delivery": []
+      }
+    },
+    {
+      "id": "prefab.stable-part",
+      "kind": "prefabPart",
+      "identity": "prefab:10/role:weapon/muzzle",
+      "provider": "rule-project-bundle",
+      "target": { "prefab": 10, "role": "weapon/muzzle" },
+      "requiredLevel": "selector",
+      "evidence": {
+        "type": ["docs/prefab-contracts.md"],
+        "provider": ["engine-rs/crates/rules/rule-project-bundle/src/prefab_instance.rs"],
+        "selector": ["engine-rs/crates/rules/rule-project-bundle/tests/prefab_instantiation.rs"],
+        "delivery": []
+      }
+    }
+  ]
+}

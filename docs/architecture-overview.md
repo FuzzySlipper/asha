@@ -15,7 +15,8 @@ The durable invariants are:
 - Crates and packages are agent assignment cells with machine-readable ownership
   and dependency rules in `governance/ownership.toml`.
 - Commands, domain events, render diffs, telemetry, and replay records stay
-  distinct; do not collapse them into a generic event bus.
+  distinct; do not collapse them into an untyped ambient bus. Open typed game
+  meanings compose through the static gameplay fabric.
 - Services and rules use explicit Rust state access; do not introduce a
   framework-shaped ECS.
 

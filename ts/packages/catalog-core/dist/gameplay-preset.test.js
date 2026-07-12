@@ -18,7 +18,7 @@ void test('default FPS gameplay preset validates and exposes stable readout refe
     assert.equal(report.readout.preset.encounter.presetId, 'generated-tunnel-small-encounter');
     assert.equal(report.readout.preset.generator.presetId, 'tiny-enclosed');
     assert.equal(report.readout.fixturePath, 'harness/fixtures/gameplay-presets/generated-tunnel-default-fps.snapshot.txt');
-    assert.equal(report.readout.migration.playerControllerConstants, 'BrowserFpsInputCollector options');
+    assert.equal(report.readout.migration.playerControllerConstants, 'BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options');
     assert.ok(report.readout.nonClaims.includes('not_arbitrary_json_catalog'));
     assert.equal(report.readout.hashes.presetHash, 'fnv1a64:b39b8794318889a7');
     assert.equal(report.readout.hashes.tuningHash, 'fnv1a64:acbf1766f55dcba9');

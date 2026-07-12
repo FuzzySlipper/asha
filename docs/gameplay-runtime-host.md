@@ -1,0 +1,173 @@
+# Public Gameplay Runtime Host
+
+Status: implemented Wave 1 static-host boundary for Den tasks #5674 and #5677.
+
+`asha-gameplay-runtime-host` is the public Rust cell that turns a statically
+linked gameplay-module composition into an owning RuntimeSession subsystem. It
+exists because module authoring and conformance alone do not make a module
+available to a live downstream game.
+
+The host keeps the ECRP split explicit:
+
+- downstream Rust contributes compiled module behavior through
+  `asha-gameplay-module-sdk`;
+- generated ProjectBundle contracts carry module bindings and semantic trigger
+  definitions;
+- the host owns validated prefab placement, module state, trigger overlap state,
+  declared-read assembly, reaction frames, and routing into engine authority
+  owners;
+- TypeScript advances and projects the host through a closed transport. It does
+  not register callbacks, decode private stores, or apply accepted facts.
+
+## Static composition boundary
+
+A consumer builds one native provider cell that depends only on approved public
+roots:
+
+```toml
+[dependencies]
+asha-gameplay-module-sdk = { path = "../asha-engine/public-rust/gameplay-module-sdk" }
+asha-gameplay-runtime-host = { path = "../asha-engine/public-rust/gameplay-runtime-host" }
+```
+
+The provider constructs its `GameplayStaticComposition` in Rust and passes it
+to `GameplayRuntimeHost::activate_project`. There is no runtime crate discovery,
+dynamic module loading, JavaScript callback table, or mutable global registry.
+Changing linked module code changes the registry/artifact evidence and reaction
+frame hashes.
+
+`GameplayRuntimeProjectInput` carries the normal ProjectBundle load plan and
+artifacts, the closed static composition, generated module bindings, typed
+entity targets, gameplay spatial bootstrap data, declared read plans, and
+generated `GameplayTriggerDefinition` values. The prefab-aware activation path
+also accepts `GameplayRuntimePrefabBootstrap`: canonical registry source, its
+explicit validation catalog, and ordered authored or accepted player placement
+commands. The host publishes no live state until registry validation, prefab
+expansion, module binding, and normal project activation all succeed.
+
+The current explicit `GameplayRuntimeSpatialEntity` input is transitional. It
+keeps geometry typed and Rust-owned, but the same transform/bounds/collision
+data should ultimately arrive through the existing generated entity-definition
+load contract. It is not a second world format.
+
+## Authority loop
+
+The host has capability-height operations rather than one method per game
+meaning:
+
+- `observe` delivers an accepted semantic owner event through the closed fabric;
+- `decide` runs the closed Guard -> Transform -> React pre-commit pipeline and
+  routes one final canonical Workspace to a statically linked Rust owner;
+- `reconcile_triggers` samples the authoritative EntityStore and delivers
+  exactly-once enter/exit events;
+- `move_actor_and_reconcile` applies collision-constrained movement first and
+  samples triggers against the accepted pose;
+- `readout` exposes bounded hashes/counts plus the same bounded reaction-frame
+  projections returned by advance; it never exposes mutable stores;
+- `compose_snapshot` and `restore_project` persist and restore module state,
+  trigger active pairs, binding provenance, authority state, reaction frames,
+  decision receipts, and pending continuation generations.
+
+Each invocation freezes entity, module-state, trigger, and registry evidence.
+The committed downstream fixture proves both a module-named state read and a
+bounded current-trigger-overlap query. Accepted module-local facts update only
+their registered state adapter.
+
+Pre-commit consumers implement `GameplayRuntimeDecisionOwner`. This is a
+statically linked Rust port with two responsibilities: return the current
+revision for the registry-resolved owner and atomically route the final
+operation. It is not a callback registry, owner-discovery mechanism, or
+TypeScript authority seam. Decision invocations receive the same declared-read
+plans as Observe invocations; proposal source/target identities are presented
+as decision-moment bindings without pretending that the proposal is already a
+committed event.
+
+Suspension is host authority. A module may return `React::Suspend` during the
+initial decision and inspect `GameplayModuleContext::decision_resume_token` on
+an authorized continuation. The host binds the coordinator-issued token to the
+decision, closed registry, owner, operation hash, expected owner revision, and
+exact Workspace generation. Missing, wrong, replayed, or stale tokens fail
+before module invocation. Pending tokens and deterministic generation counters
+survive the host snapshot; the bounded decision receipt ledger makes the same
+views, invocation outputs, routing, diagnostics, and hashes available to replay
+and first-mismatch tooling.
+
+Shared proposals do not use a downstream callback. The initial concrete owner
+route is `asha.entity.set-capability-activation.v1`; the host decodes it, checks
+the registry-resolved owner and target, and applies it through
+`svc-entity-authoring` Rule ownership. Unsupported owners fail closed.
+
+## Native/browser composition
+
+`@asha/runtime-session` defines `GameplayRuntimeHostTransport` and adds these
+operations to `RuntimeSessionFacade`:
+
+- `loadGameplayRuntime`;
+- `advanceGameplayRuntime`;
+- `readGameplayRuntime`;
+- `saveGameplayRuntime`; and
+- `restoreGameplayRuntime`.
+
+The advance envelope is a small union of tick, actor movement, and accepted
+owner-event moments, including a stable prefab instance-and-role interaction.
+It is not an arbitrary JSON authority dispatcher: every variant is typed, and
+the consumer-owned native provider maps it to the Rust host.
+`createRuntimeSessionFacade` accepts that transport in addition to the normal
+Rust bridge. The reference RuntimeSession fails closed for all five operations.
+
+```ts
+const provider = createNativeRustRuntimeBridgeProvider({
+  bridge: nativeBridge,
+  gameplayHost: downstreamNativeAddon.gameplayHost,
+});
+
+const session = createRuntimeSessionFacade({
+  bridge: provider.bridge,
+  gameplayHost: provider.gameplayHost,
+  mode: 'rust',
+});
+```
+
+The downstream native addon is the static link point: it owns which game module
+crates are compiled into the product. It does not own generic collision,
+capability mutation, replay semantics, or RuntimeSession validation.
+
+For event, decision, state, read/query, binding, proposal, trigger, and module
+addition recipes, see
+[Gameplay fabric growth recipes](gameplay-fabric-growth-recipes.md).
+
+`@asha/browser-host` accepts that same transport in its public provider launch
+options. Its injected provider preserves `gameplayHost` and proxies only the
+five closed operations; downstream browser code does not create a parallel JSON
+dispatcher or add per-game host routes.
+
+## Atomic load and replay
+
+Product code constructs a staging `GameplayRuntimeHost`, checks activation and
+its readout, and swaps it into the provider only after success. Invalid
+provider/config/read/output/trigger data therefore cannot partially replace the
+live host.
+
+The downstream fixture executes the full loop twice and compares reaction
+frames and host hashes. It saves and restores the same host, then rebuilds with
+a changed module multiplier and proves that invocation/frame/host hashes drift.
+The saved host snapshot is hash-bound to its nested authority/module/trigger
+state and rejects mismatched authored trigger definitions. Prefab-aware
+snapshots also retain accepted placement commands, resolved roles, effective
+overrides, Entity provenance, and prefab-scoped module state. Restore validates
+the same registry/bootstrap evidence before republishing the host.
+
+## Deliberate limits
+
+- Wave 1 is static linking only.
+- The host retains a bounded 256-frame replay/readout window; a product may
+  stream older frames to its replay archive. Decision receipts use the same
+  bound independently.
+- The current concrete shared owner route is capability activation. Further
+  generic proposal applications should be added owner by owner.
+- The public transport is implemented; each downstream product still builds
+  its small native binding cell so its actual Rust module crate is linked.
+- Renderer/camera projection remains outside gameplay authority. Movement enters
+  the EntityStore only through an accepted authority operation.
+- Nested prefabs and automatic propagation of changed definitions into already
+  accepted instances are not supported.

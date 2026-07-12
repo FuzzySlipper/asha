@@ -4,10 +4,48 @@
     {
       "consumerRole": "asha-demo",
       "approvedCrates": [
-        "asha-game-rule-extension"
+        "asha-game-rule-extension",
+        "asha-gameplay-module-conformance",
+        "asha-gameplay-module-sdk",
+        "asha-gameplay-runtime-host"
       ],
       "approvedDependencyPaths": [
-        "../asha-engine/public-rust/game-rule-extension"
+        "../asha-engine/public-rust/game-rule-extension",
+        "../asha-engine/public-rust/gameplay-module-conformance",
+        "../asha-engine/public-rust/gameplay-module-sdk",
+        "../asha-engine/public-rust/gameplay-runtime-host"
+      ],
+      "forbiddenPathPatterns": [
+        "engine-rs/crates/*"
+      ]
+    },
+    {
+      "consumerRole": "asha-testing",
+      "approvedCrates": [
+        "asha-gameplay-module-conformance",
+        "asha-gameplay-module-sdk",
+        "asha-gameplay-runtime-host"
+      ],
+      "approvedDependencyPaths": [
+        "../asha-engine/public-rust/gameplay-module-conformance",
+        "../asha-engine/public-rust/gameplay-module-sdk",
+        "../asha-engine/public-rust/gameplay-runtime-host"
+      ],
+      "forbiddenPathPatterns": [
+        "engine-rs/crates/*"
+      ]
+    },
+    {
+      "consumerRole": "asha-rulebench",
+      "approvedCrates": [
+        "asha-gameplay-module-conformance",
+        "asha-gameplay-module-sdk",
+        "asha-gameplay-runtime-host"
+      ],
+      "approvedDependencyPaths": [
+        "../asha-engine/public-rust/gameplay-module-conformance",
+        "../asha-engine/public-rust/gameplay-module-sdk",
+        "../asha-engine/public-rust/gameplay-runtime-host"
       ],
       "forbiddenPathPatterns": [
         "engine-rs/crates/*"
@@ -40,7 +78,131 @@
         "GameExtensionHookReceipt",
         "GameExtensionReplayEvidence"
       ],
+      "requiredExposes": [
+        "GameRuleModule",
+        "WeaponEffectHookRequest",
+        "GameExtensionProposal"
+      ],
       "changelog": "docs/consumer-compatibility.md#rust-game-rule-extension-compatibility-log"
+    },
+    {
+      "crate": "asha-gameplay-module-conformance",
+      "status": "public",
+      "facadePath": "public-rust/gameplay-module-conformance",
+      "sourceOfTruth": "engine-rs/crates/rules/rule-project-bundle",
+      "intendedConsumerRole": "Public statically linked build, ProjectBundle bootstrap, invocation, state, save/reload, playback, and verification-replay conformance runner for downstream gameplay modules.",
+      "allowedConsumerRoles": [
+        "asha-demo",
+        "asha-testing",
+        "asha-rulebench"
+      ],
+      "dependencyForm": {
+        "kind": "path",
+        "example": "asha-gameplay-module-conformance = { path = \"../asha-engine/public-rust/gameplay-module-conformance\" }"
+      },
+      "exposes": [
+        "GameplayModuleConformanceCase",
+        "GameplayModuleConformanceCheck",
+        "GameplayModuleConformanceDeclaredRead",
+        "GameplayModuleConformanceGap",
+        "GameplayModuleConformanceProject",
+        "GameplayModuleConformanceReport",
+        "run_gameplay_module_conformance"
+      ],
+      "requiredExposes": [
+        "GameplayModuleConformanceCase",
+        "GameplayModuleConformanceReport",
+        "run_gameplay_module_conformance"
+      ],
+      "changelog": "docs/consumer-compatibility.md#rust-gameplay-module-conformance-compatibility-log"
+    },
+    {
+      "crate": "asha-gameplay-module-sdk",
+      "status": "public",
+      "facadePath": "public-rust/gameplay-module-sdk",
+      "sourceOfTruth": "engine-rs/crates/rules/gameplay-module-sdk",
+      "intendedConsumerRole": "Public Rust authoring, declared-read, state, and static-composition facade for downstream ASHA gameplay modules.",
+      "allowedConsumerRoles": [
+        "asha-demo",
+        "asha-testing",
+        "asha-rulebench"
+      ],
+      "dependencyForm": {
+        "kind": "path",
+        "example": "asha-gameplay-module-sdk = { path = \"../asha-engine/public-rust/gameplay-module-sdk\" }"
+      },
+      "exposes": [
+        "GameplayModuleBehavior",
+        "GameplayModuleContext",
+        "GameplayModuleActions",
+        "GameplayStaticModuleProvider",
+        "GameplayStaticCompositionBuilder",
+        "GameplayContractRef",
+        "GameplayEventEnvelope",
+        "GameplayReadPlan",
+        "GameplayReadRequest",
+        "GameplayReadViewRequirement",
+        "GameplayFrozenRead",
+        "GameplayOwnerQuery",
+        "GameplayModuleBindingRegistryBuilder",
+        "GameplayModuleBindingTarget",
+        "GameplayModuleConfiguration",
+        "GameplayModuleFact",
+        "GameplayTypedModuleStateAdapter",
+        "StandardGameplayEventKind",
+        "TriggerOverlapGameplayPayload",
+        "TypedGameplayEventCodec"
+      ],
+      "requiredExposes": [
+        "GameplayModuleBehavior",
+        "GameplayModuleActions",
+        "GameplayStaticModuleProvider"
+      ],
+      "changelog": "docs/consumer-compatibility.md#rust-gameplay-module-sdk-compatibility-log"
+    },
+    {
+      "crate": "asha-gameplay-runtime-host",
+      "status": "public",
+      "facadePath": "public-rust/gameplay-runtime-host",
+      "sourceOfTruth": "engine-rs/crates/rules/gameplay-runtime-host",
+      "intendedConsumerRole": "Public Rust host seam for statically composed gameplay modules, ProjectBundle bindings, validated prefab bootstrap/placement, trigger reconciliation, pre-commit decisions, actor pose binding, snapshots, and bounded readouts.",
+      "allowedConsumerRoles": [
+        "asha-demo",
+        "asha-testing",
+        "asha-rulebench"
+      ],
+      "dependencyForm": {
+        "kind": "path",
+        "example": "asha-gameplay-runtime-host = { path = \"../asha-engine/public-rust/gameplay-runtime-host\" }"
+      },
+      "exposes": [
+        "GameplayRuntimeHost",
+        "GameplayRuntimeHostError",
+        "GameplayRuntimeHostInput",
+        "GameplayRuntimeProjectInput",
+        "GameplayRuntimeSpatialEntity",
+        "GameplayRuntimeDeclaredReadPlan",
+        "GameplayRuntimeDecisionOwner",
+        "GameplayRuntimeDecisionOwnerOutput",
+        "GameplayDecisionMoment",
+        "GameplayDecisionReceipt",
+        "GameplayDecisionStatus",
+        "GameplayOperationWorkspace",
+        "GameplayRuntimeMovementReceipt",
+        "GameplayTriggerDefinition",
+        "GameplayRuntimeHostReadout",
+        "GameplayRuntimePrefabBootstrap",
+        "GameplayRuntimePrefabReadout"
+      ],
+      "requiredExposes": [
+        "GameplayRuntimeHost",
+        "GameplayRuntimeHostInput",
+        "GameplayRuntimeProjectInput",
+        "GameplayRuntimeDecisionOwner",
+        "GameplayDecisionReceipt",
+        "GameplayRuntimeHostReadout"
+      ],
+      "changelog": "docs/consumer-compatibility.md#rust-gameplay-runtime-host-compatibility-log"
     }
   ]
 }

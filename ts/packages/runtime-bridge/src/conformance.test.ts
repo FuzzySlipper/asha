@@ -56,6 +56,7 @@ import {
   createNativeRustRuntimeBridgeProvider,
   createNativeGameRuntimeLauncher,
   createNativeRuntimeBridge,
+  createDefaultBrowserInputCatalog,
   createSelectedBackendGameRuntimeLauncher,
   frameCursor,
   installNativeRustRuntimeBridgeProvider,
@@ -565,6 +566,9 @@ void test('manifest exposes public camera view operations', () => {
     [
       ['apply_collision_constrained_camera_input', 'applyCollisionConstrainedCameraInput', 'stable'],
       ['create_camera', 'createCamera', 'stable'],
+      ['apply_camera_mode_command', 'applyCameraModeCommand', 'stable'],
+      ['apply_camera_navigation_input', 'applyCameraNavigationInput', 'stable'],
+      ['read_camera_controller_state', 'readCameraControllerState', 'stable'],
       ['apply_first_person_camera_input', 'applyFirstPersonCameraInput', 'stable'],
       ['read_camera_projection', 'readCameraProjection', 'stable'],
     ],
@@ -749,6 +753,19 @@ void test('mock: readRenderDiffs returns a contract-shaped frame', () => {
   assert.deepEqual(frame, { ops: [] });
 });
 
+void test('mock: readProjectionFrame preserves the G1 scene plus presentation envelope', () => {
+  const bridge = createMockRuntimeBridge();
+  bridge.initializeEngine({ seed: 1 });
+  const frame = bridge.readProjectionFrame(frameCursor(4));
+  assert.equal(frame.schemaVersion, 1);
+  assert.equal(frame.authorityTick, 4);
+  assert.deepEqual(frame.scene, { ops: [] });
+  assert.deepEqual(frame.presentation, {
+    replayScope: 'excludedFromReplayTruth',
+    ops: [],
+  });
+});
+
 void test('mock: project bundle load → save → status → unload, with fail-closed save', () => {
   const bridge = createMockRuntimeBridge();
   // Save before load fails closed.
@@ -888,6 +905,44 @@ void test('native bridge matches the mock when the addon is built (else skip)', 
   // Parity with MockRuntimeBridge / Rust ReferenceBridge for the native authority sequence.
   const handle = bridge.initializeEngine({ seed: 7 }) as number;
   assert.equal(typeof handle, 'number');
+  const inputSnapshot = bridge.configureInputSession({
+    catalog: createDefaultBrowserInputCatalog(),
+    initialContexts: ['gameplay'],
+  });
+  assert.equal(inputSnapshot.contextState.activeContexts[0]?.contextId, 'gameplay');
+  const resolvedInput = bridge.submitRawInput({
+    sequence: 0,
+    platformKind: 'keyboardKey',
+    control: 'KeyW',
+    phase: 'pressed',
+    value: { kind: 'button', pressed: true },
+  });
+  assert.equal(resolvedInput.action?.actionId, 'gameplay.move.forward');
+  assert.ok(resolvedInput.record);
+  const replayedInput = bridge.replayResolvedInputAction(resolvedInput.record);
+  assert.equal(replayedInput.accepted, true);
+  assert.deepEqual(replayedInput.action, resolvedInput.action);
+  const replayedTwice = bridge.replayResolvedInputAction(resolvedInput.record);
+  assert.equal(replayedTwice.accepted, false);
+  assert.equal(replayedTwice.diagnostics[0]?.code, 'replayAlreadyDelivered');
+  assert.equal(bridge.applyInputContextCommand({ operation: 'push', contextId: 'menu' }).accepted, true);
+  assert.equal(bridge.readInputContextState().activeContexts.at(-1)?.contextId, 'menu');
+  const pause = bridge.applyTimeControlCommand({ operation: 'pause' });
+  assert.equal(pause.accepted, true);
+  assert.equal(bridge.stepSimulation({ tick: 3 }).tick, 0);
+  const exactStep = bridge.applyTimeControlCommand({ operation: 'stepTicks', ticks: 3 });
+  assert.equal(exactStep.exactTicksAdvanced, 3);
+  assert.equal(bridge.readTimeControlState().authorityTick, 3);
+  assert.equal(bridge.applyTimeControlCommand({ operation: 'resume' }).accepted, true);
+  const menuConsumedInput = bridge.submitRawInput({
+    sequence: 1,
+    platformKind: 'keyboardKey',
+    control: 'KeyW',
+    phase: 'held',
+    value: { kind: 'button', pressed: true },
+  });
+  assert.equal(menuConsumedInput.action, null);
+  assert.equal(menuConsumedInput.consumed, true);
   assert.deepEqual(bridge.loadProjectBundle({ bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 1001 }), {
     loadedProjectBundle: 1001,
     fatalCount: 0,

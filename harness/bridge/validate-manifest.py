@@ -56,7 +56,10 @@ KNOWN_TRANSITIONAL_PROTOCOL_REFS = {
 PROTOCOL_MODULE_TO_GENERATED_FILE = {
     "protocol_diagnostics": "diagnostics.ts",
     "protocol_game_rules": "gameRules.ts",
+    "protocol_input": "input.ts",
+    "protocol_time_control": "timeControl.ts",
     "protocol_render": "render.ts",
+    "protocol_presentation": "presentation.ts",
     "protocol_replay": "replay.ts",
     "protocol_scene": "scene.ts",
     "protocol_view": "view.ts",

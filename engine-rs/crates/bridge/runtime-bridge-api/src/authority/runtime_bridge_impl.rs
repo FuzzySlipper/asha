@@ -2,45 +2,47 @@ use super::*;
 
 impl RuntimeBridge for EngineBridge {
     fn initialize_engine(&mut self, config: EngineConfig) -> BridgeResult<EngineHandle> {
-        let handle = EngineHandle::new(config.seed);
-        self.engine = Some(handle);
-        // Deterministic: seed buffer is the first provider handle (0), so the
-        // boundary buffer verbs below operate on the real lifetime model.
-        self.buffers.reset();
-        let seed_handle = self.buffers.create(
-            buffer_provider::BufferKind::Opaque,
-            buffer_provider::BufferLifetime::Manual,
-            None,
-            config.seed.to_le_bytes().to_vec(),
-        );
-        debug_assert_eq!(seed_handle.raw(), 0);
+        initialization::initialize(self, config)
+    }
 
-        // Stand up the voxel authority for the launch/edit loop: a resident origin
-        // chunk so edits land, plus the launch material catalog. Start clean so a
-        // later submit's dirty marking is observable.
-        let world = Self::launch_world();
-        self.reset_voxel_edit_history(world);
-        self.materials = MaterialCatalog::new([1, 2, 3].into_iter().map(VoxelMaterialId::new));
-        self.cameras.clear();
-        self.next_camera = 1;
-        self.fps_session = None;
-        self.fps_seed = None;
-        self.fps_epoch = 0;
-        self.game_rule_modules.clear();
-        self.game_rule_active_modifiers.clear();
-        self.game_rule_recent_trace.clear();
-        self.game_rule_recent_replay_hashes.clear();
-        let (sources, source_metadata) = Self::seeded_voxel_conversion_authority()?;
-        self.voxel_conversion_sources = sources;
-        self.voxel_conversion_source_metadata = source_metadata;
-        self.voxel_conversion_targets = Self::seeded_voxel_conversion_targets();
-        self.voxel_conversion_plan = None;
-        self.voxel_conversion_evidence.clear();
-        self.voxel_model_infos.clear();
-        self.active_voxel_model = None;
-        self.voxel_annotation_layers.clear();
+    fn configure_input_session(
+        &mut self,
+        request: InputSessionConfigureRequest,
+    ) -> BridgeResult<InputSessionSnapshot> {
+        input::configure(self, request)
+    }
 
-        Ok(handle)
+    fn apply_input_context_command(
+        &mut self,
+        command: InputContextCommand,
+    ) -> BridgeResult<InputContextChangeReceipt> {
+        input::apply_context_command(self, command)
+    }
+
+    fn submit_raw_input(&self, sample: RawInputSample) -> BridgeResult<InputResolutionReceipt> {
+        input::submit(self, sample)
+    }
+
+    fn replay_resolved_input_action(
+        &mut self,
+        record: RecordedInputAction,
+    ) -> BridgeResult<InputActionReplayReceipt> {
+        input::replay(self, record)
+    }
+
+    fn read_input_context_state(&self) -> BridgeResult<InputContextStackState> {
+        input::read_context_state(self)
+    }
+
+    fn apply_time_control_command(
+        &mut self,
+        command: TimeControlCommand,
+    ) -> BridgeResult<TimeControlReceipt> {
+        time_control::apply(self, command)
+    }
+
+    fn read_time_control_state(&self) -> BridgeResult<TimeControlState> {
+        time_control::read(self)
     }
 
     fn submit_commands(&mut self, batch: CommandBatch) -> BridgeResult<CommandResult> {
@@ -116,6 +118,22 @@ impl RuntimeBridge for EngineBridge {
                 "unknown camera handle",
             )
         })?;
+        let controller = self
+            .camera_controllers
+            .get(&envelope.camera.raw())
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::UnknownHandle,
+                    "unknown camera controller",
+                )
+            })?;
+        if controller.mode != CameraMode::FirstPerson {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "collision-constrained input requires firstPerson camera mode",
+            ));
+        }
         let attempted = match envelope.movement_mode {
             FirstPersonMovementMode::Grounded => {
                 Self::integrate_grounded_camera_snapshot(before, envelope.input, envelope.tick)
@@ -138,6 +156,14 @@ impl RuntimeBridge for EngineBridge {
             ..before
         };
         self.cameras.insert(envelope.camera.raw(), after);
+        let controller = Self::sync_first_person_controller(&controller, after).map_err(|_| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "collision-constrained input requires firstPerson camera mode",
+            )
+        })?;
+        self.camera_controllers
+            .insert(envelope.camera.raw(), controller);
         let (min, max) = Self::aabb_for_pose(after.pose, envelope.shape);
         let collision_identity = projection.identity(world);
         let collision_projection_hash = collision_identity.projection_hash_label();
@@ -1095,6 +1121,7 @@ impl RuntimeBridge for EngineBridge {
         self.fps_seed = Some(request);
         self.fps_epoch = self.fps_epoch.saturating_add(1);
         self.game_rule_modules = game_rule_modules;
+        self.reset_presentation_projection();
         Self::fps_snapshot(
             self.fps_session.as_ref().expect("just committed"),
             self.fps_epoch,
@@ -1135,7 +1162,29 @@ impl RuntimeBridge for EngineBridge {
             .fps_session_mut("apply_fps_primary_fire")?
             .apply_primary_fire_for_roles(&projection, ray, tick, shooter_role, target_role, 0)
             .map_err(Self::fps_runtime_error)?;
-        Ok(Self::primary_fire_result(receipt))
+        let result = Self::primary_fire_result(receipt);
+        self.project_primary_fire_audio(request, &result)?;
+        self.project_primary_fire_particles(request, &result)?;
+        self.project_primary_fire_billboards(request, &result)?;
+        self.project_primary_fire_telemetry_overlay(request.tick)?;
+        Ok(result)
+    }
+
+    fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame> {
+        self.require_initialized("read_projection_frame")?;
+        let frame = self.projection_frame.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "projection frame is unavailable after initialization",
+            )
+        })?;
+        if cursor > frame.authority_tick {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "projection cursor is ahead of the latest authority tick",
+            ));
+        }
+        Ok(frame.clone())
     }
 
     fn invoke_game_extension_weapon_effect(
@@ -1145,9 +1194,14 @@ impl RuntimeBridge for EngineBridge {
         self.require_initialized("invoke_game_extension_weapon_effect")?;
         let module =
             Self::resolve_weapon_effect_game_rule_module(&self.game_rule_modules, &request.hook)?;
-        let proposal = match module.evaluate_weapon_effect(&request.hook) {
-            Ok(proposal) => proposal,
-            Err(diagnostic) => {
+        let transformed = match rule_gameplay_fabric::run_legacy_weapon_effect_transform(
+            &module,
+            &request.hook,
+        ) {
+            Ok(outcome) => outcome,
+            Err(rule_gameplay_fabric::LegacyWeaponEffectTransformError::ModuleRejected(
+                diagnostic,
+            )) => {
                 let hook_receipt = rejected_receipt(&request.hook, diagnostic);
                 let replay_evidence =
                     Self::extension_replay_evidence(&hook_receipt, "rejectedByModule", Vec::new());
@@ -1157,38 +1211,63 @@ impl RuntimeBridge for EngineBridge {
                     primary_fire: None,
                 });
             }
-        };
-        let hook_receipt = proposed_receipt(
-            &request.hook,
-            proposal,
-            vec![GameExtensionTraceEntry {
-                step: 1,
-                code: "module.proposed_damage_modifier".to_string(),
-                message: "resolved Rust game rule module returned a typed damage modifier"
-                    .to_string(),
-                refs: vec![
-                    module.manifest().module_ref.module_id.clone(),
-                    module.manifest().module_ref.version.clone(),
-                    module.manifest().module_ref.contract_hash.clone(),
-                ],
-            }],
-        );
-        let damage_delta = match Self::validated_damage_modifier_delta(&request.hook, &hook_receipt)
-        {
-            Ok(delta) => delta,
-            Err(diagnostic) => {
-                let mut rejected = hook_receipt;
-                rejected.status = GameExtensionReceiptStatus::RejectedByModule;
-                rejected.diagnostics.push(diagnostic);
+            Err(rule_gameplay_fabric::LegacyWeaponEffectTransformError::DecisionRejected(
+                receipt,
+            )) => {
+                let detail = receipt
+                    .diagnostics
+                    .first()
+                    .map(|diagnostic| diagnostic.message.clone())
+                    .unwrap_or_else(|| "compatibility Transform was rejected".to_owned());
+                let diagnostic = Self::game_extension_diagnostic(
+                    GameExtensionDiagnosticCode::InvalidProposal,
+                    "compatibility.transform",
+                    detail,
+                );
+                let hook_receipt = rejected_receipt(&request.hook, diagnostic);
                 let replay_evidence =
-                    Self::extension_replay_evidence(&rejected, "invalidProposal", Vec::new());
+                    Self::extension_replay_evidence(&hook_receipt, "invalidProposal", Vec::new());
                 return Ok(GameExtensionWeaponEffectInvocationResult {
-                    hook_receipt: rejected,
+                    hook_receipt,
                     replay_evidence,
                     primary_fire: None,
                 });
             }
+            Err(error) => {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!("legacy weapon Transform compatibility failed: {error}"),
+                ));
+            }
         };
+        let hook_receipt = proposed_receipt(
+            &request.hook,
+            transformed.proposal,
+            vec![
+                GameExtensionTraceEntry {
+                    step: 1,
+                    code: "module.proposed_damage_modifier".to_string(),
+                    message: "resolved Rust game rule module returned a typed damage modifier"
+                        .to_string(),
+                    refs: vec![
+                        module.manifest().module_ref.module_id.clone(),
+                        module.manifest().module_ref.version.clone(),
+                        module.manifest().module_ref.contract_hash.clone(),
+                    ],
+                },
+                GameExtensionTraceEntry {
+                    step: 2,
+                    code: "gameplayFabric.transformAccepted".to_string(),
+                    message: "legacy weapon proposal passed the common Transform coordinator and combat owner route".to_string(),
+                    refs: vec![
+                        transformed.decision_receipt.registry_digest.clone(),
+                        transformed.decision_receipt.final_workspace_hash.clone(),
+                        transformed.decision_receipt.receipt_hash.clone(),
+                    ],
+                },
+            ],
+        );
+        let damage_delta = transformed.damage_delta;
         let primary_fire = request.primary_fire;
         let shooter_role = primary_fire
             .shooter_role
@@ -1218,6 +1297,10 @@ impl RuntimeBridge for EngineBridge {
             )
             .map_err(Self::fps_runtime_error)?;
         let primary_fire = Self::primary_fire_result(receipt);
+        self.project_primary_fire_audio(request.primary_fire, &primary_fire)?;
+        self.project_primary_fire_particles(request.primary_fire, &primary_fire)?;
+        self.project_primary_fire_billboards(request.primary_fire, &primary_fire)?;
+        self.project_primary_fire_telemetry_overlay(request.primary_fire.tick)?;
         let replay_evidence = Self::extension_replay_evidence(
             &hook_receipt,
             "accepted",
@@ -1323,6 +1406,7 @@ impl RuntimeBridge for EngineBridge {
         let loaded = load_fps_project_bundle(input).map_err(Self::fps_runtime_error)?;
         self.fps_session = Some(loaded);
         self.fps_epoch = self.fps_epoch.saturating_add(1);
+        self.reset_presentation_projection();
         Self::fps_snapshot(
             self.fps_session.as_ref().expect("just restarted"),
             self.fps_epoch,
@@ -1356,51 +1440,39 @@ impl RuntimeBridge for EngineBridge {
     }
 
     fn step_simulation(&mut self, input: StepInputEnvelope) -> BridgeResult<StepResult> {
-        if self.engine.is_none() {
-            return Err(RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::NotInitialized,
-                "step_simulation called before initialize_engine",
-            ));
-        }
-        Ok(StepResult {
-            tick: input.tick,
-            diff_count: (input.tick % 4) as u32,
-        })
+        time_control::step(self, input)
     }
 
     fn create_camera(&mut self, request: CameraCreateRequest) -> BridgeResult<CameraSnapshot> {
-        self.require_initialized("create_camera")?;
-        Self::validate_create_request(&request)?;
-        let camera = protocol_view::CameraHandle::new(self.next_camera);
-        self.next_camera += 1;
-        let snapshot = CameraSnapshot {
-            camera,
-            tick: 0,
-            pose: request.initial_pose,
-            basis: Self::basis_from_pose(request.initial_pose),
-            projection: request.projection,
-            viewport: request.viewport,
-        };
-        self.cameras.insert(camera.raw(), snapshot);
-        Ok(snapshot)
+        self.create_camera_authority(request)
+    }
+
+    fn apply_camera_mode_command(
+        &mut self,
+        command: CameraModeCommand,
+    ) -> BridgeResult<CameraModeChangeReceipt> {
+        self.apply_camera_mode_authority(command)
+    }
+
+    fn apply_camera_navigation_input(
+        &mut self,
+        envelope: CameraNavigationInputEnvelope,
+    ) -> BridgeResult<CameraNavigationReceipt> {
+        self.apply_camera_navigation_authority(envelope)
+    }
+
+    fn read_camera_controller_state(
+        &self,
+        request: CameraControllerReadRequest,
+    ) -> BridgeResult<CameraControllerState> {
+        self.read_camera_controller_authority(request)
     }
 
     fn apply_first_person_camera_input(
         &mut self,
         envelope: FirstPersonCameraInputEnvelope,
     ) -> BridgeResult<CameraSnapshot> {
-        self.require_initialized("apply_first_person_camera_input")?;
-        let prior = *self.cameras.get(&envelope.camera.raw()).ok_or_else(|| {
-            RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::UnknownHandle,
-                "unknown camera handle",
-            )
-        })?;
-        let input = envelope.input;
-        Self::validate_camera_input(input)?;
-        let snapshot = Self::integrate_camera_snapshot(prior, input, envelope.tick);
-        self.cameras.insert(envelope.camera.raw(), snapshot);
-        Ok(snapshot)
+        self.apply_first_person_camera_authority(envelope)
     }
 
     fn apply_enemy_direct_nav_movement(
@@ -1510,50 +1582,18 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: ProjectBundleLoadRequest,
     ) -> BridgeResult<CompositionStatus> {
-        // Fail closed on a newer bundle; the prior loaded ProjectBundle is left untouched
-        // (we only mutate `loaded_project_bundle` on success — the staged commit/swap).
-        if request.bundle_schema_version > ENGINE_SUPPORTED_VERSION
-            || request.protocol_version > ENGINE_SUPPORTED_VERSION
-        {
-            return Err(RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::InvalidInput,
-                format!(
-                    "unsupported bundle schema {} / protocol {}",
-                    request.bundle_schema_version, request.protocol_version
-                ),
-            ));
-        }
-        self.loaded_project_bundle = Some(request.scene_id);
-        Ok(CompositionStatus {
-            loaded_project_bundle: Some(request.scene_id),
-            ..CompositionStatus::empty()
-        })
+        self.load_project_bundle_authority(request)
     }
 
     fn save_project_bundle(&mut self) -> BridgeResult<ProjectBundleSaveSummary> {
-        if self.loaded_project_bundle.is_none() {
-            return Err(RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::NotInitialized,
-                "save_project_bundle called with no ProjectBundle loaded",
-            ));
-        }
-        // Deterministic stand-in for the real save/compaction summary.
-        Ok(ProjectBundleSaveSummary {
-            artifacts_written: 3,
-            compacted_edits: 0,
-            retained_edits: 0,
-        })
+        self.save_project_bundle_authority()
     }
 
     fn get_project_bundle_composition_status(&self) -> BridgeResult<CompositionStatus> {
-        Ok(CompositionStatus {
-            loaded_project_bundle: self.loaded_project_bundle,
-            ..CompositionStatus::empty()
-        })
+        self.project_bundle_composition_status_authority()
     }
 
     fn unload_project_bundle(&mut self) -> BridgeResult<()> {
-        self.loaded_project_bundle = None;
-        Ok(())
+        self.unload_project_bundle_authority()
     }
 }

@@ -15,6 +15,9 @@
     "typecheck": "tsc --build",
     "test": "tsc --build && node --test 'dist/**/*.test.js'"
   },
+  "dependencies": {
+    "@asha/contracts": "workspace:*"
+  },
   "compatibility": {
     "surface": "@asha/game-workspace",
     "metadataFile": "compatibility.json",

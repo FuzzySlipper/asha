@@ -468,7 +468,12 @@ def check_rust_manifest() -> None:
         exposes = record.get("exposes")
         if not isinstance(exposes, list) or not all(isinstance(item, str) for item in exposes):
             fail(f"{crate_name} exposes must be a string array")
-        for required in ["GameRuleModule", "WeaponEffectHookRequest", "GameExtensionProposal"]:
+        required_exposes = record.get("requiredExposes")
+        if not isinstance(required_exposes, list) or not all(
+            isinstance(item, str) for item in required_exposes
+        ):
+            fail(f"{crate_name} requiredExposes must be a string array")
+        for required in required_exposes:
             if required not in exposes:
                 fail(f"{crate_name} must expose {required}")
 

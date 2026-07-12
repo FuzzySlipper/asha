@@ -41,10 +41,7 @@ import {
   NativeRuntimeBridge,
   RuntimeBridgeError,
   frameCursor,
-  type ModelMaterialPreviewRequest,
   type RuntimeBridge,
-  type RuntimeBufferHandle,
-  type ReplaySessionHandle,
 } from './index.js';
 import { fpsLoadRequest } from './native-fps-fixtures.test-fixture.js';
 import { NATIVE_GENERATED_TUNNEL_RECEIPT } from './native-generated-tunnel-fixture.js';
@@ -55,59 +52,22 @@ import {
   createNativeVoxelMeshSourceHandlers,
 } from './native-voxel-mesh-source.test-fixture.js';
 import { createVoxelPaletteUpdateHandler, voxelPaletteUpdateRequest } from './native-voxel-palette.test-fixture.js';
-const MODEL_MATERIAL_PREVIEW_REQUEST: ModelMaterialPreviewRequest = {
-  catalogEntry: {
-    id: 'material.copper',
-    kind: 'material',
-    version: 1,
-    hash: 'sha256-material-copper',
-    sourcePath: null,
-    label: 'Copper',
-    dependencies: [],
-    material: {
-      render: { color: { r: 0.8, g: 0.4, b: 0.2, a: 1 }, texture: null, roughness: 0.6, emissive: 0, uvStrategy: 'flat' },
-      collision: { solid: true, collidable: true, occludes: true, structuralClass: 'solid' },
-    },
-  },
-  meshAsset: {
-    asset: 'mesh.preview-cube',
-    payload: {
-      layout: { vertexCount: 8, indexCount: 36, indexWidth: 'u32', attributes: [{ name: 'position', components: 3, kind: 'f32' }] },
-      groups: [{ materialSlot: 0, start: 0, count: 36 }],
-      bounds: { min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] },
-      source: { kind: 'inline', positions: [], normals: [], indices: [] },
-      provenance: 'staticAsset',
-    },
-    materialSlots: [{ slot: 0, material: 'material.copper' }],
-    collision: { kind: 'aabbFallback' },
-  },
-  instanceHandle: 7001 as import('@asha/contracts').RenderHandle,
-};
-const CAMERA_CREATE_REQUEST = {
-  initialPose: { position: [0, 1.6, 0] as const, yawDegrees: 0, pitchDegrees: 0 },
-  projection: { fovYDegrees: 60, near: 0.1, far: 1000 },
-  viewport: { width: 1280, height: 720 },
-} as const;
-const CAMERA_INPUT = {
-  camera: 1 as import('@asha/contracts').CameraHandle,
-  tick: 1,
-  input: {
-    moveForward: 1,
-    moveRight: 0,
-    moveUp: 0,
-    yawDeltaDegrees: 15,
-    pitchDeltaDegrees: -5,
-    dtSeconds: 1 / 60,
-    moveSpeedUnitsPerSecond: 3,
-  },
-} as const;
-const COLLISION_CAMERA_INPUT: CollisionConstrainedCameraInputEnvelope = {
-  ...CAMERA_INPUT,
-  grid: 1,
-  movementMode: 'grounded',
-  shape: { halfExtents: [0.2, 0.2, 0.2] },
-  policy: { mode: 'axis_separable_slide', maxIterations: 3 },
-};
+import {
+  CAMERA_CREATE_REQUEST,
+  CAMERA_INPUT,
+  COLLISION_CAMERA_INPUT,
+  INPUT_CONTEXT_COMMAND,
+  INPUT_SESSION_CONFIGURE_REQUEST,
+  MODEL_MATERIAL_PREVIEW_REQUEST,
+  RAW_INPUT_SAMPLE, RECORDED_INPUT_ACTION,
+  createNativeInputHandlers,
+} from './native-fail-closed-inputs.test-fixture.js';
+import { createNativeOperationInvocations } from './native-operation-invocations.test-fixture.js';
+import {
+  CAMERA_MODE_COMMAND,
+  CAMERA_NAVIGATION_INPUT,
+  createNativeCameraControllerHandlers,
+} from './native-camera-controller.test-fixture.js';
 
 const HASH_A = 'fnv1a64:00000000000000aa';
 const HASH_B = 'fnv1a64:00000000000000bb';
@@ -463,8 +423,10 @@ function fakeAddon(calls: string[] = []): NativeAddon {
     },
     stepSimulation: (_handle: number, tick: number) => {
       calls.push(`step:${tick}`);
-      return 9;
+      return { tick, diffCount: 9 };
     },
+    ...createNativeInputHandlers(HASH_A, HASH_B, HASH_C),
+    ...createNativeCameraControllerHandlers(calls, HASH_A, HASH_B, HASH_C),
     createCamera: (_handle: number, request: CameraCreateRequest) => {
       calls.push(`createCamera:${request.initialPose.position.join(',')}`);
       return {
@@ -819,6 +781,10 @@ function fakeAddon(calls: string[] = []): NativeAddon {
     readRenderDiffs: (_handle: number, cursor: number) => {
       calls.push(`render:${cursor}`);
       return { ops: [{ op: 'sentinel' }] } as never;
+    },
+    readProjectionFrame: (_handle: number, cursor: number) => {
+      calls.push(`projection:${cursor}`);
+      return { schemaVersion: 1, authorityTick: cursor, scene: { ops: [] }, presentation: { replayScope: 'excludedFromReplayTruth', ops: [] } };
     },
     saveProjectBundle: (handle: number) => {
       void handle;
@@ -1278,156 +1244,46 @@ function fakeAddon(calls: string[] = []): NativeAddon {
   } as unknown as NativeAddon;
 }
 
-// One invocation per facade method. The native bridge is fully initialized first
-// so that wired ops exercise their happy path rather than `not_initialized`.
-// Typed against the `RuntimeBridge` interface (which carries the operation
-// payloads); a `NativeRuntimeBridge` instance is assignable to it.
-const INVOKE = new Map<string, (b: RuntimeBridge) => unknown>([
-  ['initializeEngine', (b) => b.initializeEngine({ seed: 7 })],
-  ['stepSimulation', (b) => b.stepSimulation({ tick: 6 })],
-  ['submitCommands', (b) => b.submitCommands({ commands: [] })],
-  [
-    'pickVoxel',
-    (b) => b.pickVoxel({ grid: 1, origin: [0, 0, 0], direction: [1, 0, 0], maxDistance: 10 }),
-  ],
-  [
-    'applyCollisionConstrainedCameraInput',
-    (b) => b.applyCollisionConstrainedCameraInput(COLLISION_CAMERA_INPUT),
-  ],
-  ['applyGeneratedTunnelToRuntimeWorld', (b) => b.applyGeneratedTunnelToRuntimeWorld({ preset: 'tiny-enclosed', seed: 17 })],
-  [
-    'selectVoxel',
-    (b) =>
-      b.selectVoxel({
-        camera: CAMERA_INPUT.camera,
-        grid: 1,
-        viewport: null,
-        screenPoint: { x: 0.5, y: 0.5, space: 'normalized_0_1' },
-        maxDistance: 10,
-      }),
-  ],
-  ['readVoxelMeshEvidence', (b) => b.readVoxelMeshEvidence({ grid: 1, chunks: [] })],
-  ['loadFpsRuntimeSession', (b) => b.loadFpsRuntimeSession(fpsLoadRequest())],
-  ['readFpsRuntimeSession', (b) => b.readFpsRuntimeSession()],
-  ['applyFpsPrimaryFire', (b) => b.applyFpsPrimaryFire({ tick: 9, origin: [2.5, 1.5, 1.5], direction: [0, 0, 1] })],
-  ['invokeGameExtensionWeaponEffect', (b) => b.invokeGameExtensionWeaponEffect({
-    hook: {
-      moduleRef: {
-        moduleId: 'asha.reference.primary_fire_damage_modifier',
-        version: '0.1.0',
-        contractHash: 'sha256:asha-reference-primary-fire-damage-modifier-v0',
-      },
-      hookId: 'weapon.primary.damage_modifier',
-      requestId: 'request.native-fixture',
-      tick: 9,
-      source: entityId(101),
-      target: entityId(777),
-      baseDamage: 75,
-      rangeMillimeters: 16000,
-      tags: ['primary-fire'],
-      inputHash: HASH_A,
-    },
-    primaryFire: { tick: 9, origin: [2.5, 1.5, 1.5], direction: [0, 0, 1] },
-  })],
-  ['validateGameRuleCatalog', (b) => b.validateGameRuleCatalog(GAME_RULE_CATALOG)],
-  ['submitGameRuleEffectIntent', (b) => b.submitGameRuleEffectIntent({
-    catalog: GAME_RULE_CATALOG,
-    request: GAME_RULE_REQUEST,
-  })],
-  ['readGameRuleRuntimeReadout', (b) => b.readGameRuleRuntimeReadout()],
-  ['restartFpsRuntimeSession', (b) => b.restartFpsRuntimeSession({ expectedEpoch: 1 })],
-  ['readFpsEncounterDirector', (b) => b.readFpsEncounterDirector({
-    outcomeKind: 'in_progress',
-    terminal: false,
-    enemyDead: false,
-    playerDead: false,
-    lifecycleHash: HASH_A,
-  })],
-  ['applyFpsEncounterTransition', (b) => b.applyFpsEncounterTransition({
-    presetId: 'generated-tunnel-small-encounter',
-    action: 'activate',
-    lifecycle: {
-      outcomeKind: 'in_progress',
-      terminal: false,
-      enemyDead: false,
-      playerDead: false,
-      lifecycleHash: HASH_A,
-    },
-  })],
-  ['planVoxelConversion', (b) => b.planVoxelConversion(VOXEL_CONVERSION_PLAN_REQUEST)],
-  ['registerVoxelConversionSource', (b) => b.registerVoxelConversionSource(VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST)],
-  ['registerVoxelConversionMeshAsset', (b) => b.registerVoxelConversionMeshAsset(VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST)],
-  ['importVoxelConversionMeshSource', (b) => b.importVoxelConversionMeshSource(VOXEL_CONVERSION_MESH_SOURCE_IMPORT_REQUEST)],
-  ['readVoxelConversionSourceMetadata', (b) => b.readVoxelConversionSourceMetadata({
-    source: VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST.source,
-  })],
-  ['previewVoxelConversion', (b) => b.previewVoxelConversion({
-    planId: 'fnv1a64:0000000000000101',
-    expectedPlanHash: VOXEL_PLAN_HASH,
-  })],
-  ['applyVoxelConversion', (b) => b.applyVoxelConversion({
-    planId: 'fnv1a64:0000000000000101',
-    expectedPlanHash: VOXEL_PLAN_HASH,
-    expectedPreviewHash: VOXEL_PREVIEW_HASH,
-  })],
-  ['exportVoxelConversionEvidence', (b) => b.exportVoxelConversionEvidence(VOXEL_CONVERSION_EVIDENCE)],
-  ['readVoxelModelInfo', (b) => b.readVoxelModelInfo(VOXEL_MODEL_INFO_REQUEST)],
-  ['readVoxelModelWindow', (b) => b.readVoxelModelWindow(VOXEL_MODEL_WINDOW_REQUEST)],
-  ['exportVoxelVolumeAsset', (b) => b.exportVoxelVolumeAsset(VOXEL_VOLUME_ASSET_EXPORT_REQUEST)],
-  ['saveVoxelVolumeAsset', (b) => b.saveVoxelVolumeAsset(VOXEL_VOLUME_ASSET_SAVE_REQUEST)],
-  ['updateVoxelVolumeAssetPalette', (b) => b.updateVoxelVolumeAssetPalette(voxelPaletteUpdateRequest(VOXEL_VOLUME_ASSET_LOAD_REQUEST.asset))],
-  ['initializeVoxelVolumeAuthoring', (b) => b.initializeVoxelVolumeAuthoring(VOXEL_VOLUME_AUTHORING_INITIALIZE_REQUEST)],
-  ['loadVoxelVolumeAsset', (b) => b.loadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_LOAD_REQUEST)],
-  ['unloadVoxelVolumeAsset', (b) => b.unloadVoxelVolumeAsset(VOXEL_VOLUME_ASSET_UNLOAD_REQUEST)],
-  ['validateVoxelAnnotationLayer', (b) => b.validateVoxelAnnotationLayer(VOXEL_ANNOTATION_VALIDATION_REQUEST)],
-  ['loadVoxelAnnotationLayer', (b) => b.loadVoxelAnnotationLayer(VOXEL_ANNOTATION_LOAD_REQUEST)],
-  ['readVoxelAnnotationQuery', (b) => b.readVoxelAnnotationQuery(VOXEL_ANNOTATION_QUERY_REQUEST)],
-  ['applyVoxelAnnotationEdit', (b) => b.applyVoxelAnnotationEdit(VOXEL_ANNOTATION_EDIT_REQUEST)],
-  ['exportVoxelAnnotationLayer', (b) => b.exportVoxelAnnotationLayer(VOXEL_ANNOTATION_EXPORT_REQUEST)],
-  ['readVoxelEditHistory', (b) => b.readVoxelEditHistory(VOXEL_EDIT_HISTORY_READ_REQUEST)],
-  ['previewVoxelEditRevert', (b) => b.previewVoxelEditRevert(VOXEL_EDIT_HISTORY_REVERT_REQUEST)],
-  [
-    'applyVoxelEditRevert',
-    (b) => b.applyVoxelEditRevert({ ...VOXEL_EDIT_HISTORY_REVERT_REQUEST, mode: 'apply_revert' }),
-  ],
-  ['undoVoxelEdit', (b) => b.undoVoxelEdit(VOXEL_EDIT_HISTORY_UNDO_REQUEST)],
-  ['redoVoxelEdit', (b) => b.redoVoxelEdit(VOXEL_EDIT_HISTORY_REDO_REQUEST)],
-  ['readModelMaterialPreview', (b) => b.readModelMaterialPreview(MODEL_MATERIAL_PREVIEW_REQUEST)],
-  ['readSceneObjectSnapshot', (b) => b.readSceneObjectSnapshot()],
-  [
-    'applySceneObjectCommand',
-    (b) =>
-      b.applySceneObjectCommand({
-        expectedDocumentHash: 1,
-        command: { kind: 'select', id: null },
-      }),
-  ],
-  ['readRenderDiffs', (b) => b.readRenderDiffs(frameCursor(0))],
-  ['createCamera', (b) => b.createCamera(CAMERA_CREATE_REQUEST)],
-  ['applyFirstPersonCameraInput', (b) => b.applyFirstPersonCameraInput(CAMERA_INPUT)],
-  [
-    'applyEnemyDirectNavMovement',
-    (b) =>
-      b.applyEnemyDirectNavMovement({
-        entity: 777,
-        seedPosition: [0, 0.5, -2.6],
-        target: [0, 1.62, 1.25],
-        maxStepUnits: 0.35,
-      }),
-  ],
-  ['readCameraProjection', (b) => b.readCameraProjection({ camera: CAMERA_INPUT.camera, viewport: null })],
-  ['getBuffer', (b) => b.getBuffer(0 as RuntimeBufferHandle)],
-  ['releaseBuffer', (b) => b.releaseBuffer(0 as RuntimeBufferHandle)],
-  [
-    'loadProjectBundle',
-    (b) => b.loadProjectBundle({ bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 1 }),
-  ],
-  ['saveProjectBundle', (b) => b.saveProjectBundle()],
-  ['getProjectBundleCompositionStatus', (b) => b.getProjectBundleCompositionStatus()],
-  ['unloadProjectBundle', (b) => b.unloadProjectBundle()],
-  ['loadReplayFixture', (b) => b.loadReplayFixture({ name: 'x', steps: 1 })],
-  ['runReplayStep', (b) => b.runReplayStep(0 as ReplaySessionHandle)],
-]);
+const INVOKE = createNativeOperationInvocations({
+  collisionCamera: COLLISION_CAMERA_INPUT,
+  cameraInput: CAMERA_INPUT,
+  cameraCreate: CAMERA_CREATE_REQUEST,
+  cameraMode: CAMERA_MODE_COMMAND,
+  cameraNavigation: CAMERA_NAVIGATION_INPUT,
+  gameRuleCatalog: GAME_RULE_CATALOG,
+  gameRuleRequest: GAME_RULE_REQUEST,
+  hashA: HASH_A,
+  voxelPlan: VOXEL_CONVERSION_PLAN_REQUEST,
+  voxelSource: VOXEL_CONVERSION_SOURCE_REGISTRATION_REQUEST,
+  voxelMeshAsset: VOXEL_CONVERSION_MESH_ASSET_REGISTRATION_REQUEST,
+  voxelMeshImport: VOXEL_CONVERSION_MESH_SOURCE_IMPORT_REQUEST,
+  voxelPlanHash: VOXEL_PLAN_HASH,
+  voxelPreviewHash: VOXEL_PREVIEW_HASH,
+  voxelEvidence: VOXEL_CONVERSION_EVIDENCE,
+  voxelModelInfo: VOXEL_MODEL_INFO_REQUEST,
+  voxelModelWindow: VOXEL_MODEL_WINDOW_REQUEST,
+  voxelExport: VOXEL_VOLUME_ASSET_EXPORT_REQUEST,
+  voxelSave: VOXEL_VOLUME_ASSET_SAVE_REQUEST,
+  voxelPaletteUpdate: voxelPaletteUpdateRequest(VOXEL_VOLUME_ASSET_LOAD_REQUEST.asset),
+  voxelAuthoring: VOXEL_VOLUME_AUTHORING_INITIALIZE_REQUEST,
+  voxelLoad: VOXEL_VOLUME_ASSET_LOAD_REQUEST,
+  voxelUnload: VOXEL_VOLUME_ASSET_UNLOAD_REQUEST,
+  annotationValidation: VOXEL_ANNOTATION_VALIDATION_REQUEST,
+  annotationLoad: VOXEL_ANNOTATION_LOAD_REQUEST,
+  annotationQuery: VOXEL_ANNOTATION_QUERY_REQUEST,
+  annotationEdit: VOXEL_ANNOTATION_EDIT_REQUEST,
+  annotationExport: VOXEL_ANNOTATION_EXPORT_REQUEST,
+  historyRead: VOXEL_EDIT_HISTORY_READ_REQUEST,
+  historyRevert: VOXEL_EDIT_HISTORY_REVERT_REQUEST,
+  historyUndo: VOXEL_EDIT_HISTORY_UNDO_REQUEST,
+  historyRedo: VOXEL_EDIT_HISTORY_REDO_REQUEST,
+  materialPreview: MODEL_MATERIAL_PREVIEW_REQUEST,
+  inputConfigure: INPUT_SESSION_CONFIGURE_REQUEST,
+  inputContextCommand: INPUT_CONTEXT_COMMAND,
+  rawInput: RAW_INPUT_SAMPLE,
+  recordedInput: RECORDED_INPUT_ACTION,
+  timeControlCommand: { operation: 'pause' },
+});
 
 void test('every manifest op has a native invocation in this test', () => {
   for (const op of MANIFEST_OPERATIONS) {
@@ -1499,6 +1355,9 @@ void test('native conformance sequence routes through the addon without mock fal
   assert.equal(constrainedCamera.collision.collided, true);
   assert.deepEqual(constrainedCamera.collision.blockedAxes, ['z']);
   assert.equal(constrainedCamera.movementHash, 'fnv1a64:sentinel-movement');
+  assert.equal(bridge.applyCameraModeCommand(CAMERA_MODE_COMMAND).after.mode, 'orbit');
+  assert.equal(bridge.applyCameraNavigationInput(CAMERA_NAVIGATION_INPUT).after.distance, 5);
+  assert.equal(bridge.readCameraControllerState({ camera: CAMERA_INPUT.camera }).stateHash, HASH_B);
   assert.deepEqual(bridge.applyEnemyDirectNavMovement({
     entity: 777,
     seedPosition: [0, 0.5, -2.6],
@@ -1570,6 +1429,7 @@ void test('native conformance sequence routes through the addon without mock fal
   assert.equal(meshAssetRegistration.source.assetId, 'mesh/quad');
   assert.equal(meshAssetRegistration.materialSlots[0]?.sourceMaterialId, 'mat/a');
   assert.deepEqual(bridge.readRenderDiffs(frameCursor(0)), { ops: [{ op: 'sentinel' }] });
+  bridge.readProjectionFrame(frameCursor(0));
   assert.deepEqual(bridge.saveProjectBundle(), { artifactsWritten: 5, compactedEdits: 2, retainedEdits: 3 });
   assert.deepEqual(bridge.getProjectBundleCompositionStatus(), {
     loadedProjectBundle: 2001,
@@ -1585,6 +1445,9 @@ void test('native conformance sequence routes through the addon without mock fal
     'step:6',
     'createCamera:0,1.6,0',
     'cameraCollision:1:1:1',
+    `cameraMode:${JSON.stringify(CAMERA_MODE_COMMAND)}`,
+    `cameraNavigation:${JSON.stringify(CAMERA_NAVIGATION_INPUT)}`,
+    'cameraControllerRead:{"camera":1}',
     'enemyMove:777:0,0.5,-2.6:0,1.62,1.25:0.35',
     'fpsLoad:custom-demo:2:0',
     'fpsNativeShape:true:true:0',
@@ -1599,6 +1462,7 @@ void test('native conformance sequence routes through the addon without mock fal
     'voxelRegister:{"source":{"assetId":"mesh/native-registered-triangle","assetKind":"mesh","assetVersion":2,"sourceHash":"sha256:native-registered-triangle","meshPrimitive":"default"},"positions":[[0,0,0],[1,0,0],[0,1,0]],"triangles":[{"indices":[0,1,2],"sourceMaterialSlot":0}],"materialSlots":[{"sourceMaterialSlot":0,"sourceMaterialId":"mat/a"}]}',
     'voxelMeshAssetRegister:{"source":{"assetId":"mesh/quad","assetKind":"mesh","assetVersion":1,"sourceHash":"sha256:quad","meshPrimitive":null},"meshAsset":{"assetId":"mesh/quad","sourcePath":"assets/mesh/quad.mesh.json","positions":[[0,0,0],[1,0,0],[0,1,0]],"normals":[],"indices":[0,1,2],"groups":[{"materialSlot":0,"start":0,"count":3}],"materialSlots":[{"sourceMaterialSlot":0,"sourceMaterialId":"mat/a"}]}}',
     'render:0',
+    'projection:0',
     'save',
     'status',
   ]);

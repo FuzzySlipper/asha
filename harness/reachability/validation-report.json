@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "valid": true,
+  "manifest": "harness/reachability/manifest.json",
+  "manifestHash": "sha256:2173ffa5ab1bc518cb35767e9edda9d50cbb134651a700f62f3dc11d04be9654",
+  "catalogs": [
+    {
+      "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
+      "hash": "sha256:2e51db06dc21a906ba33f28c7a1db3818db0a727655a24350a2852ff0df29c7f"
+    },
+    {
+      "path": "harness/public-surface/ts-packages.json",
+      "hash": "sha256:46f8aeb3f9ecccaadb68bbdb504c18c8333d44b88b444a23bc965e24e2cccb4d"
+    },
+    {
+      "path": "harness/public-surface/rust-crates.json",
+      "hash": "sha256:3e75ea37fb9b9de16364246c2084f51857bdb79bcccea9c58e500d90e09c4800"
+    },
+    {
+      "path": "harness/consumer-needs/validation-report.json",
+      "hash": "sha256:9e9e57add1dda3c803e5561f19fab8bedbd16f1abb44d1f60a8c2fdfab69c06b"
+    },
+    {
+      "path": "ts/packages/contracts/src/generated/gameExtension.ts",
+      "hash": "sha256:4041d6db94a170cd0ea73f0f3037b78aa6d44487f03ac2c9211f411a7cdc711a"
+    }
+  ],
+  "capabilityCount": 19,
+  "catalogAssertionCount": 5,
+  "internalExemptionCount": 2,
+  "catalogAssertions": [
+    {
+      "id": "catalog.bridge-operations",
+      "kind": "bridgeOperations",
+      "valid": true,
+      "actualCount": 71
+    },
+    {
+      "id": "catalog.consumer-needs",
+      "kind": "consumerNeeds",
+      "valid": true,
+      "actualCount": 34
+    },
+    {
+      "id": "catalog.generated-contracts",
+      "kind": "generatedContracts",
+      "valid": true,
+      "actualCount": 596
+    },
+    {
+      "id": "catalog.rust-public-surfaces",
+      "kind": "rustPublicSurfaces",
+      "valid": true,
+      "actualCount": 4
+    },
+    {
+      "id": "catalog.typescript-public-surfaces",
+      "kind": "typescriptPublicSurfaces",
+      "valid": true,
+      "actualCount": 24
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "audio.runtime-projection",
+      "kind": "projectionChannel",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "billboard.runtime-projection",
+      "kind": "projectionChannel",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "bridge.camera-controller",
+      "kind": "bridgeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "bridge.project-bundle.load",
+      "kind": "bridgeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "bridge.session-input-replay",
+      "kind": "bridgeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "bridge.session-time-control",
+      "kind": "bridgeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.event-bound-read",
+      "kind": "gameplayRead",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.generic-event",
+      "kind": "gameplayEvent",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.module-binding",
+      "kind": "gameplayBinding",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.module-conformance",
+      "kind": "gameplayConformance",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.module-named-read",
+      "kind": "gameplayRead",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.runtime-host",
+      "kind": "gameplayRuntimeHost",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.runtime-host.decision",
+      "kind": "runtimeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.runtime-host.transport",
+      "kind": "runtimeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "gameplay.trigger-lifecycle",
+      "kind": "gameplayEvent",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "particle.runtime-projection",
+      "kind": "projectionChannel",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "prefab.public-authoring",
+      "kind": "prefabAuthoring",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "prefab.runtime-placement",
+      "kind": "runtimeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "telemetry.live-snapshot-overlay",
+      "kind": "projectionChannel",
+      "reachable": true,
+      "gapCount": 0
+    }
+  ],
+  "gaps": []
+}

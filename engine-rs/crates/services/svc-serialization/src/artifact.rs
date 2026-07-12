@@ -62,6 +62,8 @@ pub enum ArtifactRole {
     SceneDocument,
     /// The asset dependency lock (`core-assets` references resolved to versions).
     AssetLock,
+    /// Durable reusable prefab definitions and their stable local part roles.
+    PrefabRegistry,
     /// A persisted current-authority session-state snapshot.
     SessionStateSnapshot,
     /// A voxel chunk snapshot (`rule-voxel-edit` persistence).
@@ -88,6 +90,7 @@ impl ArtifactRole {
         match self {
             ArtifactRole::SceneDocument => "sceneDocument",
             ArtifactRole::AssetLock => "assetLock",
+            ArtifactRole::PrefabRegistry => "prefabRegistry",
             ArtifactRole::SessionStateSnapshot => "sessionStateSnapshot",
             ArtifactRole::VoxelChunkSnapshot => "voxelChunkSnapshot",
             ArtifactRole::VoxelEditLog => "voxelEditLog",
@@ -105,6 +108,7 @@ impl ArtifactRole {
         match tag {
             "sceneDocument" => ArtifactRole::SceneDocument,
             "assetLock" => ArtifactRole::AssetLock,
+            "prefabRegistry" => ArtifactRole::PrefabRegistry,
             "sessionStateSnapshot" => ArtifactRole::SessionStateSnapshot,
             "voxelChunkSnapshot" => ArtifactRole::VoxelChunkSnapshot,
             "voxelEditLog" => ArtifactRole::VoxelEditLog,

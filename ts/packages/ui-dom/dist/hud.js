@@ -1,3 +1,10 @@
+export function hudIntentToTimeControlCommand(intent) {
+    if (intent.kind === 'ui.pause_intent')
+        return { operation: 'pause' };
+    if (intent.kind === 'ui.resume_intent')
+        return { operation: 'resume' };
+    return null;
+}
 export function buildHudProjection(input) {
     validateHealth(input.health);
     const health = projectHudHealth(input.health);

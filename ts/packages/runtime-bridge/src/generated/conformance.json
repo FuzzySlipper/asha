@@ -19,6 +19,22 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "apply_time_control_command",
+      "facadeMethod": "applyTimeControlCommand",
+      "surface": "stable",
+      "input": "protocol_time_control::TimeControlCommand",
+      "output": "protocol_time_control::TimeControlReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_time_control_state",
+      "facadeMethod": "readTimeControlState",
+      "surface": "stable",
+      "input": "Unit",
+      "output": "protocol_time_control::TimeControlState",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "submit_commands",
       "facadeMethod": "submitCommands",
       "surface": "stable",
@@ -355,6 +371,14 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "read_projection_frame",
+      "facadeMethod": "readProjectionFrame",
+      "surface": "stable",
+      "input": "FrameCursor",
+      "output": "protocol_presentation::RuntimeProjectionFrame",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "read_render_diffs",
       "facadeMethod": "readRenderDiffs",
       "surface": "stable",
@@ -387,11 +411,75 @@
       "errors": "RuntimeBridgeError"
     },
     {
+      "manifestName": "configure_input_session",
+      "facadeMethod": "configureInputSession",
+      "surface": "stable",
+      "input": "protocol_input::InputSessionConfigureRequest",
+      "output": "protocol_input::InputSessionSnapshot",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_input_context_command",
+      "facadeMethod": "applyInputContextCommand",
+      "surface": "stable",
+      "input": "protocol_input::InputContextCommand",
+      "output": "protocol_input::InputContextChangeReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "submit_raw_input",
+      "facadeMethod": "submitRawInput",
+      "surface": "stable",
+      "input": "protocol_input::RawInputSample",
+      "output": "protocol_input::InputResolutionReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "replay_resolved_input_action",
+      "facadeMethod": "replayResolvedInputAction",
+      "surface": "stable",
+      "input": "protocol_input::RecordedInputAction",
+      "output": "protocol_input::InputActionReplayReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_input_context_state",
+      "facadeMethod": "readInputContextState",
+      "surface": "stable",
+      "input": "Unit",
+      "output": "protocol_input::InputContextStackState",
+      "errors": "RuntimeBridgeError"
+    },
+    {
       "manifestName": "create_camera",
       "facadeMethod": "createCamera",
       "surface": "stable",
       "input": "protocol_view::CameraCreateRequest",
       "output": "protocol_view::CameraSnapshot",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_camera_mode_command",
+      "facadeMethod": "applyCameraModeCommand",
+      "surface": "stable",
+      "input": "protocol_view::CameraModeCommand",
+      "output": "protocol_view::CameraModeChangeReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_camera_navigation_input",
+      "facadeMethod": "applyCameraNavigationInput",
+      "surface": "stable",
+      "input": "protocol_view::CameraNavigationInputEnvelope",
+      "output": "protocol_view::CameraNavigationReceipt",
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_camera_controller_state",
+      "facadeMethod": "readCameraControllerState",
+      "surface": "stable",
+      "input": "protocol_view::CameraControllerReadRequest",
+      "output": "protocol_view::CameraControllerState",
       "errors": "RuntimeBridgeError"
     },
     {

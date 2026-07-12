@@ -16,6 +16,14 @@ It allows a change to be tested against prior behavior without a human running t
 
 For long-term golden regressions, accepted events plus snapshots/hashes are the stronger authority.
 
+Gameplay-fabric reactions add a second, joined evidence unit rather than
+flattening module execution into the base `DomainEvent` stream. A reaction frame
+records the closed registry/module digests, delivered semantic events, frozen
+reads, invocation outputs, proposals and owner receipts, accepted module facts,
+diagnostics, and before/after hashes. Pre-commit decision receipts additionally
+record Workspace generations, suspension/continuation evidence, routing, and
+the final receipt hash.
+
 ## Canonical replay target
 
 WASM semantics are the replay authority.
@@ -77,6 +85,19 @@ cargo run -p replay-tool -- show harness/goldens/replays/<name>.replay
 
 `harness/ci/check-replays.sh` builds `replay-tool` and checks every golden under
 `harness/goldens/replays/` with it.
+
+Gameplay-module playback and verification are intentionally distinct:
+
+- playback restores authority and applies recorded accepted module facts
+  without invoking module behavior;
+- verification rebuilds the exact static composition, reruns behavior, and
+  compares events, reads, invocations, proposals, facts, decisions, routing,
+  diagnostics, snapshots, and hashes.
+
+`./harness/ci/check-gameplay-module-conformance.sh` runs this proof for the
+external downstream fixture. `GameplayRuntimeHost` snapshots also preserve
+trigger active pairs, pending continuation generations, and the bounded
+decision/frame evidence ledgers used by downstream replay archives.
 
 `harness/ci/check-wasm-replay.sh` is the authoritative opt-in WASM replay gate. It builds
 `wasm-api` for `wasm32-unknown-unknown`, runs `wasm-bindgen --target nodejs`, and reruns the

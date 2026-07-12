@@ -507,6 +507,7 @@ fn apply_border_field_policy(parent: &str, fields: &mut Vec<Field>) {
                 None
             }
             ("FallbackDecision", "visual") => Some("FallbackVisual"),
+            ("AudioEmitter", "entity") => Some("EntityId"),
             _ => None,
         };
         if parent == "Command" && field.name.ends_with("Command") {
@@ -919,7 +920,7 @@ const MODULE_PLANS: &[ModulePlan] = &[
             ("./scene.js", "ProjectId RuntimeSessionId SceneId"),
             ("./voxel.js", "VoxelCoord VoxelValue"),
         ],
-        declarations: "type:ArtifactClass enumconst:KnownArtifactRole:KNOWN_ARTIFACT_ROLES type:LoadStage type:SuggestedAction type:ArtifactEntry type:GeneratorMetadata type:ProjectSection type:SceneSection type:AssetLockSection type:ProjectBundleManifest type:ManifestError:ManifestError:code type:ManifestValidationReport type:LoadStep:LoadStep:step type:LoadPlan type:LoadPlanError:LoadPlanError:code type:CompactionSummary type:SaveSummary type:GeneratorMismatch type:EditConflict type:RegenConflictReport",
+        declarations: "brand:PrefabId brand:PrefabPartId brand:PrefabInstanceId type:ArtifactClass enumconst:KnownArtifactRole:KNOWN_ARTIFACT_ROLES type:LoadStage type:SuggestedAction type:ArtifactEntry type:GeneratorMetadata type:ProjectSection type:SceneSection type:AssetLockSection type:ProjectBundleManifest const:GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION type:GameplayTriggerDefinition const:PREFAB_REGISTRY_SCHEMA_VERSION const:PREFAB_DEFINITION_SCHEMA_VERSION enumconst:PrefabDiagnosticCode:PREFAB_DIAGNOSTIC_CODES type:PrefabTransform type:PrefabPartSource:PrefabPartSource:kind type:PrefabPart type:PrefabPartRoleBinding type:PrefabOverrideValue:PrefabOverrideValue:field type:PrefabOverride type:PrefabVariantDelta type:PrefabDefinition type:PrefabRegistry type:PrefabInstanceRecord type:PrefabPartReference type:PrefabDiagnostic type:PrefabValidationOutcome:PrefabValidationOutcome:status type:ManifestError:ManifestError:code type:ManifestValidationReport type:LoadStep:LoadStep:step type:LoadPlan type:LoadPlanError:LoadPlanError:code type:CompactionSummary type:SaveSummary type:GeneratorMismatch type:EditConflict type:RegenConflictReport",
     },
     ModulePlan {
         name: "assets",
@@ -944,7 +945,7 @@ const MODULE_PLANS: &[ModulePlan] = &[
             ("./ids.js", "EntityId TagId ProcessId SubjectId"),
             ("./scene.js", "SceneNodeId"),
         ],
-        declarations: "type:AuthoringTransform type:AuthoringSource:AuthoringSource:kind type:AuthoringCapability:AuthoringCapability:kind type:EntityDefinitionSourceTrace type:EntityDefinitionMetadataEntry type:EntityDefinitionCapability:EntityDefinitionCapability:kind type:EntityDefinition type:EntityDefinitionDiagnosticCode type:EntityDefinitionDiagnostic type:EntityDefinitionValidationOutcome:EntityDefinitionValidationOutcome:status type:EntityAuthoringCommand:EntityAuthoringCommand:kind type:AuthoringEventKind type:EntityAuthoringEvent type:AuthoringRejectionReason type:EntityAuthoringRejection type:EntityAuthoringOutcome:EntityAuthoringOutcome:status",
+        declarations: "type:AuthoringTransform type:AuthoringSource:AuthoringSource:kind type:AuthoringCapability:AuthoringCapability:kind enumconst:ActivatableCapabilityKind:ACTIVATABLE_CAPABILITY_KINDS enumconst:CapabilityActivationAction:CAPABILITY_ACTIVATION_ACTIONS enumconst:CapabilityActivationPresence:CAPABILITY_ACTIVATION_PRESENCE_VALUES enumconst:CapabilityActivationEntityLifecycle:CAPABILITY_ACTIVATION_ENTITY_LIFECYCLES enumconst:CapabilityActivationDiagnosticCode:CAPABILITY_ACTIVATION_DIAGNOSTIC_CODES type:CapabilityActivationRequest type:CapabilityActivationEvent type:CapabilityActivationReadout type:CapabilityActivationDiagnostic type:CapabilityActivationOutcome:CapabilityActivationOutcome:status type:EntityDefinitionSourceTrace type:EntityDefinitionMetadataEntry type:EntityDefinitionCapability:EntityDefinitionCapability:kind type:EntityDefinition type:EntityDefinitionDiagnosticCode type:EntityDefinitionDiagnostic type:EntityDefinitionValidationOutcome:EntityDefinitionValidationOutcome:status type:EntityAuthoringCommand:EntityAuthoringCommand:kind type:AuthoringEventKind type:EntityAuthoringEvent type:AuthoringRejectionReason type:EntityAuthoringRejection type:EntityAuthoringOutcome:EntityAuthoringOutcome:status",
     },
     ModulePlan {
         name: "gameExtension",
@@ -952,8 +953,9 @@ const MODULE_PLANS: &[ModulePlan] = &[
         imports: &[
             ("./ids.js", "EntityId"),
             ("./diagnostics.js", "DiagnosticSeverity"),
+            ("./projectBundle.js", "PrefabId PrefabInstanceId PrefabPartReference"),
         ],
-        declarations: "type:GameExtensionHookKind enumconst:GameExtensionProposalKind:GAME_EXTENSION_PROPOSAL_KINDS type:GameExtensionReceiptStatus type:GameExtensionDiagnosticCode type:GameRuleModuleRef type:GameRuleHookDeclaration type:GameRuleModuleManifest type:GameExtensionDiagnostic type:WeaponEffectHookRequest type:GameExtensionProposal:GameExtensionProposal:kind type:GameExtensionTraceEntry type:GameExtensionHookReceipt type:GameExtensionReplayEvidence",
+        declarations: "type:GameExtensionHookKind enumconst:GameExtensionProposalKind:GAME_EXTENSION_PROPOSAL_KINDS type:GameExtensionReceiptStatus type:GameExtensionDiagnosticCode type:GameRuleModuleRef type:GameRuleHookDeclaration type:GameRuleModuleManifest type:GameExtensionDiagnostic type:WeaponEffectHookRequest type:GameExtensionProposal:GameExtensionProposal:kind type:GameExtensionTraceEntry type:GameExtensionHookReceipt type:GameExtensionReplayEvidence enumconst:GameplayInvocationFamily:GAMEPLAY_INVOCATION_FAMILIES enumconst:GameplayEventPhase:GAMEPLAY_EVENT_PHASES enumconst:GameplayReadViewKind:GAMEPLAY_READ_VIEW_KINDS enumconst:GameplayReadSelectorCapability:GAMEPLAY_READ_SELECTOR_CAPABILITIES enumconst:GameplayRegistryDiagnosticCode:GAMEPLAY_REGISTRY_DIAGNOSTIC_CODES const:GAMEPLAY_MODULE_BINDING_SCHEMA_VERSION enumconst:GameplayModuleBindingDiagnosticCode:GAMEPLAY_MODULE_BINDING_DIAGNOSTIC_CODES type:GameplayContractRef type:GameplayModuleRef type:GameplayModuleConfiguration type:GameplayModuleBindingTarget:GameplayModuleBindingTarget:kind type:GameplayModuleBinding type:GameplayModuleBindingOverride type:GameplayModuleBindingRegistry type:GameplayModuleBindingDiagnostic type:GameplayModuleBindingReadout type:GameplayModuleBindingActivationReceipt type:GameplayOwnerRef type:GameplayEventSchemaDeclaration type:GameplayEntityRef type:GameplayEmitterRef:GameplayEmitterRef:kind type:GameplayCausationRef type:GameplayEventEnvelope type:GameplayHeaderSelector type:GameplaySubscriptionDeclaration type:GameplayInvocationDescriptor type:GameplayProposalDeclaration type:GameplayProposalEnvelope type:GameplayReadViewRequirement type:GameplayOwnedSchemaDeclaration type:GameplayOrderingConstraint type:GameplayExecutionBudget type:GameplayModuleManifest type:GameplayRegistryDiagnostic type:GameplayTopologyEdge type:GameplayReadViewProviderReadout type:GameplayRegistryReadout type:GameplayRegistryValidationOutcome:GameplayRegistryValidationOutcome:status",
     },
     ModulePlan {
         name: "gameRules",
@@ -980,16 +982,37 @@ const MODULE_PLANS: &[ModulePlan] = &[
         declarations: "brand:RenderHandle type:Transform type:Geometry:Geometry:shape type:Material type:RenderLayer type:RenderMetadata type:RenderNode type:MeshAttributeKind type:MeshAttributeName type:MeshAttribute type:MeshIndexWidth type:MeshBufferLayout type:MeshGroupDescriptor type:MeshBoundsDescriptor type:MeshProvenance type:MeshPayloadSource:MeshPayloadSource:kind type:MeshPayloadDescriptor type:MeshMaterialSlot type:MeshCollisionPolicy:MeshCollisionPolicy:kind type:StaticMeshAsset type:StaticMeshInstanceDescriptor type:AnimatedMeshRuntimeFormat type:AnimationLoopMode type:AnimationClipDescriptor type:AnimatedMeshAsset type:AnimatedMeshPlaybackCommand:AnimatedMeshPlaybackCommand:action type:AnimatedMeshInstanceDescriptor type:SpriteSizeMode type:BillboardMode type:SpriteDepthPolicy type:SpriteShading type:SpriteAttachment type:SpriteInstanceDescriptor type:SpritePickHit type:MeshPickHit type:TextureFilter type:TextureWrap type:TextureDescriptor type:SpriteFrameRect type:SpriteAtlasDescriptor type:MaterialUvStrategy type:RenderMaterialDescriptor type:RenderDiff:RenderDiff:op type:ModelMaterialPreviewRequest type:ModelMaterialPreviewSnapshot type:RenderFrameDiff",
     },
     ModulePlan {
+        name: "presentation",
+        preferred_paths: &["protocol/protocol-presentation"],
+        imports: &[
+            ("./ids.js", "EntityId"),
+            ("./render.js", "RenderFrameDiff RenderHandle"),
+        ],
+        declarations: "const:RUNTIME_PROJECTION_SCHEMA_VERSION brand:AudioHandle brand:BillboardHandle brand:ParticleEmitterHandle brand:TelemetryOverlayHandle brand:AnimationProjectionHandle type:ProjectionReplayScope type:PresentationOriginKind type:PresentationOriginRef type:PresentationOpMeta type:AudioBus type:AudioEmitter:AudioEmitter:kind type:AudioClipRef type:AudioSourceDescriptor type:AudioSourcePatch type:AudioProjectionOp:AudioProjectionOp:op type:AudioProjectionDiagnosticCode type:AudioProjectionDiagnostic type:AudioProjectionReadout type:BillboardAnchor:BillboardAnchor:kind type:BillboardTemplateArgument type:BillboardTextureRef type:BillboardContent:BillboardContent:kind type:BillboardFontRef:BillboardFontRef:kind type:BillboardLayer type:BillboardDescriptor type:BillboardPatch type:BillboardProjectionOp:BillboardProjectionOp:op type:BillboardProjectionDiagnosticCode type:BillboardProjectionDiagnostic type:BillboardProjectionReadout type:ParticleAnchor:ParticleAnchor:kind type:ParticleSpriteRef type:ParticleScalarKey type:ParticleColorKey type:ParticleEmitterDescriptor type:ParticleEmitterPatch type:ParticleProjectionOp:ParticleProjectionOp:op type:ParticleProjectionDiagnosticCode type:ParticleProjectionDiagnostic type:ParticleProjectionReadout type:TelemetryOverlayCorner type:TelemetryOverlayDescriptor type:TelemetryOverlayPatch type:TelemetryOverlayProjectionOp:TelemetryOverlayProjectionOp:op type:TelemetryOverlayDiagnosticCode type:TelemetryOverlayDiagnostic type:TelemetryOverlayReadout type:AnimationResolvedMotion type:AnimationTransitionProjection type:AnimationControllerProjectionState type:AnimationProjectionDescriptor type:AnimationProjectionOp:AnimationProjectionOp:op type:AnimationProjectionDiagnosticCode type:AnimationProjectionDiagnostic type:AnimationProjectionReadout type:PresentationOp:PresentationOp:domain type:PresentationFrameDiff type:RuntimeProjectionFrame",
+    },
+    ModulePlan {
         name: "telemetry",
         preferred_paths: &["protocol/protocol-telemetry"],
         imports: &[],
-        declarations: "type:TelemetrySource type:TelemetryLevel type:TelemetryMetricKind type:TelemetryMetric type:TelemetryEvent:TelemetryEvent:kind type:TelemetryEnvelope",
+        declarations: "type:TelemetrySource type:TelemetryLevel type:TelemetryMetricKind type:TelemetryMetric type:TelemetryEvent:TelemetryEvent:kind type:TelemetryEnvelope type:LiveTelemetryCounter type:LiveTelemetryMetric type:LiveTelemetryDiagnosticCode type:LiveTelemetryDiagnostic type:LiveTelemetrySnapshot",
+    },
+    ModulePlan {
+        name: "input",
+        preferred_paths: &["protocol/protocol-input"],
+        imports: &[],
+        declarations: "const:INPUT_BINDING_CATALOG_SCHEMA_VERSION const:INPUT_CONTEXT_STATE_SCHEMA_VERSION const:INPUT_ACTION_RECORD_SCHEMA_VERSION type:InputActionId type:InputContextId type:InputBindingId type:InputValueKind type:InputActionPhase type:PlatformInputKind type:InputValue:InputValue:kind type:InputActionDefinition type:InputContextDefinition type:InputBindingExtension type:InputBindingRecord type:InputBindingCatalog type:InputSessionConfigureRequest type:ActiveInputContext type:InputContextStackState type:InputContextCommand:InputContextCommand:operation type:InputContextChangeReceipt type:InputSessionSnapshot type:RawInputSample type:ResolvedInputAction type:RecordedInputAction type:InputDiagnosticCode type:InputDiagnostic type:InputResolutionReceipt type:InputActionReplayReceipt",
+    },
+    ModulePlan {
+        name: "timeControl",
+        preferred_paths: &["protocol/protocol-time-control"],
+        imports: &[],
+        declarations: "const:TIME_CONTROL_STATE_SCHEMA_VERSION enumconst:TimeControlMode:TIME_CONTROL_MODES type:TimeControlCommand:TimeControlCommand:operation enumconst:TimeControlRejection:TIME_CONTROL_REJECTIONS type:TimeControlState type:TimeControlReceipt",
     },
     ModulePlan {
         name: "view",
         preferred_paths: &["protocol/protocol-view"],
         imports: &[("./voxel.js", "Face VoxelCoord")],
-        declarations: "brand:CameraHandle type:CameraPose type:CameraBasis type:PerspectiveProjection type:ViewportSize type:CameraCreateRequest type:FirstPersonCameraInput type:FirstPersonCameraInputEnvelope type:CameraProjectionRequest type:CameraSnapshot type:CameraProjectionSnapshot type:CameraCollisionShape type:CameraCollisionPolicyMode type:CameraCollisionPolicy type:FirstPersonMovementMode type:GeneratedTunnelPreset type:GeneratedTunnelRuntimeApplyRequest type:GeneratedTunnelRuntimeFrame type:GeneratedTunnelRuntimeApplyReceipt type:CollisionConstrainedCameraInputEnvelope type:CollisionAabbEvidence type:CollisionAxis type:CameraCollisionEvidence type:CameraCollisionSnapshot type:ScreenPointSpace type:ScreenPoint type:ScreenPointToPickRayRequest type:PickRaySnapshot type:VoxelSelectionOutcome type:VoxelSelectionSnapshot",
+        declarations: "brand:CameraHandle type:CameraPose type:CameraBasis type:PerspectiveProjection type:ViewportSize type:CameraCreateRequest type:FirstPersonCameraInput type:FirstPersonCameraInputEnvelope type:CameraProjectionRequest type:CameraSnapshot const:CAMERA_CONTROLLER_STATE_SCHEMA_VERSION type:CameraMode type:CameraTransitionEasing type:CameraTransitionSpec type:CameraModeTarget:CameraModeTarget:mode type:CameraModeCommand type:CameraControllerState type:CameraTransitionReadout type:CameraControllerRejection type:CameraModeChangeReceipt type:CameraNavigationInput type:CameraNavigationInputEnvelope type:CameraNavigationReceipt type:CameraControllerReadRequest type:CameraProjectionSnapshot type:CameraCollisionShape type:CameraCollisionPolicyMode type:CameraCollisionPolicy type:FirstPersonMovementMode type:GeneratedTunnelPreset type:GeneratedTunnelRuntimeApplyRequest type:GeneratedTunnelRuntimeFrame type:GeneratedTunnelRuntimeApplyReceipt type:CollisionConstrainedCameraInputEnvelope type:CollisionAabbEvidence type:CollisionAxis type:CameraCollisionEvidence type:CameraCollisionSnapshot type:ScreenPointSpace type:ScreenPoint type:ScreenPointToPickRayRequest type:PickRaySnapshot type:VoxelSelectionOutcome type:VoxelSelectionSnapshot",
     },
     ModulePlan {
         name: "voxelAnnotation",
@@ -1036,6 +1059,7 @@ pub fn try_all_modules() -> Result<Vec<Module>, String> {
     for name in [
         "script",
         "render",
+        "presentation",
         "replay",
         "voxel",
         "voxelConversion",
@@ -1050,6 +1074,8 @@ pub fn try_all_modules() -> Result<Vec<Module>, String> {
         "diagnostics",
         "policyView",
         "telemetry",
+        "input",
+        "timeControl",
         "view",
         "entityAuthoring",
     ] {
@@ -1103,6 +1129,7 @@ fn index_module() -> Module {
             "ids",
             "script",
             "render",
+            "presentation",
             "replay",
             "voxel",
             "voxelConversion",
@@ -1117,6 +1144,8 @@ fn index_module() -> Module {
             "diagnostics",
             "policyView",
             "telemetry",
+            "input",
+            "timeControl",
             "view",
             "entityAuthoring",
         ]
@@ -1378,6 +1407,62 @@ mod tests {
             ),
             (
                 "SceneValidationCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "PrefabDiagnosticCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayInvocationFamily",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayEventPhase",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayReadViewKind",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayReadSelectorCapability",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayRegistryDiagnosticCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "GameplayModuleBindingDiagnosticCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "ActivatableCapabilityKind",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "CapabilityActivationAction",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "CapabilityActivationPresence",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "CapabilityActivationDiagnosticCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "CapabilityActivationEntityLifecycle",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "TimeControlMode",
+                "wire values derive from its canonical const table",
+            ),
+            (
+                "TimeControlRejection",
                 "wire values derive from its canonical const table",
             ),
             ("SpriteAtlasError", "Rust validation error, not a wire DTO"),

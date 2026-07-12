@@ -2,6 +2,7 @@ import {
   RuntimeBridgeError,
   type RuntimeBridge,
 } from './bridge.js';
+import type { GameplayRuntimeHostTransport } from '@asha/runtime-session';
 
 export const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
 export const LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha_demo.native_runtime_bridge_provider.v1';
@@ -77,6 +78,7 @@ export interface NativeRustRuntimeBridgeProvider {
   readonly referenceFallback: false;
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
   readonly bridge?: RuntimeBridge | Promise<RuntimeBridge>;
+  readonly gameplayHost?: GameplayRuntimeHostTransport;
 }
 
 export interface NativeRustRuntimeBridgeProviderCandidate {
@@ -86,11 +88,13 @@ export interface NativeRustRuntimeBridgeProviderCandidate {
   readonly referenceFallback?: boolean;
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
   readonly bridge?: RuntimeBridge | Promise<RuntimeBridge> | null;
+  readonly gameplayHost?: GameplayRuntimeHostTransport;
 }
 
 export interface CreateNativeRustRuntimeBridgeProviderRequest {
   readonly bridge?: RuntimeBridge | Promise<RuntimeBridge>;
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
+  readonly gameplayHost?: GameplayRuntimeHostTransport;
 }
 
 export interface InstallNativeRustRuntimeBridgeProviderRequest extends CreateNativeRustRuntimeBridgeProviderRequest {
@@ -177,6 +181,7 @@ export function createNativeRustRuntimeBridgeProvider(
       productAuthority: true,
       referenceFallback: false,
       createRuntimeBridge,
+      ...(request.gameplayHost === undefined ? {} : { gameplayHost: request.gameplayHost }),
     };
   }
   const bridge = request.bridge;
@@ -189,6 +194,7 @@ export function createNativeRustRuntimeBridgeProvider(
     productAuthority: true,
     referenceFallback: false,
     bridge,
+    ...(request.gameplayHost === undefined ? {} : { gameplayHost: request.gameplayHost }),
   };
 }
 

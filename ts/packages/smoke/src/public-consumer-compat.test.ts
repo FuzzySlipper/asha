@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  BrowserFpsInputCollector,
+  BrowserFpsResolvedActionConsumer,
+  BrowserInputHost,
   RuntimeBridgeError,
   type CameraCreateRequest,
   type CollisionConstrainedCameraInputEnvelope,
@@ -79,18 +80,29 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
   assert.ok(gameplayCatalog.consumerOwnership.engineOwned.includes('runtimeAuthority'));
 
   const camera = session.createCamera(cameraRequest).snapshot.camera;
-  const collector = new BrowserFpsInputCollector({
-    camera,
-    moveSpeedUnitsPerSecond: 3,
-    mouseSensitivityDegreesPerPixel: 0.1,
-    pointerLocked: true,
+  const fpsInput = new BrowserFpsResolvedActionConsumer();
+  const inputHost = new BrowserInputHost({
+    session,
+    onResolvedAction: (action) => fpsInput.accept(action),
   });
 
-  collector.handleKeyDown({ code: 'KeyW' });
-  collector.handleMouseMove({ movementX: 6, movementY: -2 });
-  const frame = collector.drainFrame({ tick: 1, dtSeconds: 1 / 60 });
-  assert.equal(frame.runtimeCommand.kind, 'runtime.apply_first_person_camera_input');
-  const motion = session.applyFirstPersonCameraInput(frame.runtimeCommand.envelope);
+  inputHost.handleKeyDown({ code: 'KeyW' });
+  inputHost.setPointerLockActive(true);
+  inputHost.handleMouseMove({ movementX: 6, movementY: -2 });
+  const frame = fpsInput.drain();
+  const motion = session.applyFirstPersonCameraInput({
+    camera,
+    tick: 1,
+    input: {
+      moveForward: frame.moveForward,
+      moveRight: frame.moveRight,
+      moveUp: 0,
+      yawDeltaDegrees: frame.yawDeltaPixels * 0.1,
+      pitchDeltaDegrees: -frame.pitchDeltaPixels * 0.1,
+      dtSeconds: 1 / 60,
+      moveSpeedUnitsPerSecond: 3,
+    },
+  });
   assert.equal(motion.snapshot.tick, 1);
   assert.notDeepEqual(motion.snapshot.pose.position, cameraRequest.initialPose.position);
 
@@ -295,7 +307,7 @@ void test('asha-demo browser condition imports runtime bridge without native-onl
   const proof = `
     const surface = await import('@asha/runtime-bridge');
     const reference = await import('@asha/runtime-bridge/reference');
-    const required = ['BrowserFpsInputCollector', 'RuntimeBridgeError'];
+    const required = ['BrowserInputHost', 'BrowserFpsResolvedActionConsumer', 'RuntimeBridgeError'];
     const referenceRequired = ['createMockRuntimeSession', 'createMockRuntimeBridge', 'REFERENCE_RUNTIME_BACKEND_PROFILE'];
     const forbidden = ['NativeRuntimeBridge', 'createNativeRuntimeBridge', 'NATIVE_WIRED_OPERATIONS', 'createMockRuntimeSession', 'createMockRuntimeBridge'];
     const missing = required.filter((name) => !(name in surface));

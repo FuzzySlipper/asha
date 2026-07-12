@@ -360,9 +360,12 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
     }
 }
 
+mod camera_modes;
 mod core;
 mod fps;
+mod input;
 mod mesh_import;
 mod runtime;
+mod time_control;
 mod voxel;
 mod voxel_unload;

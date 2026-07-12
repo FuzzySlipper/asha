@@ -1,4 +1,4 @@
-import type { CameraCreateRequest, CameraProjectionRequest, CollisionConstrainedCameraInputEnvelope, CommandBatch, FirstPersonCameraInputEnvelope, GameRuleCatalog, GameRuleResolutionRequest, VoxelAnnotationEditReceipt, VoxelAnnotationEditRequest, VoxelAnnotationLayerExportReceipt, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadReceipt, VoxelAnnotationLayerLoadRequest, VoxelAnnotationLayerValidationReport, VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryReadout, VoxelAnnotationQueryRequest, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest, VoxelConversionMeshSourceImportReceipt, VoxelConversionMeshSourceImportRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceMetadataReadout, VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertReceipt, VoxelEditHistoryRevertRequest, VoxelEditHistorySummary, VoxelEditHistoryUndoReceipt, VoxelEditHistoryUndoRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelModelWindowReadout, VoxelModelWindowRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetUnloadReceipt, VoxelVolumeAssetUnloadRequest, VoxelVolumeAssetPaletteUpdateReceipt, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveReceipt, VoxelVolumeAssetSaveRequest, VoxelVolumeAuthoringInitializeReceipt, VoxelVolumeAuthoringInitializeRequest, WeaponEffectHookRequest } from '@asha/contracts';
+import type { CameraCreateRequest, CameraControllerReadRequest, CameraControllerState, CameraModeChangeReceipt, CameraModeCommand, CameraNavigationInputEnvelope, CameraNavigationReceipt, CameraProjectionRequest, CollisionConstrainedCameraInputEnvelope, CommandBatch, FirstPersonCameraInputEnvelope, GameRuleCatalog, GameRuleResolutionRequest, InputActionReplayReceipt, InputContextChangeReceipt, InputContextCommand, InputContextStackState, InputResolutionReceipt, InputSessionConfigureRequest, InputSessionSnapshot, VoxelAnnotationEditReceipt, VoxelAnnotationEditRequest, VoxelAnnotationLayerExportReceipt, VoxelAnnotationLayerExportRequest, VoxelAnnotationLayerLoadReceipt, VoxelAnnotationLayerLoadRequest, VoxelAnnotationLayerValidationReport, VoxelAnnotationLayerValidationRequest, VoxelAnnotationQueryReadout, VoxelAnnotationQueryRequest, VoxelConversionApplyRequest, VoxelConversionEvidenceRef, VoxelConversionMeshAssetRegistrationRequest, VoxelConversionMeshSourceImportReceipt, VoxelConversionMeshSourceImportRequest, VoxelConversionPlan, VoxelConversionPlanRequest, VoxelConversionPreview, VoxelConversionPreviewRequest, VoxelConversionReceipt, VoxelConversionSourceMetadataReadout, VoxelConversionSourceMetadataRequest, VoxelConversionSourceRegistration, VoxelConversionSourceRegistrationRequest, VoxelEditHistoryReadRequest, VoxelEditHistoryRedoReceipt, VoxelEditHistoryRedoRequest, VoxelEditHistoryRevertReceipt, VoxelEditHistoryRevertRequest, VoxelEditHistorySummary, VoxelEditHistoryUndoReceipt, VoxelEditHistoryUndoRequest, VoxelModelInfoReadout, VoxelModelInfoRequest, VoxelModelWindowReadout, VoxelModelWindowRequest, VoxelVolumeAssetExportReceipt, VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadReceipt, VoxelVolumeAssetLoadRequest, VoxelVolumeAssetUnloadReceipt, VoxelVolumeAssetUnloadRequest, VoxelVolumeAssetPaletteUpdateReceipt, VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveReceipt, VoxelVolumeAssetSaveRequest, VoxelVolumeAuthoringInitializeReceipt, VoxelVolumeAuthoringInitializeRequest, WeaponEffectHookRequest, RawInputSample, RecordedInputAction, TimeControlCommand, TimeControlReceipt, TimeControlState } from '@asha/contracts';
 import type { CombatFeedbackProjection } from './combat-feedback.js';
 import type { CombatRuntimeReadout } from './combat-readout.js';
 import type { EncounterDirectorReadout, EncounterDirectorReadoutRequest, EncounterTransitionRequest, RuntimeSessionEncounterTransitionReceipt } from './encounter-director.js';
@@ -10,12 +10,23 @@ import type { GeneratedTunnelOperationRequest, GeneratedTunnelReadout, Generated
 import type { NavPathQueryRequest, NavPathReadout, NavPolicyViewReadout, NavProjectionReadout } from './nav-readout.js';
 import type { RuntimeActionIntentEnvelope } from './runtime-action.js';
 import type { FpsPrimaryFireRequest, GameRuleRuntimeReadout } from './transport-contracts.js';
+import type { GameplayRuntimeHostAdvanceReceipt, GameplayRuntimeHostLoadInput, GameplayRuntimeHostLoadReceipt, GameplayRuntimeHostMoment, GameplayRuntimeHostReadout, GameplayRuntimeHostSnapshot } from './gameplay-runtime-host.js';
 export interface RuntimeSessionFacade {
     initialize(input: RuntimeSessionInitializeInput): RuntimeSessionStateSummary;
+    configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot;
+    applyInputContextCommand(command: InputContextCommand): InputContextChangeReceipt;
+    submitRawInput(sample: RawInputSample): InputResolutionReceipt;
+    replayResolvedInputAction(record: RecordedInputAction): InputActionReplayReceipt;
+    readInputContextState(): InputContextStackState;
+    applyTimeControlCommand(command: TimeControlCommand): TimeControlReceipt;
+    readTimeControlState(): TimeControlState;
     loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt;
     submitCommands(batch: CommandBatch): RuntimeSessionCommandReceipt;
     tick(input?: RuntimeSessionTickInput): RuntimeSessionTickResult;
     createCamera(request: CameraCreateRequest): RuntimeSessionCameraCreateReceipt;
+    applyCameraModeCommand(command: CameraModeCommand): CameraModeChangeReceipt;
+    applyCameraNavigationInput(input: CameraNavigationInputEnvelope): CameraNavigationReceipt;
+    readCameraControllerState(request: CameraControllerReadRequest): CameraControllerState;
     applyFirstPersonCameraInput(envelope: FirstPersonCameraInputEnvelope): RuntimeSessionCameraInputReceipt;
     applyCollisionConstrainedCameraInput(envelope: CollisionConstrainedCameraInputEnvelope): RuntimeSessionCameraCollisionInputReceipt;
     submitRuntimeActionIntent(envelope: RuntimeActionIntentEnvelope): RuntimeSessionActionIntentReceipt;
@@ -62,6 +73,11 @@ export interface RuntimeSessionFacade {
     undoVoxelEdit(request: VoxelEditHistoryUndoRequest): VoxelEditHistoryUndoReceipt;
     redoVoxelEdit(request: VoxelEditHistoryRedoRequest): VoxelEditHistoryRedoReceipt;
     readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
+    loadGameplayRuntime(input: GameplayRuntimeHostLoadInput): GameplayRuntimeHostLoadReceipt;
+    advanceGameplayRuntime(moment: GameplayRuntimeHostMoment): GameplayRuntimeHostAdvanceReceipt;
+    readGameplayRuntime(): GameplayRuntimeHostReadout;
+    saveGameplayRuntime(): GameplayRuntimeHostSnapshot;
+    restoreGameplayRuntime(input: GameplayRuntimeHostLoadInput, snapshot: GameplayRuntimeHostSnapshot): GameplayRuntimeHostLoadReceipt;
     readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
     readAnimationIntent(): RuntimeSessionAnimationIntentReadout;
     readProjection(): RuntimeSessionProjectionSummary;

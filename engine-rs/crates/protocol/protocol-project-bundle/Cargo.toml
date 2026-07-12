@@ -12,3 +12,4 @@ publish = false
 # TypeScript. Depends on `core-ids` only, like `protocol-render`/`protocol-scene`.
 [dependencies]
 core-ids = { path = "../../foundation/core-ids" }
+serde = { version = "1", features = ["derive"] }

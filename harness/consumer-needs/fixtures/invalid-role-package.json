@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "consumer": { "id": "invalid.role", "role": "asha-demo", "source": "fixture" },
+  "requirements": [{
+    "id": "bad.package", "kind": "typescriptPackage", "identity": "@asha/devtools",
+    "symbols": ["attach"], "requiredLevel": "type",
+    "evidence": {
+      "type": ["harness/public-surface/ts-packages.json"], "provider": [], "selector": [], "delivery": []
+    }
+  }]
+}

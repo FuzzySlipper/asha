@@ -17,12 +17,15 @@ workspace = true
 [dependencies]
 protocol-ids = { path = "../protocol-ids" }
 protocol-replay = { path = "../protocol-replay" }
+protocol-presentation = { path = "../protocol-presentation" }
 protocol-diagnostics = { path = "../protocol-diagnostics" }
 protocol-scene = { path = "../protocol-scene" }
 protocol-project-bundle = { path = "../protocol-project-bundle" }
 protocol-assets = { path = "../protocol-assets" }
 protocol-policy-view = { path = "../protocol-policy-view" }
 protocol-telemetry = { path = "../protocol-telemetry" }
+protocol-input = { path = "../protocol-input" }
+protocol-time-control = { path = "../protocol-time-control" }
 protocol-entity-authoring = { path = "../protocol-entity-authoring" }
 protocol-view = { path = "../protocol-view" }
 protocol-voxel-conversion = { path = "../protocol-voxel-conversion" }

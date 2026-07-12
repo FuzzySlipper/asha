@@ -5,5 +5,5 @@
 //
 // Manual edits will be overwritten and are rejected by CI
 // (harness/ci/check-contracts.sh).
-export {};
+export const GAMEPLAY_MODULE_BINDING_SCHEMA_VERSION = 1;
 //# sourceMappingURL=gameExtension.js.map

@@ -1,0 +1,72 @@
+use asha_gameplay_module_sdk::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Input {
+    pub amount: u64,
+}
+
+pub struct __TYPE_NAME__Behavior;
+
+impl GameplayModuleBehavior for __TYPE_NAME__Behavior {
+    fn invoke(
+        &self,
+        context: &GameplayModuleContext<'_>,
+    ) -> Result<GameplayModuleActions, GameplayModuleError> {
+        let input: Input = context.event_payload()?;
+        let mut actions = context.actions();
+        actions.trace(format!("__MODULE_ID__.observed:{}", input.amount));
+        Ok(actions)
+    }
+}
+
+pub fn module_id() -> &'static str {
+    "__MODULE_ID__"
+}
+
+pub fn manifest() -> GameplayModuleManifest {
+    GameplayModuleManifest {
+        module_ref: GameplayModuleRef {
+            module_id: module_id().to_owned(),
+            namespace: "__MODULE_ID__".to_owned(),
+            version: "0.1.0".to_owned(),
+            sdk_hash: "sha256:replace-with-sdk-hash".to_owned(),
+            contract_hash: "sha256:replace-with-contract-hash".to_owned(),
+            artifact_hash: "sha256:replace-with-artifact-hash".to_owned(),
+            provider_id: "provider.__MODULE_ID__".to_owned(),
+        },
+        published_events: vec![],
+        subscriptions: vec![],
+        invocations: vec![],
+        read_views: vec![],
+        proposal_kinds: vec![],
+        state_schemas: vec![],
+        fact_schemas: vec![],
+        ordering: vec![],
+        budget: GameplayExecutionBudget {
+            max_waves: 4,
+            max_events_per_root: 32,
+            max_proposals_per_root: 16,
+            max_invocations_per_root: 32,
+            max_payload_bytes_per_root: 65_536,
+        },
+        deterministic_requirements: vec!["canonical-json".to_owned()],
+        source_hash: "sha256:replace-with-source-hash".to_owned(),
+    }
+}
+
+pub fn provider() -> GameplayStaticModuleProvider {
+    GameplayStaticModuleProvider::linked_from_manifest(manifest(), __TYPE_NAME__Behavior)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_provider_composes() {
+        let mut builder = GameplayStaticCompositionBuilder::new();
+        builder.add_provider(provider());
+        builder.build().expect("generated provider composes");
+    }
+}

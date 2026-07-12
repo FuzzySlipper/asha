@@ -11,7 +11,7 @@ Source metadata:
 
 ## Rust Crates By Lane
 
-### contract-steward (19)
+### contract-steward (22)
 
 - [`protocol-assets`](../../engine-rs/crates/protocol/protocol-assets/Cargo.toml) — active
 - [`protocol-codegen`](../../engine-rs/crates/protocol/protocol-codegen/Cargo.toml) — active
@@ -20,13 +20,16 @@ Source metadata:
 - [`protocol-game-extension`](../../engine-rs/crates/protocol/protocol-game-extension/Cargo.toml) — active
 - [`protocol-game-rules`](../../engine-rs/crates/protocol/protocol-game-rules/Cargo.toml) — active
 - [`protocol-ids`](../../engine-rs/crates/protocol/protocol-ids/Cargo.toml) — active
+- [`protocol-input`](../../engine-rs/crates/protocol/protocol-input/Cargo.toml) — active
 - [`protocol-policy-view`](../../engine-rs/crates/protocol/protocol-policy-view/Cargo.toml) — active
+- [`protocol-presentation`](../../engine-rs/crates/protocol/protocol-presentation/Cargo.toml) — active
 - [`protocol-project-bundle`](../../engine-rs/crates/protocol/protocol-project-bundle/Cargo.toml) — active
 - [`protocol-render`](../../engine-rs/crates/protocol/protocol-render/Cargo.toml) — active
 - [`protocol-replay`](../../engine-rs/crates/protocol/protocol-replay/Cargo.toml) — active
 - [`protocol-scene`](../../engine-rs/crates/protocol/protocol-scene/Cargo.toml) — active
 - [`protocol-script`](../../engine-rs/crates/protocol/protocol-script/Cargo.toml) — active
 - [`protocol-telemetry`](../../engine-rs/crates/protocol/protocol-telemetry/Cargo.toml) — active
+- [`protocol-time-control`](../../engine-rs/crates/protocol/protocol-time-control/Cargo.toml) — active
 - [`protocol-view`](../../engine-rs/crates/protocol/protocol-view/Cargo.toml) — active
 - [`protocol-voxel-annotation`](../../engine-rs/crates/protocol/protocol-voxel-annotation/Cargo.toml) — active
 - [`protocol-voxel-asset`](../../engine-rs/crates/protocol/protocol-voxel-asset/Cargo.toml) — active
@@ -48,29 +51,41 @@ Source metadata:
 - [`core-space`](../../engine-rs/crates/foundation/core-space/Cargo.toml) — active
 - [`core-time`](../../engine-rs/crates/foundation/core-time/Cargo.toml) — active
 
-### rust-render (2)
+### rust-render (7)
 
+- [`render-animation`](../../engine-rs/crates/render/render-animation/Cargo.toml) — active
+- [`render-audio`](../../engine-rs/crates/render/render-audio/Cargo.toml) — active
+- [`render-billboard`](../../engine-rs/crates/render/render-billboard/Cargo.toml) — active
 - [`render-bridge`](../../engine-rs/crates/render/render-bridge/Cargo.toml) — active
 - [`render-debug`](../../engine-rs/crates/render/render-debug/Cargo.toml) — active
+- [`render-particle`](../../engine-rs/crates/render/render-particle/Cargo.toml) — active
+- [`render-telemetry-overlay`](../../engine-rs/crates/render/render-telemetry-overlay/Cargo.toml) — active
 
-### rust-rule (9)
+### rust-rule (15)
 
 - [`game-rule-extension`](../../engine-rs/crates/rules/game-rule-extension/Cargo.toml) — active
+- [`gameplay-module-sdk`](../../engine-rs/crates/rules/gameplay-module-sdk/Cargo.toml) — active
+- [`gameplay-runtime-host`](../../engine-rs/crates/rules/gameplay-runtime-host/Cargo.toml) — active
+- [`rule-animation-controller`](../../engine-rs/crates/rules/rule-animation-controller/Cargo.toml) — active
 - [`rule-game-modifier`](../../engine-rs/crates/rules/rule-game-modifier/Cargo.toml) — active
+- [`rule-gameplay-fabric`](../../engine-rs/crates/rules/rule-gameplay-fabric/Cargo.toml) — active
+- [`rule-input`](../../engine-rs/crates/rules/rule-input/Cargo.toml) — active
 - [`rule-lifecycle`](../../engine-rs/crates/rules/rule-lifecycle/Cargo.toml) — active
 - [`rule-process`](../../engine-rs/crates/rules/rule-process/Cargo.toml) — active
 - [`rule-project-bundle`](../../engine-rs/crates/rules/rule-project-bundle/Cargo.toml) — active
 - [`rule-relationship`](../../engine-rs/crates/rules/rule-relationship/Cargo.toml) — active
 - [`rule-scheduler`](../../engine-rs/crates/rules/rule-scheduler/Cargo.toml) — active
 - [`rule-state-machine`](../../engine-rs/crates/rules/rule-state-machine/Cargo.toml) — active
+- [`rule-trigger-volume`](../../engine-rs/crates/rules/rule-trigger-volume/Cargo.toml) — active
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
 
-### rust-service (17)
+### rust-service (18)
 
 - [`svc-collision`](../../engine-rs/crates/services/svc-collision/Cargo.toml) — active
 - [`svc-combat`](../../engine-rs/crates/services/svc-combat/Cargo.toml) — active
 - [`svc-entity-authoring`](../../engine-rs/crates/services/svc-entity-authoring/Cargo.toml) — active
 - [`svc-game-rules`](../../engine-rs/crates/services/svc-game-rules/Cargo.toml) — active
+- [`svc-gameplay-fabric`](../../engine-rs/crates/services/svc-gameplay-fabric/Cargo.toml) — active
 - [`svc-levelgen`](../../engine-rs/crates/services/svc-levelgen/Cargo.toml) — active
 - [`svc-mesh`](../../engine-rs/crates/services/svc-mesh/Cargo.toml) — active
 - [`svc-mesh-import`](../../engine-rs/crates/services/svc-mesh-import/Cargo.toml) — active
@@ -195,16 +210,21 @@ Source metadata:
 
 Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml)
 
+- `apply_camera_mode_command` — stable; output `protocol_view::CameraModeChangeReceipt`
+- `apply_camera_navigation_input` — stable; output `protocol_view::CameraNavigationReceipt`
 - `apply_collision_constrained_camera_input` — stable; output `protocol_view::CameraCollisionSnapshot`
 - `apply_enemy_direct_nav_movement` — stable; output `protocol_runtime::EnemyDirectNavMovementResult`
 - `apply_first_person_camera_input` — stable; output `protocol_view::CameraSnapshot`
 - `apply_fps_encounter_transition` — stable; output `protocol_runtime::FpsEncounterTransitionResult`
 - `apply_fps_primary_fire` — stable; output `protocol_runtime::FpsPrimaryFireResult`
 - `apply_generated_tunnel_to_runtime_world` — stable; output `protocol_view::GeneratedTunnelRuntimeApplyReceipt`
+- `apply_input_context_command` — stable; output `protocol_input::InputContextChangeReceipt`
 - `apply_scene_object_command` — stable; output `protocol_scene::SceneObjectCommandResult`
+- `apply_time_control_command` — stable; output `protocol_time_control::TimeControlReceipt`
 - `apply_voxel_annotation_edit` — stable; output `protocol_voxel_annotation::VoxelAnnotationEditReceipt`
 - `apply_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionReceipt`
 - `apply_voxel_edit_revert` — stable; output `protocol_voxel_edit_history::VoxelEditHistoryRevertReceipt`
+- `configure_input_session` — stable; output `protocol_input::InputSessionSnapshot`
 - `create_camera` — stable; output `protocol_view::CameraSnapshot`
 - `export_voxel_annotation_layer` — stable; output `protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt`
 - `export_voxel_conversion_evidence` — stable; output `protocol_voxel_conversion::VoxelConversionEvidenceRef[]`
@@ -224,13 +244,17 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `plan_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionPlan`
 - `preview_voxel_conversion` — stable; output `protocol_voxel_conversion::VoxelConversionPreview`
 - `preview_voxel_edit_revert` — stable; output `protocol_voxel_edit_history::VoxelEditHistoryRevertReceipt`
+- `read_camera_controller_state` — stable; output `protocol_view::CameraControllerState`
 - `read_camera_projection` — stable; output `protocol_view::CameraProjectionSnapshot`
 - `read_fps_encounter_director` — stable; output `protocol_runtime::FpsEncounterDirectorSnapshot`
 - `read_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
 - `read_game_rule_runtime_readout` — stable; output `protocol_runtime::GameRuleRuntimeReadout`
+- `read_input_context_state` — stable; output `protocol_input::InputContextStackState`
 - `read_model_material_preview` — stable; output `protocol_render::ModelMaterialPreviewSnapshot`
+- `read_projection_frame` — stable; output `protocol_presentation::RuntimeProjectionFrame`
 - `read_render_diffs` — stable; output `protocol_render::RenderFrameDiffDescriptor`
 - `read_scene_object_snapshot` — stable; output `protocol_scene::SceneObjectSnapshot`
+- `read_time_control_state` — stable; output `protocol_time_control::TimeControlState`
 - `read_voxel_annotation_query` — stable; output `protocol_voxel_annotation::VoxelAnnotationQueryReadout`
 - `read_voxel_conversion_source_metadata` — stable; output `protocol_voxel_conversion::VoxelConversionSourceMetadataReadout`
 - `read_voxel_edit_history` — stable; output `protocol_voxel_edit_history::VoxelEditHistorySummary`
@@ -241,6 +265,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `register_voxel_conversion_mesh_asset` — stable; output `protocol_voxel_conversion::VoxelConversionSourceRegistration`
 - `register_voxel_conversion_source` — stable; output `protocol_voxel_conversion::VoxelConversionSourceRegistration`
 - `release_buffer` — stable; output `Unit`
+- `replay_resolved_input_action` — stable; output `protocol_input::InputActionReplayReceipt`
 - `restart_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
 - `run_replay_step` — quarantined; output `protocol_replay::ReplayStepReport`
 - `save_project_bundle` — stable; output `protocol_project_bundle::SaveSummary`
@@ -249,6 +274,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `step_simulation` — stable; output `protocol_runtime::StepResult`
 - `submit_commands` — stable; output `protocol_voxel::CommandResult`
 - `submit_game_rule_effect_intent` — stable; output `protocol_game_rules::GameRuleResolutionReceipt`
+- `submit_raw_input` — stable; output `protocol_input::InputResolutionReceipt`
 - `undo_voxel_edit` — stable; output `protocol_voxel_edit_history::VoxelEditHistoryUndoReceipt`
 - `unload_project_bundle` — stable; output `Unit`
 - `unload_voxel_volume_asset` — stable; output `protocol_voxel_asset::VoxelVolumeAssetUnloadReceipt`
@@ -258,7 +284,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Evidence Entrypoints
 
-### harness/fixtures (34 groups)
+### harness/fixtures (35 groups)
 
 - [`harness/fixtures/asset-catalog`](../../harness/fixtures/asset-catalog) — 4 files
 - [`harness/fixtures/asset-import`](../../harness/fixtures/asset-import) — 4 files
@@ -271,6 +297,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/entities`](../../harness/fixtures/entities) — 1 files
 - [`harness/fixtures/events`](../../harness/fixtures/events) — 1 files
 - [`harness/fixtures/game-rules`](../../harness/fixtures/game-rules) — 2 files
+- [`harness/fixtures/gameplay-module-sdk`](../../harness/fixtures/gameplay-module-sdk) — 10628 files
 - [`harness/fixtures/gameplay-presets`](../../harness/fixtures/gameplay-presets) — 1 files
 - [`harness/fixtures/generated-levels`](../../harness/fixtures/generated-levels) — 1 files
 - [`harness/fixtures/materials`](../../harness/fixtures/materials) — 1 files
@@ -279,7 +306,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - [`harness/fixtures/policy`](../../harness/fixtures/policy) — 1 files
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files
 - [`harness/fixtures/policy-outputs`](../../harness/fixtures/policy-outputs) — 3 files
-- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 6 files
+- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 8 files
 - [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 15 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files

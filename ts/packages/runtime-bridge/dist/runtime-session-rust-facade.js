@@ -1,14 +1,16 @@
 import { RuntimeBridgeError, frameCursor, } from './bridge.js';
 import { createGeneratedTunnelEnemyPolicyFixture, validateEnemyPolicySource, } from '@asha/runtime-session';
-import { buildEncounterDirectorReadout, buildEncounterTransitionReceipt, validateEncounterDirectorReadoutRequest, validateEncounterTransitionRequest, } from '@asha/runtime-session';
+import { buildEncounterTransitionReceipt, validateEncounterDirectorReadoutRequest, validateEncounterTransitionRequest, } from '@asha/runtime-session';
 import { GENERATED_TUNNEL_NAV_POLICY_VIEW, GENERATED_TUNNEL_NO_PATH, GENERATED_TUNNEL_REACHABLE_PATH, } from '@asha/runtime-session';
 import { buildRuntimeSessionEnemyNavPath, ecrpActorPosition, ecrpEntityTransform, } from './runtime-session-enemy-authority.js';
 import { buildRuntimeSessionAnimationIntentReadout, } from './runtime-session-animation.js';
 import { buildEcrpProjectState, buildEcrpRuntimeReadout, defaultRuntimeSessionEcrpProjectLoadInput, validateEcrpProjectLoadInput, } from './runtime-session-ecrp.js';
 import { acceptedAutonomousMovementReceipt, lifecycleStatusReadout, lifecycleStatusToEncounterLifecycle, rejectedAutonomousPolicyProposalReceipt, runtimeActionReceiptToAutonomousReceipt, validateAutonomousPolicyProposal, validateAutonomousPolicyTickInput, validateGeneratedTunnelOperationRequest, validateInitializeInput, validateLifecycleStatusRequest, validateRestartIntent, validateRuntimeActionIntentEnvelope, } from './runtime-session-lifecycle.js';
-import { compositionHashRecord, identityHashRecord, renderFrameHashRecord, stableHash, } from './runtime-session-hash.js';
+import { compositionHashRecord, identityHashRecord, renderFrameHashRecord, runtimeProjectionFrameHashRecord, stableHash, } from './runtime-session-hash.js';
+import { encounterReadoutFromFpsSnapshot, encounterTransitionResultForReceipt, fpsEncounterLifecycleInput, fpsEncounterStateToReadoutState, } from './runtime-session-rust-encounter.js';
 export class RustBackedRuntimeSessionFacade {
     #bridge;
+    #gameplayHost;
     #identity = null;
     #engine = null;
     #sequenceId = 0;
@@ -20,8 +22,9 @@ export class RustBackedRuntimeSessionFacade {
     #ecrpProjectState = null;
     #runtimeTransforms = new Map();
     #replayRecords = [];
-    constructor(bridge) {
+    constructor(bridge, gameplayHost) {
         this.#bridge = bridge;
+        this.#gameplayHost = gameplayHost ?? null;
     }
     initialize(input) {
         validateInitializeInput(input);
@@ -49,6 +52,34 @@ export class RustBackedRuntimeSessionFacade {
         this.#replayRecords = [];
         this.#record('initialize', snapshot.replayHash);
         return this.#stateSummary(composition);
+    }
+    configureInputSession(request) {
+        this.#requireInitialized('configureInputSession');
+        return this.#bridge.configureInputSession(request);
+    }
+    applyInputContextCommand(command) {
+        this.#requireInitialized('applyInputContextCommand');
+        return this.#bridge.applyInputContextCommand(command);
+    }
+    submitRawInput(sample) {
+        this.#requireInitialized('submitRawInput');
+        return this.#bridge.submitRawInput(sample);
+    }
+    replayResolvedInputAction(record) {
+        this.#requireInitialized('replayResolvedInputAction');
+        return this.#bridge.replayResolvedInputAction(record);
+    }
+    readInputContextState() {
+        this.#requireInitialized('readInputContextState');
+        return this.#bridge.readInputContextState();
+    }
+    applyTimeControlCommand(command) {
+        this.#requireInitialized('applyTimeControlCommand');
+        return this.#bridge.applyTimeControlCommand(command);
+    }
+    readTimeControlState() {
+        this.#requireInitialized('readTimeControlState');
+        return this.#bridge.readTimeControlState();
     }
     loadEcrpProject(input) {
         const identity = this.#requireInitialized('loadEcrpProject');
@@ -136,6 +167,24 @@ export class RustBackedRuntimeSessionFacade {
             sessionHash: this.#sessionHash(),
         };
     }
+    applyCameraModeCommand(command) {
+        this.#requireInitialized('applyCameraModeCommand');
+        const receipt = this.#bridge.applyCameraModeCommand(command);
+        this.#sequenceId += 1;
+        this.#record('applyCameraModeCommand');
+        return receipt;
+    }
+    applyCameraNavigationInput(input) {
+        this.#requireInitialized('applyCameraNavigationInput');
+        const receipt = this.#bridge.applyCameraNavigationInput(input);
+        this.#sequenceId += 1;
+        this.#record('applyCameraNavigationInput');
+        return receipt;
+    }
+    readCameraControllerState(request) {
+        this.#requireInitialized('readCameraControllerState');
+        return this.#bridge.readCameraControllerState(request);
+    }
     applyFirstPersonCameraInput(envelope) {
         this.#requireInitialized('applyFirstPersonCameraInput');
         const before = this.#sessionHash();
@@ -197,6 +246,7 @@ export class RustBackedRuntimeSessionFacade {
             origin: [0, 1.62, 0],
             direction: [0, 0, -1],
         });
+        this.#tick = Math.max(this.#tick, envelope.tick);
         this.#snapshot = this.#bridge.readFpsRuntimeSession();
         this.#record('submitRuntimeActionIntent', fire.replayHash, envelope.source);
         return {
@@ -214,6 +264,7 @@ export class RustBackedRuntimeSessionFacade {
         this.#requireInitialized('submitGameExtensionWeaponEffect');
         const before = this.#sessionHash();
         const result = this.#bridge.invokeGameExtensionWeaponEffect({ hook, primaryFire });
+        this.#tick = Math.max(this.#tick, primaryFire.tick);
         this.#snapshot = this.#bridge.readFpsRuntimeSession();
         this.#sequenceId += 1;
         this.#record('submitGameExtensionWeaponEffect', result.replayEvidence.replayHash);
@@ -718,6 +769,26 @@ export class RustBackedRuntimeSessionFacade {
             },
         });
     }
+    loadGameplayRuntime(input) {
+        this.#requireInitialized('loadGameplayRuntime');
+        return this.#requireGameplayHost('loadGameplayRuntime').load(input);
+    }
+    advanceGameplayRuntime(moment) {
+        this.#requireInitialized('advanceGameplayRuntime');
+        return this.#requireGameplayHost('advanceGameplayRuntime').advance(moment);
+    }
+    readGameplayRuntime() {
+        this.#requireInitialized('readGameplayRuntime');
+        return this.#requireGameplayHost('readGameplayRuntime').read();
+    }
+    saveGameplayRuntime() {
+        this.#requireInitialized('saveGameplayRuntime');
+        return this.#requireGameplayHost('saveGameplayRuntime').save();
+    }
+    restoreGameplayRuntime(input, snapshot) {
+        this.#requireInitialized('restoreGameplayRuntime');
+        return this.#requireGameplayHost('restoreGameplayRuntime').restore(input, snapshot);
+    }
     readCameraProjection(request) {
         this.#requireInitialized('readCameraProjection');
         const snapshot = this.#bridge.readCameraProjection(request);
@@ -739,19 +810,23 @@ export class RustBackedRuntimeSessionFacade {
     }
     readProjection() {
         this.#requireInitialized('readProjection');
-        const cursor = frameCursor(this.#sequenceId);
-        const frame = this.#bridge.readRenderDiffs(cursor);
+        const cursor = frameCursor(this.#tick);
+        const runtimeFrame = this.#bridge.readProjectionFrame(cursor);
+        const frame = runtimeFrame.scene;
         const composition = this.#bridge.getProjectBundleCompositionStatus();
         return {
             sequenceId: this.#sequenceId,
             cursor,
             frame,
+            runtimeFrame,
             composition,
             renderDiffCount: frame.ops.length,
+            presentationOpCount: runtimeFrame.presentation.ops.length,
             projectionHash: stableHash({
                 sequenceId: this.#sequenceId,
                 composition: compositionHashRecord(composition),
                 frame: renderFrameHashRecord(frame),
+                runtimeFrame: runtimeProjectionFrameHashRecord(runtimeFrame),
             }),
         };
     }
@@ -871,6 +946,12 @@ export class RustBackedRuntimeSessionFacade {
             throw new RuntimeBridgeError('not_initialized', 'FPS RuntimeSession snapshot is unavailable before initialize');
         }
         return this.#snapshot;
+    }
+    #requireGameplayHost(operation) {
+        if (this.#gameplayHost === null) {
+            throw new RuntimeBridgeError('operation_unimplemented', `${operation} requires a statically linked public gameplay RuntimeSession host`);
+        }
+        return this.#gameplayHost;
     }
     #stateSummary(composition) {
         const identity = this.#requireInitialized('stateSummary');
@@ -1121,64 +1202,5 @@ function combatAuthorityFromFpsPrimaryFire(result) {
         mutationOwner: result.mutationOwner,
         workspaceTrace: result.workspaceTrace,
     };
-}
-function fpsEncounterLifecycleInput(lifecycle) {
-    return {
-        outcomeKind: lifecycle.outcomeKind,
-        terminal: lifecycle.terminal,
-        enemyDead: lifecycle.enemyDead,
-        playerDead: lifecycle.playerDead,
-        lifecycleHash: lifecycle.lifecycleHash,
-    };
-}
-function encounterReadoutFromFpsSnapshot(input) {
-    return buildEncounterDirectorReadout({
-        state: fpsEncounterStateToReadoutState(input.snapshot.state),
-        sequenceId: input.sequenceId,
-        tick: input.tick,
-        sessionSeed: input.sessionSeed,
-        sessionHash: input.sessionHash,
-        lifecycle: input.snapshot.lifecycle,
-        authority: {
-            source: input.snapshot.backend === 'native_rust' ? 'rust_bridge' : 'reference_bridge',
-            backend: input.snapshot.backend,
-            surface: input.snapshot.authoritySurface,
-            mutationOwner: input.snapshot.mutationOwner,
-            readSets: input.snapshot.readSets,
-            workspaceTrace: input.snapshot.workspaceTrace,
-        },
-    });
-}
-function fpsEncounterStateToReadoutState(state) {
-    return {
-        presetId: requireGeneratedTunnelEncounterPreset(state.presetId),
-        status: state.status,
-        spawnedEnemyIds: generatedTunnelEncounterIds(state.spawnedEnemyIds),
-        defeatedEnemyIds: generatedTunnelEncounterIds(state.defeatedEnemyIds),
-        revision: state.revision,
-        lastTransition: state.lastTransition,
-    };
-}
-function encounterTransitionResultForReceipt(result) {
-    return {
-        accepted: result.accepted,
-        state: fpsEncounterStateToReadoutState(result.state),
-        ...(result.eventKind === null ? {} : { eventKind: result.eventKind }),
-        ...(result.rejectionReason === null ? {} : { rejectionReason: result.rejectionReason }),
-    };
-}
-function requireGeneratedTunnelEncounterPreset(value) {
-    if (value !== 'generated-tunnel-small-encounter') {
-        throw new RuntimeBridgeError('internal', `unsupported Rust encounter preset '${value}'`);
-    }
-    return value;
-}
-function generatedTunnelEncounterIds(ids) {
-    return ids.map((id) => {
-        if (id !== 'encounter.generated_tunnel_small.wave_1.enemy_001') {
-            throw new RuntimeBridgeError('internal', `unsupported Rust encounter instance '${id}'`);
-        }
-        return id;
-    });
 }
 //# sourceMappingURL=runtime-session-rust-facade.js.map

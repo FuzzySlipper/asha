@@ -8,11 +8,13 @@ void test('authoring persistence contract exposes bounded public write scopes', 
     assert.equal(contract.contractVersion, 'authoring-persistence.v0');
     assert.deepEqual(contract.writeScopes.map((scope) => scope.operationKind), [
         'authoring.scene.save_source',
+        'authoring.prefab.save_source',
         'authoring.catalog.save_source',
         'authoring.asset.save_source',
         'authoring.policy.save_source',
     ]);
     assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.scene.save_source')?.allowedRoots, ['scenes']);
+    assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.prefab.save_source')?.allowedRoots, ['prefabs']);
     assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.catalog.save_source')?.allowedRoots, ['packages/game-catalogs']);
     assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.asset.save_source')?.allowedRoots, ['assets']);
     assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.policy.save_source')?.allowedRoots, []);
@@ -33,6 +35,16 @@ void test('authoring write target resolver accepts normalized scene catalog and 
     assert.equal(scene.normalizedPath, 'scenes/demo.scene.json');
     assert.equal(scene.allowedRoot, 'scenes');
     assert.equal(scene.requiredValidator, 'validateAshaProofSceneSourceDocument');
+    const prefab = resolveAshaAuthoringWriteTarget(manifest, {
+        operationKind: 'authoring.prefab.save_source',
+        relativePath: 'prefabs/registry.json',
+    });
+    assert.equal(prefab.ok, true);
+    if (!prefab.ok) {
+        throw new Error('prefab authoring path should resolve');
+    }
+    assert.equal(prefab.format, 'prefab-registry-json.v1');
+    assert.equal(prefab.requiredValidator, 'validateAshaPrefabRegistrySourceDocument');
     const catalog = resolveAshaAuthoringWriteTarget(manifest, {
         operationKind: 'authoring.catalog.save_source',
         relativePath: 'packages/game-catalogs/catalog.json',

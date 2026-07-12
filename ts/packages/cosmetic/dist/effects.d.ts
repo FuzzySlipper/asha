@@ -1,4 +1,4 @@
-import type { RenderFrameDiff } from '@asha/contracts';
+import type { PresentationOp, RenderFrameDiff } from '@asha/contracts';
 export type CosmeticEffectKind = 'screen_flash' | 'hit_spark' | 'view_kick';
 export type CosmeticEffectDiagnosticCode = 'invalidDuration' | 'invalidIntensity' | 'invalidStartTick' | 'missingEffectId';
 export type CosmeticSource = {
@@ -8,6 +8,10 @@ export type CosmeticSource = {
 } | {
     readonly kind: 'local_ui_event';
     readonly eventId: string;
+} | {
+    readonly kind: 'particle_projection';
+    readonly signalId: string;
+    readonly originId: string | null;
 };
 export type CosmeticEffectDescriptor = {
     readonly effectId: string;
@@ -53,7 +57,7 @@ export type CosmeticNonAuthorityReadout = {
 export type CosmeticAuthorityBoundary = {
     readonly packageRole: '@asha/cosmetic';
     readonly owns: readonly ['transient_effect_descriptors', 'local_view_models'];
-    readonly consumes: readonly ['generated_render_frame_diff_descriptors', 'local_ui_events'];
+    readonly consumes: readonly ['generated_render_frame_diff_descriptors', 'generated_particle_projection', 'local_ui_events'];
     readonly doesNotProduce: readonly ['authority_commands', 'replay_records', 'state_mutations', 'renderer_backend_calls'];
 };
 export type ScreenFlashInput = {
@@ -73,10 +77,19 @@ export type HitSparkInput = {
     readonly anchor: readonly [number, number, number];
     readonly color?: readonly [number, number, number, number] | null;
 };
+export type ParticleHitSparkAdapterInput = {
+    readonly operation: Extract<PresentationOp, {
+        readonly domain: 'particle';
+    }>;
+    readonly startsAtTick: number;
+    readonly ticksPerSecond: number;
+    readonly resolveEntityPosition?: (entity: number) => readonly [number, number, number] | null;
+};
 export declare const COSMETIC_AUTHORITY_BOUNDARY: CosmeticAuthorityBoundary;
 export declare const COSMETIC_NON_AUTHORITY_READOUT: CosmeticNonAuthorityReadout;
 export declare function createScreenFlashDescriptor(input: ScreenFlashInput): CosmeticEffectDescriptor;
 export declare function createHitSparkDescriptor(input: HitSparkInput): CosmeticEffectDescriptor;
+export declare function adaptParticleBurstToHitSparkDescriptor(input: ParticleHitSparkAdapterInput): CosmeticEffectDescriptor | null;
 export declare function projectCosmeticFrame(descriptors: readonly CosmeticEffectDescriptor[], tick: number): CosmeticFrameViewModel;
 export declare function validateCosmeticEffectDescriptor(descriptor: CosmeticEffectDescriptor): readonly CosmeticEffectDiagnostic[];
 export declare function readCosmeticAuthorityBoundary(): CosmeticAuthorityBoundary;

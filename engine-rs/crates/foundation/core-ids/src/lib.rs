@@ -130,6 +130,21 @@ id_type!(
     SceneNodeId
 );
 
+id_type!(
+    /// Identifies one durable reusable prefab definition inside a ProjectBundle.
+    PrefabId
+);
+
+id_type!(
+    /// Identifies one stable authored part inside a prefab definition.
+    PrefabPartId
+);
+
+id_type!(
+    /// Identifies one stored request to instantiate a prefab.
+    PrefabInstanceId
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,6 +161,9 @@ mod tests {
         assert_eq!(SceneId::new(3).raw(), 3);
         assert_eq!(RuntimeSessionId::new(4).raw(), 4);
         assert_eq!(SceneNodeId::new(5).raw(), 5);
+        assert_eq!(PrefabId::new(8).raw(), 8);
+        assert_eq!(PrefabPartId::new(9).raw(), 9);
+        assert_eq!(PrefabInstanceId::new(10).raw(), 10);
     }
 
     /// Scene/session IDs are independent newtypes: a `SceneNodeId` cannot be passed

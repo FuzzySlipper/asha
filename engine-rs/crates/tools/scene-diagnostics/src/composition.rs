@@ -166,6 +166,22 @@ pub fn composition_failure_diagnostic(err: &LoadExecutionError) -> DiagnosticRep
             RemedyAction::RestoreArtifact,
             "restore the session-state snapshot artifact from a known-good copy",
         ),
+        LoadExecutionError::PrefabSessionStateDecode { path, error } => report(
+            DiagnosticCode::CorruptBundleArtifact,
+            "sessionStateSnapshot",
+            DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
+            format!("session-state prefab metadata `{path}` failed to decode: {error}"),
+            RemedyAction::RestoreArtifact,
+            "restore the complete Session snapshot; prefab metadata and entity records must travel together",
+        ),
+        LoadExecutionError::PrefabSessionStateDiverged { path, error } => report(
+            DiagnosticCode::FinalConsistencyMismatch,
+            "sessionStateSnapshot",
+            DiagnosticSourceRef::empty().with_bundle_path(path.clone()),
+            format!("session-state prefab metadata `{path}` diverged from entity authority: {error}"),
+            RemedyAction::RestoreArtifact,
+            "restore a Session snapshot whose prefab metadata matches its entity records",
+        ),
         LoadExecutionError::FinalConsistency { detail } => report(
             DiagnosticCode::FinalConsistencyMismatch,
             "finalValidation",

@@ -53,6 +53,7 @@ export interface AshaRendererAnimatedMeshPlaybackReadout {
     readonly poseSample: AshaRendererAnimatedMeshPoseSample | null;
     readonly diagnostics: readonly AshaRendererHostDiagnostic[];
     readonly projectionOnly: true;
+    readonly controllerClips: readonly AshaRendererAnimationControllerClip[];
 }
 export interface AshaRendererAnimatedMeshProjection {
     readonly kind: 'asha_renderer_animated_mesh_projection.v0';
@@ -60,6 +61,15 @@ export interface AshaRendererAnimatedMeshProjection {
     readonly advance: (deltaSeconds: number) => AshaRendererAnimatedMeshFrameReceipt;
     readonly playback: (handle: RenderHandle) => AshaRendererAnimatedMeshPlaybackReadout;
     readonly snapshot: () => string;
+    readonly hasAnimationTarget: (handle: RenderHandle) => boolean;
+    readonly setAnimationControllerWeights: (handle: RenderHandle, clips: readonly AshaRendererAnimationControllerClip[]) => void;
+    readonly hasAnimationClips: (handle: RenderHandle, clipIds: readonly string[]) => boolean;
+    readonly clearAnimationControllerWeights: (handle: RenderHandle) => void;
+}
+export interface AshaRendererAnimationControllerClip {
+    readonly clip: string;
+    readonly weight: number;
+    readonly speed: number;
 }
 export interface AshaRendererAnimatedMeshProjectionOptions {
     readonly manifest: AshaRendererAnimatedMeshResourceManifest;
@@ -82,6 +92,7 @@ interface BackendAnimatedMeshPlaybackReadout {
     readonly weight: number | null;
     readonly poseSample: AshaRendererAnimatedMeshPoseSample;
     readonly diagnostics: readonly string[];
+    readonly controllerClips: readonly AshaRendererAnimationControllerClip[];
 }
 export {};
 //# sourceMappingURL=animated-mesh-host.d.ts.map

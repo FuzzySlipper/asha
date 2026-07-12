@@ -1,4 +1,5 @@
 import type { EditorControl } from './index.js';
+import type { TimeControlCommand } from '@asha/contracts';
 export interface HudHealthInput {
     readonly entity: number;
     readonly current: number;
@@ -51,6 +52,7 @@ export type HudMenuIntent = {
     readonly kind: 'ui.resume_intent';
     readonly source: 'hud_menu';
 };
+export declare function hudIntentToTimeControlCommand(intent: HudMenuIntent): TimeControlCommand | null;
 export type GameHudHealthRole = 'player' | 'target' | 'ally' | 'neutral';
 export interface GameHudHealthBarInput extends HudHealthInput {
     readonly id: string;

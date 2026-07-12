@@ -8,6 +8,7 @@
 
 import type { EntityId } from './ids.js';
 import type { DiagnosticSeverity } from './diagnostics.js';
+import type { PrefabId, PrefabInstanceId, PrefabPartReference } from './projectBundle.js';
 
 export type GameExtensionHookKind = 'weaponEffect' | 'interactionEffect' | 'spawnCondition';
 
@@ -94,3 +95,281 @@ export interface GameExtensionReplayEvidence {
   readonly rejectionHashes: readonly string[];
   readonly replayHash: string;
 }
+
+export type GameplayInvocationFamily = 'observe' | 'guard' | 'transform' | 'react';
+
+export type GameplayEventPhase = 'postCommit' | 'decisionMoment' | 'scheduledMoment';
+
+export type GameplayReadViewKind = 'eventIdentity' | 'entityCapability' | 'moduleNamed' | 'relationship' | 'prefabPart' | 'selection' | 'ownerQuery';
+
+export type GameplayReadSelectorCapability = 'eventSource' | 'eventSubject' | 'eventTarget' | 'knownEntity' | 'lifecycleCapability' | 'transformCapability' | 'collisionCapability' | 'controllerCapability' | 'transformParent' | 'containment' | 'sourceAncestry' | 'prefabPartRole' | 'tagSelection' | 'scopeSelection' | 'moduleStateScope' | 'ownerQuery';
+
+export type GameplayRegistryDiagnosticCode = 'invalidIdentifier' | 'invalidNamespace' | 'overlappingNamespace' | 'duplicateModule' | 'duplicateProvider' | 'missingProvider' | 'providerManifestMismatch' | 'foreignNamespaceWrite' | 'duplicateEventKind' | 'schemaHashMismatch' | 'missingCodec' | 'duplicateCodec' | 'unknownSubscription' | 'duplicateSubscription' | 'missingInvocation' | 'invalidSubscriptionInvocation' | 'duplicateInvocation' | 'invalidBudget' | 'missingProposalOwner' | 'multipleProposalOwners' | 'proposalOwnerMismatch' | 'missingReadViewProvider' | 'multipleReadViewProviders' | 'readViewProviderMismatch' | 'readViewKindMismatch' | 'missingReadViewSelector' | 'missingReadViewField' | 'missingStateOwner' | 'multipleStateOwners' | 'stateOwnerMismatch' | 'unknownOrderingTarget' | 'orderingCycle';
+
+export const GAMEPLAY_MODULE_BINDING_SCHEMA_VERSION = 1;
+
+export type GameplayModuleBindingDiagnosticCode = 'invalidRegistryHash' | 'duplicateConfiguration' | 'duplicateBinding' | 'unknownConfiguration' | 'moduleMismatch' | 'providerMismatch' | 'configurationSchemaMismatch' | 'configurationCodecMismatch' | 'stateSchemaMismatch' | 'readContractMismatch' | 'outputContractMismatch' | 'unresolvedTarget' | 'ineligibleTarget' | 'invalidOverride' | 'duplicateStateScope' | 'stateInitializationRejected' | 'snapshotMismatch';
+
+// Open, immutable namespaced contract identity. New downstream meanings do not extend an engine enum; they add another validated value of this shape.
+export interface GameplayContractRef {
+  readonly namespace: string;
+  readonly name: string;
+  readonly version: number;
+  readonly schemaHash: string;
+}
+
+export interface GameplayModuleRef {
+  readonly moduleId: string;
+  readonly namespace: string;
+  readonly version: string;
+  readonly sdkHash: string;
+  readonly contractHash: string;
+  readonly artifactHash: string;
+  readonly providerId: string;
+}
+
+// Durable authored configuration bytes. These bytes seed module state once; they are not live gameplay authority after activation.
+export interface GameplayModuleConfiguration {
+  readonly configurationId: string;
+  readonly module: GameplayModuleRef;
+  readonly configuration: GameplayContractRef;
+  readonly codecId: string;
+  readonly canonicalConfig: readonly number[];
+  readonly configHash: string;
+}
+
+// Stable authored targets. Prefab part bindings deliberately share the `{prefab, role}` selector used by declared reads.
+export type GameplayModuleBindingTarget =
+  | { readonly kind: 'session' }
+  | { readonly kind: 'entityDefinition'; readonly stableId: string }
+  | { readonly kind: 'prefab'; readonly prefab: PrefabId }
+  | { readonly kind: 'prefabPart'; readonly part: PrefabPartReference };
+
+export interface GameplayModuleBinding {
+  readonly bindingId: string;
+  readonly moduleId: string;
+  readonly configurationId: string;
+  readonly stateSchema: GameplayContractRef;
+  readonly target: GameplayModuleBindingTarget;
+  readonly requiredReads: readonly GameplayReadViewRequirement[];
+  readonly outputContracts: readonly GameplayContractRef[];
+  readonly enabled: boolean;
+}
+
+// A prefab-instance layer may replace configuration and/or eligibility for one stored binding without mutating the prefab definition or base binding.
+export interface GameplayModuleBindingOverride {
+  readonly bindingId: string;
+  readonly prefabInstance: PrefabInstanceId;
+  readonly configurationId: string | null;
+  readonly enabled: boolean | null;
+}
+
+export interface GameplayModuleBindingRegistry {
+  readonly schemaVersion: number;
+  readonly configurations: readonly GameplayModuleConfiguration[];
+  readonly bindings: readonly GameplayModuleBinding[];
+  readonly overrides: readonly GameplayModuleBindingOverride[];
+  readonly registryHash: string;
+}
+
+export interface GameplayModuleBindingDiagnostic {
+  readonly code: GameplayModuleBindingDiagnosticCode;
+  readonly path: string;
+  readonly message: string;
+}
+
+export interface GameplayModuleBindingReadout {
+  readonly bindingId: string;
+  readonly moduleId: string;
+  readonly configurationId: string;
+  readonly target: GameplayModuleBindingTarget;
+  readonly resolvedScopes: readonly string[];
+  readonly active: boolean;
+  readonly provenanceHash: string;
+}
+
+export interface GameplayModuleBindingActivationReceipt {
+  readonly bindingRegistryHash: string;
+  readonly gameplayRegistryDigest: string;
+  readonly readouts: readonly GameplayModuleBindingReadout[];
+  readonly moduleStateHash: string;
+  readonly receiptHash: string;
+}
+
+export interface GameplayOwnerRef {
+  readonly ownerId: string;
+  readonly providerId: string;
+}
+
+export interface GameplayEventSchemaDeclaration {
+  readonly event: GameplayContractRef;
+  readonly codecId: string;
+}
+
+export interface GameplayEntityRef {
+  readonly entity: EntityId;
+}
+
+export type GameplayEmitterRef =
+  | { readonly kind: 'owner'; readonly ownerId: string }
+  | { readonly kind: 'module'; readonly moduleId: string }
+  | { readonly kind: 'scheduler'; readonly schedulerId: string };
+
+export interface GameplayCausationRef {
+  readonly rootId: string;
+  readonly parentEventId: string | null;
+  readonly decisionId: string | null;
+}
+
+// Immutable, type-erased queue/replay envelope. Module edges recover the canonical payload through a registered Rust codec.
+export interface GameplayEventEnvelope {
+  readonly eventId: string;
+  readonly event: GameplayContractRef;
+  readonly tick: number;
+  readonly rootSequence: number;
+  readonly wave: number;
+  readonly eventSequence: number;
+  readonly phase: GameplayEventPhase;
+  readonly emitter: GameplayEmitterRef;
+  readonly causation: GameplayCausationRef;
+  readonly source: GameplayEntityRef | null;
+  readonly subjects: readonly GameplayEntityRef[];
+  readonly targets: readonly GameplayEntityRef[];
+  readonly scope: string | null;
+  readonly tags: readonly string[];
+  readonly canonicalPayload: readonly number[];
+  readonly payloadHash: string;
+}
+
+export interface GameplayHeaderSelector {
+  readonly source: GameplayEntityRef | null;
+  readonly target: GameplayEntityRef | null;
+  readonly scope: string | null;
+  readonly requiredTags: readonly string[];
+}
+
+export interface GameplaySubscriptionDeclaration {
+  readonly subscriptionId: string;
+  readonly event: GameplayContractRef;
+  readonly invocationId: string;
+  readonly selector: GameplayHeaderSelector;
+  readonly maxDeliveriesPerRoot: number;
+}
+
+export interface GameplayInvocationDescriptor {
+  readonly invocationId: string;
+  readonly family: GameplayInvocationFamily;
+  readonly inputContract: GameplayContractRef;
+  readonly outputContract: GameplayContractRef;
+  readonly maxOutputs: number;
+  readonly maxPayloadBytes: number;
+}
+
+export interface GameplayProposalDeclaration {
+  readonly proposal: GameplayContractRef;
+  readonly owner: GameplayOwnerRef;
+}
+
+// Immutable pending proposal. The authority owner is resolved from the registry rather than trusted from the emitting module.
+export interface GameplayProposalEnvelope {
+  readonly proposalId: string;
+  readonly proposal: GameplayContractRef;
+  readonly tick: number;
+  readonly rootSequence: number;
+  readonly wave: number;
+  readonly proposalSequence: number;
+  readonly emitter: GameplayEmitterRef;
+  readonly causation: GameplayCausationRef;
+  readonly originatingEventId: string | null;
+  readonly source: GameplayEntityRef | null;
+  readonly targets: readonly GameplayEntityRef[];
+  readonly canonicalPayload: readonly number[];
+  readonly payloadHash: string;
+}
+
+export interface GameplayReadViewRequirement {
+  readonly view: GameplayContractRef;
+  readonly providerId: string;
+  readonly kind: GameplayReadViewKind;
+  readonly fields: readonly string[];
+  readonly selectorCapabilities: readonly GameplayReadSelectorCapability[];
+  readonly maxItems: number;
+}
+
+export interface GameplayOwnedSchemaDeclaration {
+  readonly schema: GameplayContractRef;
+  readonly owner: GameplayOwnerRef;
+}
+
+export interface GameplayOrderingConstraint {
+  readonly beforeModule: string;
+  readonly afterModule: string;
+}
+
+export interface GameplayExecutionBudget {
+  readonly maxWaves: number;
+  readonly maxEventsPerRoot: number;
+  readonly maxProposalsPerRoot: number;
+  readonly maxInvocationsPerRoot: number;
+  readonly maxPayloadBytesPerRoot: number;
+}
+
+// Successor to the legacy hook-shaped `GameRuleModuleManifest`.
+export interface GameplayModuleManifest {
+  readonly moduleRef: GameplayModuleRef;
+  readonly publishedEvents: readonly GameplayEventSchemaDeclaration[];
+  readonly subscriptions: readonly GameplaySubscriptionDeclaration[];
+  readonly invocations: readonly GameplayInvocationDescriptor[];
+  readonly readViews: readonly GameplayReadViewRequirement[];
+  readonly proposalKinds: readonly GameplayProposalDeclaration[];
+  readonly stateSchemas: readonly GameplayOwnedSchemaDeclaration[];
+  readonly factSchemas: readonly GameplayOwnedSchemaDeclaration[];
+  readonly ordering: readonly GameplayOrderingConstraint[];
+  readonly budget: GameplayExecutionBudget;
+  readonly deterministicRequirements: readonly string[];
+  readonly sourceHash: string;
+}
+
+export interface GameplayRegistryDiagnostic {
+  readonly code: GameplayRegistryDiagnosticCode;
+  readonly severity: DiagnosticSeverity;
+  readonly path: string;
+  readonly message: string;
+}
+
+export interface GameplayTopologyEdge {
+  readonly kind: string;
+  readonly from: string;
+  readonly to: string;
+  readonly contract: string | null;
+}
+
+export interface GameplayReadViewProviderReadout {
+  readonly view: string;
+  readonly providerId: string;
+  readonly kind: GameplayReadViewKind;
+  readonly fields: readonly string[];
+  readonly selectorCapabilities: readonly GameplayReadSelectorCapability[];
+  readonly maxItems: number;
+  readonly ordering: string;
+  readonly providerHash: string;
+}
+
+// Projection/readout only. It explains the immutable Session topology but exposes no registry mutation operation.
+export interface GameplayRegistryReadout {
+  readonly registryDigest: string;
+  readonly moduleIds: readonly string[];
+  readonly eventKinds: readonly string[];
+  readonly subscriptionIds: readonly string[];
+  readonly proposalOwners: readonly string[];
+  readonly readViewProviders: readonly string[];
+  readonly readViewProviderDetails: readonly GameplayReadViewProviderReadout[];
+  readonly stateOwners: readonly string[];
+  readonly ordering: readonly GameplayOrderingConstraint[];
+  readonly topology: readonly GameplayTopologyEdge[];
+  readonly topologyDump: string;
+}
+
+export type GameplayRegistryValidationOutcome =
+  | { readonly status: 'valid'; readonly readout: GameplayRegistryReadout }
+  | { readonly status: 'invalid'; readonly diagnostics: readonly GameplayRegistryDiagnostic[] };

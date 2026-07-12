@@ -67,6 +67,7 @@ export function animationPlaybackReadout(handle, readout) {
             poseSample: null,
             diagnostics: [diagnostic('animated_mesh_handle_unavailable', null, handle, `animated mesh handle ${handle} is unavailable`)],
             projectionOnly: true,
+            controllerClips: [],
         };
     }
     return {
@@ -85,6 +86,7 @@ export function animationPlaybackReadout(handle, readout) {
         poseSample: readout.poseSample,
         diagnostics: readout.diagnostics.map((code) => diagnostic(animationDiagnosticCode(code), readout.asset, handle, code)),
         projectionOnly: true,
+        controllerClips: readout.controllerClips,
     };
 }
 function createProjectionController(renderer) {
@@ -94,6 +96,12 @@ function createProjectionController(renderer) {
         advance: (deltaSeconds) => applyRendererOperation(() => renderer.advanceAnimation(deltaSeconds)),
         playback: (handle) => animationPlaybackReadout(handle, renderer.animatedMeshPlayback(handle)),
         snapshot: () => renderer.snapshot(),
+        hasAnimationTarget: (handle) => renderer.has(handle),
+        setAnimationControllerWeights: (handle, clips) => {
+            renderer.setAnimationControllerWeights(handle, clips);
+        },
+        hasAnimationClips: (handle, clipIds) => renderer.hasAnimationControllerClips(handle, clipIds),
+        clearAnimationControllerWeights: (handle) => renderer.clearAnimationControllerWeights(handle),
     };
 }
 function applyRendererOperation(operation) {

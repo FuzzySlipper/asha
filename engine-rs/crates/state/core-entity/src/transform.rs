@@ -167,7 +167,7 @@ impl EntityStore {
             return Err(TransformError::NotTransformEligible { id });
         }
         if self
-            .collision(id)
+            .active_collision(id)
             .map(|c| c.static_collider)
             .unwrap_or(false)
         {

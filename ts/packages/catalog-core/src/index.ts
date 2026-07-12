@@ -128,7 +128,7 @@ export interface FpsGameplayPresetReadout {
     readonly referenceHash: string;
   };
   readonly migration: {
-    readonly playerControllerConstants: 'BrowserFpsInputCollector options';
+    readonly playerControllerConstants: 'BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options';
     readonly weaponConstants: 'RuntimeSession primary_fire combat readout defaults';
     readonly enemyConstants: 'generated tunnel enemy policy fixture';
     readonly encounterConstants: 'generated-tunnel-small-encounter';
@@ -268,7 +268,7 @@ export type FpsEcrpRuntimeSurfaceRef =
   | 'RuntimeSessionFacade.readGeneratedTunnelReadout'
   | 'RuntimeSessionFacade.runAutonomousPolicyTick'
   | 'RuntimeSessionFacade.readNavProjection'
-  | 'BrowserFpsInputCollector'
+  | 'BrowserInputHost'
   | 'mountAshaRendererBrowserSurface';
 
 export interface FpsEcrpObjectModelEntry {
@@ -524,7 +524,7 @@ export const GENERATED_TUNNEL_FPS_ECRP_OBJECT_MODEL: FpsEcrpObjectModel = {
         'RuntimeSessionFacade.readCameraProjection',
         'RuntimeSessionFacade.readCombatReadout',
         'RuntimeSessionFacade.readLifecycleStatus',
-        'BrowserFpsInputCollector',
+        'BrowserInputHost',
         'mountAshaRendererBrowserSurface',
       ],
     },
@@ -757,7 +757,7 @@ function buildFpsGameplayPresetReadout(preset: FpsGameplayPreset): FpsGameplayPr
       referenceHash,
     },
     migration: {
-      playerControllerConstants: 'BrowserFpsInputCollector options',
+      playerControllerConstants: 'BrowserInputHost catalog and BrowserFpsResolvedActionConsumer options',
       weaponConstants: 'RuntimeSession primary_fire combat readout defaults',
       enemyConstants: 'generated tunnel enemy policy fixture',
       encounterConstants: 'generated-tunnel-small-encounter',

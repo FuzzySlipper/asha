@@ -1,10 +1,20 @@
 use super::*;
 
+pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
+    coverage.extend([
+        interface_coverage_key("telemetry", "LiveTelemetryMetric"),
+        interface_coverage_key("telemetry", "LiveTelemetryDiagnostic"),
+        interface_coverage_key("telemetry", "LiveTelemetrySnapshot"),
+    ]);
+}
+
 #[test]
 fn telemetry_rust_serialization_matches_ir_shape() {
     use protocol_telemetry::{
-        TelemetryEnvelope, TelemetryEvent, TelemetryLevel, TelemetryMetric, TelemetryMetricKind,
-        TelemetrySource, TELEMETRY_LEVELS, TELEMETRY_METRIC_KINDS, TELEMETRY_SOURCES,
+        LiveTelemetryCounter, LiveTelemetryDiagnostic, LiveTelemetryDiagnosticCode,
+        LiveTelemetryMetric, LiveTelemetrySnapshot, TelemetryEnvelope, TelemetryEvent,
+        TelemetryLevel, TelemetryMetric, TelemetryMetricKind, TelemetrySource, TELEMETRY_LEVELS,
+        TELEMETRY_METRIC_KINDS, TELEMETRY_SOURCES,
     };
 
     let telemetry = module("telemetry");
@@ -79,4 +89,32 @@ fn telemetry_rust_serialization_matches_ir_shape() {
     .unwrap();
     compare_object_to_variant(&telemetry, "TelemetryEvent", "trace", &trace).unwrap();
     assert_eq!(trace["source"], json!("policy"));
+
+    let snapshot = serde_json::to_value(LiveTelemetrySnapshot {
+        schema_version: 1,
+        authority_tick: 99,
+        sample_sequence: 7,
+        metrics: vec![LiveTelemetryMetric {
+            counter: LiveTelemetryCounter::FrameTimeMs,
+            kind: TelemetryMetricKind::DurationMs,
+            value: 16.5,
+            unit: "ms".into(),
+        }],
+        frame_time_history_ms: vec![15.0, 16.5],
+        diagnostics: vec![LiveTelemetryDiagnostic {
+            code: LiveTelemetryDiagnosticCode::CounterUnavailable,
+            counter: Some(LiveTelemetryCounter::DrawCallCount),
+            message: "draw call counter is unavailable".into(),
+        }],
+    })
+    .unwrap();
+    compare_object_to_interface(&telemetry, "LiveTelemetrySnapshot", &snapshot).unwrap();
+    compare_object_to_interface(&telemetry, "LiveTelemetryMetric", &snapshot["metrics"][0])
+        .unwrap();
+    compare_object_to_interface(
+        &telemetry,
+        "LiveTelemetryDiagnostic",
+        &snapshot["diagnostics"][0],
+    )
+    .unwrap();
 }

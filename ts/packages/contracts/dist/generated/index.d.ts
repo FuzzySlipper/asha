@@ -1,6 +1,7 @@
 export * from './ids.js';
 export * from './script.js';
 export * from './render.js';
+export * from './presentation.js';
 export * from './replay.js';
 export * from './voxel.js';
 export * from './voxelConversion.js';
@@ -15,6 +16,8 @@ export * from './assets.js';
 export * from './diagnostics.js';
 export * from './policyView.js';
 export * from './telemetry.js';
+export * from './input.js';
+export * from './timeControl.js';
 export * from './view.js';
 export * from './entityAuthoring.js';
 //# sourceMappingURL=index.d.ts.map

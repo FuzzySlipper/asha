@@ -27,6 +27,12 @@ export interface AnimatedMeshPlaybackReadout {
     readonly commandSelected: boolean;
     readonly poseSample: AnimatedMeshPoseSample;
     readonly diagnostics: readonly string[];
+    readonly controllerClips: readonly AnimatedMeshControllerClip[];
+}
+export interface AnimatedMeshControllerClip {
+    readonly clip: string;
+    readonly weight: number;
+    readonly speed: number;
 }
 export interface AnimatedMeshPoseSample {
     readonly rootTranslation: readonly [number, number, number];
@@ -49,6 +55,7 @@ interface AnimatedMeshInstanceRecord {
     loop: AnimatedMeshPlaybackReadout['loop'];
     speed: number | null;
     weight: number | null;
+    controllerClips: readonly AnimatedMeshControllerClip[];
 }
 export declare class MapAnimatedMeshAssetSource implements AnimatedMeshAssetSource {
     #private;
@@ -62,6 +69,9 @@ export declare class AnimatedMeshRegistry {
     define(asset: AnimatedMeshAsset): void;
     create(handle: RenderHandle, instance: AnimatedMeshInstanceDescriptor): AnimatedMeshInstanceRecord;
     setPlayback(handle: RenderHandle, command: AnimatedMeshPlaybackCommand): void;
+    setControllerWeights(handle: RenderHandle, clips: readonly AnimatedMeshControllerClip[]): void;
+    hasClips(handle: RenderHandle, clipIds: readonly string[]): boolean;
+    clearControllerWeights(handle: RenderHandle): void;
     advance(deltaSeconds: number): void;
     playback(handle: RenderHandle): AnimatedMeshPlaybackReadout | undefined;
     release(handle: RenderHandle): void;

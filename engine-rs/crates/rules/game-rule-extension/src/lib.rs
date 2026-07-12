@@ -11,7 +11,15 @@ pub use protocol_game_extension::{
     GameExtensionDiagnostic, GameExtensionDiagnosticCode, GameExtensionHookKind,
     GameExtensionHookReceipt, GameExtensionProposal, GameExtensionReceiptStatus,
     GameExtensionReplayEvidence, GameExtensionTraceEntry, GameRuleHookDeclaration,
-    GameRuleModuleManifest, GameRuleModuleRef, WeaponEffectHookRequest,
+    GameRuleModuleManifest, GameRuleModuleRef, GameplayCausationRef, GameplayContractRef,
+    GameplayEmitterRef, GameplayEntityRef, GameplayEventEnvelope, GameplayEventPhase,
+    GameplayEventSchemaDeclaration, GameplayExecutionBudget, GameplayHeaderSelector,
+    GameplayInvocationDescriptor, GameplayInvocationFamily, GameplayModuleManifest,
+    GameplayModuleRef, GameplayOrderingConstraint, GameplayOwnedSchemaDeclaration,
+    GameplayOwnerRef, GameplayProposalDeclaration, GameplayProposalEnvelope,
+    GameplayReadViewRequirement, GameplayRegistryDiagnostic, GameplayRegistryDiagnosticCode,
+    GameplayRegistryReadout, GameplayRegistryValidationOutcome, GameplaySubscriptionDeclaration,
+    GameplayTopologyEdge, WeaponEffectHookRequest,
 };
 
 /// Result type used by game rule modules. Errors are typed diagnostics, never

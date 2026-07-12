@@ -122,6 +122,105 @@ fn fps_primary_fire_receipt_comes_from_rust_combat_lifecycle_and_replay() {
     let snapshot = bridge.read_fps_runtime_session().unwrap();
     assert_eq!(snapshot.replay_records.len(), 2);
     assert_eq!(snapshot.replay_hash, receipt.replay_hash);
+
+    let projection = bridge
+        .read_projection_frame(0)
+        .expect("accepted owner fact projects through the shared frame");
+    assert_eq!(projection.authority_tick, 9);
+    assert!(projection.scene.is_empty());
+    assert_eq!(
+        projection.presentation.replay_scope,
+        ProjectionReplayScope::ExcludedFromReplayTruth
+    );
+    assert_eq!(projection.presentation.ops.len(), 5);
+    match &projection.presentation.ops[0] {
+        PresentationOp::Audio { meta, op } => {
+            assert_eq!(meta.sequence, 0);
+            assert_eq!(
+                meta.origin.as_ref().map(|origin| origin.kind),
+                Some(PresentationOriginKind::OwnerFact)
+            );
+            assert!(meta
+                .origin
+                .as_ref()
+                .is_some_and(|origin| origin.id.contains(&receipt.replay_hash.to_string())));
+            match op {
+                AudioProjectionOp::Emit {
+                    signal_id,
+                    descriptor,
+                } => {
+                    assert!(signal_id.contains(&receipt.replay_hash.to_string()));
+                    assert_eq!(descriptor.clip.asset, "audio/asha-primary-fire-pulse");
+                    assert_eq!(descriptor.bus, AudioBus::Sfx);
+                    assert!(!descriptor.looping);
+                    assert!(matches!(descriptor.emitter, AudioEmitter::World3d { .. }));
+                }
+                other => panic!("expected one-shot audio projection, got {other:?}"),
+            }
+        }
+        other => panic!("expected audio first under scene-first G1 ordering, got {other:?}"),
+    }
+    let PresentationOp::Particle { meta, op } = &projection.presentation.ops[1] else {
+        panic!("expected particle burst after audio")
+    };
+    assert_eq!(meta.sequence, 1);
+    assert!(matches!(
+        op,
+        ParticleProjectionOp::Emit {
+            descriptor: ParticleEmitterDescriptor {
+                anchor: ParticleAnchor::EntityAttached { entity: 777, .. },
+                burst_count: 12,
+                ..
+            },
+            ..
+        }
+    ));
+    let PresentationOp::Billboard { meta, op } = &projection.presentation.ops[2] else {
+        panic!("expected player billboard after particles")
+    };
+    assert_eq!(meta.sequence, 2);
+    assert!(matches!(
+        op,
+        BillboardProjectionOp::Create {
+            descriptor: BillboardDescriptor {
+                anchor: BillboardAnchor::EntityAttached { entity: 101, .. },
+                ..
+            },
+            ..
+        }
+    ));
+    let PresentationOp::Billboard { meta, op } = &projection.presentation.ops[3] else {
+        panic!("expected target health billboard after player billboard")
+    };
+    assert_eq!(meta.sequence, 3);
+    assert!(matches!(
+        op,
+        BillboardProjectionOp::Create {
+            descriptor: BillboardDescriptor {
+                content: BillboardContent::Value { value, .. },
+                visible: true,
+                ..
+            },
+            ..
+        } if value == "0/75"
+    ));
+    let PresentationOp::TelemetryOverlay { meta, op } = &projection.presentation.ops[4] else {
+        panic!("expected telemetry overlay after gameplay feedback domains")
+    };
+    assert_eq!(meta.sequence, 4);
+    assert!(meta.origin.is_none());
+    assert!(matches!(
+        op,
+        TelemetryOverlayProjectionOp::Create {
+            descriptor: TelemetryOverlayDescriptor {
+                visible: true,
+                refresh_interval_ms: 250,
+                ..
+            },
+            ..
+        }
+    ));
+    assert!(bridge.read_projection_frame(10).is_err());
 }
 
 #[test]
@@ -473,6 +572,9 @@ fn fps_runtime_session_restart_is_epoch_guarded_and_authority_owned() {
         Some((75, 75))
     );
     assert_eq!(restarted.replay_records.len(), 1);
+    let projection = bridge.read_projection_frame(0).unwrap();
+    assert_eq!(projection.authority_tick, 0);
+    assert!(projection.presentation.ops.is_empty());
 }
 
 #[test]

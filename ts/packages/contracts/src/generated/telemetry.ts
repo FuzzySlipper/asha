@@ -34,3 +34,31 @@ export interface TelemetryEnvelope {
   readonly emittedAtTick: number;
   readonly events: readonly TelemetryEvent[];
 }
+
+// Stable low-frequency counters shared by live snapshots and offline perf records where their semantics match.
+export type LiveTelemetryCounter = 'frameTimeMs' | 'entityCount' | 'activeCapabilityCount' | 'residentChunkCount' | 'dirtyChunkCount' | 'renderDiffCount' | 'renderHandleCount' | 'drawCallCount' | 'activeAudioSourceCount' | 'activeBillboardCount' | 'activeParticleCount' | 'droppedFeedbackCount';
+
+export interface LiveTelemetryMetric {
+  readonly counter: LiveTelemetryCounter;
+  readonly kind: TelemetryMetricKind;
+  readonly value: number;
+  readonly unit: string;
+}
+
+export type LiveTelemetryDiagnosticCode = 'counterUnavailable' | 'invalidSample';
+
+export interface LiveTelemetryDiagnostic {
+  readonly code: LiveTelemetryDiagnosticCode;
+  readonly counter: LiveTelemetryCounter | null;
+  readonly message: string;
+}
+
+// Machine-readable current telemetry. Unsupported counters are omitted from `metrics` and named by diagnostics rather than filled with invented zeros.
+export interface LiveTelemetrySnapshot {
+  readonly schemaVersion: number;
+  readonly authorityTick: number;
+  readonly sampleSequence: number;
+  readonly metrics: readonly LiveTelemetryMetric[];
+  readonly frameTimeHistoryMs: readonly number[];
+  readonly diagnostics: readonly LiveTelemetryDiagnostic[];
+}

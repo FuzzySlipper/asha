@@ -170,6 +170,79 @@ pub struct TransitionApplied {
     pub event: StateMachineEvent,
 }
 
+/// Apply one transition to a detached machine instance.
+///
+/// This is the reusable authority primitive for rule-layer adapters that own
+/// their own persistence topology. It preserves the same state, edge, and
+/// optimistic-revision checks as [`StateMachineStore::apply_transition`]
+/// without requiring the adapter to duplicate those mechanics or place its
+/// state inside this crate's in-memory store.
+pub fn apply_transition_to_instance(
+    spec: &StateMachineSpec,
+    instance: MachineInstance,
+    request: TransitionRequest,
+) -> Result<TransitionApplied, StateMachineError> {
+    if spec.machine != request.machine || instance.machine != request.machine {
+        return Err(StateMachineError::MachineMissing {
+            machine: request.machine,
+        });
+    }
+    if instance.entity != request.entity {
+        return Err(StateMachineError::EntityMissing {
+            entity: request.entity,
+        });
+    }
+    if !spec.contains_state(request.next) {
+        return Err(StateMachineError::InvalidState {
+            machine: request.machine,
+            state: request.next,
+        });
+    }
+    if !spec.allows_transition(request.expected, request.next) {
+        return Err(StateMachineError::InvalidTransition {
+            machine: request.machine,
+            from: request.expected,
+            to: request.next,
+        });
+    }
+    if instance.current != request.expected {
+        return Err(StateMachineError::StaleCurrentState {
+            entity: request.entity,
+            machine: request.machine,
+            expected: request.expected,
+            actual: instance.current,
+        });
+    }
+    if let Some(expected_revision) = request.expected_revision {
+        if instance.revision != expected_revision {
+            return Err(StateMachineError::StaleRevision {
+                entity: request.entity,
+                machine: request.machine,
+                expected: expected_revision,
+                actual: instance.revision,
+            });
+        }
+    }
+
+    let updated = MachineInstance {
+        current: request.next,
+        revision: instance.revision.saturating_add(1),
+        ..instance
+    };
+    let event = StateMachineEvent::StateTransitioned {
+        entity: request.entity,
+        machine: request.machine,
+        from: instance.current,
+        to: request.next,
+        revision: updated.revision,
+    };
+    Ok(TransitionApplied {
+        instance: updated,
+        previous: instance.current,
+        event,
+    })
+}
+
 impl TransitionApplied {
     /// Bridge to the existing process/mode event vocabulary.
     ///
@@ -350,63 +423,17 @@ impl StateMachineStore {
                 entity: request.entity,
             });
         }
-        if !spec.contains_state(request.next) {
-            return Err(StateMachineError::InvalidState {
-                machine: request.machine,
-                state: request.next,
-            });
-        }
-        if !spec.allows_transition(request.expected, request.next) {
-            return Err(StateMachineError::InvalidTransition {
-                machine: request.machine,
-                from: request.expected,
-                to: request.next,
-            });
-        }
-
         let key = (request.entity, request.machine);
-        let instance = self
+        let instance = *self
             .instances
-            .get_mut(&key)
+            .get(&key)
             .ok_or(StateMachineError::InstanceMissing {
                 entity: request.entity,
                 machine: request.machine,
             })?;
-        if instance.current != request.expected {
-            return Err(StateMachineError::StaleCurrentState {
-                entity: request.entity,
-                machine: request.machine,
-                expected: request.expected,
-                actual: instance.current,
-            });
-        }
-        if let Some(expected_revision) = request.expected_revision {
-            if instance.revision != expected_revision {
-                return Err(StateMachineError::StaleRevision {
-                    entity: request.entity,
-                    machine: request.machine,
-                    expected: expected_revision,
-                    actual: instance.revision,
-                });
-            }
-        }
-
-        let previous = instance.current;
-        instance.current = request.next;
-        instance.revision = instance.revision.saturating_add(1);
-        let updated = *instance;
-        let event = StateMachineEvent::StateTransitioned {
-            entity: request.entity,
-            machine: request.machine,
-            from: previous,
-            to: request.next,
-            revision: updated.revision,
-        };
-        Ok(TransitionApplied {
-            instance: updated,
-            previous,
-            event,
-        })
+        let applied = apply_transition_to_instance(spec, instance, request)?;
+        self.instances.insert(key, applied.instance);
+        Ok(applied)
     }
 }
 

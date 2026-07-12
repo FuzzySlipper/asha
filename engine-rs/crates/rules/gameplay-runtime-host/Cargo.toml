@@ -1,0 +1,27 @@
+[package]
+name = "gameplay-runtime-host"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-entity = { path = "../../state/core-entity" }
+core-ids = { path = "../../foundation/core-ids" }
+core-math = { path = "../../foundation/core-math" }
+gameplay-module-sdk = { path = "../gameplay-module-sdk" }
+protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-entity-authoring = { path = "../../protocol/protocol-entity-authoring" }
+protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
+rule-gameplay-fabric = { path = "../rule-gameplay-fabric" }
+rule-project-bundle = { path = "../rule-project-bundle" }
+rule-trigger-volume = { path = "../rule-trigger-volume" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+svc-serialization = { path = "../../services/svc-serialization" }
+svc-gameplay-fabric = { path = "../../services/svc-gameplay-fabric" }
+svc-entity-authoring = { path = "../../services/svc-entity-authoring" }
+
+[dev-dependencies]
+core-scene = { path = "../../state/core-scene" }

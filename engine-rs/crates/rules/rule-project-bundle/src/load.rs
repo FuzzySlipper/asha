@@ -30,7 +30,7 @@ use protocol_voxel_annotation::{
     VoxelAnnotationDiagnostic, VoxelAnnotationLayer, VoxelAnnotationLayerValidationInput,
     VoxelAnnotationLayerValidationRequest,
 };
-use svc_serialization::{LoadPlan, LoadPlanError, LoadStage, LoadStep};
+use svc_serialization::{LoadPlan, LoadPlanError, LoadStage, LoadStep, ValidatedPrefabRegistry};
 use svc_spatial::VoxelWorld;
 
 use rule_voxel_edit::history::{
@@ -40,6 +40,12 @@ use rule_voxel_edit::persist::{decode_edit_log, replay_edit_log};
 use rule_voxel_edit::voxel_world_hash;
 
 use crate::compose::{reconstruct, ChunkSnapshotArtifact, CompactedVoxelSave};
+use crate::prefab_instance::{
+    InstantiatePrefabCommand, PrefabInstanceAuthority, PrefabInstantiationCatalog,
+    PrefabInstantiationError, PrefabInstantiationReceipt,
+};
+use crate::prefab_snapshot::{decode_embedded_prefab_snapshot, PrefabSnapshotDecodeError};
+use crate::session_state::{compose_session_state_snapshot_with_prefabs, SessionStateArtifact};
 
 /// The current bundle schema / protocol versions this executor understands.
 /// A bundle newer than these fails closed at the `ValidateVersions` stage.
@@ -168,6 +174,9 @@ pub struct ProjectBundleLoadResult {
     /// over and above the spatial bootstrap baseline in `spatial_session`. `None`
     /// when the save had no runtime divergence to persist.
     pub runtime_entities: Option<EntityStore>,
+    /// Prefab instance/role authority. Created prefab entities live in the same
+    /// `runtime_entities` store as every other non-scene Session entity.
+    pub prefab_instances: PrefabInstanceAuthority,
     /// Voxel authority, when the bundle carried a voxel section.
     pub voxel: Option<VoxelWorld>,
     /// Voxel edit history/cursor authority, when the bundle carried a history
@@ -186,6 +195,17 @@ pub struct ProjectBundleLoadResult {
 }
 
 impl ProjectBundleLoadResult {
+    /// Compose the full current Session save artifact, including prefab role and
+    /// override metadata beside the shared EntityStore snapshot.
+    pub fn compose_session_state_snapshot(&self) -> Option<SessionStateArtifact> {
+        let entities = self.runtime_entities.as_ref()?;
+        let prefabs = self.prefab_instances.snapshot(entities);
+        Some(compose_session_state_snapshot_with_prefabs(
+            &entities.snapshot_durable(),
+            &prefabs,
+        ))
+    }
+
     /// A deterministic, greppable summary of the executed stages + final state,
     /// suitable for a golden fixture.
     pub fn render_summary(&self) -> String {
@@ -282,6 +302,16 @@ pub enum LoadExecutionError {
         path: String,
         error: SnapshotDecodeError,
     },
+    /// The entity snapshot decoded, but its embedded prefab-instance metadata was
+    /// malformed or did not match the restored owning EntityStore.
+    PrefabSessionStateDecode {
+        path: String,
+        error: PrefabSnapshotDecodeError,
+    },
+    PrefabSessionStateDiverged {
+        path: String,
+        error: PrefabInstantiationError,
+    },
     /// The final consistency pass found a problem after composition.
     FinalConsistency { detail: String },
 }
@@ -299,6 +329,20 @@ pub enum LoadExecutionError {
 pub struct ProjectBundleStage {
     live: Option<ProjectBundleLoadResult>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProjectBundlePrefabError {
+    NoLiveSession,
+    Instantiate(PrefabInstantiationError),
+}
+
+impl core::fmt::Display for ProjectBundlePrefabError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(formatter, "{self:?}")
+    }
+}
+
+impl std::error::Error for ProjectBundlePrefabError {}
 
 impl ProjectBundleStage {
     /// A stage with no live ProjectBundle load yet.
@@ -319,6 +363,28 @@ impl ProjectBundleStage {
     /// The committed live spatial session hash, if any (cheap mutation-safety probe).
     pub fn live_spatial_session_hash(&self) -> Option<SpatialSessionHash> {
         self.live.as_ref().map(|w| w.spatial_session_hash)
+    }
+
+    /// Apply the same authoritative prefab command for authored or player
+    /// placement. Both the instance map and the owning Session EntityStore are
+    /// staged and swapped together, so rejection leaves the live Session exact.
+    pub fn instantiate_prefab(
+        &mut self,
+        registry: &ValidatedPrefabRegistry,
+        catalog: &PrefabInstantiationCatalog,
+        command: InstantiatePrefabCommand,
+    ) -> Result<PrefabInstantiationReceipt, ProjectBundlePrefabError> {
+        let mut staged = self
+            .live
+            .clone()
+            .ok_or(ProjectBundlePrefabError::NoLiveSession)?;
+        let entities = staged.runtime_entities.get_or_insert_with(EntityStore::new);
+        let receipt = staged
+            .prefab_instances
+            .instantiate(entities, registry, catalog, command)
+            .map_err(ProjectBundlePrefabError::Instantiate)?;
+        self.live = Some(staged);
+        Ok(receipt)
     }
 
     /// Execute `plan` into a staging area and, **only on success**, swap it in as
@@ -356,6 +422,7 @@ pub fn execute_load_plan(
     let mut voxel_annotations: Vec<VoxelAnnotationLayer> = Vec::new();
     let mut spatial_session_and_record: Option<(SpatialSessionState, BootstrapRecord)> = None;
     let mut runtime_entities: Option<EntityStore> = None;
+    let mut prefab_instances = PrefabInstanceAuthority::new();
 
     for step in &plan.steps {
         match step {
@@ -513,6 +580,33 @@ pub fn execute_load_plan(
                     }
                 })?;
                 let store = EntityStore::from_snapshot(snapshot);
+                if let Some(prefab_snapshot) =
+                    decode_embedded_prefab_snapshot(text).map_err(|error| {
+                        LoadExecutionError::PrefabSessionStateDecode {
+                            path: artifact.clone(),
+                            error,
+                        }
+                    })?
+                {
+                    prefab_instances =
+                        PrefabInstanceAuthority::restore_persisted(&prefab_snapshot, &store)
+                            .map_err(|error| LoadExecutionError::PrefabSessionStateDiverged {
+                                path: artifact.clone(),
+                                error,
+                            })?;
+                } else if store.snapshot().records.iter().any(|record| {
+                    matches!(
+                        record.core.source,
+                        core_entity::EntitySource::PrefabInstance { .. }
+                    )
+                }) {
+                    return Err(LoadExecutionError::PrefabSessionStateDecode {
+                        path: artifact.clone(),
+                        error: PrefabSnapshotDecodeError::Field(
+                            "prefab-created entities require `prefabInstances` metadata".into(),
+                        ),
+                    });
+                }
                 stages.push(StageOutcome {
                     stage: LoadStage::SessionStateSnapshot,
                     detail: format!(
@@ -564,6 +658,7 @@ pub fn execute_load_plan(
     Ok(ProjectBundleLoadResult {
         spatial_session,
         runtime_entities,
+        prefab_instances,
         voxel: voxel_state,
         voxel_history,
         voxel_annotations,

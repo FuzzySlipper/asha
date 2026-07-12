@@ -1,0 +1,18 @@
+[package]
+name = "gameplay-module-sdk"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+core-ids = { path = "../../foundation/core-ids" }
+core-time = { path = "../../foundation/core-time" }
+game-rule-extension = { path = "../game-rule-extension" }
+protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+rule-gameplay-fabric = { path = "../rule-gameplay-fabric" }
+svc-gameplay-fabric = { path = "../../services/svc-gameplay-fabric" }
+svc-rng = { path = "../../services/svc-rng" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
