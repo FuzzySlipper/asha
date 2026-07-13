@@ -14,6 +14,7 @@
       "executionClass": "compiledRustAuthority",
       "suite": "bridge.rust-authority",
       "paths": [
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/composition.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_history_tests.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",

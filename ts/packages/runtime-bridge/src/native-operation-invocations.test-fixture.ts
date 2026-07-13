@@ -79,6 +79,25 @@ export function createNativeOperationInvocations(
     ['loadFpsRuntimeSession', (bridge) => bridge.loadFpsRuntimeSession(fpsLoadRequest())],
     ['readFpsRuntimeSession', (bridge) => bridge.readFpsRuntimeSession()],
     ['applyFpsPrimaryFire', (bridge) => bridge.applyFpsPrimaryFire({ tick: 9, origin: [2.5, 1.5, 1.5], direction: [0, 0, 1] })],
+    ['readComposedRuntimeSession', (bridge) => bridge.readComposedRuntimeSession()],
+    ['readGameplayModuleView', (bridge) => bridge.readGameplayModuleView({
+      view: {
+        namespace: 'asha.fixture.gameplay',
+        name: 'pulse-state',
+        version: 1,
+        schemaHash: input.hashA,
+      },
+      scope: { kind: 'session' },
+      expectedRuntimeSessionHash: input.hashA,
+    })],
+    ['applyGameplayPrefabPartInteraction', (bridge) => bridge.applyGameplayPrefabPartInteraction({
+      actor: 101,
+      instance: 1,
+      role: 'interaction-target',
+      expectedTarget: 777,
+      tick: 9,
+      expectedRuntimeSessionHash: input.hashA,
+    })],
     ['invokeGameExtensionWeaponEffect', (bridge) => bridge.invokeGameExtensionWeaponEffect({
       hook: {
         moduleRef: {

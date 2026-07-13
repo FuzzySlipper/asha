@@ -3,10 +3,12 @@ use super::*;
 use gameplay_runtime_host::{
     GameplayDecisionMoment, GameplayDecisionReceipt, GameplayRuntimeDecisionOwner,
     GameplayRuntimeHost, GameplayRuntimeHostError, GameplayRuntimeHostReadout,
-    GameplayRuntimePrefabBootstrap, GameplayRuntimeProjectInput, GameplayRuntimeSchedulerCommand,
+    GameplayRuntimePrefabBootstrap, GameplayRuntimePrefabInteractionIntent,
+    GameplayRuntimeProjectInput, GameplayRuntimeSchedulerCommand,
     GameplayRuntimeSchedulerCommandReceipt, GameplayRuntimeSchedulerRoutingReceipt,
     ScheduledActionId,
 };
+use rule_gameplay_fabric::GameplayModuleStateScope;
 use serde::{Deserialize, Serialize};
 
 const COMPOSED_RUNTIME_SESSION_SCHEMA_VERSION: u32 = 1;
@@ -273,6 +275,99 @@ impl EngineBridge {
         Ok(self.composed_runtime_session_readout(gameplay))
     }
 
+    pub fn read_gameplay_module_view(
+        &mut self,
+        request: GameplayModuleViewRequest,
+    ) -> BridgeResult<GameplayModuleViewSnapshot> {
+        let before = self.read_composed_runtime_session()?;
+        if request.expected_runtime_session_hash != before.runtime_session_hash {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "gameplay module view expected RuntimeSession {}, current {}",
+                    request.expected_runtime_session_hash, before.runtime_session_hash
+                ),
+            ));
+        }
+        let scope = module_state_scope(&request.scope);
+        let view = self
+            .with_static_gameplay_runtime("read_gameplay_module_view", |host| {
+                host.module_named_view(&request.view, &scope)
+            })?
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::NotInitialized,
+                    "RuntimeSession was not built with a static gameplay composition",
+                )
+            })?;
+        let after = self.read_composed_runtime_session()?;
+        if after.runtime_session_hash != before.runtime_session_hash {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "read_gameplay_module_view mutated composed RuntimeSession authority",
+            ));
+        }
+        Ok(GameplayModuleViewSnapshot {
+            view: view.view,
+            provider_id: view.provider_id,
+            scope: request.scope,
+            revision: view.revision,
+            canonical_payload: view.canonical_payload,
+            view_hash: view.view_hash,
+            runtime_session_hash: after.runtime_session_hash,
+        })
+    }
+
+    pub fn apply_gameplay_prefab_part_interaction(
+        &mut self,
+        request: GameplayPrefabPartInteractionRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionReceipt> {
+        let before = self.read_composed_runtime_session()?;
+        if request.expected_runtime_session_hash != before.runtime_session_hash {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "prefab interaction expected RuntimeSession {}, current {}",
+                    request.expected_runtime_session_hash, before.runtime_session_hash
+                ),
+            ));
+        }
+        let interaction = self
+            .with_static_gameplay_runtime("apply_gameplay_prefab_part_interaction", |host| {
+                host.interact_with_prefab_part(GameplayRuntimePrefabInteractionIntent {
+                    actor: EntityId::new(request.actor),
+                    instance: request.instance,
+                    role: request.role.clone(),
+                    expected_target: EntityId::new(request.expected_target),
+                    tick: request.tick,
+                })
+            })?
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::NotInitialized,
+                    "RuntimeSession was not built with a static gameplay composition",
+                )
+            })?;
+        let event_hash = rule_gameplay_fabric::gameplay_module_payload_hash(
+            &serde_json::to_vec(&interaction.event).map_err(|error| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    format!("prefab interaction event did not serialize: {error}"),
+                )
+            })?,
+        );
+        let after = self.read_composed_runtime_session()?;
+        Ok(GameplayPrefabPartInteractionReceipt {
+            actor: request.actor,
+            instance: request.instance,
+            role: request.role,
+            target: interaction.target.raw(),
+            event_hash,
+            reaction_frame_hash: interaction.reaction_frame_hash,
+            runtime_session_hash: after.runtime_session_hash,
+        })
+    }
+
     /// Execute one pre-commit decision entirely inside the composed Rust cell.
     /// The owner port is a statically linked, revisioned authority adapter; no
     /// semantic proposal or owner result crosses TypeScript.
@@ -381,6 +476,20 @@ impl EngineBridge {
     }
 }
 
+fn module_state_scope(scope: &GameplayModuleViewScope) -> GameplayModuleStateScope {
+    match scope {
+        GameplayModuleViewScope::Session => GameplayModuleStateScope::Session,
+        GameplayModuleViewScope::Entity { entity } => {
+            GameplayModuleStateScope::Entity { entity: *entity }
+        }
+        GameplayModuleViewScope::PrefabInstance { instance } => {
+            GameplayModuleStateScope::PrefabInstance {
+                instance: *instance,
+            }
+        }
+    }
+}
+
 fn composed_runtime_session_hash(
     entity_authority_hash: &str,
     gameplay: &GameplayRuntimeHostReadout,
@@ -401,4 +510,47 @@ fn composed_runtime_session_hash(
         )
         .as_bytes(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn composed_gameplay_operations_fail_closed_without_static_provider() {
+        let mut bridge = EngineBridge::new();
+        let entity_hash_before = bridge.scene.entities.hash();
+
+        let readout = bridge
+            .read_composed_runtime_session()
+            .expect_err("an ordinary bridge cannot claim a composed RuntimeSession");
+        assert_eq!(readout.kind, RuntimeBridgeErrorKind::NotInitialized);
+
+        let view = bridge
+            .read_gameplay_module_view(GameplayModuleViewRequest {
+                view: GameplayContractRef {
+                    namespace: "fixture.missing".to_owned(),
+                    name: "state".to_owned(),
+                    version: 1,
+                    schema_hash: "fnv1a64:0000000000000001".to_owned(),
+                },
+                scope: GameplayModuleViewScope::Session,
+                expected_runtime_session_hash: "fnv1a64:0000000000000002".to_owned(),
+            })
+            .expect_err("a module view cannot bypass static composition");
+        assert_eq!(view.kind, RuntimeBridgeErrorKind::NotInitialized);
+
+        let interaction = bridge
+            .apply_gameplay_prefab_part_interaction(GameplayPrefabPartInteractionRequest {
+                actor: 1,
+                instance: 1,
+                role: "interaction/target".to_owned(),
+                expected_target: 2,
+                tick: 1,
+                expected_runtime_session_hash: "fnv1a64:0000000000000002".to_owned(),
+            })
+            .expect_err("a prefab interaction cannot bypass static composition");
+        assert_eq!(interaction.kind, RuntimeBridgeErrorKind::NotInitialized);
+        assert_eq!(bridge.scene.entities.hash(), entity_hash_before);
+    }
 }

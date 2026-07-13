@@ -101,7 +101,7 @@ initialization = "requiresEngine"
 project_bundle = "retainedAcrossLoadUnload"
 snapshot_hash = "gameplaySessionAndReplay"
 resource_lifetime = "session"
-operations = ["apply_generated_tunnel_to_runtime_world", "load_fps_runtime_session", "read_fps_runtime_session", "apply_fps_primary_fire", "invoke_game_extension_weapon_effect", "validate_game_rule_catalog", "submit_game_rule_effect_intent", "read_game_rule_runtime_readout", "restart_fps_runtime_session", "read_fps_encounter_director", "apply_fps_encounter_transition"]
+operations = ["apply_generated_tunnel_to_runtime_world", "load_fps_runtime_session", "read_fps_runtime_session", "apply_fps_primary_fire", "read_composed_runtime_session", "read_gameplay_module_view", "apply_gameplay_prefab_part_interaction", "invoke_game_extension_weapon_effect", "validate_game_rule_catalog", "submit_game_rule_effect_intent", "read_game_rule_runtime_readout", "restart_fps_runtime_session", "read_fps_encounter_director", "apply_fps_encounter_transition"]
 
 [[capability]]
 id = "projection"
@@ -453,6 +453,30 @@ input = "protocol_runtime::FpsPrimaryFireRequest"
 output = "protocol_runtime::FpsPrimaryFireResult"
 errors = "RuntimeBridgeError"
 summary = "Submit a primary-fire intent through Rust svc-combat plus rule-lifecycle authority; returns health/lifecycle/render/replay evidence."
+
+[[operation]]
+name = "read_composed_runtime_session"
+surface = "stable"
+input = "Unit"
+output = "protocol_runtime::ComposedRuntimeSessionReadout"
+errors = "RuntimeBridgeError"
+summary = "Read bounded hash evidence for the single composed entity, gameplay, scheduler, continuation, and FPS authority cell."
+
+[[operation]]
+name = "read_gameplay_module_view"
+surface = "stable"
+input = "protocol_runtime::GameplayModuleViewRequest"
+output = "protocol_runtime::GameplayModuleViewSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Project one registered gameplay-module named view through its canonical contract, bounded scope, revision, and composed-session hash guard."
+
+[[operation]]
+name = "apply_gameplay_prefab_part_interaction"
+surface = "stable"
+input = "protocol_runtime::GameplayPrefabPartInteractionRequest"
+output = "protocol_runtime::GameplayPrefabPartInteractionReceipt"
+errors = "RuntimeBridgeError"
+summary = "Resolve an active prefab instance role and publish one standard owner-authored interaction event after actor, target, and composed-session guards."
 
 [[operation]]
 name = "invoke_game_extension_weapon_effect"

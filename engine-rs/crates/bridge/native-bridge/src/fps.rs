@@ -1,18 +1,21 @@
 use napi_derive::napi;
 use runtime_bridge_api::{
-    FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding, FpsBridgeRole,
-    FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability, FpsBridgeWeaponMount,
-    FpsEncounterDirectorSnapshot, FpsEncounterLifecycleInput, FpsEncounterStateReadout,
-    FpsEncounterTransitionRequest, FpsEncounterTransitionResult, FpsPrimaryFireRequest,
-    FpsPrimaryFireResult, FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
-    FpsRuntimeSessionSnapshot, GameExtensionWeaponEffectInvocationRequest,
-    GameRuleEffectIntentRequest, RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind,
+    ComposedRuntimeSessionReadout, FpsBridgeBoundsCapability, FpsBridgeHealth,
+    FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
+    FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsEncounterDirectorSnapshot,
+    FpsEncounterLifecycleInput, FpsEncounterStateReadout, FpsEncounterTransitionRequest,
+    FpsEncounterTransitionResult, FpsPrimaryFireRequest, FpsPrimaryFireResult,
+    FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest, FpsRuntimeSessionSnapshot,
+    GameExtensionWeaponEffectInvocationRequest, GameRuleEffectIntentRequest, GameplayContractRef,
+    GameplayModuleViewRequest, GameplayModuleViewScope, GameplayModuleViewSnapshot,
+    GameplayPrefabPartInteractionReceipt, GameplayPrefabPartInteractionRequest, RuntimeBridge,
+    RuntimeBridgeError, RuntimeBridgeErrorKind,
 };
 
 use crate::{
     game_extension_json, game_rule_json, parse_game_rule_catalog, parse_game_rule_module_manifests,
-    parse_game_rule_resolution_request, parse_weapon_effect_hook_request, to_napi, u64_input,
-    with_bridge, NativeVec3,
+    parse_game_rule_resolution_request, parse_weapon_effect_hook_request, to_napi, u32_input,
+    u64_input, with_bridge, NativeVec3,
 };
 
 #[napi(object)]
@@ -143,6 +146,71 @@ pub struct NativeFpsPrimaryFireResult {
     pub entity_hash: String,
     pub health_hash: String,
     pub replay_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeComposedGameplayReadout {
+    pub gameplay_registry_digest: String,
+    pub binding_registry_hash: String,
+    pub activation_hash: String,
+    pub module_state_hash: String,
+    pub authority_state_hash: String,
+    pub trigger_revision: i64,
+    pub trigger_snapshot_hash: String,
+    pub active_overlap_count: u32,
+    pub reaction_frame_count: u32,
+    pub last_reaction_frame_hash: Option<String>,
+    pub decision_receipt_count: u32,
+    pub pending_decision_count: u32,
+    pub last_decision_receipt_hash: Option<String>,
+    pub scheduler_state_hash: String,
+    pub scheduler_pending_action_count: u32,
+    pub scheduler_outstanding_dispatch_count: u32,
+    pub scheduler_outstanding_event_delivery_count: u32,
+    pub scheduler_fact_count: u32,
+    pub scheduler_truncated: bool,
+    pub runtime_host_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeComposedRuntimeSessionReadout {
+    pub schema_version: u32,
+    pub entity_authority_hash: String,
+    pub gameplay: NativeComposedGameplayReadout,
+    pub fps_session_epoch: i64,
+    pub fps_replay_hash: Option<String>,
+    pub runtime_session_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeGameplayContractRef {
+    pub namespace: String,
+    pub name: String,
+    pub version: u32,
+    pub schema_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeGameplayModuleViewSnapshot {
+    pub view: NativeGameplayContractRef,
+    pub provider_id: String,
+    pub scope_kind: String,
+    pub scope_value: Option<i64>,
+    pub revision: i64,
+    pub canonical_payload: Vec<u8>,
+    pub view_hash: String,
+    pub runtime_session_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeGameplayPrefabPartInteractionReceipt {
+    pub actor: i64,
+    pub instance: i64,
+    pub role: String,
+    pub target: i64,
+    pub event_hash: String,
+    pub reaction_frame_hash: String,
+    pub runtime_session_hash: String,
 }
 
 #[napi(object)]
@@ -509,6 +577,109 @@ impl From<FpsEncounterTransitionResult> for NativeFpsEncounterTransitionResult {
     }
 }
 
+impl From<ComposedRuntimeSessionReadout> for NativeComposedRuntimeSessionReadout {
+    fn from(value: ComposedRuntimeSessionReadout) -> Self {
+        let scheduler = value.gameplay.scheduler;
+        Self {
+            schema_version: value.schema_version,
+            entity_authority_hash: value.entity_authority_hash,
+            gameplay: NativeComposedGameplayReadout {
+                gameplay_registry_digest: value.gameplay.gameplay_registry_digest,
+                binding_registry_hash: value.gameplay.binding_registry_hash,
+                activation_hash: value.gameplay.activation_hash,
+                module_state_hash: value.gameplay.module_state_hash,
+                authority_state_hash: value.gameplay.authority_state_hash,
+                trigger_revision: value.gameplay.trigger_revision as i64,
+                trigger_snapshot_hash: value.gameplay.trigger_snapshot_hash,
+                active_overlap_count: value.gameplay.active_overlap_count,
+                reaction_frame_count: value.gameplay.reaction_frame_count,
+                last_reaction_frame_hash: value.gameplay.last_reaction_frame_hash,
+                decision_receipt_count: value.gameplay.decision_receipt_count,
+                pending_decision_count: value.gameplay.pending_decision_count,
+                last_decision_receipt_hash: value.gameplay.last_decision_receipt_hash,
+                scheduler_state_hash: scheduler.state_hash,
+                scheduler_pending_action_count: scheduler.pending_action_count,
+                scheduler_outstanding_dispatch_count: scheduler.outstanding_dispatch_count,
+                scheduler_outstanding_event_delivery_count: scheduler
+                    .outstanding_event_delivery_count,
+                scheduler_fact_count: scheduler.fact_count,
+                scheduler_truncated: scheduler.truncated,
+                runtime_host_hash: value.gameplay.runtime_host_hash,
+            },
+            fps_session_epoch: value.fps_session_epoch as i64,
+            fps_replay_hash: value.fps_replay_hash.map(native_hash),
+            runtime_session_hash: value.runtime_session_hash,
+        }
+    }
+}
+
+impl From<GameplayContractRef> for NativeGameplayContractRef {
+    fn from(value: GameplayContractRef) -> Self {
+        Self {
+            namespace: value.namespace,
+            name: value.name,
+            version: value.version,
+            schema_hash: value.schema_hash,
+        }
+    }
+}
+
+fn native_module_view_scope(scope: GameplayModuleViewScope) -> (String, Option<i64>) {
+    match scope {
+        GameplayModuleViewScope::Session => ("session".to_owned(), None),
+        GameplayModuleViewScope::Entity { entity } => ("entity".to_owned(), Some(entity as i64)),
+        GameplayModuleViewScope::PrefabInstance { instance } => {
+            ("prefabInstance".to_owned(), Some(instance as i64))
+        }
+    }
+}
+
+impl From<GameplayModuleViewSnapshot> for NativeGameplayModuleViewSnapshot {
+    fn from(value: GameplayModuleViewSnapshot) -> Self {
+        let (scope_kind, scope_value) = native_module_view_scope(value.scope);
+        Self {
+            view: value.view.into(),
+            provider_id: value.provider_id,
+            scope_kind,
+            scope_value,
+            revision: value.revision as i64,
+            canonical_payload: value.canonical_payload,
+            view_hash: value.view_hash,
+            runtime_session_hash: value.runtime_session_hash,
+        }
+    }
+}
+
+impl From<GameplayPrefabPartInteractionReceipt> for NativeGameplayPrefabPartInteractionReceipt {
+    fn from(value: GameplayPrefabPartInteractionReceipt) -> Self {
+        Self {
+            actor: value.actor as i64,
+            instance: value.instance as i64,
+            role: value.role,
+            target: value.target as i64,
+            event_hash: value.event_hash,
+            reaction_frame_hash: value.reaction_frame_hash,
+            runtime_session_hash: value.runtime_session_hash,
+        }
+    }
+}
+
+fn module_view_scope(kind: &str, value: Option<i64>) -> napi::Result<GameplayModuleViewScope> {
+    match (kind, value) {
+        ("session", None) => Ok(GameplayModuleViewScope::Session),
+        ("entity", Some(entity)) => Ok(GameplayModuleViewScope::Entity {
+            entity: u64_input(entity, "scopeValue")?,
+        }),
+        ("prefabInstance", Some(instance)) => Ok(GameplayModuleViewScope::PrefabInstance {
+            instance: u64_input(instance, "scopeValue")?,
+        }),
+        _ => Err(to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::InvalidInput,
+            "module view scope must be session without a value, or entity/prefabInstance with a value",
+        ))),
+    }
+}
+
 #[napi]
 pub fn load_fps_runtime_session(
     handle: i64,
@@ -572,6 +743,74 @@ pub fn apply_fps_primary_fire(
                 target_role,
             })
             .map(NativeFpsPrimaryFireResult::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
+pub fn read_composed_runtime_session(
+    handle: i64,
+) -> napi::Result<NativeComposedRuntimeSessionReadout> {
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_composed_runtime_session()
+            .map(NativeComposedRuntimeSessionReadout::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
+pub fn read_gameplay_module_view(
+    handle: i64,
+    namespace: String,
+    name: String,
+    version: i64,
+    schema_hash: String,
+    scope_kind: String,
+    scope_value: Option<i64>,
+    expected_runtime_session_hash: String,
+) -> napi::Result<NativeGameplayModuleViewSnapshot> {
+    let version = u32_input(version, "version")?;
+    let scope = module_view_scope(&scope_kind, scope_value)?;
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_gameplay_module_view(GameplayModuleViewRequest {
+                view: GameplayContractRef {
+                    namespace,
+                    name,
+                    version,
+                    schema_hash,
+                },
+                scope,
+                expected_runtime_session_hash,
+            })
+            .map(NativeGameplayModuleViewSnapshot::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
+pub fn apply_gameplay_prefab_part_interaction(
+    handle: i64,
+    actor: i64,
+    instance: i64,
+    role: String,
+    expected_target: i64,
+    tick: i64,
+    expected_runtime_session_hash: String,
+) -> napi::Result<NativeGameplayPrefabPartInteractionReceipt> {
+    let request = GameplayPrefabPartInteractionRequest {
+        actor: u64_input(actor, "actor")?,
+        instance: u64_input(instance, "instance")?,
+        role,
+        expected_target: u64_input(expected_target, "expectedTarget")?,
+        tick: u64_input(tick, "tick")?,
+        expected_runtime_session_hash,
+    };
+    with_bridge(handle, |bridge| {
+        bridge
+            .apply_gameplay_prefab_part_interaction(request)
+            .map(NativeGameplayPrefabPartInteractionReceipt::from)
             .map_err(to_napi)
     })
 }

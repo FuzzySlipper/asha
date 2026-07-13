@@ -736,6 +736,52 @@ pub struct FpsPrimaryFireResult {
     pub replay_hash: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GameplayModuleViewScope {
+    Session,
+    Entity { entity: u64 },
+    PrefabInstance { instance: u64 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayModuleViewRequest {
+    pub view: GameplayContractRef,
+    pub scope: GameplayModuleViewScope,
+    pub expected_runtime_session_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayModuleViewSnapshot {
+    pub view: GameplayContractRef,
+    pub provider_id: String,
+    pub scope: GameplayModuleViewScope,
+    pub revision: u64,
+    pub canonical_payload: Vec<u8>,
+    pub view_hash: String,
+    pub runtime_session_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayPrefabPartInteractionRequest {
+    pub actor: u64,
+    pub instance: u64,
+    pub role: String,
+    pub expected_target: u64,
+    pub tick: u64,
+    pub expected_runtime_session_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayPrefabPartInteractionReceipt {
+    pub actor: u64,
+    pub instance: u64,
+    pub role: String,
+    pub target: u64,
+    pub event_hash: String,
+    pub reaction_frame_hash: String,
+    pub runtime_session_hash: String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct GameExtensionWeaponEffectInvocationRequest {
     pub hook: WeaponEffectHookRequest,

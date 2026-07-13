@@ -128,6 +128,51 @@ const CUSTOM_WIRE_SHAPES: Readonly<Record<string, CustomWireShape>> = {
       replayHash: 'string',
     },
   },
+  ComposedRuntimeSessionReadout: {
+    fields: {
+      schemaVersion: 'number',
+      entityAuthorityHash: 'string',
+      gameplay: 'object',
+      fpsSessionEpoch: 'number',
+      fpsReplayHash: 'nullable_string',
+      runtimeSessionHash: 'string',
+    },
+  },
+  GameplayModuleViewRequest: {
+    fields: { view: 'object', scope: 'object', expectedRuntimeSessionHash: 'string' },
+  },
+  GameplayModuleViewSnapshot: {
+    fields: {
+      view: 'object',
+      providerId: 'string',
+      scope: 'object',
+      revision: 'number',
+      canonicalPayload: 'array',
+      viewHash: 'string',
+      runtimeSessionHash: 'string',
+    },
+  },
+  GameplayPrefabPartInteractionRequest: {
+    fields: {
+      actor: 'number',
+      instance: 'number',
+      role: 'string',
+      expectedTarget: 'number',
+      tick: 'number',
+      expectedRuntimeSessionHash: 'string',
+    },
+  },
+  GameplayPrefabPartInteractionReceipt: {
+    fields: {
+      actor: 'number',
+      instance: 'number',
+      role: 'string',
+      target: 'number',
+      eventHash: 'string',
+      reactionFrameHash: 'string',
+      runtimeSessionHash: 'string',
+    },
+  },
   GameExtensionWeaponEffectInvocationRequest: {
     fields: { hook: 'object', primaryFire: 'object' },
   },

@@ -77,6 +77,9 @@ export interface RuntimeGameplayPort {
   loadFpsRuntimeSession(input: Session.FpsRuntimeSessionLoadRequest): Session.FpsRuntimeSessionSnapshot;
   readFpsRuntimeSession(): Session.FpsRuntimeSessionSnapshot;
   applyFpsPrimaryFire(input: Session.FpsPrimaryFireRequest): Session.FpsPrimaryFireResult;
+  readComposedRuntimeSession(): Session.ComposedRuntimeSessionReadout;
+  readGameplayModuleView(input: Session.GameplayModuleViewRequest): Session.GameplayModuleViewSnapshot;
+  applyGameplayPrefabPartInteraction(input: Session.GameplayPrefabPartInteractionRequest): Session.GameplayPrefabPartInteractionReceipt;
   invokeGameExtensionWeaponEffect(input: Session.GameExtensionWeaponEffectInvocationRequest): Session.GameExtensionWeaponEffectInvocationResult;
   validateGameRuleCatalog(input: Contracts.GameRuleCatalog): Session.GameRuleCatalogValidationReceipt;
   submitGameRuleEffectIntent(input: Session.GameRuleEffectIntentRequest): Contracts.GameRuleResolutionReceipt;

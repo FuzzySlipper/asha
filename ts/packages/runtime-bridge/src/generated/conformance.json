@@ -136,6 +136,9 @@
         "load_fps_runtime_session",
         "read_fps_runtime_session",
         "apply_fps_primary_fire",
+        "read_composed_runtime_session",
+        "read_gameplay_module_view",
+        "apply_gameplay_prefab_part_interaction",
         "invoke_game_extension_weapon_effect",
         "validate_game_rule_catalog",
         "submit_game_rule_effect_intent",
@@ -1122,6 +1125,78 @@
       "outputWire": {
         "owner": "custom",
         "name": "FpsPrimaryFireResult",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_composed_runtime_session",
+      "facadeMethod": "readComposedRuntimeSession",
+      "capability": "gameplay",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "Unit",
+      "output": "protocol_runtime::ComposedRuntimeSessionReadout",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "unit",
+        "name": "Unit",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "custom",
+        "name": "ComposedRuntimeSessionReadout",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_gameplay_module_view",
+      "facadeMethod": "readGameplayModuleView",
+      "capability": "gameplay",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_runtime::GameplayModuleViewRequest",
+      "output": "protocol_runtime::GameplayModuleViewSnapshot",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "custom",
+        "name": "GameplayModuleViewRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "custom",
+        "name": "GameplayModuleViewSnapshot",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_gameplay_prefab_part_interaction",
+      "facadeMethod": "applyGameplayPrefabPartInteraction",
+      "capability": "gameplay",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_runtime::GameplayPrefabPartInteractionRequest",
+      "output": "protocol_runtime::GameplayPrefabPartInteractionReceipt",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "custom",
+        "name": "GameplayPrefabPartInteractionRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "custom",
+        "name": "GameplayPrefabPartInteractionReceipt",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

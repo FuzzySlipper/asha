@@ -95,6 +95,76 @@ const secondLoaded = addon.loadFpsRuntimeSession(
   '[]',
 );
 assert.equal(secondLoaded.health.find((entry) => entry.entity === 777).current, 150);
+const composedBefore = addon.readComposedRuntimeSession(handle);
+const secondComposedBefore = addon.readComposedRuntimeSession(secondHandle);
+const pulseViewContract = {
+  namespace: 'fixture.pulse',
+  name: 'pulse-state-view',
+  version: 1,
+  schemaHash: 'fnv1a64:67048ec3babae8be',
+};
+const pulseBefore = addon.readGameplayModuleView(
+  handle,
+  pulseViewContract.namespace,
+  pulseViewContract.name,
+  pulseViewContract.version,
+  pulseViewContract.schemaHash,
+  'session',
+  undefined,
+  composedBefore.runtimeSessionHash,
+);
+assert.equal(JSON.parse(Buffer.from(pulseBefore.canonicalPayload).toString('utf8')), 4);
+assert.equal(pulseBefore.runtimeSessionHash, composedBefore.runtimeSessionHash);
+const interaction = addon.applyGameplayPrefabPartInteraction(
+  handle,
+  101,
+  700,
+  'interaction/target',
+  4102412266368810,
+  12,
+  composedBefore.runtimeSessionHash,
+);
+assert.equal(interaction.target, 4102412266368810);
+assert.notEqual(interaction.runtimeSessionHash, composedBefore.runtimeSessionHash);
+const pulseAfter = addon.readGameplayModuleView(
+  handle,
+  pulseViewContract.namespace,
+  pulseViewContract.name,
+  pulseViewContract.version,
+  pulseViewContract.schemaHash,
+  'session',
+  undefined,
+  interaction.runtimeSessionHash,
+);
+assert.equal(JSON.parse(Buffer.from(pulseAfter.canonicalPayload).toString('utf8')), 5);
+assert.equal(pulseAfter.revision, pulseBefore.revision + 1);
+assert.deepEqual(addon.readComposedRuntimeSession(secondHandle), secondComposedBefore);
+assert.throws(
+  () => addon.applyGameplayPrefabPartInteraction(
+    handle,
+    101,
+    700,
+    'interaction/target',
+    4102412266368811,
+    13,
+    interaction.runtimeSessionHash,
+  ),
+  /target mismatch/,
+);
+assert.equal(addon.readComposedRuntimeSession(handle).runtimeSessionHash, interaction.runtimeSessionHash);
+assert.throws(
+  () => addon.applyGameplayPrefabPartInteraction(
+    handle,
+    101,
+    700,
+    'interaction/target',
+    4102412266368810,
+    12,
+    composedBefore.runtimeSessionHash,
+  ),
+  /expected RuntimeSession/,
+);
+assert.equal(addon.readComposedRuntimeSession(handle).runtimeSessionHash, interaction.runtimeSessionHash);
 const fired = addon.applyFpsPrimaryFire(
   handle,
   9,
@@ -113,12 +183,29 @@ assert.deepEqual(fired.workspaceTrace, [
   'ran Guard -> Transform -> React inside the composed gameplay Fabric',
   'revalidated the final Workspace and committed through rule-lifecycle + svc-combat',
 ]);
+addon.unloadProjectBundle(handle);
+assert.throws(() => addon.readComposedRuntimeSession(handle), /not initialized|not built/i);
+assert.throws(
+  () => addon.readGameplayModuleView(
+    handle,
+    pulseViewContract.namespace,
+    pulseViewContract.name,
+    pulseViewContract.version,
+    pulseViewContract.schemaHash,
+    'session',
+    undefined,
+    interaction.runtimeSessionHash,
+  ),
+  /not initialized|not built/i,
+);
 
 console.log(
   JSON.stringify({
     schemaVersion: 1,
     exportCount: expectedExports.length,
     targetHealthAfter: fired.targetHealthAfter.current,
+    moduleViewRevision: pulseAfter.revision,
+    prefabInteractionHash: interaction.eventHash,
     replayHash: fired.replayHash,
     workspaceTrace: fired.workspaceTrace,
   }),

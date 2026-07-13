@@ -105,6 +105,7 @@ pub enum StandardGameplayEventKind {
     CapabilityActivationChanged,
     TriggerEntered,
     TriggerExited,
+    PrefabPartInteracted,
     CombatFireHit,
     CombatFireMissed,
     CombatDamageApplied,
@@ -121,13 +122,14 @@ pub enum StandardGameplayEventKind {
 }
 
 impl StandardGameplayEventKind {
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 20] = [
         Self::EntityCreated,
         Self::EntityDestroyed,
         Self::EntityLifecycleChanged,
         Self::CapabilityActivationChanged,
         Self::TriggerEntered,
         Self::TriggerExited,
+        Self::PrefabPartInteracted,
         Self::CombatFireHit,
         Self::CombatFireMissed,
         Self::CombatDamageApplied,
@@ -151,6 +153,7 @@ impl StandardGameplayEventKind {
             Self::CapabilityActivationChanged => ("asha.entity", "capability-activation-changed"),
             Self::TriggerEntered => ("asha.trigger", "entered"),
             Self::TriggerExited => ("asha.trigger", "exited"),
+            Self::PrefabPartInteracted => ("asha.prefab", "part-interacted"),
             Self::CombatFireHit => ("asha.combat", "fire-hit"),
             Self::CombatFireMissed => ("asha.combat", "fire-missed"),
             Self::CombatDamageApplied => ("asha.combat", "damage-applied"),
@@ -178,6 +181,9 @@ impl StandardGameplayEventKind {
             }
             Self::TriggerEntered | Self::TriggerExited => {
                 "TriggerOverlapGameplayPayload{trigger:u64,subject:u64,action:string,scope:string,tags:[string],tick:u64,cause:string,pairHash:string};canonical-json-v1"
+            }
+            Self::PrefabPartInteracted => {
+                "PrefabPartInteractionGameplayPayload{actor:u64,instance:u64,prefab:u64,role:string,target:u64,tick:u64};canonical-json-v1"
             }
             Self::CombatFireHit
             | Self::CombatFireMissed
@@ -275,6 +281,17 @@ pub struct TriggerOverlapGameplayPayload {
     pub tick: u64,
     pub cause: String,
     pub pair_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PrefabPartInteractionGameplayPayload {
+    pub actor: u64,
+    pub instance: u64,
+    pub prefab: u64,
+    pub role: String,
+    pub target: u64,
+    pub tick: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -442,6 +459,10 @@ pub fn register_standard_owner_events(builder: &mut GameplayFabricRegistryBuilde
     register_codec::<TriggerOverlapGameplayPayload>(
         builder,
         StandardGameplayEventKind::TriggerExited,
+    );
+    register_codec::<PrefabPartInteractionGameplayPayload>(
+        builder,
+        StandardGameplayEventKind::PrefabPartInteracted,
     );
     register_codec::<CombatGameplayPayload>(builder, StandardGameplayEventKind::CombatFireHit);
     register_codec::<CombatGameplayPayload>(builder, StandardGameplayEventKind::CombatFireMissed);
@@ -660,6 +681,29 @@ pub fn adapt_trigger_overlap_fact(
             targets: Vec::new(),
             scope: Some(fact.scope.clone()),
             tags,
+            phase: GameplayEventPhase::PostCommit,
+        },
+    )
+}
+
+/// Adapt a validated player intent only after the composed runtime has resolved
+/// the active prefab instance and stable part role. Callers cannot select an
+/// arbitrary event contract or claim a different target entity.
+pub fn adapt_prefab_part_interaction(
+    context: &GameplayOwnerEventContext,
+    payload: &PrefabPartInteractionGameplayPayload,
+) -> Result<GameplayEventEnvelope, GameplayOwnerEventError> {
+    envelope(
+        context,
+        0,
+        StandardGameplayEventKind::PrefabPartInteracted,
+        payload,
+        GameplayOwnerEventRoute {
+            source: Some(entity_ref(EntityId::new(payload.actor))),
+            subjects: vec![entity_ref(EntityId::new(payload.target))],
+            targets: vec![entity_ref(EntityId::new(payload.target))],
+            scope: Some(format!("prefab-instance:{}", payload.instance)),
+            tags: vec!["prefab-part".to_owned(), payload.role.clone()],
             phase: GameplayEventPhase::PostCommit,
         },
     )

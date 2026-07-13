@@ -248,6 +248,19 @@ pub trait RuntimeBridge {
         &mut self,
         request: FpsPrimaryFireRequest,
     ) -> BridgeResult<FpsPrimaryFireResult>;
+    /// Read hash-bound evidence for the single composed authority cell.
+    fn read_composed_runtime_session(&mut self) -> BridgeResult<ComposedRuntimeSessionReadout>;
+    /// Project one registered module-owned named view through its canonical
+    /// contract and bounded state scope.
+    fn read_gameplay_module_view(
+        &mut self,
+        request: GameplayModuleViewRequest,
+    ) -> BridgeResult<GameplayModuleViewSnapshot>;
+    /// Resolve and publish one validated prefab-part interaction intent.
+    fn apply_gameplay_prefab_part_interaction(
+        &mut self,
+        request: GameplayPrefabPartInteractionRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionReceipt>;
     /// Read the generated scene plus ordered non-scene projection frame.
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame>;
     /// Invoke a declared game-owned Rust weapon-effect hook, validate its

@@ -50,6 +50,7 @@ pub(crate) use protocol_diagnostics::DiagnosticSeverity;
 pub(crate) use protocol_entity_authoring::{
     AuthoringTransform, EntityDefinition, EntityDefinitionCapability, EntityDefinitionSourceTrace,
 };
+pub use protocol_game_extension::GameplayContractRef;
 pub use protocol_game_rules::{
     GameRuleCatalog, GameRuleDiagnostic, GameRuleEvidenceKind, GameRuleEvidenceRef,
     GameRuleModifierState, GameRuleResolutionReceipt, GameRuleResolutionRequest,

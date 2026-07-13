@@ -204,6 +204,24 @@ pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
         8388608,
     ),
     (
+        "read_composed_runtime_session",
+        "readComposedRuntimeSession",
+        8388608,
+        8388608,
+    ),
+    (
+        "read_gameplay_module_view",
+        "readGameplayModuleView",
+        8388608,
+        8388608,
+    ),
+    (
+        "apply_gameplay_prefab_part_interaction",
+        "applyGameplayPrefabPartInteraction",
+        8388608,
+        8388608,
+    ),
+    (
         "invoke_game_extension_weapon_effect",
         "invokeGameExtensionWeaponEffect",
         8388608,

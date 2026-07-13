@@ -218,6 +218,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `apply_first_person_camera_input` — stable; output `protocol_view::CameraSnapshot`
 - `apply_fps_encounter_transition` — stable; output `protocol_runtime::FpsEncounterTransitionResult`
 - `apply_fps_primary_fire` — stable; output `protocol_runtime::FpsPrimaryFireResult`
+- `apply_gameplay_prefab_part_interaction` — stable; output `protocol_runtime::GameplayPrefabPartInteractionReceipt`
 - `apply_generated_tunnel_to_runtime_world` — stable; output `protocol_view::GeneratedTunnelRuntimeApplyReceipt`
 - `apply_input_context_command` — stable; output `protocol_input::InputContextChangeReceipt`
 - `apply_scene_object_command` — stable; output `protocol_scene::SceneObjectCommandResult`
@@ -247,9 +248,11 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `preview_voxel_edit_revert` — stable; output `protocol_voxel_edit_history::VoxelEditHistoryRevertReceipt`
 - `read_camera_controller_state` — stable; output `protocol_view::CameraControllerState`
 - `read_camera_projection` — stable; output `protocol_view::CameraProjectionSnapshot`
+- `read_composed_runtime_session` — stable; output `protocol_runtime::ComposedRuntimeSessionReadout`
 - `read_fps_encounter_director` — stable; output `protocol_runtime::FpsEncounterDirectorSnapshot`
 - `read_fps_runtime_session` — stable; output `protocol_runtime::FpsRuntimeSessionSnapshot`
 - `read_game_rule_runtime_readout` — stable; output `protocol_runtime::GameRuleRuntimeReadout`
+- `read_gameplay_module_view` — stable; output `protocol_runtime::GameplayModuleViewSnapshot`
 - `read_input_context_state` — stable; output `protocol_input::InputContextStackState`
 - `read_model_material_preview` — stable; output `protocol_render::ModelMaterialPreviewSnapshot`
 - `read_projection_frame` — stable; output `protocol_presentation::RuntimeProjectionFrame`
@@ -285,7 +288,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Assignment And Dependency Pressure
 
-Committed path classes: 678 source; 26 generated source; 517 other; 0 build/cache/output.
+Committed path classes: 683 source; 26 generated source; 520 other; 0 build/cache/output.
 
 ### Rust actual and allowed edges
 
@@ -419,8 +422,10 @@ Committed path classes: 678 source; 26 generated source; 517 other; 0 build/cach
 
 | Source | Lines / warning / cap | Owner | Review by |
 |---|---:|---|---|
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1621 / 1570 / 1621 | rust-bridge | 2026-10-15 |
 | `engine-rs/crates/protocol/protocol-codegen/src/lib.rs` | 1601 / 1560 / 1601 | contract-steward | 2026-10-15 |
 | `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1600 / 1400 / 1600 | rust-render | global policy |
+| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 2795 / 2600 / 2795 | rust-rule | 2026-09-15 |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/observe.rs` | 1622 / 1580 / 1622 | rust-rule | 2026-10-15 |
 | `engine-rs/crates/services/svc-voxel-conversion/src/lib.rs` | 2064 / 2000 / 2064 | rust-service | 2026-09-15 |
 | `ts/packages/app/src/index.ts` | 224 / 200 / 224 | ts-shell | 2026-10-15 |
@@ -433,18 +438,17 @@ Committed path classes: 678 source; 26 generated source; 517 other; 0 build/cach
 | `ts/packages/script-host/src/index.ts` | 133 / 115 / 133 | ts-policy | 2026-10-15 |
 | `ts/packages/script-sdk/src/index.ts` | 207 / 180 / 207 | ts-policy | 2026-10-15 |
 | `ts/packages/wasm-replay-bridge/src/index.ts` | 190 / 170 / 190 | ts-shell | 2026-10-15 |
-| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 2793 / 2600 / 2795 | rust-rule | 2026-09-15 |
-| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1596 / 1400 / 1600 | ts-shell | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1603 / 1570 / 1612 | rust-bridge | 2026-10-15 |
+| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1598 / 1400 / 1600 | ts-shell | global policy |
+| `ts/packages/runtime-bridge/src/native.ts` | 1597 / 1400 / 1600 | ts-shell | global policy |
+| `ts/packages/runtime-bridge/src/mock.ts` | 1610 / 1580 / 1620 | ts-shell | 2026-10-15 |
 | `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1578 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/history.rs` | 1571 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1567 / 1400 / 1600 | rust-bridge | global policy |
-| `ts/packages/runtime-bridge/src/mock.ts` | 1586 / 1580 / 1620 | ts-shell | 2026-10-15 |
 | `engine-rs/crates/rules/rule-animation-controller/src/lib.rs` | 1565 / 1400 / 1600 | rust-rule | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session.test.ts` | 1563 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/protocol/protocol-render/src/lib.rs` | 1893 / 1880 / 1941 | contract-steward | 2026-10-15 |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1555 / 1400 / 1600 | rust-rule | global policy |
-| `engine-rs/crates/bridge/native-bridge/src/lib.rs` | 1546 / 1400 / 1600 | rust-bridge | global policy |
+| `engine-rs/crates/bridge/native-bridge/src/lib.rs` | 1549 / 1400 / 1600 | rust-bridge | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1545 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_assets.rs` | 1531 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1528 / 1400 / 1600 | contract-steward | global policy |

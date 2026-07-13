@@ -2,23 +2,23 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:ab3ff10f644cf49e218195660a481eacd1b6460d65c99c70ffd0fa95187a262a",
+  "inventoryHash": "sha256:6c4d8f17fc1d2554bcfded96a282c0ec1f8fbd0a559c3e0bbc071c81df079a09",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:e67b07a5fadcadd2d4d46871f4c04dcc07d058cb71b5b4a2ccbb99d1f9bb4906"
+    "hash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:c1b0472181c2f0915771f4c0fbf316385b37c87154985cd73a9041635c130aab"
+      "hash": "sha256:8306f01fe8039545ad557d1b8eaa199d711a674b711c37eea644c30aa32cef1a"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:e1185f2474cbf84c89a8eab6412647e58c90cb0cc7bb62975e9fb0e3caeb6724"
+      "hash": "sha256:e2ed2f0625ff972aa8560aff7862266e7e89a720bf98c4c572266e8103afaf66"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:cf821bb153df889d82eda55820c23801f1bfe839e745a6d3e241e11aa198ad1f"
+      "hash": "sha256:57139092f9349cafb3b769de3270eca84ca9cbb00925e8b3cf46faa752075f92"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -30,16 +30,16 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:b2ddd987d656c811b2beec6ad5ed4042d595bbd7fd54a8db628a2444541a4ee9"
+      "hash": "sha256:8174a906330174c7869671c60a4a1887368c1a37e3d70dd945c26cb71b872075"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
-      "hash": "sha256:08eb76e9b4d9301a51d36968389855447d54211f779554351e11dd1101a003b8"
+      "hash": "sha256:d946ba284ad8b88f41a99ce1c68281e0ff9230b252997b5160c398b8bef60cc9"
     }
   ],
   "summary": {
-    "stableOperationCount": 68,
-    "realOperationProbeCount": 68,
+    "stableOperationCount": 71,
+    "realOperationProbeCount": 71,
     "temporaryOperationExemptionCount": 0,
     "quarantinedOperationCount": 3,
     "semanticProbeCount": 23,
@@ -261,6 +261,19 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/fps.rs",
           "assertion": "generated_tunnel_preserves_explicit_role_targeted_enemy_damage"
+        }
+      ]
+    },
+    {
+      "operation": "apply_gameplay_prefab_part_interaction",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/composition.rs",
+          "assertion": "composed_gameplay_operations_fail_closed_without_static_provider"
         }
       ]
     },
@@ -1180,6 +1193,19 @@
       ]
     },
     {
+      "operation": "read_composed_runtime_session",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/composition.rs",
+          "assertion": "composed_gameplay_operations_fail_closed_without_static_provider"
+        }
+      ]
+    },
+    {
       "operation": "read_fps_encounter_director",
       "status": "probed",
       "nativeWired": true,
@@ -1251,6 +1277,19 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
           "assertion": "generic_game_rule_operations_validate_resolve_and_publish_runtime_readout"
+        }
+      ]
+    },
+    {
+      "operation": "read_gameplay_module_view",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/composition.rs",
+          "assertion": "composed_gameplay_operations_fail_closed_without_static_provider"
         }
       ]
     },

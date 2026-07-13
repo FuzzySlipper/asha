@@ -136,6 +136,62 @@ interface NativeFpsPrimaryFireResult {
   readonly replayHash: string;
 }
 
+interface NativeComposedRuntimeSessionReadout {
+  readonly schemaVersion: number;
+  readonly entityAuthorityHash: string;
+  readonly gameplay: {
+    readonly gameplayRegistryDigest: string;
+    readonly bindingRegistryHash: string;
+    readonly activationHash: string;
+    readonly moduleStateHash: string;
+    readonly authorityStateHash: string;
+    readonly triggerRevision: number;
+    readonly triggerSnapshotHash: string;
+    readonly activeOverlapCount: number;
+    readonly reactionFrameCount: number;
+    readonly lastReactionFrameHash: string | null;
+    readonly decisionReceiptCount: number;
+    readonly pendingDecisionCount: number;
+    readonly lastDecisionReceiptHash: string | null;
+    readonly schedulerStateHash: string;
+    readonly schedulerPendingActionCount: number;
+    readonly schedulerOutstandingDispatchCount: number;
+    readonly schedulerOutstandingEventDeliveryCount: number;
+    readonly schedulerFactCount: number;
+    readonly schedulerTruncated: boolean;
+    readonly runtimeHostHash: string;
+  };
+  readonly fpsSessionEpoch: number;
+  readonly fpsReplayHash: string | null;
+  readonly runtimeSessionHash: string;
+}
+
+interface NativeGameplayModuleViewSnapshot {
+  readonly view: {
+    readonly namespace: string;
+    readonly name: string;
+    readonly version: number;
+    readonly schemaHash: string;
+  };
+  readonly providerId: string;
+  readonly scopeKind: string;
+  readonly scopeValue: number | null;
+  readonly revision: number;
+  readonly canonicalPayload: Uint8Array;
+  readonly viewHash: string;
+  readonly runtimeSessionHash: string;
+}
+
+interface NativeGameplayPrefabPartInteractionReceipt {
+  readonly actor: number;
+  readonly instance: number;
+  readonly role: string;
+  readonly target: number;
+  readonly eventHash: string;
+  readonly reactionFrameHash: string;
+  readonly runtimeSessionHash: string;
+}
+
 interface NativeGameExtensionWeaponEffectInvocationResult {
   readonly hookReceiptJson: string;
   readonly replayEvidenceJson: string;
@@ -267,6 +323,26 @@ interface NativeAddonBindings {
     shooterRole?: NativeFpsRole,
     targetRole?: NativeFpsRole,
   ): NativeFpsPrimaryFireResult;
+  readComposedRuntimeSession(handle: number): NativeComposedRuntimeSessionReadout;
+  readGameplayModuleView(
+    handle: number,
+    namespace: string,
+    name: string,
+    version: number,
+    schemaHash: string,
+    scopeKind: string,
+    scopeValue: number | undefined,
+    expectedRuntimeSessionHash: string,
+  ): NativeGameplayModuleViewSnapshot;
+  applyGameplayPrefabPartInteraction(
+    handle: number,
+    actor: number,
+    instance: number,
+    role: string,
+    expectedTarget: number,
+    tick: number,
+    expectedRuntimeSessionHash: string,
+  ): NativeGameplayPrefabPartInteractionReceipt;
   invokeGameExtensionWeaponEffect(
     handle: number,
     hookJson: string,

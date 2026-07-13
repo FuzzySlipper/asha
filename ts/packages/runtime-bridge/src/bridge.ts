@@ -8,6 +8,8 @@ import type { BridgeErrorFamily } from './generated/operations.js';
 export type {
   BridgeVec3,
   CompositionStatus,
+  ComposedGameplayReadout,
+  ComposedRuntimeSessionReadout,
   EnemyDirectNavAuthoritySource,
   EnemyDirectNavAuthorityTransport,
   EnemyDirectNavMovementRequest,
@@ -45,6 +47,11 @@ export type {
   GameRuleCatalogValidationReceipt,
   GameRuleEffectIntentRequest,
   GameRuleRuntimeReadout,
+  GameplayModuleViewRequest,
+  GameplayModuleViewScope,
+  GameplayModuleViewSnapshot,
+  GameplayPrefabPartInteractionReceipt,
+  GameplayPrefabPartInteractionRequest,
   ProjectBundleLoadRequest,
   StepResult,
 } from '@asha/runtime-session';

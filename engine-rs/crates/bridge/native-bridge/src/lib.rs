@@ -70,17 +70,20 @@ pub use camera::{
     NativeFirstPersonCameraInputEnvelope, NativePerspectiveProjection, NativeViewportSize,
 };
 pub use fps::{
-    apply_fps_encounter_transition, apply_fps_primary_fire, invoke_game_extension_weapon_effect,
-    load_fps_runtime_session, read_fps_encounter_director, read_fps_runtime_session,
-    read_game_rule_runtime_readout, restart_fps_runtime_session, submit_game_rule_effect_intent,
-    validate_game_rule_catalog, NativeFpsBoundsCapability, NativeFpsEncounterDirectorSnapshot,
+    apply_fps_encounter_transition, apply_fps_primary_fire, apply_gameplay_prefab_part_interaction,
+    invoke_game_extension_weapon_effect, load_fps_runtime_session, read_composed_runtime_session,
+    read_fps_encounter_director, read_fps_runtime_session, read_game_rule_runtime_readout,
+    read_gameplay_module_view, restart_fps_runtime_session, submit_game_rule_effect_intent,
+    validate_game_rule_catalog, NativeComposedGameplayReadout, NativeComposedRuntimeSessionReadout,
+    NativeFpsBoundsCapability, NativeFpsEncounterDirectorSnapshot,
     NativeFpsEncounterLifecycleInput, NativeFpsEncounterStateReadout,
     NativeFpsEncounterTransitionRequest, NativeFpsEncounterTransitionResult,
     NativeFpsEntityHealthReadout, NativeFpsHealth, NativeFpsLifecycleStatus,
     NativeFpsPolicyBinding, NativeFpsPolicyBindingReadout, NativeFpsPrimaryFireResult,
     NativeFpsReadSetEvidence, NativeFpsReplayEvidence, NativeFpsRuntimeSessionSnapshot,
     NativeFpsStoredEntityDefinition, NativeFpsTransformCapability, NativeFpsWeaponMount,
-    NativeGameExtensionWeaponEffectInvocationResult,
+    NativeGameExtensionWeaponEffectInvocationResult, NativeGameplayContractRef,
+    NativeGameplayModuleViewSnapshot, NativeGameplayPrefabPartInteractionReceipt,
 };
 pub use generated_tunnel::apply_generated_tunnel_to_runtime_world;
 pub use input_session::{

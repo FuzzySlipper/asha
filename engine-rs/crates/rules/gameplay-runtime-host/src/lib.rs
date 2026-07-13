@@ -6,11 +6,13 @@
 
 #![forbid(unsafe_code)]
 
+mod interaction;
 mod owner_router;
 mod prefab;
 mod scheduler;
 mod transaction;
 
+pub use interaction::*;
 pub use prefab::*;
 pub use scheduler::*;
 use transaction::activation_hash;

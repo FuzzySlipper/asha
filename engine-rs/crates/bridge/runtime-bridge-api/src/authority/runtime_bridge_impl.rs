@@ -1150,6 +1150,24 @@ impl RuntimeBridge for EngineBridge {
         self.apply_fps_primary_fire_authority(request)
     }
 
+    fn read_composed_runtime_session(&mut self) -> BridgeResult<ComposedRuntimeSessionReadout> {
+        EngineBridge::read_composed_runtime_session(self)
+    }
+
+    fn read_gameplay_module_view(
+        &mut self,
+        request: GameplayModuleViewRequest,
+    ) -> BridgeResult<GameplayModuleViewSnapshot> {
+        EngineBridge::read_gameplay_module_view(self, request)
+    }
+
+    fn apply_gameplay_prefab_part_interaction(
+        &mut self,
+        request: GameplayPrefabPartInteractionRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionReceipt> {
+        EngineBridge::apply_gameplay_prefab_part_interaction(self, request)
+    }
+
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame> {
         self.require_initialized("read_projection_frame")?;
         let frame = self.projection.projection_frame.as_ref().ok_or_else(|| {

@@ -3,14 +3,21 @@
   "warningSourceLines": 1400,
   "fileLineExemptions": {
     "engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs": {
-      "maxLines": 1612,
+      "maxLines": 1621,
       "warningLines": 1570,
       "owner": "rust-bridge",
       "rationale": "RuntimeBridge is one Rust trait implementation whose operation bodies delegate to lane-specific authority modules; this narrow exception records the public routing surface.",
       "introducedBy": "#5761",
       "reviewBy": "2026-10-15",
       "reviewTrigger": "Review on any new bridge operation, baseline change, or authority-lane ownership change.",
-      "removalCondition": "Remove when the routing implementation falls below the global cap without obscuring the single authoritative RuntimeBridge implementation."
+      "removalCondition": "Remove when the routing implementation falls below the global cap without obscuring the single authoritative RuntimeBridge implementation.",
+      "baselineChange": {
+        "changedAt": "2026-07-13",
+        "changeTask": "#5770",
+        "reason": "Three generated composed-gameplay operations add only explicit delegation methods to the single RuntimeBridge trait implementation; authority logic remains in focused modules and no further growth headroom is granted.",
+        "previousMaxLines": 1612,
+        "newMaxLines": 1621
+      }
     },
     "engine-rs/crates/protocol/protocol-codegen/src/lib.rs": {
       "maxLines": 1601,

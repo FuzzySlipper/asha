@@ -99,6 +99,7 @@ import {
   nonNegativeSafeInteger,
   u32,
   type CompositionStatus,
+  type ComposedRuntimeSessionReadout,
   type EnemyDirectNavMovementRequest,
   type EnemyDirectNavMovementResult,
   type EngineConfig,
@@ -116,6 +117,8 @@ import {
   type GameRuleCatalogValidationReceipt,
   type GameRuleEffectIntentRequest,
   type GameRuleRuntimeReadout,
+  type GameplayModuleViewSnapshot,
+  type GameplayPrefabPartInteractionReceipt,
   type GeneratedTunnelRuntimeApplyReceipt,
   type GeneratedTunnelRuntimeApplyRequest,
   type FpsRuntimeSessionLoadRequest,
@@ -725,6 +728,27 @@ export class MockRuntimeBridge implements RuntimeBridge {
       healthHash,
       replayHash,
     };
+  }
+
+  readComposedRuntimeSession(): ComposedRuntimeSessionReadout {
+    throw new RuntimeBridgeError(
+      'operation_unimplemented',
+      'reference bridge does not claim composed gameplay authority',
+    );
+  }
+
+  readGameplayModuleView(): GameplayModuleViewSnapshot {
+    throw new RuntimeBridgeError(
+      'operation_unimplemented',
+      'reference bridge does not claim composed gameplay module views',
+    );
+  }
+
+  applyGameplayPrefabPartInteraction(): GameplayPrefabPartInteractionReceipt {
+    throw new RuntimeBridgeError(
+      'operation_unimplemented',
+      'reference bridge does not claim composed prefab interaction authority',
+    );
   }
 
   invokeGameExtensionWeaponEffect(

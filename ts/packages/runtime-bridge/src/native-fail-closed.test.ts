@@ -68,6 +68,7 @@ import {
   CAMERA_NAVIGATION_INPUT,
   createNativeCameraControllerHandlers,
 } from './native-camera-controller.test-fixture.js';
+import { createNativeComposedGameplayHandlers } from './native-composed-gameplay.test-fixture.js';
 
 const HASH_A = 'fnv1a64:00000000000000aa';
 const HASH_B = 'fnv1a64:00000000000000bb';
@@ -594,6 +595,7 @@ function fakeAddon(calls: string[] = []): NativeAddon {
         replayHash: HASH_C,
       };
     },
+    ...createNativeComposedGameplayHandlers(calls, HASH_A, HASH_B, HASH_C),
     invokeGameExtensionWeaponEffect: (
       _handle: number,
       hookJson: string,

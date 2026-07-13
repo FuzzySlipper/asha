@@ -8,6 +8,7 @@ import type {
   GameRuleModuleManifest,
   GameRuleResolutionRequest,
   GameRuleTraceEntry,
+  GameplayContractRef,
   WeaponEffectHookRequest,
 } from '@asha/contracts';
 
@@ -172,6 +173,78 @@ export interface FpsPrimaryFireResult {
   readonly entityHash: string;
   readonly healthHash: string;
   readonly replayHash: string;
+}
+
+export type GameplayModuleViewScope =
+  | { readonly kind: 'session' }
+  | { readonly kind: 'entity'; readonly entity: number }
+  | { readonly kind: 'prefabInstance'; readonly instance: number };
+
+export interface GameplayModuleViewRequest {
+  readonly view: GameplayContractRef;
+  readonly scope: GameplayModuleViewScope;
+  readonly expectedRuntimeSessionHash: string;
+}
+
+export interface GameplayModuleViewSnapshot {
+  readonly view: GameplayContractRef;
+  readonly providerId: string;
+  readonly scope: GameplayModuleViewScope;
+  readonly revision: number;
+  readonly canonicalPayload: readonly number[];
+  readonly viewHash: string;
+  readonly runtimeSessionHash: string;
+}
+
+export interface ComposedGameplayReadout {
+  readonly gameplayRegistryDigest: string;
+  readonly bindingRegistryHash: string;
+  readonly activationHash: string;
+  readonly moduleStateHash: string;
+  readonly authorityStateHash: string;
+  readonly triggerRevision: number;
+  readonly triggerSnapshotHash: string;
+  readonly activeOverlapCount: number;
+  readonly reactionFrameCount: number;
+  readonly lastReactionFrameHash: string | null;
+  readonly decisionReceiptCount: number;
+  readonly pendingDecisionCount: number;
+  readonly lastDecisionReceiptHash: string | null;
+  readonly schedulerStateHash: string;
+  readonly schedulerPendingActionCount: number;
+  readonly schedulerOutstandingDispatchCount: number;
+  readonly schedulerOutstandingEventDeliveryCount: number;
+  readonly schedulerFactCount: number;
+  readonly schedulerTruncated: boolean;
+  readonly runtimeHostHash: string;
+}
+
+export interface ComposedRuntimeSessionReadout {
+  readonly schemaVersion: number;
+  readonly entityAuthorityHash: string;
+  readonly gameplay: ComposedGameplayReadout;
+  readonly fpsSessionEpoch: number;
+  readonly fpsReplayHash: string | null;
+  readonly runtimeSessionHash: string;
+}
+
+export interface GameplayPrefabPartInteractionRequest {
+  readonly actor: number;
+  readonly instance: number;
+  readonly role: string;
+  readonly expectedTarget: number;
+  readonly tick: number;
+  readonly expectedRuntimeSessionHash: string;
+}
+
+export interface GameplayPrefabPartInteractionReceipt {
+  readonly actor: number;
+  readonly instance: number;
+  readonly role: string;
+  readonly target: number;
+  readonly eventHash: string;
+  readonly reactionFrameHash: string;
+  readonly runtimeSessionHash: string;
 }
 
 export interface GameExtensionWeaponEffectInvocationRequest {

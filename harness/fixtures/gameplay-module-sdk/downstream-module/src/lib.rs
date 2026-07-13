@@ -2,10 +2,13 @@
 
 use asha_gameplay_module_sdk::*;
 use asha_runtime_session_composition::{
-    BundleArtifacts, EngineBridge, GameplayBindingEntityTargets, GameplayRuntimeProjectInput,
-    GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity, GameplayTriggerDefinition,
-    LoadPlan, LoadStep, RuntimeSessionId, SceneId, StaticRuntimeSessionBuilder,
-    StaticRuntimeSessionCompositionError, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
+    BundleArtifacts, EngineBridge, GameplayBindingEntityTargets, GameplayRuntimePrefabBootstrap,
+    GameplayRuntimePrefabCatalog, GameplayRuntimePrefabPlacement,
+    GameplayRuntimePrefabPlacementOrigin, GameplayRuntimePrefabTransform,
+    GameplayRuntimeProjectInput, GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
+    GameplayTriggerDefinition, LoadPlan, LoadStep, RuntimeSessionId, SceneId,
+    StaticRuntimeSessionBuilder, StaticRuntimeSessionCompositionError,
+    GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +25,17 @@ pub struct TriggerReactionProposal {
     pub subject: u64,
     pub pair_hash: String,
     pub overlap_read_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct PrefabInteractionPulse {
+    actor: u64,
+    instance: u64,
+    prefab: u64,
+    role: String,
+    target: u64,
+    tick: u64,
 }
 
 fn schema_descriptor(namespace: &str, name: &str) -> String {
@@ -214,6 +228,28 @@ impl GameplayModuleBehavior for PulseBehavior {
             actions.trace("triggerReactionProposed");
             return Ok(actions);
         }
+        if context.event_contract()
+            == Some(&StandardGameplayEventKind::PrefabPartInteracted.contract())
+        {
+            let interaction: PrefabInteractionPulse = context.event_payload()?;
+            let mut actions = context.actions();
+            actions.emit(
+                &typed_codec::<Pulse>(contract("pulse-result")),
+                &Pulse { amount: 1 },
+                Some(interaction.actor),
+                vec![interaction.target],
+                vec![interaction.target],
+            )?;
+            actions.record_local_fact_json(
+                contract("pulse-fact"),
+                contract("pulse-state"),
+                GameplayModuleStateScope::Session,
+                0,
+                &1_u64,
+            )?;
+            actions.trace("prefabInteractionObserved");
+            return Ok(actions);
+        }
         let pulse: Pulse = context.event_payload()?;
         let mut actions = context.actions();
         let current_state = context
@@ -352,8 +388,26 @@ fn pulse_topology() -> GameplayDerivedModuleTopology {
         max_items: 8,
         ordering: "entity-id-ascending".to_owned(),
     });
-    GameplayDerivedModuleTopology::derive("fixture.pulse.module", vec![pulse, trigger])
-        .expect("fixture topology is unambiguous")
+    let prefab_interaction = GameplayModuleInvocationTopology::observe(
+        "fixture.prefab-part-interacted.observe",
+        "fixture.prefab-part-interacted.observe",
+        StandardGameplayEventKind::PrefabPartInteracted.contract(),
+        contract("pulse-result"),
+        GameplayHeaderSelector {
+            source: None,
+            target: None,
+            scope: None,
+            required_tags: Vec::new(),
+        },
+        4,
+        2,
+        1_024,
+    );
+    GameplayDerivedModuleTopology::derive(
+        "fixture.pulse.module",
+        vec![pulse, trigger, prefab_interaction],
+    )
+    .expect("fixture topology is unambiguous")
 }
 
 fn provider_with_behavior<B>(multiplier: u64, behavior: B) -> GameplayStaticModuleProvider
@@ -588,6 +642,79 @@ pub fn primary_fire_runtime_host_project_input() -> GameplayRuntimeProjectInput 
             vec![StandardGameplayProposalKind::ResolvePrimaryFire.contract()],
         ),
     }
+}
+
+/// Public downstream fixture that composes a decision Transform with a
+/// stateful observer. It is used by the native provider proof to demonstrate
+/// that one generated RuntimeBridge reaches both authority and module-owned
+/// projection without a sidecar host.
+pub fn composed_runtime_host_project_input(multiplier: u64) -> GameplayRuntimeProjectInput {
+    let mut input = primary_fire_runtime_host_project_input();
+    let mut composition = GameplayStaticCompositionBuilder::new();
+    composition.include_standard_owner_events();
+    composition.add_provider(primary_fire_provider());
+    composition.add_provider(provider(multiplier));
+    input.composition = composition
+        .build()
+        .expect("composed fixture providers compose");
+    input.bindings = binding_registry(multiplier);
+    input.declared_reads = primary_fire_topology().declared_reads().to_vec();
+    input
+        .declared_reads
+        .extend_from_slice(pulse_topology().declared_reads());
+    input.scheduler = GameplayRuntimeSchedulerDefinition::new(
+        GameplayOwnerRef {
+            owner_id: "authority.fixture-scheduler".to_owned(),
+            provider_id: "provider.fixture-scheduler".to_owned(),
+        },
+        Vec::new(),
+        vec![
+            StandardGameplayProposalKind::ResolvePrimaryFire.contract(),
+            StandardGameplayProposalKind::SetCapabilityActivation.contract(),
+        ],
+    );
+    input
+}
+
+pub fn composed_runtime_prefab_bootstrap() -> GameplayRuntimePrefabBootstrap {
+    GameplayRuntimePrefabBootstrap {
+        registry_json: r#"{
+  "schemaVersion": 1,
+  "definitions": [{
+    "id": 70,
+    "schemaVersion": 1,
+    "displayName": "Composed interaction target",
+    "parts": [{
+      "id": 1,
+      "namespace": "body",
+      "displayName": "Target",
+      "parent": null,
+      "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+      "source": { "kind": "entityDefinition", "stableId": "fixture.composed.interaction-target" }
+    }],
+    "partRoles": [{ "role": "interaction/target", "part": 1 }],
+    "variant": null
+  }]
+}"#
+        .to_owned(),
+        catalog: GameplayRuntimePrefabCatalog {
+            asset_ids: Vec::new(),
+            entity_definition_ids: vec!["fixture.composed.interaction-target".to_owned()],
+        },
+        placements: vec![GameplayRuntimePrefabPlacement {
+            command_id: "place-composed-interaction-target".to_owned(),
+            origin: GameplayRuntimePrefabPlacementOrigin::Authored,
+            instance: 700,
+            prefab: 70,
+            seed: 11,
+            transform: GameplayRuntimePrefabTransform::IDENTITY,
+            overrides: Vec::new(),
+        }],
+    }
+}
+
+pub fn pulse_state_view_contract() -> GameplayContractRef {
+    contract("pulse-state-view")
 }
 
 pub fn conformance_needs_manifest_json() -> String {
@@ -864,13 +991,14 @@ mod tests {
         FpsBridgeRole, FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability,
         FpsBridgeWeaponMount, FpsPrimaryFireRequest, FpsRuntimeSessionLoadRequest,
         FpsRuntimeSessionRestartRequest, GameplayBindingEntityTargets, GameplayDecisionMoment,
-        GameplayDecisionStatus, GameplayOperationWorkspace, GameplayRuntimeDecisionOwner,
-        GameplayRuntimeDecisionOwnerOutput, GameplayRuntimeSchedulerCommand,
-        GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
-        GameplayTriggerDefinition, LoadPlan, LoadStep, ProjectBundleLoadRequest, RuntimeBridge,
-        RuntimeSessionId, SceneId, ScheduledActionId, ScheduledActionValidity,
-        StaticRuntimeSessionBuilder, TickScheduledActionDraft, TriggerReconcileCause, Vec3,
-        GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
+        GameplayDecisionStatus, GameplayModuleViewRequest, GameplayModuleViewScope,
+        GameplayOperationWorkspace, GameplayPrefabPartInteractionRequest,
+        GameplayRuntimeDecisionOwner, GameplayRuntimeDecisionOwnerOutput,
+        GameplayRuntimeSchedulerCommand, GameplayRuntimeSchedulerDefinition,
+        GameplayRuntimeSpatialEntity, GameplayTriggerDefinition, LoadPlan, LoadStep,
+        ProjectBundleLoadRequest, RuntimeBridge, RuntimeSessionId, SceneId, ScheduledActionId,
+        ScheduledActionValidity, StaticRuntimeSessionBuilder, TickScheduledActionDraft,
+        TriggerReconcileCause, Vec3, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
     };
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
@@ -1287,6 +1415,105 @@ mod tests {
             .expect_err("the combat owner rejects a transformed shooter identity");
         assert!(error.message.contains("not accepted"), "{error}");
         assert_eq!(bridge.read_composed_runtime_session().unwrap(), before);
+    }
+
+    #[test]
+    fn public_bridge_reads_module_view_and_routes_prefab_interaction_once() {
+        let discovery_host = GameplayRuntimeHost::activate_project_with_prefabs(
+            composed_runtime_host_project_input(4),
+            composed_runtime_prefab_bootstrap(),
+        )
+        .unwrap();
+        let target = discovery_host.prefab_readout().instances[0].roles[0].entity;
+        assert_eq!(target, 4_102_412_266_368_810);
+
+        let mut bridge = StaticRuntimeSessionBuilder::activate_project_with_prefabs(
+            composed_runtime_host_project_input(4),
+            composed_runtime_prefab_bootstrap(),
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        bridge.initialize_engine(EngineConfig { seed: 41 }).unwrap();
+        bridge
+            .load_project_bundle(ProjectBundleLoadRequest {
+                bundle_schema_version: 1,
+                protocol_version: 1,
+                scene_id: 1,
+            })
+            .unwrap();
+        bridge
+            .load_fps_runtime_session(composed_fps_load_request())
+            .unwrap();
+
+        let before = bridge.read_composed_runtime_session().unwrap();
+        let view = bridge
+            .read_gameplay_module_view(GameplayModuleViewRequest {
+                view: pulse_state_view_contract(),
+                scope: GameplayModuleViewScope::Session,
+                expected_runtime_session_hash: before.runtime_session_hash.clone(),
+            })
+            .unwrap();
+        assert_eq!(
+            serde_json::from_slice::<u64>(&view.canonical_payload).unwrap(),
+            4
+        );
+        assert_eq!(view.runtime_session_hash, before.runtime_session_hash);
+        assert_eq!(bridge.read_composed_runtime_session().unwrap(), before);
+
+        let request = GameplayPrefabPartInteractionRequest {
+            actor: 101,
+            instance: 700,
+            role: "interaction/target".to_owned(),
+            expected_target: target,
+            tick: 12,
+            expected_runtime_session_hash: before.runtime_session_hash.clone(),
+        };
+        let receipt = bridge
+            .apply_gameplay_prefab_part_interaction(request.clone())
+            .unwrap();
+        assert_eq!(receipt.target, target);
+        assert_ne!(receipt.runtime_session_hash, before.runtime_session_hash);
+        let after = bridge.read_composed_runtime_session().unwrap();
+        assert_eq!(receipt.runtime_session_hash, after.runtime_session_hash);
+        assert_eq!(
+            after.gameplay.reaction_frame_count,
+            before.gameplay.reaction_frame_count + 1
+        );
+        let updated_view = bridge
+            .read_gameplay_module_view(GameplayModuleViewRequest {
+                view: pulse_state_view_contract(),
+                scope: GameplayModuleViewScope::Session,
+                expected_runtime_session_hash: after.runtime_session_hash.clone(),
+            })
+            .unwrap();
+        assert_eq!(
+            serde_json::from_slice::<u64>(&updated_view.canonical_payload).unwrap(),
+            5
+        );
+        assert_eq!(updated_view.revision, view.revision + 1);
+
+        let stale = bridge
+            .apply_gameplay_prefab_part_interaction(request)
+            .expect_err("a stale generation cannot repeat the interaction");
+        assert!(stale.message.contains("expected RuntimeSession"), "{stale}");
+        assert_eq!(bridge.read_composed_runtime_session().unwrap(), after);
+
+        let wrong_target = bridge
+            .apply_gameplay_prefab_part_interaction(GameplayPrefabPartInteractionRequest {
+                actor: 101,
+                instance: 700,
+                role: "interaction/target".to_owned(),
+                expected_target: target.saturating_add(1),
+                tick: 13,
+                expected_runtime_session_hash: after.runtime_session_hash.clone(),
+            })
+            .expect_err("a caller cannot substitute the resolved prefab target");
+        assert!(
+            wrong_target.message.contains("target mismatch"),
+            "{wrong_target}"
+        );
+        assert_eq!(bridge.read_composed_runtime_session().unwrap(), after);
     }
 
     #[test]

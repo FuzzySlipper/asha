@@ -365,7 +365,7 @@
         "consumerRequirementId": "pulse.native-runtime-provider",
         "providerId": "asha-native-runtime-provider",
         "publicSurfaceId": "asha-native-runtime-provider",
-        "sourceHash": "sha256:0f7fbf8d32dcc36c01949f6fa2374071c19e2d3bf5025d28846110dd0bb96177"
+        "sourceHash": "sha256:c4d8833e0639b5a5f08ae2281142e0d23555e317f6c658cd36023c8450ab48ba"
       },
       {
         "id": "gameplay.runtime-host",
@@ -1402,6 +1402,12 @@
         "sourceHash": "sha256:0e09f1dd5f2e05619aef09b93a8c2e89ec8a0b95cac4aadf43a19a2f4fee28e8"
       },
       {
+        "id": "apply_gameplay_prefab_part_interaction",
+        "surface": "stable",
+        "quarantineReason": null,
+        "sourceHash": "sha256:a722761c4a2edb9333eda92d24c064f43ec9a69f703d4cfadf1d8f86535ea8ef"
+      },
+      {
         "id": "apply_generated_tunnel_to_runtime_world",
         "surface": "stable",
         "quarantineReason": null,
@@ -1576,6 +1582,12 @@
         "sourceHash": "sha256:fdb6c36fe518d2cbb0e6284ecf031de6a8804893bdf51c482cad04a17511060b"
       },
       {
+        "id": "read_composed_runtime_session",
+        "surface": "stable",
+        "quarantineReason": null,
+        "sourceHash": "sha256:eea68936a9965897a8e762fcd759efab5c8e7f47c6966502fc825a48cff0e16d"
+      },
+      {
         "id": "read_fps_encounter_director",
         "surface": "stable",
         "quarantineReason": null,
@@ -1592,6 +1604,12 @@
         "surface": "stable",
         "quarantineReason": null,
         "sourceHash": "sha256:0dcdd4ecfe05ad0f131460981a15a42dab2bb58506a394e813bd3d7c0aa17649"
+      },
+      {
+        "id": "read_gameplay_module_view",
+        "surface": "stable",
+        "quarantineReason": null,
+        "sourceHash": "sha256:d81500dd58e38fbe99491bd1b5a9e7f0d85bf6f67a8ceec91607a274164547e4"
       },
       {
         "id": "read_input_context_state",
@@ -2731,5 +2749,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:e67b07a5fadcadd2d4d46871f4c04dcc07d058cb71b5b4a2ccbb99d1f9bb4906"
+  "catalogHash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b"
 }

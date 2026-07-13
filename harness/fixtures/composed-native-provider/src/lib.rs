@@ -9,8 +9,9 @@ use asha_runtime_session_composition::{
 };
 
 fn build_composed_bridge() -> Result<EngineBridge, RuntimeBridgeError> {
-    StaticRuntimeSessionBuilder::activate_project(
-        asha_gameplay_module_fixture::primary_fire_runtime_host_project_input(),
+    StaticRuntimeSessionBuilder::activate_project_with_prefabs(
+        asha_gameplay_module_fixture::composed_runtime_host_project_input(4),
+        asha_gameplay_module_fixture::composed_runtime_prefab_bootstrap(),
     )
     .and_then(StaticRuntimeSessionBuilder::build)
     .map_err(|error| {

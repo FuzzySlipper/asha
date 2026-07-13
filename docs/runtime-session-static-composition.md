@@ -56,6 +56,27 @@ contract, and browser-host have no `gameplayHost` option. Browser-host exposes
 only `/asha/browser-host/runtime-bridge/<method>`; there is no second gameplay
 endpoint or lifecycle.
 
+The stable bridge publishes three bounded composed-gameplay operations:
+
+- `readComposedRuntimeSession()` returns registry, binding, module-state,
+  scheduler, reaction, decision, entity-authority, and FPS replay hashes for the
+  current cell.
+- `readGameplayModuleView(request)` selects one registry-owned named view by
+  typed contract and session/entity/prefab-instance scope. The caller supplies
+  the expected composed-session hash; stale generations and unknown views fail
+  without changing the cell.
+- `applyGameplayPrefabPartInteraction(request)` names an actor, active prefab
+  instance, stable part role, expected resolved target, tick, and composed
+  generation. Rust resolves the role from the validated prefab registry and
+  emits the standard owner event through the closed gameplay registry. Callers
+  cannot choose an event contract or submit a serialized gameplay payload.
+
+The native provider fixture exercises all three through the generated N-API
+surface, including module-state evolution, wrong-target and stale-generation
+rejection, two-session isolation, and project-unload failure. The reference
+bridge does not pretend to implement composed authority; these methods fail
+closed unless a statically composed native provider is installed.
+
 ## Lifecycle and evidence
 
 `read_composed_runtime_session` binds the sole entity-authority hash to the

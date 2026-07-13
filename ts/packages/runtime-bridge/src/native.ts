@@ -104,6 +104,7 @@ import {
   nonNegativeSafeInteger,
   u32,
   type CompositionStatus,
+  type ComposedRuntimeSessionReadout,
   type EnemyDirectNavMovementRequest,
   type EnemyDirectNavMovementResult,
   type EngineConfig,
@@ -118,6 +119,11 @@ import {
   type GameRuleCatalogValidationReceipt,
   type GameRuleEffectIntentRequest,
   type GameRuleRuntimeReadout,
+  type GameplayModuleViewRequest,
+  type GameplayModuleViewScope,
+  type GameplayModuleViewSnapshot,
+  type GameplayPrefabPartInteractionReceipt,
+  type GameplayPrefabPartInteractionRequest,
   type GeneratedTunnelRuntimeApplyReceipt,
   type GeneratedTunnelRuntimeApplyRequest,
   type FpsLifecycleStatus,
@@ -328,6 +334,13 @@ function requiredStringArray(value: readonly string[] | null | undefined, field:
   return value.map((entry, index) => requiredString(entry, `${field}[${index}]`));
 }
 
+function requiredBoolean(value: boolean, field: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw new RuntimeBridgeError('internal', `native ${field} was not a boolean`);
+  }
+  return value;
+}
+
 function bridgeVec3(
   value: { readonly x: number; readonly y: number; readonly z: number },
   field: string,
@@ -397,6 +410,101 @@ function normalizeFpsPrimaryFireResult(result: FpsPrimaryFireResult): FpsPrimary
     entityHash: hashString(result.entityHash, 'entityHash'),
     healthHash: hashString(result.healthHash, 'healthHash'),
     replayHash: hashString(result.replayHash, 'replayHash'),
+  };
+}
+
+function nativeModuleViewScope(scope: GameplayModuleViewScope): {
+  readonly kind: 'session' | 'entity' | 'prefabInstance';
+  readonly value: number | undefined;
+} {
+  if (scope.kind === 'session') return { kind: 'session', value: undefined };
+  if (scope.kind === 'entity') {
+    return { kind: 'entity', value: nonNegativeSafeInteger(scope.entity, 'scope.entity') };
+  }
+  if (scope.kind === 'prefabInstance') {
+    return {
+      kind: 'prefabInstance',
+      value: nonNegativeSafeInteger(scope.instance, 'scope.instance'),
+    };
+  }
+  throw new RuntimeBridgeError('invalid_input', 'unknown gameplay module view scope');
+}
+
+function normalizeComposedRuntimeSessionReadout(
+  value: ComposedRuntimeSessionReadout,
+): ComposedRuntimeSessionReadout {
+  return {
+    ...value,
+    schemaVersion: u32(value.schemaVersion, 'schemaVersion'),
+    entityAuthorityHash: hashString(value.entityAuthorityHash, 'entityAuthorityHash'),
+    fpsSessionEpoch: nonNegativeSafeInteger(value.fpsSessionEpoch, 'fpsSessionEpoch'),
+    fpsReplayHash: value.fpsReplayHash === null
+      ? null
+      : hashString(value.fpsReplayHash, 'fpsReplayHash'),
+    runtimeSessionHash: hashString(value.runtimeSessionHash, 'runtimeSessionHash'),
+    gameplay: {
+      ...value.gameplay,
+      gameplayRegistryDigest: hashString(
+        value.gameplay.gameplayRegistryDigest,
+        'gameplay.gameplayRegistryDigest',
+      ),
+      bindingRegistryHash: hashString(
+        value.gameplay.bindingRegistryHash,
+        'gameplay.bindingRegistryHash',
+      ),
+      activationHash: hashString(value.gameplay.activationHash, 'gameplay.activationHash'),
+      moduleStateHash: hashString(value.gameplay.moduleStateHash, 'gameplay.moduleStateHash'),
+      authorityStateHash: hashString(
+        value.gameplay.authorityStateHash,
+        'gameplay.authorityStateHash',
+      ),
+      triggerRevision: nonNegativeSafeInteger(
+        value.gameplay.triggerRevision,
+        'gameplay.triggerRevision',
+      ),
+      triggerSnapshotHash: hashString(
+        value.gameplay.triggerSnapshotHash,
+        'gameplay.triggerSnapshotHash',
+      ),
+      activeOverlapCount: u32(value.gameplay.activeOverlapCount, 'gameplay.activeOverlapCount'),
+      reactionFrameCount: u32(value.gameplay.reactionFrameCount, 'gameplay.reactionFrameCount'),
+      lastReactionFrameHash: value.gameplay.lastReactionFrameHash === null
+        ? null
+        : hashString(value.gameplay.lastReactionFrameHash, 'gameplay.lastReactionFrameHash'),
+      decisionReceiptCount: u32(
+        value.gameplay.decisionReceiptCount,
+        'gameplay.decisionReceiptCount',
+      ),
+      pendingDecisionCount: u32(
+        value.gameplay.pendingDecisionCount,
+        'gameplay.pendingDecisionCount',
+      ),
+      lastDecisionReceiptHash: value.gameplay.lastDecisionReceiptHash === null
+        ? null
+        : hashString(value.gameplay.lastDecisionReceiptHash, 'gameplay.lastDecisionReceiptHash'),
+      schedulerStateHash: hashString(
+        value.gameplay.schedulerStateHash,
+        'gameplay.schedulerStateHash',
+      ),
+      schedulerPendingActionCount: u32(
+        value.gameplay.schedulerPendingActionCount,
+        'gameplay.schedulerPendingActionCount',
+      ),
+      schedulerOutstandingDispatchCount: u32(
+        value.gameplay.schedulerOutstandingDispatchCount,
+        'gameplay.schedulerOutstandingDispatchCount',
+      ),
+      schedulerOutstandingEventDeliveryCount: u32(
+        value.gameplay.schedulerOutstandingEventDeliveryCount,
+        'gameplay.schedulerOutstandingEventDeliveryCount',
+      ),
+      schedulerFactCount: u32(value.gameplay.schedulerFactCount, 'gameplay.schedulerFactCount'),
+      schedulerTruncated: requiredBoolean(
+        value.gameplay.schedulerTruncated,
+        'gameplay.schedulerTruncated',
+      ),
+      runtimeHostHash: hashString(value.gameplay.runtimeHostHash, 'gameplay.runtimeHostHash'),
+    },
   };
 }
 
@@ -903,6 +1011,110 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       this.#addon.applyFpsPrimaryFire(handle, tick, origin, direction, shooterRole, targetRole) as FpsPrimaryFireResult,
     );
     return normalizeFpsPrimaryFireResult(result);
+  }
+
+  readComposedRuntimeSession(): ComposedRuntimeSessionReadout {
+    const handle = this.#requireHandle('readComposedRuntimeSession');
+    const result = callNative(() => this.#addon.readComposedRuntimeSession(handle));
+    return normalizeComposedRuntimeSessionReadout(result);
+  }
+
+  readGameplayModuleView(request: GameplayModuleViewRequest): GameplayModuleViewSnapshot {
+    const handle = this.#requireHandle('readGameplayModuleView');
+    const namespace = requiredString(request.view.namespace, 'view.namespace');
+    const name = requiredString(request.view.name, 'view.name');
+    const version = u32(request.view.version, 'view.version');
+    const schemaHash = requiredString(request.view.schemaHash, 'view.schemaHash');
+    const scope = nativeModuleViewScope(request.scope);
+    const expectedRuntimeSessionHash = hashString(
+      request.expectedRuntimeSessionHash,
+      'expectedRuntimeSessionHash',
+    );
+    const result = callNative(() => this.#addon.readGameplayModuleView(
+      handle,
+      namespace,
+      name,
+      version,
+      schemaHash,
+      scope.kind,
+      scope.value,
+      expectedRuntimeSessionHash,
+    ));
+    const resultScope: GameplayModuleViewScope = result.scopeKind === 'session'
+      ? { kind: 'session' }
+      : result.scopeKind === 'entity'
+        ? { kind: 'entity', entity: nonNegativeSafeInteger(result.scopeValue ?? -1, 'scopeValue') }
+        : result.scopeKind === 'prefabInstance'
+          ? {
+              kind: 'prefabInstance',
+              instance: nonNegativeSafeInteger(result.scopeValue ?? -1, 'scopeValue'),
+            }
+          : (() => {
+              throw new RuntimeBridgeError('internal', 'native module view returned an unknown scope');
+            })();
+    if (
+      result.view.namespace !== namespace
+      || result.view.name !== name
+      || result.view.version !== version
+      || result.view.schemaHash !== schemaHash
+      || JSON.stringify(resultScope) !== JSON.stringify(request.scope)
+    ) {
+      throw new RuntimeBridgeError('internal', 'native module view identity did not match the request');
+    }
+    const canonicalPayload = Array.from(result.canonicalPayload);
+    if (canonicalPayload.length > 8_388_608) {
+      throw new RuntimeBridgeError('output_limit_exceeded', 'module view payload exceeded bridge limit');
+    }
+    return {
+      view: result.view,
+      providerId: requiredString(result.providerId, 'providerId'),
+      scope: resultScope,
+      revision: nonNegativeSafeInteger(result.revision, 'revision'),
+      canonicalPayload,
+      viewHash: hashString(result.viewHash, 'viewHash'),
+      runtimeSessionHash: hashString(result.runtimeSessionHash, 'runtimeSessionHash'),
+    };
+  }
+
+  applyGameplayPrefabPartInteraction(
+    request: GameplayPrefabPartInteractionRequest,
+  ): GameplayPrefabPartInteractionReceipt {
+    const handle = this.#requireHandle('applyGameplayPrefabPartInteraction');
+    const actor = nonNegativeSafeInteger(request.actor, 'actor');
+    const instance = nonNegativeSafeInteger(request.instance, 'instance');
+    const role = requiredString(request.role, 'role');
+    const expectedTarget = nonNegativeSafeInteger(request.expectedTarget, 'expectedTarget');
+    const tick = nonNegativeSafeInteger(request.tick, 'tick');
+    const expectedRuntimeSessionHash = hashString(
+      request.expectedRuntimeSessionHash,
+      'expectedRuntimeSessionHash',
+    );
+    const result = callNative(() => this.#addon.applyGameplayPrefabPartInteraction(
+      handle,
+      actor,
+      instance,
+      role,
+      expectedTarget,
+      tick,
+      expectedRuntimeSessionHash,
+    ));
+    if (
+      result.actor !== actor
+      || result.instance !== instance
+      || result.role !== role
+      || result.target !== expectedTarget
+    ) {
+      throw new RuntimeBridgeError('internal', 'native prefab interaction identity did not match the request');
+    }
+    return {
+      actor,
+      instance,
+      role,
+      target: expectedTarget,
+      eventHash: hashString(result.eventHash, 'eventHash'),
+      reactionFrameHash: hashString(result.reactionFrameHash, 'reactionFrameHash'),
+      runtimeSessionHash: hashString(result.runtimeSessionHash, 'runtimeSessionHash'),
+    };
   }
 
   invokeGameExtensionWeaponEffect(

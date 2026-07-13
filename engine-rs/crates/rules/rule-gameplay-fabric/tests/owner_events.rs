@@ -42,11 +42,15 @@ fn standard_owner_module_registers_typed_codecs_and_stable_topology() {
     let second = second_builder.build().unwrap();
 
     assert_eq!(first.registry_digest(), second.registry_digest());
-    assert_eq!(first.readout().event_kinds.len(), 19);
+    assert_eq!(first.readout().event_kinds.len(), 20);
     assert!(first
         .readout()
         .event_kinds
         .contains(&"asha.combat.damage-applied.v1".to_owned()));
+    assert!(first
+        .readout()
+        .event_kinds
+        .contains(&"asha.prefab.part-interacted.v1".to_owned()));
 }
 
 #[test]
