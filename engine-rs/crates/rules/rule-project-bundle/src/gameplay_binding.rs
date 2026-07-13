@@ -103,6 +103,17 @@ pub struct GameplayBoundProjectBundleSession {
     triggers: TriggerVolumeRule,
 }
 
+/// Explicitly borrowed runtime cells for one gameplay-fabric transaction.
+/// The owning Session keeps topology private while allowing the public host to
+/// freeze reads and advance module state at deterministic wave barriers.
+pub struct GameplaySessionRuntimeCells<'session> {
+    pub registry: &'session GameplayFabricRegistry,
+    pub invocation_host: &'session GameplayStaticInvocationHost,
+    pub module_state: &'session mut GameplayModuleStateStore,
+    pub triggers: &'session TriggerVolumeRule,
+    pub prefab_instances: &'session crate::PrefabInstanceAuthority,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameplayTriggerSessionReceipt {
     pub collision: TriggerReconcileReceipt,
@@ -111,6 +122,16 @@ pub struct GameplayTriggerSessionReceipt {
 }
 
 impl GameplayBoundProjectBundleSession {
+    pub fn runtime_cells(&mut self) -> GameplaySessionRuntimeCells<'_> {
+        GameplaySessionRuntimeCells {
+            registry: self.registry.as_ref(),
+            invocation_host: &self.host,
+            module_state: &mut self.module_state,
+            triggers: &self.triggers,
+            prefab_instances: &self.bundle.prefab_instances,
+        }
+    }
+
     pub fn activate(
         bundle: ProjectBundleLoadResult,
         composition: GameplayStaticComposition,

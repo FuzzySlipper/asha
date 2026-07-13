@@ -46,6 +46,13 @@ registry, module namespace, payload hash, unique fact id, target record, and
 compare-and-set revision before invoking the typed adapter. A rejected or stale
 fact leaves both state and replay evidence unchanged.
 
+Live Observe delivery applies each wave's complete module-fact batch
+atomically after all same-wave invocations and owner routes have completed.
+This makes accepted prior-wave state visible to the next wave without exposing
+partially evaluated state inside the current wave. The owning RuntimeSession
+also retains a pre-root checkpoint; if a later wave rejects, it restores state
+records, accepted-fact ids, and fact evidence together.
+
 Migration uses the same staged typed adapter boundary and revision guard. A
 failed migration leaves the prior bytes, version evidence, revision, and hash
 untouched.
@@ -98,6 +105,8 @@ reaction:
 - source owner facts and hashes;
 - delivered event envelopes and hashes;
 - frozen view generations;
+- wave-barrier evidence binding each frozen generation to before/after entity,
+  module, prefab, and trigger authority hashes and accepted route/fact hashes;
 - module/subscription/input/output invocation evidence;
 - proposal and resolved-owner routing receipts;
 - full accepted module facts;
@@ -120,6 +129,11 @@ Event, proposal, fact, and post-state drift is classified independently so a
 gameplay developer can see where a reaction first diverged rather than receiving
 only one final hash mismatch.
 
+Barrier hashes and their state continuity participate in frame hashing and
+verification replay input. Snapshot/restore therefore preserves both accepted
+multi-wave transitions and rejected-root evidence; malformed, reordered, or
+disconnected barriers classify as view divergence before final-state comparison.
+
 ## Structural Boundaries
 
 - There is no runtime state-owner registration or mutable callback registry.
@@ -129,4 +143,3 @@ only one final hash mismatch.
   path; accepted owner/module facts reconstruct authority.
 - ProjectBundle binding and prefab/part override selection remain in #5661.
 - Named read-set assembly and bounded owner-backed queries remain in #5660.
-

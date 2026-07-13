@@ -4,6 +4,7 @@ use crate::types::{
     GameplayObserveReceipt, GameplayOwnerRoutingCall, GameplayProposalRouter,
     GameplayRoutingEvidence, GameplayRoutingReceipt, GameplayRuntimeDiagnostic,
     GameplayRuntimeDiagnosticCode, GameplayRuntimeLimits, GameplayViewSource,
+    GameplayWaveAuthority, GameplayWaveBarrierEvidence, GameplayWaveStateHashes,
 };
 use protocol_game_extension::{
     GameplayCausationRef, GameplayEmitterRef, GameplayEventEnvelope, GameplayEventPhase,
@@ -193,54 +194,38 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
         self.observe_events(events, views, host, router)
     }
 
+    pub fn observe_transactional(
+        &self,
+        mut root_event: GameplayEventEnvelope,
+        authority: &mut dyn GameplayWaveAuthority,
+        host: &dyn GameplayInvocationHost,
+    ) -> GameplayObserveReceipt {
+        root_event.wave = 0;
+        root_event.event_sequence = 0;
+        canonicalize_headers(&mut root_event);
+        self.observe_events_transactional(vec![root_event], authority, host)
+    }
+
+    pub fn observe_routed_events_transactional(
+        &self,
+        events: Vec<GameplayEventEnvelope>,
+        authority: &mut dyn GameplayWaveAuthority,
+        host: &dyn GameplayInvocationHost,
+    ) -> GameplayObserveReceipt {
+        self.observe_events_transactional(events, authority, host)
+    }
+
     fn observe_events(
         &self,
-        mut initial_events: Vec<GameplayEventEnvelope>,
+        initial_events: Vec<GameplayEventEnvelope>,
         views: &dyn GameplayViewSource,
         host: &dyn GameplayInvocationHost,
         router: &mut dyn GameplayProposalRouter,
     ) -> GameplayObserveReceipt {
-        initial_events.sort_by(|left, right| {
-            (left.wave, left.event_sequence, left.event_id.as_str()).cmp(&(
-                right.wave,
-                right.event_sequence,
-                right.event_id.as_str(),
-            ))
-        });
-        let Some(first) = initial_events.first() else {
-            return empty_observe_receipt(self.registry.registry_digest());
+        let mut state = match self.start_observe_events(initial_events) {
+            Ok(state) => state,
+            Err(receipt) => return *receipt,
         };
-        let root_id = first.causation.root_id.clone();
-        let tick = first.tick;
-        let root_sequence = first.root_sequence;
-        let initial_wave = first.wave;
-        let mut state = ObserveState::new(self.registry, self.limits, root_id, initial_events);
-        for (index, event) in state.events.clone().iter().enumerate() {
-            if !state.registry.event_is_declared(&event.event) {
-                state.diagnostic(
-                    GameplayRuntimeDiagnosticCode::UnknownEvent,
-                    format!("rootEvents[{index}].event"),
-                    format!("root event `{}` is not declared", event.event.key()),
-                );
-            }
-            if event.causation.root_id != state.root_id
-                || event.tick != tick
-                || event.root_sequence != root_sequence
-                || event.wave != initial_wave
-            {
-                state.diagnostic(
-                    GameplayRuntimeDiagnosticCode::InvalidOwnerEvent,
-                    format!("rootEvents[{index}]"),
-                    "routed owner-event batch does not share one root/tick/wave",
-                );
-            }
-        }
-        if !state.diagnostics.is_empty() {
-            return state.finish();
-        }
-        if !state.charge_initial_payload() {
-            return state.finish();
-        }
 
         let mut wave_events = state.events.clone();
         while !wave_events.is_empty() {
@@ -268,12 +253,135 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
                 break;
             }
 
-            wave_events = self.route_wave(wave, pending, router, &mut state);
+            let routed = self.route_wave(wave, pending, router, &mut state);
             if !state.diagnostics.is_empty() {
                 break;
             }
+            state.module_facts.extend(routed.module_facts);
+            wave_events = routed.next_events;
         }
         state.finish()
+    }
+
+    fn observe_events_transactional(
+        &self,
+        initial_events: Vec<GameplayEventEnvelope>,
+        authority: &mut dyn GameplayWaveAuthority,
+        host: &dyn GameplayInvocationHost,
+    ) -> GameplayObserveReceipt {
+        let mut state = match self.start_observe_events(initial_events) {
+            Ok(state) => state,
+            Err(receipt) => return *receipt,
+        };
+        let mut wave_events = state.events.clone();
+        while !wave_events.is_empty() {
+            let wave = wave_events[0].wave;
+            if state.waves_processed >= state.limits.max_waves {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::WaveBudgetExceeded,
+                    format!("waves[{wave}]"),
+                    format!("Observe cascade exceeded {} waves", state.limits.max_waves),
+                );
+                break;
+            }
+            wave_events.sort_by(|left, right| {
+                (left.event_sequence, left.event_id.as_str())
+                    .cmp(&(right.event_sequence, right.event_id.as_str()))
+            });
+            let state_before = authority.state_hashes();
+            let views = WaveAuthorityViews(authority);
+            let frozen_views = views.freeze(&state.root_id, wave);
+            state.wave_views.push(frozen_views.clone());
+            let pending =
+                self.invoke_wave(wave, &wave_events, &views, &frozen_views, host, &mut state);
+            state.waves_processed += 1;
+            if !state.diagnostics.is_empty() {
+                break;
+            }
+
+            let routing_start = state.routing.len();
+            let mut router = WaveAuthorityRouter(authority);
+            let routed = self.route_wave(wave, pending, &mut router, &mut state);
+            if !state.diagnostics.is_empty() {
+                break;
+            }
+            if let Err(error) = authority.apply_module_facts_atomic(&routed.module_facts) {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::HostFailure,
+                    format!("waves[{wave}].moduleFacts"),
+                    format!("{}: {}", error.code, error.message),
+                );
+                break;
+            }
+            let state_after = authority.state_hashes();
+            let routing_hashes = state.routing[routing_start..]
+                .iter()
+                .map(|routing| routing.routing_hash.clone())
+                .collect::<Vec<_>>();
+            let module_fact_hashes = routed
+                .module_facts
+                .iter()
+                .map(|fact| crate::gameplay_module_payload_hash(&fact.canonical_payload))
+                .collect::<Vec<_>>();
+            state.wave_barriers.push(make_wave_barrier(
+                wave,
+                frozen_views,
+                state_before,
+                state_after,
+                routing_hashes,
+                module_fact_hashes,
+            ));
+            state.module_facts.extend(routed.module_facts);
+            wave_events = routed.next_events;
+        }
+        state.finish()
+    }
+
+    fn start_observe_events(
+        &self,
+        mut initial_events: Vec<GameplayEventEnvelope>,
+    ) -> Result<ObserveState<'registry>, Box<GameplayObserveReceipt>> {
+        initial_events.sort_by(|left, right| {
+            (left.wave, left.event_sequence, left.event_id.as_str()).cmp(&(
+                right.wave,
+                right.event_sequence,
+                right.event_id.as_str(),
+            ))
+        });
+        let Some(first) = initial_events.first() else {
+            return Err(Box::new(empty_observe_receipt(
+                self.registry.registry_digest(),
+            )));
+        };
+        let root_id = first.causation.root_id.clone();
+        let tick = first.tick;
+        let root_sequence = first.root_sequence;
+        let initial_wave = first.wave;
+        let mut state = ObserveState::new(self.registry, self.limits, root_id, initial_events);
+        for (index, event) in state.events.clone().iter().enumerate() {
+            if !state.registry.event_is_declared(&event.event) {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::UnknownEvent,
+                    format!("rootEvents[{index}].event"),
+                    format!("root event `{}` is not declared", event.event.key()),
+                );
+            }
+            if event.causation.root_id != state.root_id
+                || event.tick != tick
+                || event.root_sequence != root_sequence
+                || event.wave != initial_wave
+            {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::InvalidOwnerEvent,
+                    format!("rootEvents[{index}]"),
+                    "routed owner-event batch does not share one root/tick/wave",
+                );
+            }
+        }
+        if !state.diagnostics.is_empty() || !state.charge_initial_payload() {
+            return Err(Box::new(state.finish()));
+        }
+        Ok(state)
     }
 
     fn invoke_wave(
@@ -421,15 +529,14 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
         pending: Vec<PendingInvocationOutput>,
         router: &mut dyn GameplayProposalRouter,
         state: &mut ObserveState<'_>,
-    ) -> Vec<GameplayEventEnvelope> {
+    ) -> RoutedWave {
         let next_wave = wave + 1;
         let mut next_events = Vec::new();
         let mut proposal_queue = Vec::new();
+        let mut module_facts = Vec::new();
 
         for pending_output in pending {
-            state
-                .module_facts
-                .extend(pending_output.output.module_facts);
+            module_facts.extend(pending_output.output.module_facts);
             for event in pending_output.output.events {
                 let normalized = state.normalize_module_event(
                     event,
@@ -464,7 +571,10 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
                 next_events.extend(receipt.accepted_events().iter().cloned());
             }
         }
-        next_events
+        RoutedWave {
+            next_events,
+            module_facts,
+        }
     }
 }
 
@@ -472,6 +582,66 @@ struct PendingInvocationOutput {
     module_id: String,
     parent_event_id: String,
     output: GameplayInvocationOutput,
+}
+
+struct RoutedWave {
+    next_events: Vec<GameplayEventEnvelope>,
+    module_facts: Vec<crate::GameplayModuleFact>,
+}
+
+struct WaveAuthorityViews<'authority>(&'authority dyn GameplayWaveAuthority);
+
+impl GameplayViewSource for WaveAuthorityViews<'_> {
+    fn freeze(&self, root_id: &str, wave: u32) -> FrozenGameplayViews {
+        self.0.freeze(root_id, wave)
+    }
+
+    fn freeze_declared_reads(
+        &self,
+        module_id: &str,
+        invocation_id: &str,
+        event: &GameplayEventEnvelope,
+    ) -> Result<Option<crate::GameplayFrozenReadSet>, crate::GameplayReadAssemblyError> {
+        self.0
+            .freeze_declared_reads(module_id, invocation_id, event)
+    }
+}
+
+struct WaveAuthorityRouter<'authority>(&'authority mut dyn GameplayWaveAuthority);
+
+impl GameplayProposalRouter for WaveAuthorityRouter<'_> {
+    fn route(&mut self, call: &GameplayOwnerRoutingCall) -> crate::GameplayOwnerRoutingOutput {
+        self.0.route(call)
+    }
+}
+
+fn make_wave_barrier(
+    wave: u32,
+    frozen_view: FrozenGameplayViews,
+    state_before: GameplayWaveStateHashes,
+    state_after: GameplayWaveStateHashes,
+    routing_hashes: Vec<String>,
+    module_fact_hashes: Vec<String>,
+) -> GameplayWaveBarrierEvidence {
+    let mut barrier = GameplayWaveBarrierEvidence {
+        wave,
+        frozen_view,
+        state_before,
+        state_after,
+        routing_hashes,
+        module_fact_hashes,
+        barrier_hash: String::new(),
+    };
+    barrier.barrier_hash = wave_barrier_hash(&barrier);
+    barrier
+}
+
+pub(crate) fn wave_barrier_hash(barrier: &GameplayWaveBarrierEvidence) -> String {
+    let mut canonical = barrier.clone();
+    canonical.barrier_hash.clear();
+    crate::gameplay_module_payload_hash(
+        &serde_json::to_vec(&canonical).expect("wave barrier evidence serializes"),
+    )
 }
 
 fn invalid_owner_event(
@@ -496,6 +666,7 @@ fn empty_observe_receipt(registry_digest: &str) -> GameplayObserveReceipt {
         root_id: String::new(),
         waves_processed: 0,
         wave_views: Vec::new(),
+        wave_barriers: Vec::new(),
         events: Vec::new(),
         event_evidence: Vec::new(),
         invocations: Vec::new(),
@@ -530,6 +701,7 @@ struct ObserveState<'registry> {
     subscription_deliveries: BTreeMap<String, u32>,
     module_usage: BTreeMap<String, ModuleUsage>,
     wave_views: Vec<FrozenGameplayViews>,
+    wave_barriers: Vec<GameplayWaveBarrierEvidence>,
     events: Vec<GameplayEventEnvelope>,
     event_evidence: Vec<GameplayEventEvidence>,
     invocations: Vec<GameplayInvocationEvidence>,
@@ -571,6 +743,7 @@ impl<'registry> ObserveState<'registry> {
             subscription_deliveries: BTreeMap::new(),
             module_usage: BTreeMap::new(),
             wave_views: Vec::new(),
+            wave_barriers: Vec::new(),
             events: root_events,
             event_evidence: root_evidence,
             invocations: Vec::new(),
@@ -976,6 +1149,7 @@ impl<'registry> ObserveState<'registry> {
             root_id: self.root_id,
             waves_processed: self.waves_processed,
             wave_views: self.wave_views,
+            wave_barriers: self.wave_barriers,
             events: self.events,
             event_evidence: self.event_evidence,
             invocations: self.invocations,
@@ -1203,6 +1377,23 @@ fn receipt_hash(state: &ObserveState<'_>) -> String {
     for view in &state.wave_views {
         parts.push(view.epoch.to_string());
         parts.push(view.view_hash.clone());
+    }
+    for barrier in &state.wave_barriers {
+        parts.extend([
+            barrier.wave.to_string(),
+            barrier.frozen_view.view_hash.clone(),
+            barrier.state_before.authority_state_hash.clone(),
+            barrier.state_before.module_state_hash.clone(),
+            barrier.state_before.prefab_state_hash.clone(),
+            barrier.state_before.trigger_state_hash.clone(),
+            barrier.state_after.authority_state_hash.clone(),
+            barrier.state_after.module_state_hash.clone(),
+            barrier.state_after.prefab_state_hash.clone(),
+            barrier.state_after.trigger_state_hash.clone(),
+            barrier.barrier_hash.clone(),
+        ]);
+        parts.extend(barrier.routing_hashes.iter().cloned());
+        parts.extend(barrier.module_fact_hashes.iter().cloned());
     }
     parts.extend(
         state

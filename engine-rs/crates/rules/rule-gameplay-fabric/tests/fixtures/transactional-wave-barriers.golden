@@ -1,0 +1,17 @@
+wave=0
+view=owner:0;module:0;prefab:0;trigger:0
+authority=authority:0 -> authority:2
+module=module:0 -> module:2
+prefab=prefab:0 -> prefab:2
+trigger=trigger:0 -> trigger:2
+routes=2
+facts=2
+---
+wave=1
+view=owner:2;module:2;prefab:2;trigger:2
+authority=authority:2 -> authority:2
+module=module:2 -> module:2
+prefab=prefab:2 -> prefab:2
+trigger=trigger:2 -> trigger:2
+routes=0
+facts=0

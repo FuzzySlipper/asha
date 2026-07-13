@@ -24,6 +24,13 @@ Its public ports are intentionally narrow:
 - `GameplayDecisionOwner` exposes an owner revision and one atomic pre-commit
   route.
 
+The owning RuntimeSession uses the narrower mutable `GameplayWaveAuthority`
+transaction port for live Observe delivery. That port exposes immutable view
+freezing to invocations and reserves proposal routing plus module-fact
+application for the barrier after the complete wave has returned. It is an
+ownership seam for the Session aggregate, not a module API or another handler
+registry.
+
 Every proposal caller converges on the same closed-registry route inside
 `GameplayFabricCoordinator`. The route resolves the owner, calls the statically
 linked Rust port once, validates and normalizes its result, and returns an
@@ -59,10 +66,22 @@ breadth-first waves:
 9. Validate owner-event declaration and canonical payload hash, replace its
    chronology/emitter/causation with the resolved route, and put the receipt's
    ordered events plus module events into the next wave.
+10. Atomically apply the wave's validated module facts, record the authority
+    barrier, and only then freeze the next generation.
 
-Every invocation in a wave receives the same `FrozenGameplayViews`. Authority may
-change only after all invocations in that wave have returned. The next wave then
-freezes a new generation, so it can observe accepted prior-wave changes.
+Every invocation in a wave receives the same `FrozenGameplayViews`. Authority
+may change only after all invocations in that wave have returned. The next wave
+then freezes a new generation over current entity-owner, module-state,
+prefab-instance, trigger, registry, and root evidence, so declared reads can
+observe accepted prior-wave changes without same-wave order becoming a hidden
+semantic input.
+
+The public RuntimeSession host checkpoints root-scoped mutable authority before
+the first wave. A later host failure, invalid output, stale module fact, or
+budget exhaustion rejects the complete root and restores the pre-root entity
+and module-state generations. Intermediate barriers remain in the rejected
+reaction frame as attempted causal evidence, while the frame's before/after
+state hashes prove that none of those writes became durable.
 
 The host supplies normal `GameplayEventEnvelope` and
 `GameplayProposalEnvelope` values. Module-controlled chronology, emitter, and
@@ -128,10 +147,13 @@ Exhaustion records a typed diagnostic and stops at a visible boundary. It never
 silently truncates or recursively dispatches.
 
 Observe receipts contain registry, view-generation, delivery, output, event,
-proposal, routing, fact, diagnostic, and final receipt hashes. Decision receipts
-record the initial/final Workspace hashes, stage invocations, owner routing,
-status, suspension token, diagnostics, and receipt hash. Identical inputs and
-registry digests produce identical evidence.
+proposal, routing, fact, diagnostic, and final receipt hashes. Each
+`GameplayWaveBarrierEvidence` binds the frozen generation, before/after hashes
+for entity authority, module state, prefab instances, and triggers, plus the
+accepted routing and module-fact hashes. Decision receipts record the
+initial/final Workspace hashes, stage invocations, owner routing, status,
+suspension token, diagnostics, and receipt hash. Identical inputs and registry
+digests produce identical evidence.
 
 `verify_gameplay_routing_evidence` independently recomputes the route hash from
 serialized typed evidence and its ordered event batch. Recovery/replay rejects

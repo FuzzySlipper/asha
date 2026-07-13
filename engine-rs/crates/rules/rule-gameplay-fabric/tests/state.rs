@@ -4,11 +4,12 @@ use protocol_game_extension::{
     GameplayReadViewKind, GameplayReadViewRequirement,
 };
 use rule_gameplay_fabric::{
-    gameplay_module_payload_hash, verify_reaction_frame, GameplayModuleFact,
+    gameplay_module_payload_hash, verify_reaction_frame, FrozenGameplayViews, GameplayModuleFact,
     GameplayModuleInitialization, GameplayModuleStateError, GameplayModuleStateMigration,
     GameplayModuleStateRegistration, GameplayModuleStateScope, GameplayModuleStateStore,
     GameplayObserveReceipt, GameplayReactionDivergence, GameplayReactionFrame,
-    GameplayReactionSourceFact, GameplayTypedModuleStateAdapter,
+    GameplayReactionSourceFact, GameplayTypedModuleStateAdapter, GameplayWaveBarrierEvidence,
+    GameplayWaveStateHashes,
 };
 use std::rc::Rc;
 use svc_gameplay_fabric::{
@@ -439,6 +440,7 @@ fn reaction_frame_verification_classifies_code_event_fact_and_post_state_drift()
         root_id: String::new(),
         waves_processed: 0,
         wave_views: Vec::new(),
+        wave_barriers: Vec::new(),
         events: Vec::new(),
         event_evidence: Vec::new(),
         invocations: Vec::new(),
@@ -534,6 +536,42 @@ fn reaction_frame_verification_classifies_code_event_fact_and_post_state_drift()
                 frame
             },
             GameplayReactionDivergence::ModuleFacts,
+        ),
+        (
+            {
+                let mut frame = expected.clone();
+                frame
+                    .frozen_views
+                    .push(rule_gameplay_fabric::GameplayReactionViewEvidence {
+                        epoch: 0,
+                        view_hash: "view:before".to_owned(),
+                    });
+                frame.frozen_view_hashes.push("view:before".to_owned());
+                frame.wave_barriers.push(GameplayWaveBarrierEvidence {
+                    wave: 0,
+                    frozen_view: FrozenGameplayViews {
+                        epoch: 0,
+                        view_hash: "view:before".to_owned(),
+                    },
+                    state_before: GameplayWaveStateHashes {
+                        authority_state_hash: "authority:before".to_owned(),
+                        module_state_hash: "state:before".to_owned(),
+                        prefab_state_hash: "prefab:before".to_owned(),
+                        trigger_state_hash: "trigger:before".to_owned(),
+                    },
+                    state_after: GameplayWaveStateHashes {
+                        authority_state_hash: "authority:after".to_owned(),
+                        module_state_hash: "state:after".to_owned(),
+                        prefab_state_hash: "prefab:after".to_owned(),
+                        trigger_state_hash: "trigger:after".to_owned(),
+                    },
+                    routing_hashes: Vec::new(),
+                    module_fact_hashes: Vec::new(),
+                    barrier_hash: "tampered-barrier".to_owned(),
+                });
+                frame
+            },
+            GameplayReactionDivergence::Views,
         ),
         (
             {

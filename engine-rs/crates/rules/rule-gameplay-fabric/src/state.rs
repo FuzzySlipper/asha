@@ -185,6 +185,8 @@ pub struct GameplayReactionFrame {
     pub delivered_event_hashes: Vec<String>,
     pub frozen_views: Vec<GameplayReactionViewEvidence>,
     pub frozen_view_hashes: Vec<String>,
+    #[serde(default)]
+    pub wave_barriers: Vec<crate::GameplayWaveBarrierEvidence>,
     pub invocations: Vec<GameplayReactionInvocationEvidence>,
     pub invocation_output_hashes: Vec<String>,
     pub routing_receipts: Vec<GameplayReactionRoutingEvidence>,
@@ -232,6 +234,8 @@ pub struct GameplayVerificationReplayInput {
     pub source_facts: Vec<GameplayReactionSourceFact>,
     pub root_events: Vec<GameplayEventEnvelope>,
     pub frozen_views: Vec<GameplayReactionViewEvidence>,
+    #[serde(default)]
+    pub wave_barriers: Vec<crate::GameplayWaveBarrierEvidence>,
     pub frozen_read_sets: Vec<crate::GameplayFrozenReadSet>,
     #[serde(default)]
     pub configurations: Vec<crate::GameplayInvocationConfiguration>,
@@ -486,7 +490,31 @@ pub struct GameplayModuleStateStore {
     accepted_facts: Vec<GameplayModuleFact>,
 }
 
+/// In-memory transaction checkpoint for one root Observe cascade. It is not a
+/// persistence format; the owning RuntimeSession restores it only when a later
+/// wave rejects after earlier barriers applied module facts.
+#[derive(Clone)]
+pub struct GameplayModuleStateCheckpoint {
+    records: BTreeMap<RecordKey, GameplayModuleStateRecord>,
+    applied_fact_ids: BTreeSet<String>,
+    accepted_facts: Vec<GameplayModuleFact>,
+}
+
 impl GameplayModuleStateStore {
+    pub fn checkpoint(&self) -> GameplayModuleStateCheckpoint {
+        GameplayModuleStateCheckpoint {
+            records: self.records.clone(),
+            applied_fact_ids: self.applied_fact_ids.clone(),
+            accepted_facts: self.accepted_facts.clone(),
+        }
+    }
+
+    pub fn restore_checkpoint(&mut self, checkpoint: GameplayModuleStateCheckpoint) {
+        self.records = checkpoint.records;
+        self.applied_fact_ids = checkpoint.applied_fact_ids;
+        self.accepted_facts = checkpoint.accepted_facts;
+    }
+
     pub fn new(
         registry: Rc<GameplayFabricRegistry>,
         registrations: Vec<GameplayModuleStateRegistration>,
@@ -1121,7 +1149,18 @@ impl GameplayReactionFrame {
             module_artifacts,
             source_facts,
             source_fact_hashes,
-            root_events: observe.events.first().cloned().into_iter().collect(),
+            root_events: observe
+                .events
+                .first()
+                .map(|first| {
+                    observe
+                        .events
+                        .iter()
+                        .take_while(|event| event.wave == first.wave)
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default(),
             delivered_events: observe.events.clone(),
             delivered_event_hashes: observe
                 .event_evidence
@@ -1141,6 +1180,7 @@ impl GameplayReactionFrame {
                 .iter()
                 .map(|views| views.view_hash.clone())
                 .collect(),
+            wave_barriers: observe.wave_barriers.clone(),
             invocations: observe
                 .invocations
                 .iter()
@@ -1228,6 +1268,7 @@ impl GameplayReactionFrame {
             source_facts: self.source_facts.clone(),
             root_events: self.root_events.clone(),
             frozen_views: self.frozen_views.clone(),
+            wave_barriers: self.wave_barriers.clone(),
             frozen_read_sets: self
                 .invocations
                 .iter()
@@ -1274,6 +1315,7 @@ pub fn verify_reaction_frame(
         || !view_evidence_is_valid(actual)
         || expected.frozen_views != actual.frozen_views
         || expected.frozen_view_hashes != actual.frozen_view_hashes
+        || expected.wave_barriers != actual.wave_barriers
     {
         divergences.insert(GameplayReactionDivergence::Views);
     }
@@ -1368,7 +1410,34 @@ fn view_evidence_is_valid(frame: &GameplayReactionFrame) -> bool {
         .iter()
         .map(|view| view.view_hash.as_str())
         .eq(frame.frozen_view_hashes.iter().map(String::as_str));
+    let barriers_valid = (frame.wave_barriers.is_empty()
+        || (frame.wave_barriers.len() == frame.frozen_views.len()
+            && frame
+                .wave_barriers
+                .iter()
+                .zip(&frame.frozen_views)
+                .all(|(barrier, view)| {
+                    barrier.barrier_hash == crate::observe::wave_barrier_hash(barrier)
+                        && view.epoch == barrier.frozen_view.epoch
+                        && view.view_hash == barrier.frozen_view.view_hash
+                })))
+        && frame
+            .wave_barriers
+            .windows(2)
+            .all(|pair| pair[0].state_after == pair[1].state_before)
+        && frame
+            .wave_barriers
+            .first()
+            .is_none_or(|first| first.state_before.module_state_hash == frame.state_hash_before)
+        && frame.wave_barriers.last().is_none_or(|last| {
+            if frame.diagnostics.is_empty() {
+                last.state_after.module_state_hash == frame.state_hash_after
+            } else {
+                frame.state_hash_before == frame.state_hash_after
+            }
+        });
     wave_hashes_valid
+        && barriers_valid
         && frame.invocations.iter().all(|invocation| {
             match (
                 &invocation.declared_read_set_hash,

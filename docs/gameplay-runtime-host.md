@@ -90,6 +90,15 @@ The committed downstream fixture proves both a module-named state read and a
 bounded current-trigger-overlap query. Accepted module-local facts update only
 their registered state adapter.
 
+Observe is a root transaction with deterministic wave barriers. All
+invocations in one wave receive one immutable generation. After they return,
+the host routes their proposals, applies their module-fact batch atomically,
+records before/after entity, module, prefab-instance, and trigger hashes, and
+then freezes the next wave. A failure in any later wave restores the entity and
+module-state checkpoints from before the root; the rejected reaction frame
+retains the attempted barriers while its state before/after hashes prove the
+rollback.
+
 Pre-commit consumers implement `GameplayRuntimeDecisionOwner`. This is a
 statically linked Rust port with two responsibilities: return the current
 revision for the registry-resolved owner and atomically route the final
@@ -167,7 +176,7 @@ provider/config/read/output/trigger data therefore cannot partially replace the
 live host.
 
 The downstream fixture executes the full loop twice and compares reaction
-frames and host hashes. It also schedules a typed proposal, observes its
+frames, wave barriers, and host hashes. It also schedules a typed proposal, observes its
 recoverable outstanding dispatch, routes it through the closed owner, and
 restores the same scheduler readout. It saves and restores the same host, then rebuilds with
 a changed module multiplier and proves that invocation/frame/host hashes drift.

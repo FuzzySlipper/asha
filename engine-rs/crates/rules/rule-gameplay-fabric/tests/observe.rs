@@ -3,26 +3,29 @@ use protocol_game_extension::{
     GameplayCausationRef, GameplayContractRef, GameplayEmitterRef, GameplayEventEnvelope,
     GameplayEventPhase, GameplayEventSchemaDeclaration, GameplayExecutionBudget,
     GameplayHeaderSelector, GameplayInvocationDescriptor, GameplayInvocationFamily,
-    GameplayModuleManifest, GameplayModuleRef, GameplayOrderingConstraint, GameplayOwnerRef,
-    GameplayProposalDeclaration, GameplayProposalEnvelope, GameplaySubscriptionDeclaration,
+    GameplayModuleManifest, GameplayModuleRef, GameplayOrderingConstraint,
+    GameplayOwnedSchemaDeclaration, GameplayOwnerRef, GameplayProposalDeclaration,
+    GameplayProposalEnvelope, GameplaySubscriptionDeclaration,
 };
 use rule_gameplay_fabric::{
     gameplay_payload_hash, resolve_declared_reactions, verify_gameplay_routing_evidence,
     FrozenGameplayViews, GameplayDecisionContinuations, GameplayDecisionMoment,
     GameplayDecisionOutput, GameplayDecisionOwner, GameplayDecisionRoutingOutput,
-    GameplayDecisionStatus, GameplayFabricCoordinator, GameplayGuardVote, GameplayInvocationCall,
-    GameplayInvocationHost, GameplayInvocationInput, GameplayInvocationOutput,
+    GameplayDecisionStatus, GameplayFabricCoordinator, GameplayGuardVote, GameplayHostError,
+    GameplayInvocationCall, GameplayInvocationHost, GameplayInvocationInput,
+    GameplayInvocationOutput, GameplayModuleFact, GameplayModuleStateScope,
     GameplayOperationWorkspace, GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput,
     GameplayProposalRouter, GameplayReactionDisposition, GameplayRuntimeDiagnosticCode,
-    GameplayRuntimeLimits, GameplayViewSource, GameplayWorkspaceTransform, ReactionBehavior,
-    ReactionDefinition, ReactionResolutionInput, ReactionWindowKind,
+    GameplayRuntimeLimits, GameplayViewSource, GameplayWaveAuthority, GameplayWaveStateHashes,
+    GameplayWorkspaceTransform, ReactionBehavior, ReactionDefinition, ReactionResolutionInput,
+    ReactionWindowKind,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::rc::Rc;
 use svc_gameplay_fabric::{
     GameplayFabricRegistry, GameplayFabricRegistryBuilder, GameplayLinkedProvider,
-    GameplayProposalOwnerRegistration, TypedGameplayEventCodec,
+    GameplayProposalOwnerRegistration, GameplayStateOwnerRegistration, TypedGameplayEventCodec,
 };
 
 fn contract(namespace: &str, name: &str) -> GameplayContractRef {
@@ -50,6 +53,13 @@ fn owner() -> GameplayOwnerRef {
     GameplayOwnerRef {
         owner_id: "authority.game".to_owned(),
         provider_id: "provider.authority".to_owned(),
+    }
+}
+
+fn module_owner(namespace: &str, provider_id: &str) -> GameplayOwnerRef {
+    GameplayOwnerRef {
+        owner_id: format!("authority.{namespace}"),
+        provider_id: provider_id.to_owned(),
     }
 }
 
@@ -170,6 +180,15 @@ fn registry(observer_count: usize, observe_applied: bool) -> GameplayFabricRegis
             proposal: proposal_contract(),
             owner: owner(),
         });
+        let state_owner = module_owner(&namespace, &provider_id);
+        observer.state_schemas.push(GameplayOwnedSchemaDeclaration {
+            schema: contract(&namespace, "state"),
+            owner: state_owner.clone(),
+        });
+        observer.fact_schemas.push(GameplayOwnedSchemaDeclaration {
+            schema: contract(&namespace, "fact"),
+            owner: state_owner,
+        });
         if index + 1 < observer_count {
             observer.ordering.push(GameplayOrderingConstraint {
                 before_module: module_id,
@@ -190,6 +209,12 @@ fn registry(observer_count: usize, observe_applied: bool) -> GameplayFabricRegis
         .register_linked_provider(provider(&authority))
         .register_module(authority);
     for observer in observers.into_iter().rev() {
+        for declaration in observer.state_schemas.iter().chain(&observer.fact_schemas) {
+            builder.register_state_owner(GameplayStateOwnerRegistration {
+                schema: declaration.schema.clone(),
+                owner: declaration.owner.clone(),
+            });
+        }
         builder
             .register_linked_provider(provider(&observer))
             .register_module(observer);
@@ -321,6 +346,117 @@ struct AcceptingRouter {
     routed: Rc<Cell<u32>>,
 }
 
+struct TransactionalAuthority {
+    routed: Rc<Cell<u32>>,
+    applied_facts: Rc<Cell<u32>>,
+}
+
+impl GameplayWaveAuthority for TransactionalAuthority {
+    fn freeze(&self, _root_id: &str, wave: u32) -> FrozenGameplayViews {
+        FrozenGameplayViews {
+            epoch: u64::from(wave),
+            view_hash: format!(
+                "owner:{};module:{};prefab:{};trigger:{}",
+                self.routed.get(),
+                self.applied_facts.get(),
+                self.routed.get(),
+                self.applied_facts.get(),
+            ),
+        }
+    }
+
+    fn freeze_declared_reads(
+        &self,
+        _module_id: &str,
+        _invocation_id: &str,
+        _event: &GameplayEventEnvelope,
+    ) -> Result<
+        Option<rule_gameplay_fabric::GameplayFrozenReadSet>,
+        rule_gameplay_fabric::GameplayReadAssemblyError,
+    > {
+        Ok(None)
+    }
+
+    fn route(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+        AcceptingRouter {
+            routed: Rc::clone(&self.routed),
+        }
+        .route(call)
+    }
+
+    fn apply_module_facts_atomic(
+        &mut self,
+        facts: &[GameplayModuleFact],
+    ) -> Result<(), GameplayHostError> {
+        self.applied_facts.set(
+            self.applied_facts
+                .get()
+                .saturating_add(u32::try_from(facts.len()).unwrap_or(u32::MAX)),
+        );
+        Ok(())
+    }
+
+    fn state_hashes(&self) -> GameplayWaveStateHashes {
+        GameplayWaveStateHashes {
+            authority_state_hash: format!("authority:{}", self.routed.get()),
+            module_state_hash: format!("module:{}", self.applied_facts.get()),
+            prefab_state_hash: format!("prefab:{}", self.routed.get()),
+            trigger_state_hash: format!("trigger:{}", self.applied_facts.get()),
+        }
+    }
+}
+
+struct TransactionalHost {
+    routed: Rc<Cell<u32>>,
+    applied_facts: Rc<Cell<u32>>,
+    calls: RefCell<Vec<GameplayInvocationCall>>,
+}
+
+impl GameplayInvocationHost for TransactionalHost {
+    fn invoke(
+        &self,
+        call: &GameplayInvocationCall,
+    ) -> Result<GameplayInvocationOutput, GameplayHostError> {
+        let event = call.input.observe_event().expect("Observe event");
+        if event.event == root_contract() {
+            assert_eq!(self.routed.get(), 0, "same-wave owner state leaked");
+            assert_eq!(self.applied_facts.get(), 0, "same-wave module state leaked");
+        } else {
+            assert_eq!(self.routed.get(), 2, "next wave missed owner writes");
+            assert_eq!(self.applied_facts.get(), 2, "next wave missed module facts");
+        }
+        self.calls.borrow_mut().push(call.clone());
+        let namespace = if call.module_id.ends_with("observer-a") {
+            "game.observera"
+        } else {
+            "game.observerb"
+        };
+        let root_output = event.event == root_contract();
+        let canonical_payload = vec![1];
+        Ok(GameplayInvocationOutput {
+            events: Vec::new(),
+            proposals: root_output.then(dummy_proposal).into_iter().collect(),
+            module_facts: root_output
+                .then(|| GameplayModuleFact {
+                    fact_id: format!("{}.fact", call.module_id),
+                    module_id: call.module_id.clone(),
+                    fact_schema: contract(namespace, "fact"),
+                    state_schema: contract(namespace, "state"),
+                    scope: GameplayModuleStateScope::Session,
+                    expected_revision: 0,
+                    payload_hash: rule_gameplay_fabric::gameplay_module_payload_hash(
+                        &canonical_payload,
+                    ),
+                    canonical_payload,
+                })
+                .into_iter()
+                .collect(),
+            trace_codes: Vec::new(),
+            decision: None,
+        })
+    }
+}
+
 impl GameplayProposalRouter for AcceptingRouter {
     fn route(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
         assert_eq!(call.owner, owner());
@@ -396,6 +532,92 @@ fn observe_buffers_same_wave_outputs_and_routes_in_validated_module_order() {
             && event.root_sequence == 7
             && matches!(event.emitter, GameplayEmitterRef::Owner { .. })
     }));
+}
+
+#[test]
+fn transactional_observe_freezes_each_wave_then_records_authority_barriers() {
+    let registry = registry(2, true);
+    let routed = Rc::new(Cell::new(0));
+    let applied_facts = Rc::new(Cell::new(0));
+    let host = TransactionalHost {
+        routed: Rc::clone(&routed),
+        applied_facts: Rc::clone(&applied_facts),
+        calls: RefCell::new(Vec::new()),
+    };
+    let mut authority = TransactionalAuthority {
+        routed,
+        applied_facts,
+    };
+
+    let receipt = GameplayFabricCoordinator::new(&registry, limits(4)).observe_transactional(
+        root_event(),
+        &mut authority,
+        &host,
+    );
+
+    assert!(receipt.accepted(), "{:#?}", receipt.diagnostics);
+    assert_eq!(receipt.wave_views.len(), 2);
+    assert_eq!(
+        receipt.wave_views[0].view_hash,
+        "owner:0;module:0;prefab:0;trigger:0"
+    );
+    assert_eq!(
+        receipt.wave_views[1].view_hash,
+        "owner:2;module:2;prefab:2;trigger:2"
+    );
+    let calls = host.calls.into_inner();
+    assert_eq!(calls.len(), 6);
+    assert_eq!(calls[0].frozen_views, calls[1].frozen_views);
+    assert!(calls[2..]
+        .iter()
+        .all(|call| call.frozen_views == calls[2].frozen_views));
+
+    assert_eq!(receipt.wave_barriers.len(), 2);
+    let root_barrier = &receipt.wave_barriers[0];
+    assert_eq!(root_barrier.wave, 0);
+    assert_eq!(
+        root_barrier.state_before.authority_state_hash,
+        "authority:0"
+    );
+    assert_eq!(root_barrier.state_before.module_state_hash, "module:0");
+    assert_eq!(root_barrier.state_after.authority_state_hash, "authority:2");
+    assert_eq!(root_barrier.state_after.module_state_hash, "module:2");
+    assert_eq!(root_barrier.routing_hashes.len(), 2);
+    assert_eq!(root_barrier.module_fact_hashes.len(), 2);
+    assert_eq!(
+        root_barrier.state_after,
+        receipt.wave_barriers[1].state_before
+    );
+    assert_ne!(
+        root_barrier.barrier_hash,
+        receipt.wave_barriers[1].barrier_hash
+    );
+    let golden = receipt
+        .wave_barriers
+        .iter()
+        .map(|barrier| {
+            format!(
+                "wave={}\nview={}\nauthority={} -> {}\nmodule={} -> {}\nprefab={} -> {}\ntrigger={} -> {}\nroutes={}\nfacts={}\n",
+                barrier.wave,
+                barrier.frozen_view.view_hash,
+                barrier.state_before.authority_state_hash,
+                barrier.state_after.authority_state_hash,
+                barrier.state_before.module_state_hash,
+                barrier.state_after.module_state_hash,
+                barrier.state_before.prefab_state_hash,
+                barrier.state_after.prefab_state_hash,
+                barrier.state_before.trigger_state_hash,
+                barrier.state_after.trigger_state_hash,
+                barrier.routing_hashes.len(),
+                barrier.module_fact_hashes.len(),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("---\n");
+    assert_eq!(
+        golden,
+        include_str!("fixtures/transactional-wave-barriers.golden")
+    );
 }
 
 #[test]

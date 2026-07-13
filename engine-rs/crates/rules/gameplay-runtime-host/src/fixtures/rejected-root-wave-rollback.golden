@@ -1,0 +1,7 @@
+outcome=rejected
+diagnostic=WaveBudgetExceeded
+barriers=2
+first_barrier_module_changed=true
+second_barrier_module_changed=false
+root_state_restored=true
+snapshot_state_restored=true

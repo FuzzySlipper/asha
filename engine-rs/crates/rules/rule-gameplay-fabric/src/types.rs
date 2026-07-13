@@ -229,6 +229,38 @@ pub trait GameplayProposalRouter {
     fn route(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameplayWaveStateHashes {
+    pub authority_state_hash: String,
+    pub module_state_hash: String,
+    pub prefab_state_hash: String,
+    pub trigger_state_hash: String,
+}
+
+/// Mutable Session transaction port used only at the barrier between Observe
+/// waves. Invocations receive immutable methods; routing and fact application
+/// happen after every invocation in the current wave has returned.
+pub trait GameplayWaveAuthority {
+    fn freeze(&self, root_id: &str, wave: u32) -> FrozenGameplayViews;
+
+    fn freeze_declared_reads(
+        &self,
+        module_id: &str,
+        invocation_id: &str,
+        event: &GameplayEventEnvelope,
+    ) -> Result<Option<crate::GameplayFrozenReadSet>, crate::GameplayReadAssemblyError>;
+
+    fn route(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput;
+
+    fn apply_module_facts_atomic(
+        &mut self,
+        facts: &[crate::GameplayModuleFact],
+    ) -> Result<(), GameplayHostError>;
+
+    fn state_hashes(&self) -> GameplayWaveStateHashes;
+}
+
 /// Pre-commit owner port. The coordinator checks the owner revision before
 /// invocation and immediately before the single atomic route.
 pub trait GameplayDecisionOwner {
@@ -328,6 +360,18 @@ pub struct GameplayRoutingReceipt {
     pub(crate) accepted_events: Vec<GameplayEventEnvelope>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameplayWaveBarrierEvidence {
+    pub wave: u32,
+    pub frozen_view: FrozenGameplayViews,
+    pub state_before: GameplayWaveStateHashes,
+    pub state_after: GameplayWaveStateHashes,
+    pub routing_hashes: Vec<String>,
+    pub module_fact_hashes: Vec<String>,
+    pub barrier_hash: String,
+}
+
 impl GameplayRoutingReceipt {
     pub fn evidence(&self) -> &GameplayRoutingEvidence {
         &self.evidence
@@ -356,6 +400,7 @@ pub struct GameplayObserveReceipt {
     pub root_id: String,
     pub waves_processed: u32,
     pub wave_views: Vec<FrozenGameplayViews>,
+    pub wave_barriers: Vec<GameplayWaveBarrierEvidence>,
     pub events: Vec<GameplayEventEnvelope>,
     pub event_evidence: Vec<GameplayEventEvidence>,
     pub invocations: Vec<GameplayInvocationEvidence>,

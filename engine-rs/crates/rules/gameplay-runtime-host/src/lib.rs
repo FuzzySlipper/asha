@@ -30,13 +30,13 @@ use protocol_game_extension::{
 use rule_gameplay_fabric::{
     adapt_session_tick, gameplay_module_payload_hash, FrozenGameplayViews,
     GameplayDecisionContinuations, GameplayEntityScopeIndex, GameplayFabricCoordinator,
-    GameplayFrozenReadSet, GameplayModuleStateError, GameplayObserveReceipt,
+    GameplayFrozenReadSet, GameplayHostError, GameplayModuleStateError, GameplayObserveReceipt,
     GameplayOwnerEventContext, GameplayOwnerQueryProvider, GameplayPrefabInstanceBinding,
     GameplayPrefabInstanceIndex, GameplayReactionFrame, GameplayReactionSourceFact,
     GameplayReadAssembler, GameplayReadAssemblyError, GameplayReadDiagnostic,
     GameplayReadDiagnosticCode, GameplayReadPlan, GameplayReadRequest, GameplayReadSelector,
     GameplayRuntimeDiagnostic, GameplayRuntimeLimits, GameplayTriggerOverlapQueryProvider,
-    GameplayViewSource,
+    GameplayViewSource, GameplayWaveAuthority, GameplayWaveStateHashes,
 };
 use rule_project_bundle::{
     GameplayBindingActivationError, GameplayBoundProjectBundleSession, SessionStateArtifact,
@@ -61,8 +61,8 @@ pub use rule_trigger_volume::{
     TriggerReconcileCause, TriggerReconcileReceipt, TriggerVolumeDiagnostic,
 };
 use svc_serialization::{
-    ArtifactEntry, ArtifactRole, PrefabRegistry, PrefabRegistryValidationContext,
-    ValidatedPrefabRegistry, PREFAB_REGISTRY_SCHEMA_VERSION,
+    encode_prefab_registry, ArtifactEntry, ArtifactRole, PrefabRegistry,
+    PrefabRegistryValidationContext, ValidatedPrefabRegistry, PREFAB_REGISTRY_SCHEMA_VERSION,
 };
 pub use svc_serialization::{LoadPlan, LoadStep};
 
@@ -694,58 +694,51 @@ impl GameplayRuntimeHost {
         source_facts: Vec<GameplayReactionSourceFact>,
     ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
         let state_hash_before = self.session.module_state.state_hash();
+        let module_state_checkpoint = self.session.module_state.checkpoint();
         let mut authority_entities = self
             .session
             .bundle
             .runtime_entities
             .take()
             .expect("runtime entity authority initialized");
-        let authority_before = authority_entities.snapshot_durable();
-        let frozen_entities = EntityStore::from_snapshot(authority_before.clone());
-        let coordinator = GameplayFabricCoordinator::new(
-            self.session.registry(),
-            limits_from_registry(self.session.registry()),
-        );
-        let views = RuntimeSessionViews {
-            registry: self.session.registry(),
-            module_state: &self.session.module_state,
-            entities: &frozen_entities,
-            triggers: self.session.trigger_rule(),
-            prefab_registry: &self.prefab_registry,
-            prefab_instances: &self.session.bundle.prefab_instances,
-            declared_reads: &self.declared_reads,
-        };
-        let mut router = RuntimeSessionOwnerRouter {
-            entities: &mut authority_entities,
-        };
-        let observe = if routed {
-            coordinator.observe_routed_events(
-                events,
-                &views,
-                self.session.invocation_host(),
-                &mut router,
-            )
-        } else {
-            let event = events
-                .pop()
-                .expect("single root-event delivery is nonempty");
-            coordinator.observe(event, &views, self.session.invocation_host(), &mut router)
+        let authority_before = authority_entities.clone();
+        let observe = {
+            let cells = self.session.runtime_cells();
+            let coordinator = GameplayFabricCoordinator::new(
+                cells.registry,
+                limits_from_registry(cells.registry),
+            );
+            let mut authority = RuntimeSessionWaveAuthority {
+                registry: cells.registry,
+                module_state: cells.module_state,
+                entities: &mut authority_entities,
+                triggers: cells.triggers,
+                prefab_registry: &self.prefab_registry,
+                prefab_instances: cells.prefab_instances,
+                declared_reads: &self.declared_reads,
+            };
+            if routed {
+                coordinator.observe_routed_events_transactional(
+                    events,
+                    &mut authority,
+                    cells.invocation_host,
+                )
+            } else {
+                let event = events
+                    .pop()
+                    .expect("single root-event delivery is nonempty");
+                coordinator.observe_transactional(event, &mut authority, cells.invocation_host)
+            }
         };
         if !observe.accepted() {
-            authority_entities = EntityStore::from_snapshot(authority_before.clone());
+            authority_entities = authority_before;
+            self.session
+                .module_state
+                .restore_checkpoint(module_state_checkpoint);
         }
         self.session.bundle.runtime_entities = Some(authority_entities);
         let mut accepted_facts = Vec::new();
         if observe.accepted() {
-            if let Err(error) = self
-                .session
-                .module_state
-                .apply_facts_atomic(&observe.module_facts)
-            {
-                self.session.bundle.runtime_entities =
-                    Some(EntityStore::from_snapshot(authority_before));
-                return Err(error.into());
-            }
             accepted_facts.clone_from(&observe.module_facts);
         }
         let state_hash_after = self.session.module_state.state_hash();
@@ -819,6 +812,90 @@ struct RuntimeSessionViews<'a> {
     prefab_registry: &'a ValidatedPrefabRegistry,
     prefab_instances: &'a rule_project_bundle::PrefabInstanceAuthority,
     declared_reads: &'a [GameplayRuntimeDeclaredReadPlan],
+}
+
+struct RuntimeSessionWaveAuthority<'a> {
+    registry: &'a svc_gameplay_fabric::GameplayFabricRegistry,
+    module_state: &'a mut rule_gameplay_fabric::GameplayModuleStateStore,
+    entities: &'a mut EntityStore,
+    triggers: &'a rule_trigger_volume::TriggerVolumeRule,
+    prefab_registry: &'a ValidatedPrefabRegistry,
+    prefab_instances: &'a rule_project_bundle::PrefabInstanceAuthority,
+    declared_reads: &'a [GameplayRuntimeDeclaredReadPlan],
+}
+
+impl RuntimeSessionWaveAuthority<'_> {
+    fn views(&self) -> RuntimeSessionViews<'_> {
+        RuntimeSessionViews {
+            registry: self.registry,
+            module_state: self.module_state,
+            entities: self.entities,
+            triggers: self.triggers,
+            prefab_registry: self.prefab_registry,
+            prefab_instances: self.prefab_instances,
+            declared_reads: self.declared_reads,
+        }
+    }
+
+    fn prefab_state_hash(&self) -> String {
+        gameplay_module_payload_hash(
+            format!(
+                "{}|{}",
+                encode_prefab_registry(self.prefab_registry),
+                self.prefab_instances.state_hash(self.entities)
+            )
+            .as_bytes(),
+        )
+    }
+}
+
+impl GameplayWaveAuthority for RuntimeSessionWaveAuthority<'_> {
+    fn freeze(&self, root_id: &str, wave: u32) -> FrozenGameplayViews {
+        self.views().freeze(root_id, wave)
+    }
+
+    fn freeze_declared_reads(
+        &self,
+        module_id: &str,
+        invocation_id: &str,
+        event: &GameplayEventEnvelope,
+    ) -> Result<Option<GameplayFrozenReadSet>, GameplayReadAssemblyError> {
+        self.views()
+            .freeze_declared_reads(module_id, invocation_id, event)
+    }
+
+    fn route(
+        &mut self,
+        call: &rule_gameplay_fabric::GameplayOwnerRoutingCall,
+    ) -> rule_gameplay_fabric::GameplayOwnerRoutingOutput {
+        rule_gameplay_fabric::GameplayProposalRouter::route(
+            &mut RuntimeSessionOwnerRouter {
+                entities: self.entities,
+            },
+            call,
+        )
+    }
+
+    fn apply_module_facts_atomic(
+        &mut self,
+        facts: &[rule_gameplay_fabric::GameplayModuleFact],
+    ) -> Result<(), GameplayHostError> {
+        self.module_state
+            .apply_facts_atomic(facts)
+            .map_err(|error| GameplayHostError {
+                code: "moduleFactApplyFailed".to_owned(),
+                message: error.to_string(),
+            })
+    }
+
+    fn state_hashes(&self) -> GameplayWaveStateHashes {
+        GameplayWaveStateHashes {
+            authority_state_hash: self.entities.hash().0.to_string(),
+            module_state_hash: self.module_state.state_hash(),
+            prefab_state_hash: self.prefab_state_hash(),
+            trigger_state_hash: self.triggers.snapshot().snapshot_hash,
+        }
+    }
 }
 
 impl RuntimeSessionViews<'_> {
@@ -919,10 +996,18 @@ impl GameplayViewSource for RuntimeSessionViews<'_> {
             epoch: u64::from(wave),
             view_hash: gameplay_module_payload_hash(
                 format!(
-                    "{}|{}|{}|{}|{}|{}",
+                    "{}|{}|{}|{}|{}|{}|{}",
                     self.registry.registry_digest(),
                     self.module_state.state_hash(),
                     self.entities.hash().0,
+                    gameplay_module_payload_hash(
+                        format!(
+                            "{}|{}",
+                            encode_prefab_registry(self.prefab_registry),
+                            self.prefab_instances.state_hash(self.entities)
+                        )
+                        .as_bytes()
+                    ),
                     self.triggers.snapshot().snapshot_hash,
                     root_id,
                     wave
@@ -1118,7 +1203,10 @@ mod tests {
     use core_ids::SceneNodeId;
     use core_scene::{encode, SceneMetadata, SceneNode, SceneNodeKind, SceneTree};
     use gameplay_module_sdk::*;
-    use protocol_game_extension::GameplayInvocationReadRequirement;
+    use protocol_game_extension::{
+        GameplayInvocationReadRequirement, GameplayModuleBinding, GameplayModuleBindingTarget,
+        GameplayModuleConfiguration,
+    };
     use rule_trigger_volume::TriggerOverlapFactKind;
     use serde::{Deserialize, Serialize};
 
@@ -1131,6 +1219,381 @@ mod tests {
             Vec::new(),
             Vec::new(),
         )
+    }
+
+    const WAVE_FIXTURE_MODULE_ID: &str = "fixture.wave-barrier.module";
+
+    fn wave_fixture_contract(name: &str) -> GameplayContractRef {
+        GameplayContractRef {
+            namespace: "fixture.wave-barrier".to_owned(),
+            name: name.to_owned(),
+            version: 1,
+            schema_hash: format!("sha256:fixture-wave-barrier-{name}"),
+        }
+    }
+
+    fn wave_fixture_owner() -> GameplayOwnerRef {
+        GameplayOwnerRef {
+            owner_id: "authority.fixture-wave-barrier".to_owned(),
+            provider_id: "provider.fixture-wave-barrier".to_owned(),
+        }
+    }
+
+    fn wave_fixture_module_ref() -> GameplayModuleRef {
+        GameplayModuleRef {
+            module_id: WAVE_FIXTURE_MODULE_ID.to_owned(),
+            namespace: "fixture.wave-barrier".to_owned(),
+            version: "1.0.0".to_owned(),
+            sdk_hash: "sha256:gameplay-sdk-v1".to_owned(),
+            contract_hash: "sha256:fixture-wave-barrier-contract".to_owned(),
+            artifact_hash: "sha256:fixture-wave-barrier-artifact".to_owned(),
+            provider_id: wave_fixture_owner().provider_id,
+        }
+    }
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct WaveFixtureConfiguration {
+        initial_value: u64,
+    }
+
+    struct WaveFixtureStateAdapter;
+
+    impl GameplayTypedModuleStateAdapter for WaveFixtureStateAdapter {
+        type Config = WaveFixtureConfiguration;
+        type State = u64;
+        type Fact = u64;
+        type View = u64;
+
+        fn module_id(&self) -> &str {
+            WAVE_FIXTURE_MODULE_ID
+        }
+
+        fn state_schema(&self) -> &GameplayContractRef {
+            static VALUE: std::sync::OnceLock<GameplayContractRef> = std::sync::OnceLock::new();
+            VALUE.get_or_init(|| wave_fixture_contract("state"))
+        }
+
+        fn fact_schema(&self) -> &GameplayContractRef {
+            static VALUE: std::sync::OnceLock<GameplayContractRef> = std::sync::OnceLock::new();
+            VALUE.get_or_init(|| wave_fixture_contract("fact"))
+        }
+
+        fn owner(&self) -> &GameplayOwnerRef {
+            static VALUE: std::sync::OnceLock<GameplayOwnerRef> = std::sync::OnceLock::new();
+            VALUE.get_or_init(wave_fixture_owner)
+        }
+
+        fn decode_config(&self, bytes: &[u8]) -> Result<Self::Config, String> {
+            serde_json::from_slice(bytes).map_err(|error| error.to_string())
+        }
+
+        fn initialize(&self, config: &Self::Config) -> Result<Self::State, String> {
+            Ok(config.initial_value)
+        }
+
+        fn decode_state(&self, bytes: &[u8]) -> Result<Self::State, String> {
+            serde_json::from_slice(bytes).map_err(|error| error.to_string())
+        }
+
+        fn encode_state(&self, state: &Self::State) -> Result<Vec<u8>, String> {
+            serde_json::to_vec(state).map_err(|error| error.to_string())
+        }
+
+        fn decode_fact(&self, bytes: &[u8]) -> Result<Self::Fact, String> {
+            serde_json::from_slice(bytes).map_err(|error| error.to_string())
+        }
+
+        fn apply_fact(
+            &self,
+            state: &Self::State,
+            fact: &Self::Fact,
+        ) -> Result<Self::State, String> {
+            Ok(state.saturating_add(*fact))
+        }
+
+        fn migrate(&self, _from_version: u32, state: &Self::State) -> Result<Self::State, String> {
+            Ok(*state)
+        }
+
+        fn view_schema(&self) -> Option<&GameplayContractRef> {
+            static VALUE: std::sync::OnceLock<GameplayContractRef> = std::sync::OnceLock::new();
+            Some(VALUE.get_or_init(|| wave_fixture_contract("view")))
+        }
+
+        fn project_view(&self, state: &Self::State) -> Result<Self::View, String> {
+            Ok(*state)
+        }
+
+        fn encode_view(&self, view: &Self::View) -> Result<Vec<u8>, String> {
+            serde_json::to_vec(view).map_err(|error| error.to_string())
+        }
+    }
+
+    struct WaveFixtureBehavior;
+
+    impl GameplayModuleBehavior for WaveFixtureBehavior {
+        fn invoke(
+            &self,
+            context: &GameplayModuleContext<'_>,
+        ) -> Result<GameplayModuleActions, GameplayModuleError> {
+            let current_revision: u64 = context.event_payload()?;
+            if current_revision > 0 {
+                let prior_wave_state: u64 = context.named_view("prior-module-state")?;
+                if prior_wave_state != 1 {
+                    return Err(GameplayModuleError {
+                        code: "priorWaveStateNotVisible".to_owned(),
+                        message: format!("expected module state 1, got {prior_wave_state}"),
+                    });
+                }
+            }
+            let mut actions = context.actions();
+            if current_revision == 0 {
+                actions.record_local_fact_json(
+                    wave_fixture_contract("fact"),
+                    wave_fixture_contract("state"),
+                    GameplayModuleStateScope::Session,
+                    current_revision,
+                    &1_u64,
+                )?;
+            }
+            actions.emit_json(
+                wave_fixture_contract("loop"),
+                &current_revision.saturating_add(1),
+                None,
+                Vec::new(),
+                Vec::new(),
+            )?;
+            Ok(actions)
+        }
+    }
+
+    fn wave_fixture_provider() -> GameplayStaticModuleProvider {
+        let owner = wave_fixture_owner();
+        let invocation = |invocation_id: &str, input_contract: GameplayContractRef| {
+            GameplayInvocationDescriptor {
+                invocation_id: invocation_id.to_owned(),
+                family: GameplayInvocationFamily::Observe,
+                input_contract,
+                output_contract: wave_fixture_contract("loop"),
+                read_requirements: if invocation_id.ends_with("observe-loop") {
+                    vec![GameplayInvocationReadRequirement {
+                        request_id: "prior-module-state".to_owned(),
+                        view: wave_fixture_contract("view"),
+                    }]
+                } else {
+                    Vec::new()
+                },
+                max_outputs: 2,
+                max_payload_bytes: 1_024,
+            }
+        };
+        let subscription =
+            |subscription_id: &str, event: GameplayContractRef, invocation_id: &str| {
+                GameplaySubscriptionDeclaration {
+                    subscription_id: subscription_id.to_owned(),
+                    event,
+                    invocation_id: invocation_id.to_owned(),
+                    selector: GameplayHeaderSelector {
+                        source: None,
+                        target: None,
+                        scope: None,
+                        required_tags: Vec::new(),
+                    },
+                    max_deliveries_per_root: 4,
+                }
+            };
+        let manifest = GameplayModuleManifest {
+            module_ref: wave_fixture_module_ref(),
+            published_events: vec![
+                GameplayEventSchemaDeclaration {
+                    event: wave_fixture_contract("root"),
+                    codec_id: "codec.fixture-wave-barrier.root".to_owned(),
+                },
+                GameplayEventSchemaDeclaration {
+                    event: wave_fixture_contract("loop"),
+                    codec_id: "codec.fixture-wave-barrier.loop".to_owned(),
+                },
+            ],
+            subscriptions: vec![
+                subscription(
+                    "fixture.wave-barrier.root",
+                    wave_fixture_contract("root"),
+                    "fixture.wave-barrier.observe-root",
+                ),
+                subscription(
+                    "fixture.wave-barrier.loop",
+                    wave_fixture_contract("loop"),
+                    "fixture.wave-barrier.observe-loop",
+                ),
+            ],
+            invocations: vec![
+                invocation(
+                    "fixture.wave-barrier.observe-root",
+                    wave_fixture_contract("root"),
+                ),
+                invocation(
+                    "fixture.wave-barrier.observe-loop",
+                    wave_fixture_contract("loop"),
+                ),
+            ],
+            read_views: vec![GameplayReadViewRequirement {
+                view: wave_fixture_contract("view"),
+                provider_id: owner.provider_id.clone(),
+                kind: GameplayReadViewKind::ModuleNamed,
+                fields: vec!["value".to_owned()],
+                selector_capabilities: vec![GameplayReadSelectorCapability::ModuleStateScope],
+                max_items: 1,
+            }],
+            proposal_kinds: Vec::new(),
+            state_schemas: vec![GameplayOwnedSchemaDeclaration {
+                schema: wave_fixture_contract("state"),
+                owner: owner.clone(),
+            }],
+            fact_schemas: vec![GameplayOwnedSchemaDeclaration {
+                schema: wave_fixture_contract("fact"),
+                owner: owner.clone(),
+            }],
+            ordering: Vec::new(),
+            budget: GameplayExecutionBudget {
+                max_waves: 2,
+                max_events_per_root: 8,
+                max_proposals_per_root: 1,
+                max_invocations_per_root: 8,
+                max_payload_bytes_per_root: 8_192,
+            },
+            deterministic_requirements: vec!["canonical-json".to_owned()],
+            source_hash: "sha256:fixture-wave-barrier-source".to_owned(),
+        };
+        let configuration_metadata = GameplayConfigurationSchemaMetadata {
+            module_id: WAVE_FIXTURE_MODULE_ID.to_owned(),
+            configuration: wave_fixture_contract("configuration"),
+            codec_id: "codec.fixture-wave-barrier.configuration".to_owned(),
+            fields: vec![GameplayConfigurationFieldMetadata {
+                name: "initialValue".to_owned(),
+                value_type: "u64".to_owned(),
+                required: true,
+            }],
+        };
+        let event_codec = |event: GameplayContractRef, codec_id: &str| {
+            GameplayEventCodecRegistration::typed(TypedGameplayEventCodec::new(
+                GameplayEventSchemaDeclaration {
+                    event,
+                    codec_id: codec_id.to_owned(),
+                },
+                |value: &u64| serde_json::to_vec(value).map_err(|error| error.to_string()),
+                |bytes| serde_json::from_slice(bytes).map_err(|error| error.to_string()),
+            ))
+        };
+        GameplayStaticModuleProvider::linked_from_manifest(manifest, WaveFixtureBehavior)
+            .event_codec(event_codec(
+                wave_fixture_contract("root"),
+                "codec.fixture-wave-barrier.root",
+            ))
+            .event_codec(event_codec(
+                wave_fixture_contract("loop"),
+                "codec.fixture-wave-barrier.loop",
+            ))
+            .state_owner(GameplayStateOwnerRegistration {
+                schema: wave_fixture_contract("state"),
+                owner: owner.clone(),
+            })
+            .state_owner(GameplayStateOwnerRegistration {
+                schema: wave_fixture_contract("fact"),
+                owner,
+            })
+            .state_adapter(GameplayModuleStateRegistration::typed(
+                WaveFixtureStateAdapter,
+            ))
+            .read_view_provider(GameplayReadViewProviderRegistration {
+                view: wave_fixture_contract("view"),
+                provider_id: wave_fixture_owner().provider_id,
+                kind: GameplayReadViewKind::ModuleNamed,
+                fields: vec!["value".to_owned()],
+                selector_capabilities: vec![GameplayReadSelectorCapability::ModuleStateScope],
+                max_items: 1,
+                ordering: "singleValue".to_owned(),
+            })
+            .configuration_schema(configuration_metadata.clone())
+            .configuration_codec(GameplayConfigurationCodecRegistration::typed::<
+                WaveFixtureConfiguration,
+            >(configuration_metadata))
+    }
+
+    fn wave_fixture_host_input() -> GameplayRuntimeHostInput {
+        let canonical_config = serde_json::to_vec(&WaveFixtureConfiguration { initial_value: 0 })
+            .expect("wave fixture configuration serializes");
+        let configuration = GameplayModuleConfiguration {
+            configuration_id: "fixture.wave-barrier.default".to_owned(),
+            module: wave_fixture_module_ref(),
+            configuration: wave_fixture_contract("configuration"),
+            codec_id: "codec.fixture-wave-barrier.configuration".to_owned(),
+            config_hash: gameplay_module_payload_hash(&canonical_config),
+            canonical_config,
+        };
+        let binding = GameplayModuleBinding {
+            binding_id: "fixture.wave-barrier.session".to_owned(),
+            module_id: WAVE_FIXTURE_MODULE_ID.to_owned(),
+            configuration_id: configuration.configuration_id.clone(),
+            state_schema: wave_fixture_contract("state"),
+            target: GameplayModuleBindingTarget::Session,
+            required_reads: Vec::new(),
+            output_contracts: vec![wave_fixture_contract("loop")],
+            enabled: true,
+        };
+        let mut bindings = GameplayModuleBindingRegistryBuilder::new();
+        bindings.configuration(configuration).binding(binding);
+        let mut composition = GameplayStaticCompositionBuilder::new();
+        composition.add_provider(wave_fixture_provider());
+        GameplayRuntimeHostInput {
+            bundle: bundle(),
+            composition: composition.build().expect("wave fixture composition"),
+            bindings: bindings.build(),
+            entity_targets: GameplayBindingEntityTargets::new(),
+            spatial_entities: Vec::new(),
+            declared_reads: vec![GameplayRuntimeDeclaredReadPlan {
+                module_id: WAVE_FIXTURE_MODULE_ID.to_owned(),
+                invocation_id: "fixture.wave-barrier.observe-loop".to_owned(),
+                requests: vec![GameplayReadRequest {
+                    request_id: "prior-module-state".to_owned(),
+                    view: wave_fixture_contract("view"),
+                    fields: vec!["value".to_owned()],
+                    selector: GameplayReadSelector::ModuleNamed {
+                        scope: GameplayModuleStateScope::Session,
+                    },
+                }],
+            }],
+            triggers: Vec::new(),
+            scheduler: empty_scheduler_definition(),
+        }
+    }
+
+    fn wave_fixture_root_event() -> GameplayEventEnvelope {
+        let canonical_payload = serde_json::to_vec(&0_u64).expect("root payload serializes");
+        GameplayEventEnvelope {
+            event_id: "fixture.wave-barrier.root-event".to_owned(),
+            event: wave_fixture_contract("root"),
+            tick: 1,
+            root_sequence: 1,
+            wave: 0,
+            event_sequence: 0,
+            phase: GameplayEventPhase::PostCommit,
+            emitter: protocol_game_extension::GameplayEmitterRef::Owner {
+                owner_id: wave_fixture_owner().owner_id,
+            },
+            causation: protocol_game_extension::GameplayCausationRef {
+                root_id: "fixture.wave-barrier.root".to_owned(),
+                parent_event_id: None,
+                decision_id: None,
+            },
+            source: None,
+            subjects: Vec::new(),
+            targets: Vec::new(),
+            scope: None,
+            tags: Vec::new(),
+            payload_hash: gameplay_module_payload_hash(&canonical_payload),
+            canonical_payload,
+        }
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1671,6 +2134,77 @@ mod tests {
             .unwrap()
             .text
             .contains("triggerSnapshot"));
+    }
+
+    #[test]
+    fn later_wave_rejection_restores_pre_root_module_state_and_barrier_evidence() {
+        let mut host = GameplayRuntimeHost::activate(wave_fixture_host_input()).unwrap();
+        let state_before = host.readout().module_state_hash;
+
+        let reaction = host
+            .observe_with_source_facts(wave_fixture_root_event(), Vec::new())
+            .expect("Observe rejection is represented by its reaction receipt");
+
+        assert!(!reaction.observe.accepted());
+        assert!(
+            reaction.observe.diagnostics.iter().any(|diagnostic| {
+                diagnostic.code
+                    == rule_gameplay_fabric::GameplayRuntimeDiagnosticCode::WaveBudgetExceeded
+            }),
+            "{:#?}",
+            reaction.observe.diagnostics
+        );
+        assert_eq!(reaction.observe.wave_barriers.len(), 2);
+        assert_eq!(
+            reaction.observe.wave_barriers[0].state_after,
+            reaction.observe.wave_barriers[1].state_before
+        );
+        assert_ne!(
+            reaction.observe.wave_barriers[0]
+                .state_before
+                .module_state_hash,
+            reaction.observe.wave_barriers[1]
+                .state_after
+                .module_state_hash
+        );
+
+        assert_eq!(host.readout().module_state_hash, state_before);
+        assert_eq!(reaction.frame.state_hash_before, state_before);
+        assert_eq!(reaction.frame.state_hash_after, state_before);
+        let state = host.module_state_readouts();
+        assert_eq!(state.len(), 1);
+        assert_eq!(state[0].revision, 0);
+
+        let snapshot = host.compose_snapshot().expect("rejected frame snapshots");
+        let restored = GameplayRuntimeHost::restore(wave_fixture_host_input(), &snapshot.text)
+            .expect("rejected frame restores");
+        assert_eq!(restored.readout().module_state_hash, state_before);
+        assert_eq!(
+            restored.reaction_frames(),
+            std::slice::from_ref(&reaction.frame)
+        );
+        let rollback_golden = format!(
+            "outcome=rejected\ndiagnostic=WaveBudgetExceeded\nbarriers={}\nfirst_barrier_module_changed={}\nsecond_barrier_module_changed={}\nroot_state_restored={}\nsnapshot_state_restored={}\n",
+            restored.reaction_frames()[0].wave_barriers.len(),
+            restored.reaction_frames()[0].wave_barriers[0]
+                .state_before
+                .module_state_hash
+                != restored.reaction_frames()[0].wave_barriers[0]
+                    .state_after
+                    .module_state_hash,
+            restored.reaction_frames()[0].wave_barriers[1]
+                .state_before
+                .module_state_hash
+                != restored.reaction_frames()[0].wave_barriers[1]
+                    .state_after
+                    .module_state_hash,
+            reaction.frame.state_hash_before == reaction.frame.state_hash_after,
+            restored.readout().module_state_hash == state_before,
+        );
+        assert_eq!(
+            rollback_golden,
+            include_str!("fixtures/rejected-root-wave-rollback.golden")
+        );
     }
 
     #[test]
