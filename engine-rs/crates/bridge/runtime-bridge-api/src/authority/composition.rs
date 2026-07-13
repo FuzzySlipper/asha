@@ -4,7 +4,7 @@ use gameplay_runtime_host::{
     GameplayDecisionMoment, GameplayDecisionReceipt, GameplayRuntimeDecisionOwner,
     GameplayRuntimeHost, GameplayRuntimeHostError, GameplayRuntimeHostReadout,
     GameplayRuntimePrefabBootstrap, GameplayRuntimePrefabInteractionIntent,
-    GameplayRuntimeProjectInput, GameplayRuntimeSchedulerCommand,
+    GameplayRuntimeProjectInput, GameplayRuntimeResetCheckpoint, GameplayRuntimeSchedulerCommand,
     GameplayRuntimeSchedulerCommandReceipt, GameplayRuntimeSchedulerRoutingReceipt,
     ScheduledActionId,
 };
@@ -56,6 +56,7 @@ struct RestoredCompositionState {
     fps_seed: Option<FpsRuntimeSessionLoadRequest>,
     fps_epoch: u64,
     base_entities: EntityStore,
+    gameplay_reset_checkpoint: GameplayRuntimeResetCheckpoint,
 }
 
 impl StaticRuntimeSessionBuilder {
@@ -109,6 +110,7 @@ impl StaticRuntimeSessionBuilder {
     }
 
     pub fn build(mut self) -> Result<EngineBridge, StaticRuntimeSessionCompositionError> {
+        let fresh_reset_checkpoint = self.gameplay_host.checkpoint_reset_state();
         let entities = self.gameplay_host.take_entity_authority()?;
         let mut bridge = EngineBridge::new();
         bridge.scene.entities = entities;
@@ -116,12 +118,15 @@ impl StaticRuntimeSessionBuilder {
         match self.restored {
             Some(restored) => {
                 bridge.gameplay.static_gameplay_base_entities = Some(restored.base_entities);
+                bridge.gameplay.static_gameplay_reset_checkpoint =
+                    Some(restored.gameplay_reset_checkpoint);
                 bridge.gameplay.fps_session = restored.fps_session;
                 bridge.gameplay.fps_seed = restored.fps_seed;
                 bridge.gameplay.fps_epoch = restored.fps_epoch;
             }
             None => {
                 bridge.gameplay.static_gameplay_base_entities = Some(bridge.scene.entities.clone());
+                bridge.gameplay.static_gameplay_reset_checkpoint = Some(fresh_reset_checkpoint);
             }
         }
         Ok(bridge)
@@ -154,6 +159,7 @@ pub struct ComposedRuntimeSessionCheckpoint {
     fps_seed: Option<FpsRuntimeSessionLoadRequest>,
     fps_epoch: u64,
     base_entities: EntityStore,
+    gameplay_reset_checkpoint: GameplayRuntimeResetCheckpoint,
     readout: ComposedRuntimeSessionReadout,
 }
 
@@ -195,6 +201,7 @@ impl ComposedRuntimeSessionCheckpoint {
             fps_seed: self.fps_seed.clone(),
             fps_epoch: self.fps_epoch,
             base_entities: self.base_entities.clone(),
+            gameplay_reset_checkpoint: self.gameplay_reset_checkpoint.clone(),
         }
     }
 }
@@ -444,6 +451,11 @@ impl EngineBridge {
                 .static_gameplay_base_entities
                 .clone()
                 .unwrap_or_default(),
+            gameplay_reset_checkpoint: self
+                .gameplay
+                .static_gameplay_reset_checkpoint
+                .clone()
+                .expect("composed RuntimeSession retains its activation reset checkpoint"),
             readout,
         })
     }

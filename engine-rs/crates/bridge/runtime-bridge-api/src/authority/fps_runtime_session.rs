@@ -111,6 +111,12 @@ impl EngineBridge {
             .unwrap_or_default();
         let loaded =
             load_fps_project_bundle_into(&mut entities, input).map_err(Self::fps_runtime_error)?;
+        if let Some(checkpoint) = self.gameplay.static_gameplay_reset_checkpoint.clone() {
+            self.with_static_gameplay_runtime("load_fps_runtime_session", move |host| {
+                host.restore_reset_state(checkpoint)
+            })?
+            .expect("composed gameplay reset checkpoint requires a static gameplay host");
+        }
         self.scene.entities = entities;
         self.gameplay.fps_session = Some(loaded);
         self.gameplay.fps_seed = Some(request);
@@ -399,6 +405,12 @@ impl EngineBridge {
             .unwrap_or_default();
         let loaded =
             load_fps_project_bundle_into(&mut entities, input).map_err(Self::fps_runtime_error)?;
+        if let Some(checkpoint) = self.gameplay.static_gameplay_reset_checkpoint.clone() {
+            self.with_static_gameplay_runtime("restart_fps_runtime_session", move |host| {
+                host.restore_reset_state(checkpoint)
+            })?
+            .expect("composed gameplay reset checkpoint requires a static gameplay host");
+        }
         self.scene.entities = entities;
         self.gameplay.fps_session = Some(loaded);
         self.gameplay.fps_epoch = self.gameplay.fps_epoch.saturating_add(1);

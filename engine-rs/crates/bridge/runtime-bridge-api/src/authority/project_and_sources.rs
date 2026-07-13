@@ -57,6 +57,7 @@ impl EngineBridge {
         self.gameplay.fps_seed = None;
         self.gameplay.fps_epoch = 0;
         self.gameplay.static_gameplay_host = None;
+        self.gameplay.static_gameplay_reset_checkpoint = None;
         self.gameplay.static_gameplay_base_entities = None;
         self.gameplay.game_rule_modules.clear();
         self.gameplay.game_rule_active_modifiers.clear();

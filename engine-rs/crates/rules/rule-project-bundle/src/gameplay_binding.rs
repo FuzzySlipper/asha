@@ -25,10 +25,10 @@ use protocol_game_extension::{
 };
 use rule_gameplay_fabric::{
     adapt_trigger_overlap_fact, gameplay_module_payload_hash, FrozenGameplayViews,
-    GameplayFabricCoordinator, GameplayModuleInitialization, GameplayModuleStateError,
-    GameplayModuleStateScope, GameplayModuleStateStore, GameplayObserveReceipt,
-    GameplayOwnerEventContext, GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput,
-    GameplayProposalRouter, GameplayRuntimeLimits, GameplayViewSource,
+    GameplayFabricCoordinator, GameplayModuleInitialization, GameplayModuleStateCheckpoint,
+    GameplayModuleStateError, GameplayModuleStateScope, GameplayModuleStateStore,
+    GameplayObserveReceipt, GameplayOwnerEventContext, GameplayOwnerRoutingCall,
+    GameplayOwnerRoutingOutput, GameplayProposalRouter, GameplayRuntimeLimits, GameplayViewSource,
 };
 use rule_trigger_volume::{
     KinematicTriggerDefinition, TriggerReconcileCause, TriggerReconcileReceipt,
@@ -190,6 +190,22 @@ impl GameplayBoundProjectBundleSession {
 
     pub fn trigger_rule(&self) -> &TriggerVolumeRule {
         &self.triggers
+    }
+
+    /// Restore the mutable gameplay cells captured when the enclosing static
+    /// RuntimeSession was activated. Immutable registry, invocation, binding,
+    /// and configuration topology remains installed.
+    #[doc(hidden)]
+    pub fn restore_runtime_state(
+        &mut self,
+        module_state: GameplayModuleStateCheckpoint,
+        trigger_snapshot: TriggerVolumeSnapshot,
+    ) -> Result<(), GameplayBindingActivationError> {
+        let triggers = TriggerVolumeRule::from_snapshot(trigger_snapshot)
+            .map_err(|error| GameplayBindingActivationError::Trigger(error.diagnostics))?;
+        self.module_state.restore_checkpoint(module_state);
+        self.triggers = triggers;
+        Ok(())
     }
 
     /// Install a complete authored trigger-definition set atomically. Geometry

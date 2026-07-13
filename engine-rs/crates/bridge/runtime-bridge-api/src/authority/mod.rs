@@ -140,6 +140,7 @@ struct BridgeGameplayState {
     fps_seed: Option<FpsRuntimeSessionLoadRequest>,
     fps_epoch: u64,
     static_gameplay_host: Option<gameplay_runtime_host::GameplayRuntimeHost>,
+    static_gameplay_reset_checkpoint: Option<gameplay_runtime_host::GameplayRuntimeResetCheckpoint>,
     static_gameplay_base_entities: Option<EntityStore>,
     game_rule_modules: BTreeMap<String, GameRuleModuleManifest>,
     game_rule_active_modifiers: Vec<GameRuleModifierState>,
