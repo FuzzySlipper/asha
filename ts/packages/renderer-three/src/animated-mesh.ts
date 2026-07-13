@@ -154,7 +154,7 @@ export class AnimatedMeshRegistry {
         `createAnimatedMeshInstance: material overrides are not implemented for animated mesh ${instance.asset}`,
       );
     }
-    const object = SkeletonUtils.clone(record.resource.scene);
+    const object = cloneAnimatedMeshInstance(record.resource.scene);
     const mixer = new THREE.AnimationMixer(object);
     const actions = new Map<string, THREE.AnimationAction>();
     for (const clip of record.asset.clips) {
@@ -266,6 +266,22 @@ export class AnimatedMeshRegistry {
     }
     return instance;
   }
+}
+
+function cloneAnimatedMeshInstance(source: THREE.Object3D): THREE.Object3D {
+  const instance = SkeletonUtils.clone(source);
+  instance.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (mesh.geometry instanceof THREE.BufferGeometry) {
+      mesh.geometry = mesh.geometry.clone();
+    }
+    if (Array.isArray(mesh.material)) {
+      mesh.material = mesh.material.map((material) => material.clone());
+    } else if (mesh.material instanceof THREE.Material) {
+      mesh.material = mesh.material.clone();
+    }
+  });
+  return instance;
 }
 
 function assertClipDescriptors(asset: AnimatedMeshAsset, resource: AnimatedMeshResource): void {

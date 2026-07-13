@@ -75,6 +75,31 @@ void test('destroy removes the node and frees the handle', () => {
   assert.ok(!r.has(renderHandle(1)));
 });
 
+void test('renderer disposal releases nested retained resources and all handles', () => {
+  const renderer = new ThreeRenderer();
+  renderer.applyDiff(createDiff(1, cubeNode('parent')));
+  renderer.applyDiff({
+    op: 'create',
+    handle: renderHandle(2),
+    parent: renderHandle(1),
+    node: cubeNode('child'),
+  });
+  const parentGeometry = (renderer.objectFor(renderHandle(1)) as import('three').Mesh).geometry;
+  const childGeometry = (renderer.objectFor(renderHandle(2)) as import('three').Mesh).geometry;
+  let parentDisposed = false;
+  let childDisposed = false;
+  parentGeometry.addEventListener('dispose', () => { parentDisposed = true; });
+  childGeometry.addEventListener('dispose', () => { childDisposed = true; });
+
+  renderer.dispose();
+  renderer.dispose();
+
+  assert.equal(renderer.handleCount, 0);
+  assert.equal(parentDisposed, true);
+  assert.equal(childDisposed, true);
+  assert.equal(renderer.scene.children.length, 0);
+});
+
 void test('duplicate create and stale/unknown handles throw', () => {
   const r = new ThreeRenderer();
   r.applyDiff(createDiff(1, cubeNode()));
@@ -1015,6 +1040,55 @@ void test('animated mesh playback is command-selected and advances through rende
   assert.deepEqual(r.animatedMeshPlayback(handle)?.diagnostics, ['animation_stopped']);
 });
 
+void test('animated instances own disposable geometry without invalidating sibling channels or source resources', () => {
+  const asset = animatedMeshAsset({ clips: [], defaultClip: null });
+  const sourceScene = new THREE.Group();
+  const sourceGeometry = new THREE.BoxGeometry(1, 1, 1);
+  const sourceMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+  sourceScene.add(new THREE.Mesh(sourceGeometry, sourceMaterial));
+  const source = new MapAnimatedMeshAssetSource([{
+    asset: asset.asset,
+    contentHash: asset.contentHash,
+    scene: sourceScene,
+    clips: [],
+  }]);
+  const renderer = new ThreeRenderer({ animatedMeshSource: source });
+  renderer.applyDiff({ op: 'defineAnimatedMesh', asset });
+  for (const handle of [renderHandle(4201), renderHandle(4202)]) {
+    renderer.applyDiff({
+      op: 'createAnimatedMeshInstance',
+      handle,
+      parent: null,
+      instance: {
+        asset: asset.asset,
+        transform: { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+        materialOverrides: [],
+        playback: null,
+        metadata: { source: null, tags: [], label: `animated-${handle}` },
+      },
+    });
+  }
+  const firstGeometry = firstMesh(renderer.objectFor(renderHandle(4201))!).geometry;
+  const secondGeometry = firstMesh(renderer.objectFor(renderHandle(4202))!).geometry;
+  let firstDisposed = false;
+  let secondDisposed = false;
+  let sourceDisposed = false;
+  firstGeometry.addEventListener('dispose', () => { firstDisposed = true; });
+  secondGeometry.addEventListener('dispose', () => { secondDisposed = true; });
+  sourceGeometry.addEventListener('dispose', () => { sourceDisposed = true; });
+
+  assert.notEqual(firstGeometry, secondGeometry);
+  assert.notEqual(firstGeometry, sourceGeometry);
+  renderer.applyDiff({ op: 'destroy', handle: renderHandle(4201) });
+  assert.equal(firstDisposed, true);
+  assert.equal(secondDisposed, false);
+  assert.equal(sourceDisposed, false);
+
+  renderer.dispose();
+  assert.equal(secondDisposed, true);
+  assert.equal(sourceDisposed, false);
+});
+
 void test('animated mesh adapter fails closed for missing resources and clips', () => {
   const asset = animatedMeshAsset();
   const missingResource = new ThreeRenderer();
@@ -1251,3 +1325,14 @@ void test('create/replace/destroy/invalidate cycle leaves no leaked geometry and
   assert.ok(!r.has(handles[1]!));
   assert.ok(r.has(handles[2]!));
 });
+
+function firstMesh(root: THREE.Object3D): THREE.Mesh {
+  let selected: THREE.Mesh | null = null;
+  root.traverse((object) => {
+    if (selected === null && object instanceof THREE.Mesh) {
+      selected = object;
+    }
+  });
+  assert.ok(selected);
+  return selected;
+}

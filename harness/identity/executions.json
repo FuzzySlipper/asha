@@ -114,7 +114,7 @@
       "id": "ts.renderer-host.tests",
       "artifactId": "evidence.execution.renderer-host-tests",
       "command": ["pnpm", "--dir", "ts", "--filter", "@asha/renderer-host", "test"],
-      "inputs": ["ts/package.json", "ts/packages/renderer-host", "ts/packages/render-projection"],
+      "inputs": ["ts/package.json", "ts/packages/renderer-host", "ts/packages/renderer-three", "ts/packages/render-projection"],
       "providerIds": ["@asha/renderer-host"]
     },
     {

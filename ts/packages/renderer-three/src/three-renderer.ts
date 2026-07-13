@@ -251,6 +251,24 @@ export class ThreeRenderer {
     return this.#handles.size;
   }
 
+  /** Release every retained renderer object and GPU-owned resource. */
+  dispose(): void {
+    const handlesByDepth = [...this.#handles.entries()]
+      .sort((left, right) => objectDepth(right[1].object) - objectDepth(left[1].object))
+      .map(([handle]) => handle);
+    for (const handle of handlesByDepth) {
+      if (this.#handles.has(handle)) {
+        this.#destroy({ op: 'destroy', handle });
+      }
+    }
+    for (const definition of this.#staticMeshes.values()) {
+      definition.geometry.dispose();
+      definition.materials.forEach((material) => material.dispose());
+    }
+    this.#staticMeshes.clear();
+    this.scene.clear();
+  }
+
   /** The Three.js object for a handle, for inspection/tests. */
   objectFor(handle: RenderHandle): THREE.Object3D | undefined {
     return this.#handles.get(handle)?.object;
@@ -1393,6 +1411,16 @@ function disposeObject(object: THREE.Object3D): void {
 
 function disposeObjectRecursive(object: THREE.Object3D): void {
   object.traverse((child) => disposeObject(child));
+}
+
+function objectDepth(object: THREE.Object3D): number {
+  let depth = 0;
+  let parent = object.parent;
+  while (parent !== null) {
+    depth += 1;
+    parent = parent.parent;
+  }
+  return depth;
 }
 
 function animatedMeshError(cause: unknown): RenderApplyError {

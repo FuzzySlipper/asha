@@ -42,6 +42,50 @@
         "selector": ["ts/packages/browser-host/src/host.ts"],
         "delivery": ["ts/packages/browser-host/src/index.test.ts"]
       }
+    },
+    {
+      "id": "asha-studio.renderer-host",
+      "kind": "typescriptPackage",
+      "identity": "@asha/renderer-host",
+      "symbols": [
+        "ASHA_RENDERER_EDITOR_VIEWPORT_COMPATIBILITY_VERSION",
+        "ASHA_RENDERER_HOST_COMPATIBILITY_VERSION",
+        "AshaRendererEditorViewport",
+        "mountAshaRendererEditorViewport"
+      ],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/renderer-host/src/editor-viewport.ts"],
+        "provider": ["ts/packages/renderer-three/src/editor-viewport-backend.ts"],
+        "selector": ["ts/packages/renderer-host/src/editor-viewport.ts"],
+        "delivery": ["ts/packages/renderer-host/src/editor-viewport.test.ts"]
+      }
+    },
+    {
+      "id": "asha-studio.editor-viewport",
+      "kind": "projectionChannel",
+      "identity": "renderer.editor-viewport",
+      "provider": "@asha/renderer-host",
+      "symbols": [
+        "AshaRendererEditorViewportCamera",
+        "AshaRendererEditorViewportChannelHandle",
+        "AshaRendererEditorViewportPickHint"
+      ],
+      "fields": [
+        "channel",
+        "distance",
+        "handle",
+        "normal",
+        "position",
+        "sourceTrace"
+      ],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/contracts/src/generated/render.ts"],
+        "provider": ["ts/packages/renderer-host/src/editor-viewport.ts"],
+        "selector": ["ts/packages/renderer-host/src/editor-viewport.ts"],
+        "delivery": ["ts/packages/renderer-host/src/editor-viewport.test.ts"]
+      }
     }
   ]
 }

@@ -158,6 +158,46 @@
         "evidenceArtifactId": "evidence.public.camera-controller.pivot-camera-distance-is-clamped-by-runtime-terrain-and-can-fail-closed"
       },
       {
+        "id": "assertion.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
+        "probeId": "public.editor-viewport-backend",
+        "evidenceArtifactId": "evidence.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection"
+      },
+      {
+        "id": "assertion.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
+        "probeId": "public.editor-viewport-backend",
+        "evidenceArtifactId": "evidence.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels"
+      },
+      {
+        "id": "assertion.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells",
+        "probeId": "public.editor-viewport-backend",
+        "evidenceArtifactId": "evidence.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells"
+      },
+      {
+        "id": "assertion.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
+        "probeId": "public.editor-viewport",
+        "evidenceArtifactId": "evidence.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints"
+      },
+      {
+        "id": "assertion.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
+        "probeId": "public.editor-viewport",
+        "evidenceArtifactId": "evidence.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels"
+      },
+      {
+        "id": "assertion.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal",
+        "probeId": "public.editor-viewport",
+        "evidenceArtifactId": "evidence.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal"
+      },
+      {
+        "id": "assertion.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
+        "probeId": "public.editor-viewport",
+        "evidenceArtifactId": "evidence.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact"
+      },
+      {
+        "id": "assertion.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types",
+        "probeId": "public.editor-viewport",
+        "evidenceArtifactId": "evidence.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types"
+      },
+      {
         "id": "assertion.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
         "probeId": "public.input-pause-demo",
         "evidenceArtifactId": "evidence.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities"
@@ -437,6 +477,13 @@
         "providerId": "@asha/runtime-session",
         "publicSurfaceId": "asha-gameplay-runtime-host",
         "sourceHash": "sha256:853480e69ccd29a1acce02e86e72a900dcfcbb94a23bac3ef6235e07100471ee"
+      },
+      {
+        "id": "renderer.editor-viewport",
+        "consumerRequirementId": "asha-studio.editor-viewport",
+        "providerId": "@asha/renderer-host",
+        "publicSurfaceId": "@asha/renderer-host",
+        "sourceHash": "sha256:5e736401e30fe30b94867be3798999cd945d2dc4373cbe06cc07b0f22e958b83"
       },
       {
         "id": "renderer.projection-pick",
@@ -743,6 +790,26 @@
         "requiredLevel": "delivery",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
         "sourceHash": "sha256:1ce96010968aa0a2a27aee9adfc999d7066b50a14120a0ee1c42ffab92022d90"
+      },
+      {
+        "id": "asha-studio.editor-viewport",
+        "consumerId": "asha-studio.native-authority-workflow",
+        "identity": "renderer.editor-viewport",
+        "kind": "projectionChannel",
+        "providerId": "@asha/renderer-host",
+        "requiredLevel": "delivery",
+        "source": "harness/consumer-needs/manifests/asha-studio.json",
+        "sourceHash": "sha256:545936f44cca49825504147573f99e4b560a449e0936f04b2cb1316f6a4a65f0"
+      },
+      {
+        "id": "asha-studio.renderer-host",
+        "consumerId": "asha-studio.native-authority-workflow",
+        "identity": "@asha/renderer-host",
+        "kind": "typescriptPackage",
+        "providerId": null,
+        "requiredLevel": "delivery",
+        "source": "harness/consumer-needs/manifests/asha-studio.json",
+        "sourceHash": "sha256:e04bb66f1160bd72125647152abda1264e8ffc6dace7f099dd81f6dbf60e0ce0"
       },
       {
         "id": "pulse.configuration",
@@ -1174,6 +1241,62 @@
         "sourceHash": "sha256:01674b416cf5d4e3f5b68ccb62c928db5258b1ba0da2badf603f46284145fee1"
       },
       {
+        "id": "evidence.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+        "token": "one missing editor resource fails closed without degrading healthy runtime projection",
+        "sourceHash": "sha256:8af81bb973f615506472d9e7513e30dbd1f269535de16bfd47679c5a2f2a6c82"
+      },
+      {
+        "id": "evidence.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+        "token": "real projection channel replacement is atomic and does not disturb sibling channels",
+        "sourceHash": "sha256:4ea3f4a5347ddad3d09a9084bcd3f485d099d2ae260ebe7534981a653bdbcc65"
+      },
+      {
+        "id": "evidence.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+        "token": "real projection channels isolate equal handles in fixed runtime authored and overlay cells",
+        "sourceHash": "sha256:d9aa3051f1a6bb0c4328468a03a372f962943d27fbc3c4845ba6b13699967251"
+      },
+      {
+        "id": "evidence.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+        "token": "editor viewport accepts stored and runtime cameras and maps pixel picks to typed logical hints",
+        "sourceHash": "sha256:aff1b8b37da011491894137d199320f7fc54ab019e19005d88065c3f5faa82d9"
+      },
+      {
+        "id": "evidence.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+        "token": "editor viewport isolates equal handles across deterministic runtime authored and overlay channels",
+        "sourceHash": "sha256:5f3ba1eacb802c28672033a6046cdce93e89362ef10f0cfa87d215b2dd1b80d8"
+      },
+      {
+        "id": "evidence.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+        "token": "editor viewport owns bounded lifecycle resize clear and channel disposal",
+        "sourceHash": "sha256:8e4d5899cd31713fe5a3412360e56104068e34123e45b050268fa26000eada1c"
+      },
+      {
+        "id": "evidence.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+        "token": "one degraded resource channel leaves healthy runtime and overlay projections intact",
+        "sourceHash": "sha256:746660a8ca9f583c25b485b57e53e130989d6b118c387b41669b958897a18bf5"
+      },
+      {
+        "id": "evidence.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/renderer-host/src/index.test.ts",
+        "token": "renderer-host declarations do not expose concrete Three.js backend types",
+        "sourceHash": "sha256:a19543119f5f00546ceb6623c5281f09168a4917875b6f52aae4925e2bf041f7"
+      },
+      {
         "id": "evidence.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
         "kind": "sourceAssertion",
         "path": "ts/packages/browser-host/src/index.test.ts",
@@ -1418,7 +1541,7 @@
       {
         "id": "ts.renderer-host.tests",
         "artifactId": "evidence.execution.renderer-host-tests",
-        "sourceHash": "sha256:84eb5dcce305098bea74ec78929d77654fe529a4a2456f349a941f8abaa3b996"
+        "sourceHash": "sha256:c7dd7e1b70e7f1f55d4c0e50987453964d68fc6a302bbfe6238b46d22eb3779b"
       },
       {
         "id": "ts.renderer-three.tests",
@@ -1954,6 +2077,16 @@
         "sourceHash": "sha256:41cca5d48de371543e66c01ba4e96be037dec98804b54d85383f7c0bcd4b5c21"
       },
       {
+        "id": "public.editor-viewport",
+        "suiteId": "public.editor-viewport",
+        "sourceHash": "sha256:ac6ddf263414647fbf6427eb508a9ba656ce78581e71ccbfa83b44276521c5af"
+      },
+      {
+        "id": "public.editor-viewport-backend",
+        "suiteId": "public.editor-viewport-backend",
+        "sourceHash": "sha256:cc59eb84338d2742cb74e120a119dbc2e477955330ded786504f7255ad43efdf"
+      },
+      {
         "id": "public.input-pause-demo",
         "suiteId": "public.input-pause-demo",
         "sourceHash": "sha256:842b201053d1aed662424f4b8698ac2c68776d005b77fecd2f32e9a66d1f57b1"
@@ -2196,6 +2329,9 @@
             }
           },
           {
+            "consumerRequirementId": "asha-studio.editor-viewport"
+          },
+          {
             "consumerRequirementId": "asha-demo.integrated-feedback-projection"
           },
           {
@@ -2212,6 +2348,13 @@
             "evidence": {
               "path": "ts/packages/renderer-host/src/animation-host.ts",
               "token": "export class AshaAnimationHost"
+            }
+          },
+          {
+            "capabilityId": "renderer.editor-viewport",
+            "evidence": {
+              "path": "ts/packages/renderer-host/src/editor-viewport.ts",
+              "token": "export async function mountAshaRendererEditorViewport"
             }
           },
           {
@@ -2235,7 +2378,7 @@
             }
           }
         ],
-        "sourceHash": "sha256:106f497f37f0714c790383e80bf30e0f9924476a3d45b5afb29efdb8a750bd87"
+        "sourceHash": "sha256:d232c07f32735899a3a0dcb89efc4601b7240d10761da0cfe11eaf3baa691687"
       },
       {
         "id": "@asha/renderer-three",
@@ -2633,7 +2776,7 @@
         "id": "@asha/renderer-host",
         "kind": "typescript",
         "disposition": "preferred",
-        "sourceHash": "sha256:4230075f730b38f0ed85a7815e83a6a4e52c3a4b88e8e67f685340d0dcdfd3f4"
+        "sourceHash": "sha256:fe88b61400b27fbe67021bd83673a633811d2911896bf20e7fa52083dbf46767"
       },
       {
         "id": "@asha/renderer-three",
@@ -2812,6 +2955,18 @@
         "sourceHash": "sha256:2409c27c5442ce96ad15034caa996d080861999e5ff9ab2e0b0ff987cf27e973"
       },
       {
+        "id": "public.editor-viewport",
+        "executionId": "ts.renderer-host.tests",
+        "executionClass": "publicConsumer",
+        "sourceHash": "sha256:2b424013b8ad78fad021b77be248332b33441d59d41ab03aedb60ce5830a6e54"
+      },
+      {
+        "id": "public.editor-viewport-backend",
+        "executionId": "ts.renderer-three.tests",
+        "executionClass": "publicConsumer",
+        "sourceHash": "sha256:66fd6d30a3bd3618ce57e15cbd6a465b30307c46601b7af5f7ef94dda5b11588"
+      },
+      {
         "id": "public.input-pause-demo",
         "executionId": "gate.asha-demo-input-live",
         "executionClass": "publicConsumer",
@@ -2843,5 +2998,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185"
+  "catalogHash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc"
 }

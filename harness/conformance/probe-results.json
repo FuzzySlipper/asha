@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:5d4cf4534ca61c8ded483ada026a76f9a1401f047e1884a901adb39ed1c3493e",
+  "inventoryHash": "sha256:b2468a01ab65d22108adac2603a25236aa241de972dfee6e60088f7bd1d2686b",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185"
+    "hash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:0e7bdb19bfb7d15d525968c5ec6f977545a60b1a7c954a4fc2ebfedce8626eeb"
+      "hash": "sha256:466db46feb4c937d487f1aeab6a311d286a7d374139be0249ce9a029e100b7bf"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -18,7 +18,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:616fe174b7a81a5d6c81dbaf7d0daf8c4ba990658971c71bb366be9d6702cbf8"
+      "hash": "sha256:bdb22ae4623dc82bdecfa80fce571b1fc4c883d8ef26e08618d6e4105f774e3d"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -26,11 +26,11 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:668ca6ad26e07ef58f79bed9b6ff677f4f0f918afd2077e001dcd55db6c7cdf4"
+      "hash": "sha256:8f68d2ef477d99e3fc09c6d234ce0e4ec5d5bd43576e5a88758ebba693bd47ce"
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:e8bfcd5f111cff5407f6e601dc7474826c65ad9c5cfb207b548f59ebd58b9e65"
+      "hash": "sha256:e0f5e89a6b2a1614b473181c903b3224e896c388c655eda7f1399977ee8f8242"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
@@ -42,8 +42,8 @@
     "realOperationProbeCount": 71,
     "temporaryOperationExemptionCount": 0,
     "quarantinedOperationCount": 3,
-    "semanticProbeCount": 24,
-    "deliveryRequirementCount": 36,
+    "semanticProbeCount": 26,
+    "deliveryRequirementCount": 38,
     "publicSurfaceCount": 13
   },
   "operations": [
@@ -2341,6 +2341,30 @@
       "passed": true
     },
     {
+      "id": "public.editor-viewport",
+      "suite": "public.editor-viewport",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
+        "assertion.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
+        "assertion.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal",
+        "assertion.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
+        "assertion.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types"
+      ],
+      "passed": true
+    },
+    {
+      "id": "public.editor-viewport-backend",
+      "suite": "public.editor-viewport-backend",
+      "executionId": "ts.renderer-three.tests",
+      "assertionIds": [
+        "assertion.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
+        "assertion.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
+        "assertion.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells"
+      ],
+      "passed": true
+    },
+    {
       "id": "public.input-pause-demo",
       "suite": "public.input-pause-demo",
       "executionId": "gate.asha-demo-input-live",
@@ -2451,6 +2475,7 @@
       "disposition": "preferred",
       "probes": [
         "public.animation-projection",
+        "public.editor-viewport",
         "public.input-pause-demo",
         "public.integrated-feedback-projection"
       ]
@@ -2469,6 +2494,8 @@
         "public.animation-projection",
         "public.audio-projection",
         "public.billboard-projection",
+        "public.editor-viewport",
+        "public.editor-viewport-backend",
         "public.input-pause-demo",
         "public.integrated-feedback-projection",
         "public.particle-projection",

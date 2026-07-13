@@ -64,7 +64,7 @@ metadata while their consumer role is still being ratified.
 | `@asha/devtools` | `unstable` | `ts/packages/devtools/compatibility.json` | `devtools-protocol.v0` | Observational attach/readout protocol for tools and testing harnesses. |
 | `@asha/game-workspace` | `unstable` | `ts/packages/game-workspace/compatibility.json` | `game-workspace.v0` | Typed game/workspace manifest validation for consumer repos. |
 | `@asha/render-projection` | `unstable` | `ts/packages/render-projection/compatibility.json` | `render-projection.v0` | Renderer-neutral retained render-diff application model. |
-| `@asha/renderer-host` | `unstable` | `ts/packages/renderer-host/compatibility.json` | `renderer-host.v1` | Backend-neutral browser render surface host for demos. |
+| `@asha/renderer-host` | `unstable` | `ts/packages/renderer-host/compatibility.json` | `renderer-host.v1` | Backend-neutral browser render surface host for game and Studio/editor consumers. |
 | `@asha/ui-dom` | `unstable` | none | none | Render-agnostic UI projection/control descriptors; not authority. |
 
 Additional unstable package statuses:
@@ -73,7 +73,7 @@ Additional unstable package statuses:
 - `@asha/browser-host` is the unstable host surface for ASHA Game Projects and Studio native-authority workflows. It serves a built UI root, installs `globalThis.ashaRuntimeBridge` with provider kind `asha.runtime_bridge.native_rust_provider.v1`, isolates each browser Session and bridge client, and fails closed for missing, spoofed, stale, or disconnected providers instead of falling back to reference authority.
 - `@asha/editor-tools` is an unstable Studio/editor helper package. It is editor-local state only, not authority.
 - `@asha/runtime-session` is the unstable transport-neutral RuntimeSession contract package introduced by #4547 and completed as the facade owner by #5506. It owns `RuntimeSessionFacade`, capability contracts, runtime action intents, generated tunnel and combat/nav/encounter readouts, combat feedback projection, enemy policy proposal shapes, and ECRP render target identity. `@asha/runtime-bridge` constructs concrete adapters and owns transport access; it does not re-export the semantic session surface.
-- `@asha/renderer-host` is the unstable browser render surface host for human-facing demos. It exposes backend-neutral mount/lifecycle/projection handles and may use `@asha/renderer-three` internally while that remains the selected browser backend.
+- `@asha/renderer-host` is the unstable browser render surface host for human-facing games and Studio/editor workflows. It exposes backend-neutral mount/lifecycle/projection handles and may use `@asha/renderer-three` internally while that remains the selected browser backend.
 - `@asha/renderer-three` is an unstable Three.js implementation package for engine smoke/testing only. It is not the long-term public renderer contract; human-facing demos should use `@asha/renderer-host` for browser mounting and `@asha/render-projection` for renderer-neutral retained semantics.
 - `@asha/ui-dom` is an unstable render-agnostic UI projection/control descriptor package. It can expose root-level HUD/menu projection helpers, but it does not execute runtime commands or own DOM framework state.
 - Browser input ownership lives in `@asha/runtime-bridge` through `BrowserInputHost`, which attaches DOM listeners and submits normalized samples through the public RuntimeSession input surface. FPS and editor code consume named actions through `BrowserFpsResolvedActionConsumer` and `EditorResolvedInputConsumer`; they do not own key codes. Consumers must not replace this with demo-local WASD/mouse-look globals, renderer-three imports, bare Three.js controls, raw runtime transports, or generated internals.
@@ -778,7 +778,7 @@ Additive notes under `render-projection.v0`:
 
 ### `renderer-host.v1` - projection-only browser render host
 
-Status: unstable root-barrel package surface for browser demo renderer mounting.
+Status: unstable root-barrel package surface for browser game and Studio/editor renderer mounting.
 
 Breaking correction in #5747:
 
@@ -811,6 +811,23 @@ Consumer behavior:
 - Consumers treat pick results as transient projection hints. Render handles,
   labels, and tags are filters/evidence, never Entity or gameplay authority.
 - Concrete Three.js objects remain private behind the backend-neutral facade.
+
+Additive editor viewport in #5741:
+
+- `mountAshaRendererEditorViewport` adds the `editor-viewport.v0` product/editor
+  seam without changing the package marker. It owns mount, resize, render,
+  stop, disposal, camera realization, and pixel-coordinate picking.
+- Fixed `runtime`, `authored`, and `overlay` retained channels namespace equal
+  logical handles, preserve deterministic order, and expose bounded `apply`,
+  atomic `replace`, `clear`, snapshot/hash, and disposal behavior. Overlay
+  creates are restricted to the debug layer and render after a depth clear.
+- Stored editor cameras and current runtime-authority cameras use generated
+  pose/basis/projection vocabulary. Pick hints carry channel, logical handle,
+  source trace, position, normal, and distance but authorize nothing.
+- Missing resources or malformed frames reject only the affected channel and
+  retain its last accepted projection. Studio is now an approved consumer of
+  `@asha/renderer-host`, but remains forbidden from `@asha/renderer-three`, its
+  backend subpaths, and bare `three` imports. See `docs/editor-viewport.md`.
 
 ### `renderer-host.v0` - historical mixed interaction host
 

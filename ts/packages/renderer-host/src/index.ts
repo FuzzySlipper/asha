@@ -1,6 +1,36 @@
 // @asha/renderer-host public barrel.
 
 export * from './surface.js';
+export {
+  ASHA_RENDERER_EDITOR_VIEWPORT_CHANNEL_POLICIES,
+  ASHA_RENDERER_EDITOR_VIEWPORT_COMPATIBILITY_VERSION,
+  ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+  ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS,
+  mountAshaRendererEditorViewport,
+} from './editor-viewport.js';
+export type {
+  AshaRendererEditorViewport,
+  AshaRendererEditorViewportBufferSource,
+  AshaRendererEditorViewportCamera,
+  AshaRendererEditorViewportCameraReceipt,
+  AshaRendererEditorViewportCameraSource,
+  AshaRendererEditorViewportChannel,
+  AshaRendererEditorViewportChannelHandle,
+  AshaRendererEditorViewportChannelPolicy,
+  AshaRendererEditorViewportChannelReceipt,
+  AshaRendererEditorViewportChannelSnapshot,
+  AshaRendererEditorViewportDiagnostic,
+  AshaRendererEditorViewportDiagnosticCode,
+  AshaRendererEditorViewportOptions,
+  AshaRendererEditorViewportPickFilter,
+  AshaRendererEditorViewportPickHint,
+  AshaRendererEditorViewportPickReceipt,
+  AshaRendererEditorViewportPickRequest,
+  AshaRendererEditorViewportReadout,
+  AshaRendererEditorViewportSize,
+  AshaRendererEditorViewportSizeReceipt,
+  AshaRendererEditorViewportStatus,
+} from './editor-viewport.js';
 export { sampleCameraTransition } from './camera-transition.js';
 export {
   ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST,

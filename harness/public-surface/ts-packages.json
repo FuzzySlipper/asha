@@ -80,6 +80,7 @@
         "@asha/editor-tools",
         "@asha/game-workspace",
         "@asha/render-projection",
+        "@asha/renderer-host",
         "@asha/catalog-core",
         "@asha/ui-dom"
       ],
@@ -99,6 +100,9 @@
       "forbiddenSpecifierPatterns": [
         "@asha/*/src/*",
         "@asha/*/dist/generated/*",
+        "@asha/renderer-three/*",
+        "three",
+        "three/*",
         "engine-rs/crates/*"
       ]
     }
@@ -189,8 +193,8 @@
       "package": "@asha/renderer-host",
       "status": "unstable",
       "ownershipKey": "ts/packages/renderer-host",
-      "intendedConsumerRole": "Backend-neutral browser render surface plus generated audio, billboard, particle, and live telemetry projection hosts for demos; concrete renderer packages stay behind this facade.",
-      "allowedConsumerRoles": ["asha-demo"],
+      "intendedConsumerRole": "Backend-neutral browser render surface, editor viewport, and generated audio, billboard, particle, and live telemetry projection hosts; concrete renderer packages stay behind this facade.",
+      "allowedConsumerRoles": ["asha-demo", "asha-studio"],
       "compatibilityMarker": "renderer-host.v1",
       "changelog": "docs/consumer-compatibility.md#renderer-host-compatibility-log"
     },

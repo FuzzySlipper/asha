@@ -106,6 +106,16 @@
       "executionId": "ts.smoke.tests"
     },
     {
+      "id": "public.editor-viewport",
+      "executionClass": "publicConsumer",
+      "executionId": "ts.renderer-host.tests"
+    },
+    {
+      "id": "public.editor-viewport-backend",
+      "executionClass": "publicConsumer",
+      "executionId": "ts.renderer-three.tests"
+    },
+    {
       "id": "public.input-pause-demo",
       "executionClass": "publicConsumer",
       "executionId": "gate.asha-demo-input-live",
@@ -611,6 +621,94 @@
       "claims": [
         "atomicRejection",
         "publicProjectionReadout"
+      ]
+    },
+    {
+      "id": "public.editor-viewport",
+      "suite": "public.editor-viewport",
+      "evidence": [
+        {
+          "assertionId": "assertion.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
+          "artifactId": "evidence.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
+          "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+          "token": "editor viewport isolates equal handles across deterministic runtime authored and overlay channels"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal",
+          "artifactId": "evidence.public.editor-viewport.editor-viewport-owns-bounded-lifecycle-resize-clear-and-channel-disposal",
+          "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+          "token": "editor viewport owns bounded lifecycle resize clear and channel disposal"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
+          "artifactId": "evidence.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
+          "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+          "token": "editor viewport accepts stored and runtime cameras and maps pixel picks to typed logical hints"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
+          "artifactId": "evidence.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
+          "path": "ts/packages/renderer-host/src/editor-viewport.test.ts",
+          "token": "one degraded resource channel leaves healthy runtime and overlay projections intact"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types",
+          "artifactId": "evidence.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types",
+          "path": "ts/packages/renderer-host/src/index.test.ts",
+          "token": "renderer-host declarations do not expose concrete Three.js backend types"
+        }
+      ],
+      "capabilities": [
+        "renderer.editor-viewport"
+      ],
+      "consumerNeeds": [
+        "asha-studio.editor-viewport",
+        "asha-studio.renderer-host"
+      ],
+      "publicSurfaces": [
+        "@asha/contracts",
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "atomicRejection",
+        "publicProjectionReadout"
+      ]
+    },
+    {
+      "id": "public.editor-viewport-backend",
+      "suite": "public.editor-viewport-backend",
+      "evidence": [
+        {
+          "assertionId": "assertion.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells",
+          "artifactId": "evidence.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells",
+          "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+          "token": "real projection channels isolate equal handles in fixed runtime authored and overlay cells"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
+          "artifactId": "evidence.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
+          "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+          "token": "real projection channel replacement is atomic and does not disturb sibling channels"
+        },
+        {
+          "assertionId": "assertion.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
+          "artifactId": "evidence.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
+          "path": "ts/packages/renderer-three/src/editor-viewport-backend.test.ts",
+          "token": "one missing editor resource fails closed without degrading healthy runtime projection"
+        }
+      ],
+      "capabilities": [
+        "renderer.editor-viewport"
+      ],
+      "consumerNeeds": [
+        "asha-studio.editor-viewport",
+        "asha-studio.renderer-host"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "atomicRejection"
       ]
     },
     {

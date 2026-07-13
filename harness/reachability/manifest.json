@@ -11,7 +11,7 @@
     {
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
-      "expectedCount": 42,
+      "expectedCount": 44,
       "proof": { "path": "harness/consumer-needs/validate.py", "token": "validate_manifest" }
     },
     {
@@ -388,6 +388,33 @@
       "providerIdentity": "@asha/runtime-session",
       "consumerNeed": "asha-demo.prefab-runtime-placement",
       "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "prefabPlacementProjection" }
+    },
+    {
+      "id": "renderer.editor-viewport",
+      "kind": "projectionChannel",
+      "protocol": { "path": "ts/packages/contracts/src/generated/render.ts", "symbol": "RenderFrameDiff" },
+      "provider": { "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "export async function mountAshaRendererEditorViewport" },
+      "fields": [
+        { "name": "channel", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly channel: AshaRendererEditorViewportChannel;" },
+        { "name": "distance", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly distance: number;" },
+        { "name": "handle", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly handle: RenderHandle;" },
+        { "name": "normal", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly normal: readonly [number, number, number];" },
+        { "name": "position", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly position: readonly [number, number, number];" },
+        { "name": "sourceTrace", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly sourceTrace:" }
+      ],
+      "selectors": [
+        { "name": "channels", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly channels?: readonly AshaRendererEditorViewportChannel[];" },
+        { "name": "handles", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly handles?: readonly RenderHandle[];" },
+        { "name": "layers", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly layers?: readonly RenderLayer[];" },
+        { "name": "tags", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "readonly tags?: readonly TagId[];" }
+      ],
+      "quotas": [
+        { "name": "maxFrameOps", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS = 4096" },
+        { "name": "maxRetainedOps", "path": "ts/packages/renderer-host/src/editor-viewport.ts", "token": "ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS = 8192" }
+      ],
+      "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host", "symbol": "AshaRendererEditorViewport" },
+      "consumerNeed": "asha-studio.editor-viewport",
+      "delivery": { "path": "ts/packages/renderer-host/src/editor-viewport.test.ts", "token": "editor viewport isolates equal handles across deterministic runtime authored and overlay channels" }
     },
     {
       "id": "renderer.projection-pick",

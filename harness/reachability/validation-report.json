@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
-  "manifestHash": "sha256:ec3f67e31ee7a388b6ebba4dfdb07cb8b51a7b04ade9c5142099abb2344d8c0a",
-  "identityCatalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185",
+  "manifestHash": "sha256:c9e82717acd05fcaa4750165d33c9d10ed9ad2b2ff33d0b567241af19ac1365d",
+  "identityCatalogHash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc",
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:0e7bdb19bfb7d15d525968c5ec6f977545a60b1a7c954a4fc2ebfedce8626eeb"
+      "hash": "sha256:466db46feb4c937d487f1aeab6a311d286a7d374139be0249ce9a029e100b7bf"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -15,7 +15,7 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:668ca6ad26e07ef58f79bed9b6ff677f4f0f918afd2077e001dcd55db6c7cdf4"
+      "hash": "sha256:8f68d2ef477d99e3fc09c6d234ce0e4ec5d5bd43576e5a88758ebba693bd47ce"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -23,14 +23,14 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:616fe174b7a81a5d6c81dbaf7d0daf8c4ba990658971c71bb366be9d6702cbf8"
+      "hash": "sha256:bdb22ae4623dc82bdecfa80fce571b1fc4c883d8ef26e08618d6e4105f774e3d"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",
       "hash": "sha256:ea671385db805d0e4ff20d347d6a4771b34923d055d5fd13746c4fc7fbb044ca"
     }
   ],
-  "capabilityCount": 24,
+  "capabilityCount": 25,
   "catalogAssertionCount": 5,
   "internalExemptionCount": 2,
   "catalogAssertions": [
@@ -44,7 +44,7 @@
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
       "valid": true,
-      "actualCount": 42
+      "actualCount": 44
     },
     {
       "id": "catalog.generated-contracts",
@@ -195,6 +195,12 @@
     {
       "id": "prefab.runtime-placement",
       "kind": "runtimeOperation",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "renderer.editor-viewport",
+      "kind": "projectionChannel",
       "reachable": true,
       "gapCount": 0
     },

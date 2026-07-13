@@ -183,12 +183,23 @@ void test('renderer-host declarations do not expose concrete Three.js backend ty
   const declarationText = readFileSync(declarationPath, 'utf8');
   const surfaceDeclarationPath = fileURLToPath(new URL('./surface.d.ts', import.meta.url));
   const surfaceDeclarationText = readFileSync(surfaceDeclarationPath, 'utf8');
+  const editorViewportDeclarationPath = fileURLToPath(new URL('./editor-viewport.d.ts', import.meta.url));
+  const editorViewportDeclarationText = readFileSync(editorViewportDeclarationPath, 'utf8');
 
   assert.doesNotMatch(declarationText, /@asha\/renderer-three/);
   assert.doesNotMatch(declarationText, /ThreeRenderer/);
   assert.doesNotMatch(declarationText, /WebGLRenderer/);
   assert.doesNotMatch(declarationText, /from ['"]three['"]/);
   assert.doesNotMatch(declarationText, /@asha\/runtime-bridge/);
+  assert.doesNotMatch(editorViewportDeclarationText, /@asha\/renderer-three/);
+  assert.doesNotMatch(editorViewportDeclarationText, /ThreeRenderer/);
+  assert.doesNotMatch(editorViewportDeclarationText, /WebGLRenderer/);
+  assert.doesNotMatch(editorViewportDeclarationText, /from ['"]three['"]/);
+  assert.doesNotMatch(editorViewportDeclarationText, /Scene|Object3D|Shader/);
+  assert.match(editorViewportDeclarationText, /AshaRendererEditorViewportChannelHandle/);
+  assert.match(editorViewportDeclarationText, /AshaRendererEditorViewportPickHint/);
+  assert.match(editorViewportDeclarationText, /runtime_authority/);
+  assert.match(editorViewportDeclarationText, /stored_editor/);
   assert.match(surfaceDeclarationText, /AshaRendererSurfacePickRequest/);
   assert.match(surfaceDeclarationText, /AshaRendererSurfacePickHint/);
   assert.match(surfaceDeclarationText, /readonly pick:/);

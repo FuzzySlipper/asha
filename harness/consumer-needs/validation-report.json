@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "valid": true,
   "manifestCount": 3,
-  "requirementCount": 42,
+  "requirementCount": 44,
   "manifests": [
     {
       "manifest": "harness/consumer-needs/manifests/asha-demo.json",
@@ -13,10 +13,10 @@
     },
     {
       "manifest": "harness/consumer-needs/manifests/asha-studio.json",
-      "manifestHash": "sha256:88f38e7f8ca03eb26d8f412f31bff383646bf8667510d1ba31073f4d4ebbdeb8",
+      "manifestHash": "sha256:b55f0f224e4cde55dd98b4a3aa5a9ab1a60a1ae5f17646e83a428095a0aab744",
       "consumerId": "asha-studio.native-authority-workflow",
       "consumerRole": "asha-studio",
-      "requirementCount": 2
+      "requirementCount": 4
     },
     {
       "manifest": "harness/consumer-needs/manifests/gameplay-module-fixture.json",
@@ -202,6 +202,18 @@
       "disposition": "preferred"
     },
     {
+      "consumerId": "asha-studio.native-authority-workflow",
+      "requirement": "asha-studio.editor-viewport",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-studio.native-authority-workflow",
+      "requirement": "asha-studio.renderer-host",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
       "consumerId": "gameplay-module-sdk.pulse-fixture",
       "requirement": "pulse.conformance",
       "surface": "asha-gameplay-module-conformance",
@@ -233,7 +245,7 @@
     }
   ],
   "gaps": [],
-  "identityCatalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185",
+  "identityCatalogHash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc",
   "semanticValidation": {
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",
     "valid": true,
