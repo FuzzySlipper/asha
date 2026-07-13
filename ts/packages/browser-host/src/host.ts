@@ -13,13 +13,16 @@ import {
   type NativeRustRuntimeBridgeProviderInstallation,
   type NativeRustRuntimeBridgeProviderProfile,
   type RuntimeBridge,
+  RuntimeBridgeError,
 } from '@asha/runtime-bridge';
 
 export const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = 'browser-host.v0';
 export const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = 'ashaRuntimeBridge';
 export const ASHA_BROWSER_HOST_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
 export const ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER = 'X-ASHA-Runtime-Bridge-Client';
+export const ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER = 'X-ASHA-Runtime-Bridge-Session';
 export const ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS = 8;
+export const ASHA_BROWSER_HOST_MAX_BROWSER_SESSIONS = 32;
 export const ASHA_BROWSER_HOST_COMMAND =
   'asha-browser-host --ui-root dist/ui --host 0.0.0.0 --port 5173';
 
@@ -81,6 +84,19 @@ export interface NativeBrowserHostCommandShape {
   readonly privateImportsRequired: false;
 }
 
+export type NativeBrowserHostClientLifecycleStatus = 'active' | 'disconnected';
+
+export interface NativeBrowserHostClientLifecycle {
+  readonly compatibilityVersion: typeof ASHA_BROWSER_HOST_COMPATIBILITY_VERSION;
+  readonly sessionId: string;
+  status(): NativeBrowserHostClientLifecycleStatus;
+  disconnect(): void;
+}
+
+export type NativeBrowserHostRuntimeBridge = RuntimeBridge & {
+  readonly browserHostLifecycle: NativeBrowserHostClientLifecycle;
+};
+
 type NativeBrowserHostBridgeMethod = Extract<keyof RuntimeBridge, string>;
 
 export const ASHA_BROWSER_HOST_BRIDGE_METHODS: readonly NativeBrowserHostBridgeMethod[] =
@@ -92,9 +108,18 @@ interface NativeBrowserHostBridgeInvocation {
   readonly args?: readonly unknown[];
 }
 
+interface NativeBrowserHostBridgeEntry {
+  readonly bridge: Promise<RuntimeBridge>;
+  projectBundleLoaded: boolean;
+}
+
 interface NativeBrowserHostBridgePool {
-  readonly bridges: Map<string, Promise<RuntimeBridge>>;
+  readonly bridges: Map<string, NativeBrowserHostBridgeEntry>;
+  readonly issuedBrowserSessions: Set<string>;
+  readonly retiredBrowserSessions: Set<string>;
+  readonly closedBridgeClients: Set<string>;
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
+  nextBrowserSession: number;
 }
 
 export function describeNativeBrowserHostCommand(): NativeBrowserHostCommandShape {
@@ -203,8 +228,11 @@ export async function startNativeBrowserHost(
     provider,
     close: async () => {
       await closeServer(server);
-      bridgePool.bridges.clear();
-      server.removeAllListeners();
+      try {
+        await releaseAllNativeBrowserHostBridges(bridgePool);
+      } finally {
+        server.removeAllListeners();
+      }
     },
   };
 }
@@ -217,11 +245,7 @@ function handleNativeBrowserHostRequestFailure(response: ServerResponse, error: 
     response.end();
     return;
   }
-  sendJson(response, 500, {
-    error: {
-      message: error instanceof Error ? error.message : String(error),
-    },
-  });
+  sendNativeBrowserHostError(response, error);
 }
 
 async function handleNativeBrowserHostRequest(
@@ -246,12 +270,22 @@ async function handleNativeBrowserHostRequest(
     return;
   }
   if (request.url === '/asha/browser-host/native-provider.js') {
+    const browserSession = issueNativeBrowserHostSession(bridgePool);
+    response.setHeader('Cache-Control', 'no-store');
     sendText(
       response,
       200,
-      nativeBrowserHostProviderScript(),
+      nativeBrowserHostProviderScript(browserSession),
       'text/javascript; charset=utf-8',
     );
+    return;
+  }
+  if (request.url === '/asha/browser-host/runtime-bridge/client/disconnect') {
+    await handleRuntimeBridgeClientDisconnect(request, response, bridgePool);
+    return;
+  }
+  if (request.url?.startsWith('/asha/browser-host/runtime-bridge/session/')) {
+    await handleRuntimeBridgeSessionDisconnect(request, response, bridgePool);
     return;
   }
   if (request.url?.startsWith('/asha/browser-host/runtime-bridge/')) {
@@ -259,7 +293,7 @@ async function handleNativeBrowserHostRequest(
     return;
   }
   const assetPath = request.url === '/' ? '/index.html' : decodeURIComponent(request.url ?? '/index.html');
-  await sendStaticAssetFromRoot(response, uiRoot, assetPath, bridgePool.bridges.has('0'));
+  await sendStaticAssetFromRoot(response, uiRoot, assetPath, bridgePool.bridges.has('server:0'));
 }
 
 function defaultGlobalScope(): NativeBrowserHostProviderScope {
@@ -355,69 +389,315 @@ async function handleRuntimeBridgeInvocation(
   }
 
   try {
-    const bridge = await readNativeBrowserHostBridge(request, bridgePool);
+    const identity = readNativeBrowserHostBridgeIdentity(request, bridgePool);
+    const entry = await readNativeBrowserHostBridge(identity, bridgePool);
+    const bridge = await entry.bridge;
     const invocation = await readInvocationBody(request);
     const method = bridge[methodName] as (...args: readonly unknown[]) => unknown;
     const result = Reflect.apply(method, bridge, invocation.args ?? []);
+    if (methodName === 'loadProjectBundle') {
+      entry.projectBundleLoaded = didProjectBundleLoad(result);
+    } else if (methodName === 'unloadProjectBundle') {
+      entry.projectBundleLoaded = false;
+    }
     sendJson(response, 200, { result: result ?? null });
   } catch (error) {
-    sendJson(response, 500, {
-      error: {
-        message: error instanceof Error ? error.message : String(error),
-      },
-    });
+    sendNativeBrowserHostError(response, error);
   }
+}
+
+function didProjectBundleLoad(result: unknown): boolean {
+  if (typeof result !== 'object' || result === null) {
+    return false;
+  }
+  const status = result as {
+    readonly blocksLoad?: unknown;
+    readonly loadedProjectBundle?: unknown;
+  };
+  return status.blocksLoad === false && status.loadedProjectBundle !== null
+    && status.loadedProjectBundle !== undefined;
+}
+
+interface NativeBrowserHostBridgeIdentity {
+  readonly browserSession: string;
+  readonly clientId: string;
+  readonly key: string;
 }
 
 function createNativeBrowserHostBridgePool(
   bridge: RuntimeBridge | undefined,
   createRuntimeBridge: (() => RuntimeBridge | Promise<RuntimeBridge>) | undefined,
 ): NativeBrowserHostBridgePool {
-  const bridges = new Map<string, Promise<RuntimeBridge>>();
+  const bridges = new Map<string, NativeBrowserHostBridgeEntry>();
   if (bridge !== undefined) {
-    bridges.set('0', Promise.resolve(bridge));
+    bridges.set('server:0', {
+      bridge: Promise.resolve(bridge),
+      projectBundleLoaded: false,
+    });
   }
   return {
     bridges,
+    issuedBrowserSessions: new Set(),
+    retiredBrowserSessions: new Set(),
+    closedBridgeClients: new Set(),
+    nextBrowserSession: 0,
     ...(createRuntimeBridge === undefined ? {} : { createRuntimeBridge }),
   };
 }
 
 async function readNativeBrowserHostBridge(
-  request: IncomingMessage,
+  identity: NativeBrowserHostBridgeIdentity,
   pool: NativeBrowserHostBridgePool,
-): Promise<RuntimeBridge> {
-  const header = request.headers[ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER.toLowerCase()];
-  const clientId = header === undefined ? '0' : readBridgeClientId(header);
-  const existing = pool.bridges.get(clientId);
+): Promise<NativeBrowserHostBridgeEntry> {
+  if (pool.closedBridgeClients.has(identity.key)) {
+    throw new RuntimeBridgeError(
+      'not_initialized',
+      `RuntimeBridge client ${identity.clientId} belongs to a closed or stale browser Session.`,
+      { operation: 'browserHost.invoke', provenance: 'transport_loader' },
+    );
+  }
+  const existing = pool.bridges.get(identity.key);
   if (existing !== undefined) {
-    return await existing;
+    return existing;
   }
   if (pool.createRuntimeBridge === undefined) {
-    throw new Error(`RuntimeBridge client ${clientId} requested a new Session, but this host has no bridge factory.`);
+    throw new RuntimeBridgeError(
+      'native_unavailable',
+      `RuntimeBridge client ${identity.clientId} requested a new Session, but this host has no bridge factory.`,
+      { operation: 'browserHost.createRuntimeBridge', provenance: 'transport_loader' },
+    );
   }
   const pending = Promise.resolve().then(pool.createRuntimeBridge);
-  pool.bridges.set(clientId, pending);
+  const entry: NativeBrowserHostBridgeEntry = {
+    bridge: pending,
+    projectBundleLoaded: false,
+  };
+  pool.bridges.set(identity.key, entry);
   try {
-    return await pending;
+    await pending;
+    return entry;
   } catch (error) {
-    pool.bridges.delete(clientId);
+    pool.bridges.delete(identity.key);
     throw error;
   }
 }
 
+function readNativeBrowserHostBridgeIdentity(
+  request: IncomingMessage,
+  pool: NativeBrowserHostBridgePool,
+): NativeBrowserHostBridgeIdentity {
+  const clientHeader = request.headers[ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER.toLowerCase()];
+  const sessionHeader = request.headers[ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER.toLowerCase()];
+  const clientId = clientHeader === undefined ? '0' : readBridgeClientId(clientHeader);
+  const browserSession = readBridgeSessionId(sessionHeader, pool);
+  return {
+    browserSession,
+    clientId,
+    key: `${browserSession}:${clientId}`,
+  };
+}
+
 function readBridgeClientId(header: string | string[]): string {
   if (Array.isArray(header)) {
-    throw new Error('RuntimeBridge client identity must be a single header value.');
+    throw invalidBrowserHostIdentity('RuntimeBridge client identity must be a single header value.');
   }
   if (!/^(?:0|[1-9][0-9]*)$/u.test(header)) {
-    throw new Error('RuntimeBridge client identity must be a canonical non-negative integer.');
+    throw invalidBrowserHostIdentity('RuntimeBridge client identity must be a canonical non-negative integer.');
   }
   const client = Number(header);
   if (!Number.isSafeInteger(client) || client >= ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS) {
-    throw new Error(`RuntimeBridge client identity exceeds the ${ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS}-Session host limit.`);
+    throw invalidBrowserHostIdentity(
+      `RuntimeBridge client identity exceeds the ${ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS}-Session host limit.`,
+    );
   }
   return String(client);
+}
+
+function readBridgeSessionId(
+  header: string | string[] | undefined,
+  pool: NativeBrowserHostBridgePool,
+): string {
+  if (header === undefined) {
+    return 'server';
+  }
+  if (Array.isArray(header) || !/^(?:0|[1-9][0-9]*)$/u.test(header)) {
+    throw invalidBrowserHostIdentity(
+      'RuntimeBridge browser Session identity must be one issued canonical non-negative integer.',
+    );
+  }
+  if (pool.retiredBrowserSessions.has(header)) {
+    throw new RuntimeBridgeError(
+      'not_initialized',
+      `RuntimeBridge browser Session ${header} is closed or stale.`,
+      { operation: 'browserHost.invoke', provenance: 'transport_loader' },
+    );
+  }
+  if (!pool.issuedBrowserSessions.has(header)) {
+    throw invalidBrowserHostIdentity(`RuntimeBridge browser Session ${header} was not issued by this host.`);
+  }
+  return header;
+}
+
+function invalidBrowserHostIdentity(message: string): RuntimeBridgeError {
+  return new RuntimeBridgeError('invalid_input', message, {
+    operation: 'browserHost.resolveSession',
+    provenance: 'transport_loader',
+  });
+}
+
+function issueNativeBrowserHostSession(pool: NativeBrowserHostBridgePool): string {
+  if (pool.issuedBrowserSessions.size >= ASHA_BROWSER_HOST_MAX_BROWSER_SESSIONS) {
+    throw new RuntimeBridgeError(
+      'output_limit_exceeded',
+      `Browser host has reached its ${ASHA_BROWSER_HOST_MAX_BROWSER_SESSIONS}-Session limit.`,
+      { operation: 'browserHost.issueSession', provenance: 'transport_loader' },
+    );
+  }
+  const session = String(pool.nextBrowserSession);
+  pool.nextBrowserSession += 1;
+  pool.issuedBrowserSessions.add(session);
+  return session;
+}
+
+async function handleRuntimeBridgeClientDisconnect(
+  request: IncomingMessage,
+  response: ServerResponse,
+  pool: NativeBrowserHostBridgePool,
+): Promise<void> {
+  if (request.method !== 'POST') {
+    sendJson(response, 405, { error: { message: 'RuntimeBridge client disconnect requires POST.' } });
+    return;
+  }
+  try {
+    const identity = readNativeBrowserHostBridgeIdentity(request, pool);
+    const released = await releaseNativeBrowserHostBridge(pool, identity.key);
+    sendJson(response, 200, {
+      status: released ? 'disconnected' : 'already_disconnected',
+      scope: 'client',
+      browserSession: identity.browserSession,
+      clientId: identity.clientId,
+      released: released ? 1 : 0,
+    });
+  } catch (error) {
+    sendNativeBrowserHostError(response, error);
+  }
+}
+
+async function handleRuntimeBridgeSessionDisconnect(
+  request: IncomingMessage,
+  response: ServerResponse,
+  pool: NativeBrowserHostBridgePool,
+): Promise<void> {
+  if (request.method !== 'POST') {
+    sendJson(response, 405, { error: { message: 'RuntimeBridge Session disconnect requires POST.' } });
+    return;
+  }
+  const match = request.url?.match(
+    /^\/asha\/browser-host\/runtime-bridge\/session\/(0|[1-9][0-9]*)\/disconnect$/u,
+  );
+  if (match === null || match === undefined) {
+    sendJson(response, 404, { error: { message: 'Unknown RuntimeBridge Session lifecycle operation.' } });
+    return;
+  }
+  const browserSession = match[1];
+  if (browserSession === undefined) {
+    sendJson(response, 404, { error: { message: 'RuntimeBridge Session identity is missing.' } });
+    return;
+  }
+  try {
+    const alreadyDisconnected = pool.retiredBrowserSessions.has(browserSession);
+    const released = await releaseNativeBrowserHostSession(pool, browserSession);
+    sendJson(response, 200, {
+      status: alreadyDisconnected ? 'already_disconnected' : 'disconnected',
+      scope: 'browser_session',
+      browserSession,
+      released,
+    });
+  } catch (error) {
+    sendNativeBrowserHostError(response, error);
+  }
+}
+
+async function releaseNativeBrowserHostSession(
+  pool: NativeBrowserHostBridgePool,
+  browserSession: string,
+): Promise<number> {
+  if (pool.retiredBrowserSessions.has(browserSession)) {
+    return 0;
+  }
+  if (!pool.issuedBrowserSessions.delete(browserSession)) {
+    throw invalidBrowserHostIdentity(`RuntimeBridge browser Session ${browserSession} was not issued by this host.`);
+  }
+  pool.retiredBrowserSessions.add(browserSession);
+  const keys = [...pool.bridges.keys()].filter((key) => key.startsWith(`${browserSession}:`));
+  let released = 0;
+  const failures: string[] = [];
+  for (const key of keys) {
+    try {
+      if (await releaseNativeBrowserHostBridge(pool, key)) {
+        released += 1;
+      }
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (failures.length > 0) {
+    throw new RuntimeBridgeError(
+      'internal',
+      'RuntimeBridge browser Session cleanup reported one or more unload failures.',
+      {
+        operation: 'browserHost.disconnectSession',
+        details: failures,
+        provenance: 'transport_loader',
+      },
+    );
+  }
+  return released;
+}
+
+async function releaseNativeBrowserHostBridge(
+  pool: NativeBrowserHostBridgePool,
+  key: string,
+): Promise<boolean> {
+  if (pool.closedBridgeClients.has(key)) {
+    return false;
+  }
+  pool.closedBridgeClients.add(key);
+  const entry = pool.bridges.get(key);
+  pool.bridges.delete(key);
+  if (entry === undefined) {
+    return false;
+  }
+  const bridge = await entry.bridge;
+  if (entry.projectBundleLoaded) {
+    bridge.unloadProjectBundle();
+    entry.projectBundleLoaded = false;
+  }
+  return true;
+}
+
+async function releaseAllNativeBrowserHostBridges(pool: NativeBrowserHostBridgePool): Promise<void> {
+  const keys = [...pool.bridges.keys()];
+  const failures: string[] = [];
+  for (const key of keys) {
+    try {
+      await releaseNativeBrowserHostBridge(pool, key);
+    } catch (error) {
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  pool.issuedBrowserSessions.clear();
+  if (failures.length > 0) {
+    throw new RuntimeBridgeError(
+      'internal',
+      'Browser host shutdown reported one or more RuntimeBridge unload failures.',
+      {
+        operation: 'browserHost.shutdown',
+        details: failures,
+        provenance: 'transport_loader',
+      },
+    );
+  }
 }
 
 function readRuntimeBridgeMethodName(url: string): NativeBrowserHostBridgeMethod | null {
@@ -460,6 +740,27 @@ function readInvocationBody(request: IncomingMessage): Promise<NativeBrowserHost
   });
 }
 
+function sendNativeBrowserHostError(response: ServerResponse, error: unknown): void {
+  const classified = error instanceof RuntimeBridgeError
+    ? error
+    : new RuntimeBridgeError(
+        'internal',
+        error instanceof Error ? error.message : String(error),
+        { provenance: 'transport_loader' },
+      );
+  sendJson(response, 500, {
+    error: {
+      kind: classified.kind,
+      message: classified.message,
+      operation: classified.operation,
+      path: classified.path,
+      retryable: classified.retryable,
+      details: classified.details,
+      provenance: classified.provenance,
+    },
+  });
+}
+
 function sendJson(response: ServerResponse, statusCode: number, value: unknown): void {
   response.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
   response.end(`${JSON.stringify(value, null, 2)}\n`);
@@ -481,38 +782,111 @@ function injectNativeProviderScript(html: string): string {
   return `${scriptTag}\n${html}`;
 }
 
-function nativeBrowserHostProviderScript(): string {
+function nativeBrowserHostProviderScript(browserSession: string): string {
   return `(() => {
   const methods = ${JSON.stringify(ASHA_BROWSER_HOST_BRIDGE_METHODS)};
+  const browserSession = '${browserSession}';
+  const disconnectedClients = new Set();
   let nextBridgeClient = 0;
+  const classifiedError = (payload, fallback) => {
+    const detail = payload.error || {};
+    const error = new Error(detail.message || fallback);
+    error.name = 'RuntimeBridgeError';
+    Object.assign(error, {
+      kind: detail.kind || 'internal',
+      operation: detail.operation || null,
+      path: detail.path || null,
+      retryable: detail.retryable === true,
+      details: Array.isArray(detail.details) ? detail.details : [],
+      provenance: detail.provenance || 'transport_loader',
+    });
+    return error;
+  };
   const invoke = (method, args, bridgeClient) => {
+    if (disconnectedClients.has(bridgeClient)) {
+      throw classifiedError({ error: {
+        kind: 'not_initialized',
+        message: 'RuntimeBridge browser client is disconnected.',
+        operation: method,
+        provenance: 'transport_loader',
+      } }, 'RuntimeBridge browser client is disconnected.');
+    }
     const request = new XMLHttpRequest();
     request.open('POST', '/asha/browser-host/runtime-bridge/' + encodeURIComponent(method), false);
     request.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
-    if (bridgeClient !== null) {
-      request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER}', String(bridgeClient));
-    }
+    request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER}', browserSession);
+    request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER}', String(bridgeClient));
     request.send(JSON.stringify({ args }));
     const payload = JSON.parse(request.responseText || '{}');
     if (request.status < 200 || request.status >= 300) {
-      throw new Error(payload.error?.message || 'ASHA native RuntimeBridge host invocation failed.');
+      throw classifiedError(payload, 'ASHA native RuntimeBridge host invocation failed.');
     }
     return payload.result;
   };
+  const disconnect = (bridgeClient) => {
+    if (disconnectedClients.has(bridgeClient)) {
+      return;
+    }
+    const request = new XMLHttpRequest();
+    request.open('POST', '/asha/browser-host/runtime-bridge/client/disconnect', false);
+    request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER}', browserSession);
+    request.setRequestHeader('${ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER}', String(bridgeClient));
+    try {
+      request.send('{}');
+      const payload = JSON.parse(request.responseText || '{}');
+      if (request.status < 200 || request.status >= 300) {
+        throw classifiedError(payload, 'ASHA native RuntimeBridge disconnect failed.');
+      }
+    } finally {
+      disconnectedClients.add(bridgeClient);
+    }
+  };
   const createRuntimeBridge = () => {
+    if (nextBridgeClient >= ${ASHA_BROWSER_HOST_MAX_BRIDGE_CLIENTS}) {
+      throw classifiedError({ error: {
+        kind: 'output_limit_exceeded',
+        message: 'RuntimeBridge browser client limit exceeded.',
+        operation: 'browserHost.createRuntimeBridge',
+        provenance: 'transport_loader',
+      } }, 'RuntimeBridge browser client limit exceeded.');
+    }
     const bridgeClient = nextBridgeClient;
     nextBridgeClient += 1;
     const bridge = {};
     for (const method of methods) {
       bridge[method] = (...args) => invoke(method, args, bridgeClient);
     }
+    Object.defineProperty(bridge, 'browserHostLifecycle', {
+      enumerable: false,
+      value: Object.freeze({
+        compatibilityVersion: '${ASHA_BROWSER_HOST_COMPATIBILITY_VERSION}',
+        sessionId: browserSession,
+        status: () => disconnectedClients.has(bridgeClient) ? 'disconnected' : 'active',
+        disconnect: () => disconnect(bridgeClient),
+      }),
+    });
     return bridge;
   };
+  if (typeof globalThis.addEventListener === 'function') {
+    globalThis.addEventListener('pagehide', () => {
+      const path = '/asha/browser-host/runtime-bridge/session/' + browserSession + '/disconnect';
+      for (let client = 0; client < nextBridgeClient; client += 1) {
+        disconnectedClients.add(client);
+      }
+      if (globalThis.navigator && typeof globalThis.navigator.sendBeacon === 'function') {
+        globalThis.navigator.sendBeacon(path, '{}');
+      } else if (typeof globalThis.fetch === 'function') {
+        void globalThis.fetch(path, { method: 'POST', body: '{}', keepalive: true });
+      }
+    }, { once: true });
+  }
   globalThis.${ASHA_BROWSER_HOST_PROVIDER_GLOBAL} = {
     kind: '${ASHA_BROWSER_HOST_PROVIDER_KIND}',
     backend: 'native_rust',
     productAuthority: true,
     referenceFallback: false,
+    browserHostCompatibilityVersion: '${ASHA_BROWSER_HOST_COMPATIBILITY_VERSION}',
+    browserHostSessionId: browserSession,
     createRuntimeBridge,
   };
 })();\n`;

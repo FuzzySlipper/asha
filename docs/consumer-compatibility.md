@@ -70,7 +70,7 @@ metadata while their consumer role is still being ratified.
 Additional unstable package statuses:
 
 - `@asha/catalog-core` is an unstable gameplay preset/catalog validation package. It may expose root-level typed tuning schemas and readouts for consumer-owned data, but it does not execute runtime authority, own generated contracts, or validate commands.
-- `@asha/browser-host` is the unstable host surface for ASHA Game Projects that need human-playable browser/dev runs with native Rust RuntimeBridge authority. It serves a built UI root, installs `globalThis.ashaRuntimeBridge` with provider kind `asha.runtime_bridge.native_rust_provider.v1`, and fails closed for missing/spoofed providers instead of falling back to reference authority.
+- `@asha/browser-host` is the unstable host surface for ASHA Game Projects and Studio native-authority workflows. It serves a built UI root, installs `globalThis.ashaRuntimeBridge` with provider kind `asha.runtime_bridge.native_rust_provider.v1`, isolates each browser Session and bridge client, and fails closed for missing, spoofed, stale, or disconnected providers instead of falling back to reference authority.
 - `@asha/editor-tools` is an unstable Studio/editor helper package. It is editor-local state only, not authority.
 - `@asha/runtime-session` is the unstable transport-neutral RuntimeSession contract package introduced by #4547 and completed as the facade owner by #5506. It owns `RuntimeSessionFacade`, capability contracts, runtime action intents, generated tunnel and combat/nav/encounter readouts, combat feedback projection, enemy policy proposal shapes, and ECRP render target identity. `@asha/runtime-bridge` constructs concrete adapters and owns transport access; it does not re-export the semantic session surface.
 - `@asha/renderer-host` is the unstable browser render surface host for human-facing demos. It exposes backend-neutral mount/lifecycle/projection handles and may use `@asha/renderer-three` internally while that remains the selected browser backend.
@@ -658,10 +658,21 @@ original mapped inode; newly launched hosts load the replacement. Build or test
 automation must never truncate or copy directly over a loaded `.node` file.
 
 #5749 replaces the optional sidecar added by #5674 with one provider cell. The
-injected provider exposes only `createRuntimeBridge`, and browser-host proxies
-only the manifest RuntimeBridge endpoint. Gameplay modules, owner events,
+injected provider exposes only one authority constructor, `createRuntimeBridge`,
+and browser-host proxies only the manifest RuntimeBridge endpoint. Gameplay modules, owner events,
 movement/trigger reconciliation, scheduler state, and replay remain inside the
 returned Rust cell.
+
+#5735 approves the same `browser-host.v0` surface for `asha-studio` and adds the
+generic lifecycle needed by editor workflows. Provider-script responses carry a
+host-issued browser Session identity; bridge clients are isolated within it, and
+project switch, explicit disconnect, page close, and host shutdown unload and
+release their composed cells. Stale Session/client identities and structured
+native errors fail closed. The operation inventory remains generated from the
+RuntimeBridge manifest, and the provider kind remains
+`asha.runtime_bridge.native_rust_provider.v1`; there is no Studio-specific
+provider, raw addon access, gameplay sidecar, callback registry, or freeform
+`call(method, json)` API.
 
 ## Command registry compatibility log
 

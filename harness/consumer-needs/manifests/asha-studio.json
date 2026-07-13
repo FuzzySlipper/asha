@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "consumer": {
+    "id": "asha-studio.native-authority-workflow",
+    "role": "asha-studio",
+    "source": "../asha-studio"
+  },
+  "requirements": [
+    {
+      "id": "asha-studio.browser-host",
+      "kind": "typescriptPackage",
+      "identity": "@asha/browser-host",
+      "symbols": [
+        "ASHA_BROWSER_HOST_COMPATIBILITY_VERSION",
+        "NativeBrowserHostRuntimeBridge",
+        "launchNativeBrowserHost",
+        "readNativeBrowserHostProviderStatus"
+      ],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/browser-host/src/host.ts"],
+        "provider": ["ts/packages/runtime-bridge/src/native-runtime-provider.ts"],
+        "selector": ["ts/packages/browser-host/src/host.ts"],
+        "delivery": ["ts/packages/browser-host/src/index.test.ts"]
+      }
+    },
+    {
+      "id": "asha-studio.browser-host-lifecycle",
+      "kind": "runtimeOperation",
+      "identity": "browserHostLifecycle",
+      "provider": "@asha/browser-host",
+      "fields": [
+        "browserSession",
+        "clientId",
+        "compatibilityVersion",
+        "status"
+      ],
+      "requiredLevel": "delivery",
+      "evidence": {
+        "type": ["ts/packages/browser-host/src/host.ts"],
+        "provider": ["ts/packages/browser-host/src/host.ts"],
+        "selector": ["ts/packages/browser-host/src/host.ts"],
+        "delivery": ["ts/packages/browser-host/src/index.test.ts"]
+      }
+    }
+  ]
+}

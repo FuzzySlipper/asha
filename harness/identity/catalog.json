@@ -123,6 +123,21 @@
         "evidenceArtifactId": "evidence.public.billboard-projection.billboardprojectionevidence"
       },
       {
+        "id": "assertion.public.browser-host.generated-runtimebridge-operation-inventory",
+        "probeId": "public.browser-host",
+        "evidenceArtifactId": "evidence.public.browser-host.generated-runtimebridge-operation-inventory"
+      },
+      {
+        "id": "assertion.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
+        "probeId": "public.browser-host",
+        "evidenceArtifactId": "evidence.public.browser-host.missing-spoofed-and-stale-providers-fail-closed"
+      },
+      {
+        "id": "assertion.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles",
+        "probeId": "public.browser-host",
+        "evidenceArtifactId": "evidence.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles"
+      },
+      {
         "id": "assertion.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
         "probeId": "public.camera-controller",
         "evidenceArtifactId": "evidence.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints"
@@ -291,6 +306,13 @@
         "sourceHash": "sha256:99a805abfd9dd9882c71f77f46eff34a25a027147525e73375cbccb9701eb17e"
       },
       {
+        "id": "bridge.browser-host-studio-session-lifecycle",
+        "consumerRequirementId": "asha-studio.browser-host-lifecycle",
+        "providerId": "@asha/browser-host",
+        "publicSurfaceId": "@asha/browser-host",
+        "sourceHash": "sha256:e4f53d57009d4193c9efdfc55904082aa17028fce837b4323bc43ed3ecd286f2"
+      },
+      {
         "id": "bridge.camera-controller",
         "consumerRequirementId": null,
         "providerId": "@asha/runtime-session",
@@ -414,7 +436,7 @@
         "consumerRequirementId": "asha-demo.prefab-runtime-placement",
         "providerId": "@asha/runtime-session",
         "publicSurfaceId": "asha-gameplay-runtime-host",
-        "sourceHash": "sha256:451df92f6553b5a0b12d65f13f6822200e1b9e62a94766814fcb8774d36ff00a"
+        "sourceHash": "sha256:853480e69ccd29a1acce02e86e72a900dcfcbb94a23bac3ef6235e07100471ee"
       },
       {
         "id": "renderer.projection-pick",
@@ -520,7 +542,7 @@
         "providerId": "@asha/runtime-session",
         "requiredLevel": "delivery",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:1ba02576fe3491ea9a5976827b3fd0ca02c98cd7c814cd533d4947d1577ca57d"
+        "sourceHash": "sha256:a1e28ea88bf8b76fe0f6c2ba62ffe5dbbc73378e665e3a49c20735a803d359c8"
       },
       {
         "id": "asha-demo.input-context-state",
@@ -600,7 +622,7 @@
         "providerId": "@asha/runtime-session",
         "requiredLevel": "delivery",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:065c1591ca5152366407b85949f4879ed78eb2834ec48ee393997db65e3639f8"
+        "sourceHash": "sha256:04147f93bc92c2e0632168c6a87d1216e2ab7c4f71b24d9223b244173190464b"
       },
       {
         "id": "asha-demo.recorded-input-action",
@@ -701,6 +723,26 @@
         "requiredLevel": "delivery",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
         "sourceHash": "sha256:f7fd72231ff20eac61a04ec6e9f9a22b35b27a3a6aa97097e8ec9a0c9a1d3c04"
+      },
+      {
+        "id": "asha-studio.browser-host",
+        "consumerId": "asha-studio.native-authority-workflow",
+        "identity": "@asha/browser-host",
+        "kind": "typescriptPackage",
+        "providerId": null,
+        "requiredLevel": "delivery",
+        "source": "harness/consumer-needs/manifests/asha-studio.json",
+        "sourceHash": "sha256:b65a7aa8632e0b2b4277dd74d5c497bed129f618f78f14d4fb641ae88b63e7f5"
+      },
+      {
+        "id": "asha-studio.browser-host-lifecycle",
+        "consumerId": "asha-studio.native-authority-workflow",
+        "identity": "browserHostLifecycle",
+        "kind": "runtimeOperation",
+        "providerId": "@asha/browser-host",
+        "requiredLevel": "delivery",
+        "source": "harness/consumer-needs/manifests/asha-studio.json",
+        "sourceHash": "sha256:1ce96010968aa0a2a27aee9adfc999d7066b50a14120a0ee1c42ffab92022d90"
       },
       {
         "id": "pulse.configuration",
@@ -843,6 +885,11 @@
         "id": "evidence.execution.asha-demo-input-live",
         "kind": "proofExecution",
         "executionId": "gate.asha-demo-input-live"
+      },
+      {
+        "id": "evidence.execution.browser-host-tests",
+        "kind": "proofExecution",
+        "executionId": "ts.browser-host.tests"
       },
       {
         "id": "evidence.execution.composed-native-provider",
@@ -1076,6 +1123,27 @@
         "path": "../asha-demo/tests/live-ui.spec.mjs",
         "token": "billboardProjectionEvidence",
         "sourceHash": "sha256:6043f05fdb9fbcb3119228dd572a0b3c3328111a9a1edd5d64277b54fe7131bc"
+      },
+      {
+        "id": "evidence.public.browser-host.generated-runtimebridge-operation-inventory",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/browser-host/src/index.test.ts",
+        "token": "browser host RPC surface follows every generated RuntimeBridge manifest operation",
+        "sourceHash": "sha256:5d9a7631af6179465f8e10121436a8f65e60bb4243fd2f7dc08228fef07439ed"
+      },
+      {
+        "id": "evidence.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/browser-host/src/index.test.ts",
+        "token": "browser host fails closed for missing and spoofed providers",
+        "sourceHash": "sha256:988a1597dde675e9aaa8bba23e0ba86f86f4629ca0dbbbb35ab74d37784e4371"
+      },
+      {
+        "id": "evidence.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles",
+        "kind": "sourceAssertion",
+        "path": "ts/packages/browser-host/src/index.test.ts",
+        "token": "browser host gives ASHA Studio pages isolated one-cell lifecycles and rejects stale sessions",
+        "sourceHash": "sha256:114b1b639724cadd0522783ea0e490cc748da9117d7cdaba7d7c106e247c1d19"
       },
       {
         "id": "evidence.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
@@ -1336,6 +1404,11 @@
         "id": "ts.app.tests",
         "artifactId": "evidence.execution.app-tests",
         "sourceHash": "sha256:88319166ac5296e8d2ef73d2143995bc8da79d37411824e7610b04d6825997be"
+      },
+      {
+        "id": "ts.browser-host.tests",
+        "artifactId": "evidence.execution.browser-host-tests",
+        "sourceHash": "sha256:4d76f722b91f737df299d0c43db5829efbfe8659fdfc9642d395badbed44cad0"
       },
       {
         "id": "ts.game-workspace.tests",
@@ -1871,6 +1944,11 @@
         "sourceHash": "sha256:51f3d207648fe0dc04ef2dc7a51627ad4c84cb47a280a8d90622cae6a8382a80"
       },
       {
+        "id": "public.browser-host",
+        "suiteId": "public.browser-host",
+        "sourceHash": "sha256:315faca3705f69766e9167acd8cc438444ac35e62b9cdf58929e30995d2b9f5d"
+      },
+      {
         "id": "public.camera-controller",
         "suiteId": "public.camera-flow",
         "sourceHash": "sha256:41cca5d48de371543e66c01ba4e96be037dec98804b54d85383f7c0bcd4b5c21"
@@ -1935,10 +2013,20 @@
         "id": "@asha/browser-host",
         "references": [
           {
+            "consumerRequirementId": "asha-studio.browser-host-lifecycle"
+          },
+          {
+            "capabilityId": "bridge.browser-host-studio-session-lifecycle",
+            "evidence": {
+              "path": "ts/packages/browser-host/src/host.ts",
+              "token": "export async function launchNativeBrowserHost"
+            }
+          },
+          {
             "publicSurfaceId": "@asha/browser-host"
           }
         ],
-        "sourceHash": "sha256:0af705196ff4127d2f9cac7cf02ea0bdf259f53ec664354627f5561557a33ab1"
+        "sourceHash": "sha256:af5f3bce8002d744070b940badb200611c3cc685d8b3e054becd04f89c9985a5"
       },
       {
         "id": "@asha/catalog-core",
@@ -2461,7 +2549,7 @@
         "id": "@asha/browser-host",
         "kind": "typescript",
         "disposition": "preferred",
-        "sourceHash": "sha256:e681329df6c261d59b4477cb80d6e05393416dfe658f90183ee8afd34c7eb171"
+        "sourceHash": "sha256:d1376774d77a3331c7f842d4cd2528a144c54f036a1ddec629f8dcb3c5dff9f9"
       },
       {
         "id": "@asha/catalog-core",
@@ -2706,6 +2794,12 @@
         "sourceHash": "sha256:7d509c2baf57b66a78c66a7f3753eaff23d391ef55485d1b107550394a767c75"
       },
       {
+        "id": "public.browser-host",
+        "executionId": "ts.browser-host.tests",
+        "executionClass": "publicConsumer",
+        "sourceHash": "sha256:13271e357d5cc6c74d6558219d4334733113e07cbf01c9f9d80707b52c4db168"
+      },
+      {
         "id": "public.camera-flow",
         "executionId": "ts.app.tests",
         "executionClass": "publicConsumer",
@@ -2749,5 +2843,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b"
+  "catalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185"
 }

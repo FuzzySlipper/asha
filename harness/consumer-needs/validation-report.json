@@ -1,15 +1,22 @@
 {
   "schemaVersion": 1,
   "valid": true,
-  "manifestCount": 2,
-  "requirementCount": 40,
+  "manifestCount": 3,
+  "requirementCount": 42,
   "manifests": [
     {
       "manifest": "harness/consumer-needs/manifests/asha-demo.json",
-      "manifestHash": "sha256:b337fe913ecbdc94d16585ecaae36b23ff3e0d43c2af12e5f8d6886e49e4f161",
+      "manifestHash": "sha256:a2fdfea7d90950da90823388da0fe860f0e478eac9bcdb935f70cd772733830c",
       "consumerId": "asha-demo.current-browser-game",
       "consumerRole": "asha-demo",
       "requirementCount": 27
+    },
+    {
+      "manifest": "harness/consumer-needs/manifests/asha-studio.json",
+      "manifestHash": "sha256:88f38e7f8ca03eb26d8f412f31bff383646bf8667510d1ba31073f4d4ebbdeb8",
+      "consumerId": "asha-studio.native-authority-workflow",
+      "consumerRole": "asha-studio",
+      "requirementCount": 2
     },
     {
       "manifest": "harness/consumer-needs/manifests/gameplay-module-fixture.json",
@@ -183,6 +190,18 @@
       "disposition": "preferred"
     },
     {
+      "consumerId": "asha-studio.native-authority-workflow",
+      "requirement": "asha-studio.browser-host",
+      "surface": "@asha/browser-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-studio.native-authority-workflow",
+      "requirement": "asha-studio.browser-host-lifecycle",
+      "surface": "@asha/browser-host",
+      "disposition": "preferred"
+    },
+    {
       "consumerId": "gameplay-module-sdk.pulse-fixture",
       "requirement": "pulse.conformance",
       "surface": "asha-gameplay-module-conformance",
@@ -214,12 +233,12 @@
     }
   ],
   "gaps": [],
-  "identityCatalogHash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b",
+  "identityCatalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185",
   "semanticValidation": {
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",
     "valid": true,
     "consumerNeedsManifestHash": "fnv1a64:0695f007e3d82758",
-    "registryDigest": "fnv1a64:b17761e36ceb11ef",
+    "registryDigest": "fnv1a64:71608bbdc9b7e6bf",
     "bindingRegistryHash": "fnv1a64:db1f3541cf4a1410",
     "checks": [
       {

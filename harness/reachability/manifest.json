@@ -11,7 +11,7 @@
     {
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
-      "expectedCount": 40,
+      "expectedCount": 42,
       "proof": { "path": "harness/consumer-needs/validate.py", "token": "validate_manifest" }
     },
     {
@@ -78,6 +78,21 @@
       "publicSurface": { "kind": "typescript", "identity": "@asha/renderer-host" },
       "consumerNeed": "asha-demo.billboard-projection",
       "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "billboardProjectionEvidence" }
+    },
+    {
+      "id": "bridge.browser-host-studio-session-lifecycle",
+      "kind": "runtimeOperation",
+      "protocol": { "path": "ts/packages/runtime-bridge/src/generated/surfaces.ts", "symbol": "RuntimeBridge" },
+      "provider": { "path": "ts/packages/browser-host/src/host.ts", "token": "export async function launchNativeBrowserHost" },
+      "fields": [
+        { "name": "browserSession", "path": "ts/packages/browser-host/src/host.ts", "token": "readonly browserSession: string;" },
+        { "name": "clientId", "path": "ts/packages/browser-host/src/host.ts", "token": "readonly clientId: string;" },
+        { "name": "compatibilityVersion", "path": "ts/packages/browser-host/src/host.ts", "token": "readonly compatibilityVersion: typeof ASHA_BROWSER_HOST_COMPATIBILITY_VERSION;" },
+        { "name": "status", "path": "ts/packages/browser-host/src/host.ts", "token": "status(): NativeBrowserHostClientLifecycleStatus;" }
+      ],
+      "publicSurface": { "kind": "typescript", "identity": "@asha/browser-host", "symbol": "NativeBrowserHostRuntimeBridge" },
+      "consumerNeed": "asha-studio.browser-host-lifecycle",
+      "delivery": { "path": "ts/packages/browser-host/src/index.test.ts", "token": "browser host gives ASHA Studio pages isolated one-cell lifecycles and rejects stale sessions" }
     },
     {
       "id": "bridge.camera-controller",
@@ -372,7 +387,7 @@
       "publicSurface": { "kind": "rust", "identity": "asha-gameplay-runtime-host", "symbol": "GameplayRuntimePrefabBootstrap" },
       "providerIdentity": "@asha/runtime-session",
       "consumerNeed": "asha-demo.prefab-runtime-placement",
-      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "prefabRuntimeReadout" }
+      "delivery": { "path": "../asha-demo/tests/live-ui.spec.mjs", "token": "prefabPlacementProjection" }
     },
     {
       "id": "renderer.projection-pick",

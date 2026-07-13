@@ -2,15 +2,15 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:6c4d8f17fc1d2554bcfded96a282c0ec1f8fbd0a559c3e0bbc071c81df079a09",
+  "inventoryHash": "sha256:5d4cf4534ca61c8ded483ada026a76f9a1401f047e1884a901adb39ed1c3493e",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b"
+    "hash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:8306f01fe8039545ad557d1b8eaa199d711a674b711c37eea644c30aa32cef1a"
+      "hash": "sha256:0e7bdb19bfb7d15d525968c5ec6f977545a60b1a7c954a4fc2ebfedce8626eeb"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -18,7 +18,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:57139092f9349cafb3b769de3270eca84ca9cbb00925e8b3cf46faa752075f92"
+      "hash": "sha256:616fe174b7a81a5d6c81dbaf7d0daf8c4ba990658971c71bb366be9d6702cbf8"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -26,15 +26,15 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:2a0d100e17877d2a6e296fdb9c6353e450c4a58094d779acad985b18f5044be2"
+      "hash": "sha256:668ca6ad26e07ef58f79bed9b6ff677f4f0f918afd2077e001dcd55db6c7cdf4"
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:8174a906330174c7869671c60a4a1887368c1a37e3d70dd945c26cb71b872075"
+      "hash": "sha256:e8bfcd5f111cff5407f6e601dc7474826c65ad9c5cfb207b548f59ebd58b9e65"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
-      "hash": "sha256:d946ba284ad8b88f41a99ce1c68281e0ff9230b252997b5160c398b8bef60cc9"
+      "hash": "sha256:6ed664628cd8694febf7e42c3bd82feb9b211998cd036df2ff693c015700a296"
     }
   ],
   "summary": {
@@ -42,9 +42,9 @@
     "realOperationProbeCount": 71,
     "temporaryOperationExemptionCount": 0,
     "quarantinedOperationCount": 3,
-    "semanticProbeCount": 23,
-    "deliveryRequirementCount": 34,
-    "publicSurfaceCount": 12
+    "semanticProbeCount": 24,
+    "deliveryRequirementCount": 36,
+    "publicSurfaceCount": 13
   },
   "operations": [
     {
@@ -2318,6 +2318,17 @@
       "passed": true
     },
     {
+      "id": "public.browser-host",
+      "suite": "public.browser-host",
+      "executionId": "ts.browser-host.tests",
+      "assertionIds": [
+        "assertion.public.browser-host.generated-runtimebridge-operation-inventory",
+        "assertion.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
+        "assertion.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles"
+      ],
+      "passed": true
+    },
+    {
       "id": "public.camera-controller",
       "suite": "public.camera-flow",
       "executionId": "ts.app.tests",
@@ -2429,6 +2440,13 @@
   ],
   "publicSurfaceCoverage": [
     {
+      "identity": "@asha/browser-host",
+      "disposition": "preferred",
+      "probes": [
+        "public.browser-host"
+      ]
+    },
+    {
       "identity": "@asha/contracts",
       "disposition": "preferred",
       "probes": [
@@ -2464,6 +2482,7 @@
       "disposition": "preferred",
       "probes": [
         "public.animation-projection",
+        "public.browser-host",
         "public.input-pause-demo",
         "public.integrated-feedback-projection",
         "public.runtime-session.projection"

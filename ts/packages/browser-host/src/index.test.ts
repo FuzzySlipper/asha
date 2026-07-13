@@ -15,6 +15,7 @@ import {
 import {
   ASHA_BROWSER_HOST_BRIDGE_METHODS,
   ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER,
+  ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER,
   ASHA_BROWSER_HOST_COMMAND,
   ASHA_BROWSER_HOST_COMPATIBILITY_VERSION,
   describeNativeBrowserHostCommand,
@@ -211,6 +212,176 @@ void test('browser host isolates RuntimeBridge factory clients and bounds their 
   }
 });
 
+void test('browser host gives ASHA Studio pages isolated one-cell lifecycles and rejects stale sessions', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-studio-'));
+  const cells: Array<{
+    readonly id: number;
+    readonly calls: string[];
+    unloads: number;
+  }> = [];
+  let hostClosed = false;
+  try {
+    await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA Studio</title>');
+    const host = await launchNativeBrowserHost({
+      uiRoot: tempRoot,
+      host: '127.0.0.1',
+      port: 0,
+      healthProject: 'asha-studio',
+      provider: {
+        globalScope: {},
+        createRuntimeBridge: () => {
+          const cell = { id: cells.length, calls: [] as string[], unloads: 0 };
+          cells.push(cell);
+          return createTrackedRuntimeBridge(cell);
+        },
+      },
+    });
+    try {
+      const firstScript = await (await fetch(`${host.url}/asha/browser-host/native-provider.js`)).text();
+      const secondScript = await (await fetch(`${host.url}/asha/browser-host/native-provider.js`)).text();
+      const firstScope: Record<string, unknown> = {};
+      const secondScope: Record<string, unknown> = {};
+      runInNewContext(firstScript, firstScope);
+      runInNewContext(secondScript, secondScope);
+      const firstProvider = firstScope['ashaRuntimeBridge'] as {
+        readonly browserHostCompatibilityVersion: string;
+        readonly browserHostSessionId: string;
+        readonly createRuntimeBridge: () => Record<string, unknown>;
+      };
+      const secondProvider = secondScope['ashaRuntimeBridge'] as typeof firstProvider;
+      assert.equal(firstProvider.browserHostCompatibilityVersion, 'browser-host.v0');
+      assert.notEqual(firstProvider.browserHostSessionId, secondProvider.browserHostSessionId);
+
+      const firstBridge = firstProvider.createRuntimeBridge() as Record<string, unknown> & {
+        readonly browserHostLifecycle: {
+          readonly compatibilityVersion: string;
+          readonly sessionId: string;
+          status(): string;
+        };
+      };
+      assert.equal(firstBridge.browserHostLifecycle.compatibilityVersion, 'browser-host.v0');
+      assert.equal(firstBridge.browserHostLifecycle.sessionId, firstProvider.browserHostSessionId);
+      assert.equal(firstBridge.browserHostLifecycle.status(), 'active');
+      assert.deepEqual(
+        Object.keys(firstBridge).sort(),
+        [...ASHA_BROWSER_HOST_BRIDGE_METHODS].sort(),
+      );
+
+      const firstHeaders = browserHostHeaders(firstProvider.browserHostSessionId, '0');
+      const secondHeaders = browserHostHeaders(secondProvider.browserHostSessionId, '0');
+      assert.equal((await invokeBrowserHostBridge(host.url, firstHeaders, 'initializeEngine', [{ seed: 11 }])).status, 200);
+      assert.equal((await invokeBrowserHostBridge(host.url, secondHeaders, 'initializeEngine', [{ seed: 22 }])).status, 200);
+      assert.equal((await invokeBrowserHostBridge(host.url, firstHeaders, 'loadProjectBundle', [{ sceneId: 101 }])).status, 200);
+      assert.equal((await invokeBrowserHostBridge(host.url, secondHeaders, 'loadProjectBundle', [{ sceneId: 202 }])).status, 200);
+      const firstCamera = await invokeBrowserHostBridge(host.url, firstHeaders, 'createCamera', [{}]);
+      const secondCamera = await invokeBrowserHostBridge(host.url, secondHeaders, 'createCamera', [{}]);
+      assert.deepEqual(await firstCamera.json(), { result: { cellId: 1 } });
+      assert.deepEqual(await secondCamera.json(), { result: { cellId: 2 } });
+
+      const firstBuffer = await invokeBrowserHostBridge(host.url, firstHeaders, 'getBuffer', [7]);
+      const secondBuffer = await invokeBrowserHostBridge(host.url, secondHeaders, 'getBuffer', [7]);
+      assert.deepEqual(await firstBuffer.json(), { result: { cellId: 1, handle: 7 } });
+      assert.deepEqual(await secondBuffer.json(), { result: { cellId: 2, handle: 7 } });
+
+      const firstVoxel = await invokeBrowserHostBridge(host.url, firstHeaders, 'submitCommands', [{ commands: [] }]);
+      const secondVoxel = await invokeBrowserHostBridge(host.url, secondHeaders, 'submitCommands', [{ commands: [] }]);
+      assert.deepEqual(await firstVoxel.json(), { result: { cellId: 1 } });
+      assert.deepEqual(await secondVoxel.json(), { result: { cellId: 2 } });
+
+      const firstReadout = await invokeBrowserHostBridge(
+        host.url,
+        firstHeaders,
+        'readComposedRuntimeSession',
+        [],
+      );
+      const secondReadout = await invokeBrowserHostBridge(
+        host.url,
+        secondHeaders,
+        'readComposedRuntimeSession',
+        [],
+      );
+      assert.deepEqual(await firstReadout.json(), {
+        result: { cellId: 1, project: 101, schedulerStateHash: 'scheduler-1' },
+      });
+      assert.deepEqual(await secondReadout.json(), {
+        result: { cellId: 2, project: 202, schedulerStateHash: 'scheduler-2' },
+      });
+
+      const switchDisconnect = await fetch(
+        `${host.url}/asha/browser-host/runtime-bridge/client/disconnect`,
+        { method: 'POST', headers: firstHeaders, body: '{}' },
+      );
+      assert.equal(switchDisconnect.status, 200);
+      assert.equal(cells[1]?.unloads, 1);
+      const switchedBridge = firstProvider.createRuntimeBridge() as typeof firstBridge;
+      assert.equal(switchedBridge.browserHostLifecycle.status(), 'active');
+      const switchedHeaders = browserHostHeaders(firstProvider.browserHostSessionId, '1');
+      assert.equal((await invokeBrowserHostBridge(host.url, switchedHeaders, 'initializeEngine', [{ seed: 33 }])).status, 200);
+      assert.equal((await invokeBrowserHostBridge(host.url, switchedHeaders, 'loadProjectBundle', [{ sceneId: 303 }])).status, 200);
+      const switchedReadout = await invokeBrowserHostBridge(
+        host.url,
+        switchedHeaders,
+        'readComposedRuntimeSession',
+        [],
+      );
+      assert.deepEqual(await switchedReadout.json(), {
+        result: { cellId: 3, project: 303, schedulerStateHash: 'scheduler-3' },
+      });
+
+      const explicitDisconnect = await fetch(
+        `${host.url}/asha/browser-host/runtime-bridge/client/disconnect`,
+        { method: 'POST', headers: switchedHeaders, body: '{}' },
+      );
+      assert.equal(explicitDisconnect.status, 200);
+      assert.deepEqual(await explicitDisconnect.json(), {
+        status: 'disconnected',
+        scope: 'client',
+        browserSession: firstProvider.browserHostSessionId,
+        clientId: '1',
+        released: 1,
+      });
+      assert.equal(cells[3]?.unloads, 1);
+      const closedClient = await invokeBrowserHostBridge(host.url, switchedHeaders, 'readComposedRuntimeSession', []);
+      assert.equal(closedClient.status, 500);
+      assert.deepEqual(await closedClient.json(), {
+        error: {
+          kind: 'not_initialized',
+          message: 'runtime bridge error [not_initialized]: RuntimeBridge client 1 belongs to a closed or stale browser Session.',
+          operation: 'browserHost.invoke',
+          path: null,
+          retryable: false,
+          details: [],
+          provenance: 'transport_loader',
+        },
+      });
+
+      const pageClose = await fetch(
+        `${host.url}/asha/browser-host/runtime-bridge/session/${secondProvider.browserHostSessionId}/disconnect`,
+        { method: 'POST', body: '{}' },
+      );
+      assert.equal(pageClose.status, 200);
+      assert.equal(cells[2]?.unloads, 1);
+      const staleSession = await invokeBrowserHostBridge(host.url, secondHeaders, 'readComposedRuntimeSession', []);
+      assert.equal(staleSession.status, 500);
+      const stalePayload = await staleSession.json() as { readonly error?: { readonly kind?: string; readonly message?: string } };
+      assert.equal(stalePayload.error?.kind, 'not_initialized');
+      assert.match(stalePayload.error?.message ?? '', /closed or stale/u);
+
+      assert.equal((await invokeBrowserHostBridge(host.url, {}, 'initializeEngine', [{ seed: 33 }])).status, 200);
+      assert.equal((await invokeBrowserHostBridge(host.url, {}, 'loadProjectBundle', [{ sceneId: 404 }])).status, 200);
+      await host.close();
+      hostClosed = true;
+      assert.equal(cells[0]?.unloads, 1);
+    } finally {
+      if (!hostClosed) {
+        await host.close();
+      }
+    }
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 void test('browser host preserves native RuntimeBridge receiver binding over HTTP', async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
   const calls: string[] = [];
@@ -327,7 +498,13 @@ void test('browser host contains native RuntimeBridge invocation failures', asyn
       assert.equal(failedInvocation.status, 500);
       assert.deepEqual(await failedInvocation.json(), {
         error: {
+          kind: 'internal',
           message: 'runtime bridge error [internal]: native composition status failed',
+          operation: 'get_project_bundle_composition_status',
+          path: '$',
+          retryable: false,
+          details: ['invalid_native_error_envelope'],
+          provenance: 'transport_loader',
         },
       });
       assert.deepEqual(calls, ['initialize:23', 'compositionStatus']);
@@ -407,6 +584,68 @@ function readRawHttpPath(baseUrl: string, path: string): Promise<{ readonly stat
     requestHandle.on('error', rejectRead);
     requestHandle.end();
   });
+}
+
+function browserHostHeaders(browserSession: string, clientId: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    [ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER]: browserSession,
+    [ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER]: clientId,
+  };
+}
+
+function invokeBrowserHostBridge(
+  baseUrl: string,
+  headers: Record<string, string>,
+  method: string,
+  args: readonly unknown[],
+): Promise<Response> {
+  return fetch(`${baseUrl}/asha/browser-host/runtime-bridge/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ args }),
+  });
+}
+
+function createTrackedRuntimeBridge(cell: {
+  readonly id: number;
+  readonly calls: string[];
+  unloads: number;
+}): RuntimeBridge {
+  let project: number | null = null;
+  return {
+    ...createFakeRuntimeBridge(),
+    initializeEngine(input) {
+      cell.calls.push(`initialize:${input.seed}`);
+      return cell.id as never;
+    },
+    loadProjectBundle(input) { // vocab-allow: tracked public bridge fixture
+      project = (input as { readonly sceneId?: number }).sceneId ?? null;
+      cell.calls.push(`load:${project ?? 'none'}`);
+      return { loadedProjectBundle: project, fatalCount: 0, totalCount: 0, blocksLoad: false } as never;
+    },
+    unloadProjectBundle() {
+      cell.calls.push(`unload:${project ?? 'none'}`);
+      cell.unloads += 1;
+      project = null;
+    },
+    createCamera() {
+      cell.calls.push('camera');
+      return { cellId: cell.id } as never;
+    },
+    getBuffer(handle) {
+      cell.calls.push(`buffer:${handle}`);
+      return { cellId: cell.id, handle } as never;
+    },
+    submitCommands() {
+      cell.calls.push('voxel');
+      return { cellId: cell.id } as never;
+    },
+    readComposedRuntimeSession() {
+      cell.calls.push(`read:${project ?? 'none'}`);
+      return { cellId: cell.id, project, schedulerStateHash: `scheduler-${cell.id}` } as never;
+    },
+  };
 }
 
 function createFakeRuntimeBridge(): RuntimeBridge {

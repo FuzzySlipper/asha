@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
-  "manifestHash": "sha256:342085d9a251f4f1ea22e6c7a60defa16401bce9e47f46e15141df9d5cde1b64",
-  "identityCatalogHash": "sha256:9c94e0312d7747be9a23099fd5e206f4662d4636dacb73da6971c7d4d765cc2b",
+  "manifestHash": "sha256:ec3f67e31ee7a388b6ebba4dfdb07cb8b51a7b04ade9c5142099abb2344d8c0a",
+  "identityCatalogHash": "sha256:2dc68a9d7d083c053390ecf07f4cccea6c057f51c30036d4942e14d3e8230185",
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:8306f01fe8039545ad557d1b8eaa199d711a674b711c37eea644c30aa32cef1a"
+      "hash": "sha256:0e7bdb19bfb7d15d525968c5ec6f977545a60b1a7c954a4fc2ebfedce8626eeb"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -15,7 +15,7 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:2a0d100e17877d2a6e296fdb9c6353e450c4a58094d779acad985b18f5044be2"
+      "hash": "sha256:668ca6ad26e07ef58f79bed9b6ff677f4f0f918afd2077e001dcd55db6c7cdf4"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -23,14 +23,14 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:57139092f9349cafb3b769de3270eca84ca9cbb00925e8b3cf46faa752075f92"
+      "hash": "sha256:616fe174b7a81a5d6c81dbaf7d0daf8c4ba990658971c71bb366be9d6702cbf8"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",
       "hash": "sha256:ea671385db805d0e4ff20d347d6a4771b34923d055d5fd13746c4fc7fbb044ca"
     }
   ],
-  "capabilityCount": 23,
+  "capabilityCount": 24,
   "catalogAssertionCount": 5,
   "internalExemptionCount": 2,
   "catalogAssertions": [
@@ -44,7 +44,7 @@
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
       "valid": true,
-      "actualCount": 40
+      "actualCount": 42
     },
     {
       "id": "catalog.generated-contracts",
@@ -81,6 +81,12 @@
     {
       "id": "billboard.runtime-projection",
       "kind": "projectionChannel",
+      "reachable": true,
+      "gapCount": 0
+    },
+    {
+      "id": "bridge.browser-host-studio-session-lifecycle",
+      "kind": "runtimeOperation",
       "reachable": true,
       "gapCount": 0
     },

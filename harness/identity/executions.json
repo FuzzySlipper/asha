@@ -97,6 +97,13 @@
       "providerIds": ["@asha/runtime-session"]
     },
     {
+      "id": "ts.browser-host.tests",
+      "artifactId": "evidence.execution.browser-host-tests",
+      "command": ["pnpm", "--dir", "ts", "--filter", "@asha/browser-host", "test"],
+      "inputs": ["ts/package.json", "ts/packages/browser-host", "ts/packages/runtime-bridge"],
+      "providerIds": ["@asha/browser-host"]
+    },
+    {
       "id": "ts.game-workspace.tests",
       "artifactId": "evidence.execution.game-workspace-tests",
       "command": ["pnpm", "--dir", "ts", "--filter", "@asha/game-workspace", "test"],

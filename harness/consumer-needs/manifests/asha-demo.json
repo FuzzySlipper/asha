@@ -255,7 +255,7 @@
         ],
         "selector": ["../asha-demo/project/project-bundle.json"],
         "delivery": [
-          "../asha-demo/demo-rs/crates/gameplay-host-native/src/lib.rs",
+          "../asha-demo/demo-rs/crates/native-runtime-provider/src/lib.rs",
           "../asha-demo/tests/live-ui.spec.mjs"
         ]
       }
@@ -315,7 +315,7 @@
         "provider": ["public-rust/gameplay-runtime-host/src/lib.rs"],
         "selector": ["../asha-demo/src/content/prefab-authoring.ts"],
         "delivery": [
-          "../asha-demo/demo-rs/crates/gameplay-host-native/src/lib.rs",
+          "../asha-demo/demo-rs/crates/native-runtime-provider/src/lib.rs",
           "../asha-demo/tests/live-ui.spec.mjs"
         ]
       }

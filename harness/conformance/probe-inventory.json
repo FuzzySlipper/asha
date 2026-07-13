@@ -91,6 +91,11 @@
       "executionId": "ts.renderer-host.tests"
     },
     {
+      "id": "public.browser-host",
+      "executionClass": "publicConsumer",
+      "executionId": "ts.browser-host.tests"
+    },
+    {
       "id": "public.camera-flow",
       "executionClass": "publicConsumer",
       "executionId": "ts.app.tests"
@@ -530,6 +535,42 @@
       "claims": [
         "publicProjectionReadout"
       ]
+    },
+    {
+      "id": "public.browser-host",
+      "suite": "public.browser-host",
+      "evidence": [
+        {
+          "assertionId": "assertion.public.browser-host.generated-runtimebridge-operation-inventory",
+          "artifactId": "evidence.public.browser-host.generated-runtimebridge-operation-inventory",
+          "path": "ts/packages/browser-host/src/index.test.ts",
+          "token": "browser host RPC surface follows every generated RuntimeBridge manifest operation"
+        },
+        {
+          "assertionId": "assertion.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
+          "artifactId": "evidence.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
+          "path": "ts/packages/browser-host/src/index.test.ts",
+          "token": "browser host fails closed for missing and spoofed providers"
+        },
+        {
+          "assertionId": "assertion.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles",
+          "artifactId": "evidence.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles",
+          "path": "ts/packages/browser-host/src/index.test.ts",
+          "token": "browser host gives ASHA Studio pages isolated one-cell lifecycles and rejects stale sessions"
+        }
+      ],
+      "capabilities": [
+        "bridge.browser-host-studio-session-lifecycle"
+      ],
+      "consumerNeeds": [
+        "asha-studio.browser-host",
+        "asha-studio.browser-host-lifecycle"
+      ],
+      "publicSurfaces": [
+        "@asha/browser-host",
+        "@asha/runtime-bridge"
+      ],
+      "claims": []
     },
     {
       "id": "public.camera-controller",

@@ -2,12 +2,13 @@
 
 Status: `browser-host.v0`
 
-`@asha/browser-host` is the public ASHA Game Project host surface for browser-like
-human play that needs native Rust RuntimeBridge authority before the app boots.
+`@asha/browser-host` is the public ASHA Game Project and Studio workflow host
+surface for browser-like use that needs native Rust RuntimeBridge authority
+before the app boots.
 
-The host owns the dev-server/provider boundary that `asha-demo` must not invent
-locally. Downstream repos consume the package root and run the documented command
-shape:
+The host owns the dev-server/provider boundary that `asha-demo` and
+`asha-studio` must not invent locally. Downstream repos consume the package root
+and run the documented command shape:
 
 ```sh
 asha-browser-host --ui-root dist/ui --host 0.0.0.0 --port 5173
@@ -31,14 +32,45 @@ engine Rust crates, or raw transports.
 
 The host owns the browser-to-native method transport behind bounded
 `/asha/browser-host/runtime-bridge/<method>` endpoints. Those endpoints are an
-upstream ASHA host implementation detail; game projects still see only the public
-RuntimeBridge provider object and typed RuntimeSession facade.
+upstream ASHA host implementation detail. The endpoint inventory is derived from
+the generated RuntimeBridge manifest; downstream repos do not maintain an RPC
+method list. Consumers still see only the public RuntimeBridge provider object
+and typed RuntimeSession facade.
 
 A Game Project that statically links Rust gameplay modules builds them into the
 same RuntimeBridge cell returned by `createRuntimeBridge`. Browser-host accepts
 no second gameplay transport and exposes no gameplay-host endpoint. Combat
 events, movement/trigger reconciliation, decisions, scheduling, and replay stay
 inside that Rust cell.
+
+## Session and resource lifecycle
+
+Every provider script response receives a host-issued browser Session identity.
+Every `createRuntimeBridge()` call within that page receives a bounded client
+identity inside the browser Session, so two pages using client `0` cannot share
+ProjectBundle, scheduler, camera, buffer, voxel, gameplay-module, or replay state.
+
+The returned bridge is structurally a normal `RuntimeBridge` and also exposes the
+typed `browserHostLifecycle` readout from `NativeBrowserHostRuntimeBridge`:
+
+- `compatibilityVersion` is `browser-host.v0`;
+- `sessionId` identifies the host-issued browser Session;
+- `status()` reports `active` or `disconnected`;
+- `disconnect()` unloads and retires that client cell.
+
+Studio switches projects by disconnecting the active client cell and asking the
+same standard provider for a fresh RuntimeBridge cell before loading the next
+ProjectBundle. This preserves statically linked composition while making project
+resource release explicit; the host does not insert semantic unload/reload calls
+into the generated operation stream. Explicit client disconnect, browser
+`pagehide`, and host shutdown unload active ProjectBundle authority and release
+the bridge reference. A request using
+a retired Session or disconnected client fails closed with a structured
+`RuntimeBridgeError`; it never recreates authority under the stale identity.
+
+These lifecycle routes are host implementation details, not an authority port or
+freeform call API. The provider has no gameplay-host property, raw addon handle,
+Studio callback registry, or downstream-maintained method dispatcher.
 
 ## Status Readout
 
@@ -55,7 +87,8 @@ providers report `status: "missing_rust_backend"` with typed diagnostics.
 
 ## Downstream Shape
 
-An ASHA Game Project should keep its own app boot as ordinary browser code:
+An ASHA Game Project or Studio native-authority workflow should keep its own app
+boot as ordinary browser code:
 
 1. build its UI into `dist/ui` or another static root;
 2. launch that root with `asha-browser-host`;
@@ -65,8 +98,10 @@ An ASHA Game Project should keep its own app boot as ordinary browser code:
 5. fail closed when the resolver does not report native authority or the
    required bridge operations are absent.
 
-The game project should not add a local browser/native bridge, JSON method
-tunnel, reference RuntimeSession fallback, or private package import.
+The downstream project should not add a local browser/native bridge, JSON method
+tunnel, reference RuntimeSession fallback, or private package import. Studio
+uses the same provider kind, global, compatibility marker, and cell lifecycle as
+Demo; there is no Studio-specific provider contract.
 
 ## Non-Claims
 
