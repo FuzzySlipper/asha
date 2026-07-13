@@ -156,6 +156,13 @@ cargo test --workspace
 cargo clippy --workspace
 ```
 
+Gameplay RuntimeSession host and one-cell provider changes also have one
+focused, artifact-producing entrypoint:
+
+```sh
+./harness/ci/check-gameplay-runtime-host.sh
+```
+
 ### TypeScript
 
 ```sh

@@ -52,6 +52,7 @@ smoke outputs, and CI gates.
 - [check-replays.sh](../../harness/ci/check-replays.sh)
 - [check-render-goldens.sh](../../harness/ci/check-render-goldens.sh)
 - [check-bridge.sh](../../harness/ci/check-bridge.sh)
+- [check-gameplay-runtime-host.sh](../../harness/ci/check-gameplay-runtime-host.sh)
 - [check-vocabulary.sh](../../harness/ci/check-vocabulary.sh)
 
 ## Common Agent Mistakes

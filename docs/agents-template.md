@@ -137,6 +137,7 @@ If this repo links to local ASHA packages, also know the relevant upstream gates
 ./harness/ci/check-depgraph.sh
 ./harness/ci/check-contracts.sh
 ./harness/ci/check-bridge.sh
+./harness/ci/check-gameplay-runtime-host.sh
 ./harness/ci/check-vocabulary.sh
 ```
 

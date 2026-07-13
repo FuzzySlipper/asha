@@ -128,7 +128,10 @@ exact Workspace generation. Missing, wrong, replayed, or stale tokens fail
 before module invocation. Pending tokens and deterministic generation counters
 survive the host snapshot; the bounded decision receipt ledger makes the same
 views, invocation outputs, routing, diagnostics, and hashes available to replay
-and first-mismatch tooling.
+and first-mismatch tooling. Restore independently recomputes every decision
+receipt hash and validates nested frozen-read values, effective configuration,
+routing evidence, continuation identity, registry identity, and Workspace
+hashes before any token can be authorized.
 
 Shared proposals do not use a downstream callback. The initial concrete owner
 route is `asha.entity.set-capability-activation.v1`; the host decodes it, checks
@@ -170,6 +173,36 @@ state and rejects mismatched authored trigger definitions. Prefab-aware
 snapshots also retain accepted placement commands, resolved roles, effective
 overrides, Entity provenance, and prefab-scoped module state. Restore validates
 the same registry/bootstrap evidence before republishing the host.
+
+## Direct integration gate
+
+Run the owning main-repo gate with:
+
+```bash
+./harness/ci/check-gameplay-runtime-host.sh
+```
+
+The gate runs the host crate once and one targeted public one-cell provider
+lifecycle proof. It is part of `check-all.sh`; that orchestration excludes the
+host from its earlier workspace test pass so the dedicated semantic suite is
+not executed twice. A standalone `check-rust.sh` still tests the complete Rust
+workspace.
+
+The direct suite covers wave barriers and root rollback, module-state
+application, canonical owner routing/events and owner rejection, scheduler
+interruption/recovery, trigger reconciliation, prefab expansion and declared
+reads, exactly-once continuation replay, nested snapshot/hash verification,
+and two-Session isolation. The public provider proof covers load, FPS restart,
+unload, project switch by rebuilding the static cell, close/drop, and provider
+resource release using a real linked module, registry, codecs, bindings, and
+state adapter.
+
+Each run writes bounded JSON-lines evidence to
+`harness/smoke-out/gameplay-runtime-host/integration-evidence.jsonl` (gitignored).
+Entries identify the Session label, wave or scheduled action, registry digest,
+runtime-host hash where applicable, and at most eight evidence hashes. A failed
+command also writes only its last 200 output lines to `failure.log` in the same
+directory.
 
 ## Deliberate limits
 

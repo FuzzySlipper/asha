@@ -14,4 +14,8 @@ echo "==> cargo clippy"
 cargo clippy --workspace -- -D warnings
 
 echo "==> cargo test"
-cargo test --workspace
+if [[ "${ASHA_GAMEPLAY_RUNTIME_HOST_GATE_OWNS_TESTS:-0}" == "1" ]]; then
+  cargo test --workspace --exclude gameplay-runtime-host
+else
+  cargo test --workspace
+fi

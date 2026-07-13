@@ -255,7 +255,10 @@ fn pulse_topology() -> GameplayDerivedModuleTopology {
         .expect("fixture topology is unambiguous")
 }
 
-pub fn provider(multiplier: u64) -> GameplayStaticModuleProvider {
+fn provider_with_behavior<B>(multiplier: u64, behavior: B) -> GameplayStaticModuleProvider
+where
+    B: GameplayModuleBehavior + 'static,
+{
     let topology = pulse_topology();
     let mut manifest = GameplayModuleManifest {
         module_ref: GameplayModuleRef {
@@ -301,7 +304,7 @@ pub fn provider(multiplier: u64) -> GameplayStaticModuleProvider {
     topology
         .apply_to_manifest(&mut manifest)
         .expect("Pulse topology belongs to its manifest");
-    build_provenance().apply_to_manifest::<PulseBehavior>(&mut manifest);
+    build_provenance().apply_to_manifest::<B>(&mut manifest);
     let configuration = GameplaySerdeConfiguration::<PulseConfiguration>::new(
         "fixture.pulse.module",
         contract("configuration"),
@@ -311,30 +314,30 @@ pub fn provider(multiplier: u64) -> GameplayStaticModuleProvider {
             required: true,
         }],
     );
-    GameplayStaticModuleProvider::linked_from_manifest(
-        manifest,
-        &build_provenance(),
-        PulseBehavior { multiplier },
-    )
-    .event_codec(json_codec(contract("pulse")))
-    .event_codec(json_codec(contract("pulse-result")))
-    .event_codec(gameplay_serde_json_codec_registration::<
-        TriggerReactionProposal,
-    >(
-        contract("trigger-reaction-proposed"),
-        schema_descriptor("fixture.pulse", "trigger-reaction-proposed"),
-    ))
-    .derived_topology(&topology)
-    .state_owner(GameplayStateOwnerRegistration {
-        schema: contract("pulse-state"),
-        owner: pulse_owner(),
-    })
-    .state_owner(GameplayStateOwnerRegistration {
-        schema: contract("pulse-fact"),
-        owner: pulse_owner(),
-    })
-    .state_adapter(gameplay_serde_state_adapter(PulseStateAdapter))
-    .serde_configuration(configuration)
+    GameplayStaticModuleProvider::linked_from_manifest(manifest, &build_provenance(), behavior)
+        .event_codec(json_codec(contract("pulse")))
+        .event_codec(json_codec(contract("pulse-result")))
+        .event_codec(gameplay_serde_json_codec_registration::<
+            TriggerReactionProposal,
+        >(
+            contract("trigger-reaction-proposed"),
+            schema_descriptor("fixture.pulse", "trigger-reaction-proposed"),
+        ))
+        .derived_topology(&topology)
+        .state_owner(GameplayStateOwnerRegistration {
+            schema: contract("pulse-state"),
+            owner: pulse_owner(),
+        })
+        .state_owner(GameplayStateOwnerRegistration {
+            schema: contract("pulse-fact"),
+            owner: pulse_owner(),
+        })
+        .state_adapter(gameplay_serde_state_adapter(PulseStateAdapter))
+        .serde_configuration(configuration)
+}
+
+pub fn provider(multiplier: u64) -> GameplayStaticModuleProvider {
+    provider_with_behavior(multiplier, PulseBehavior { multiplier })
 }
 
 pub fn root_event(amount: u64) -> GameplayEventEnvelope {
@@ -374,6 +377,13 @@ pub fn root_event(amount: u64) -> GameplayEventEnvelope {
 
 pub fn binding_registry(multiplier: u64) -> GameplayModuleBindingRegistry {
     let module = provider(multiplier).manifest.module_ref;
+    binding_registry_for_module(module, multiplier)
+}
+
+fn binding_registry_for_module(
+    module: GameplayModuleRef,
+    multiplier: u64,
+) -> GameplayModuleBindingRegistry {
     let canonical_config =
         serde_json::to_vec(&PulseConfiguration { multiplier }).expect("multiplier serializes");
     let configuration = GameplayModuleConfiguration {
@@ -688,8 +698,8 @@ mod tests {
         EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding,
         FpsBridgeRole, FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability,
         FpsBridgeWeaponMount, FpsPrimaryFireRequest, FpsRuntimeSessionLoadRequest,
-        GameplayBindingEntityTargets, GameplayDecisionMoment, GameplayDecisionStatus,
-        GameplayOperationWorkspace, GameplayRuntimeDecisionOwner,
+        FpsRuntimeSessionRestartRequest, GameplayBindingEntityTargets, GameplayDecisionMoment,
+        GameplayDecisionStatus, GameplayOperationWorkspace, GameplayRuntimeDecisionOwner,
         GameplayRuntimeDecisionOwnerOutput, GameplayRuntimeSchedulerCommand,
         GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
         GameplayTriggerDefinition, LoadPlan, LoadStep, ProjectBundleLoadRequest, RuntimeBridge,
@@ -697,10 +707,53 @@ mod tests {
         StaticRuntimeSessionBuilder, TickScheduledActionDraft, TriggerReconcileCause, Vec3,
         GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
     };
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
 
     fn conformance_composition() -> Result<GameplayStaticComposition, GameplayStaticCompositionError>
     {
         Ok(composition(4))
+    }
+
+    struct ProviderLifetimeBehavior {
+        multiplier: u64,
+        drops: Arc<AtomicUsize>,
+    }
+
+    impl GameplayModuleBehavior for ProviderLifetimeBehavior {
+        fn invoke(
+            &self,
+            context: &GameplayModuleContext<'_>,
+        ) -> Result<GameplayModuleActions, GameplayModuleError> {
+            PulseBehavior {
+                multiplier: self.multiplier,
+            }
+            .invoke(context)
+        }
+    }
+
+    impl Drop for ProviderLifetimeBehavior {
+        fn drop(&mut self) {
+            self.drops.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    fn instrumented_runtime_host_project_input(
+        multiplier: u64,
+        drops: Arc<AtomicUsize>,
+    ) -> GameplayRuntimeProjectInput {
+        let provider =
+            provider_with_behavior(multiplier, ProviderLifetimeBehavior { multiplier, drops });
+        let module = provider.manifest.module_ref.clone();
+        let mut composition = GameplayStaticCompositionBuilder::new();
+        composition.include_standard_owner_events();
+        composition.add_provider(provider);
+        let mut input = runtime_host_project_input(multiplier);
+        input.composition = composition.build().expect("instrumented composition");
+        input.bindings = binding_registry_for_module(module, multiplier);
+        input
     }
 
     #[test]
@@ -1030,6 +1083,118 @@ mod tests {
             checkpoint.readout().runtime_session_hash,
             isolated_readout.runtime_session_hash,
         );
+    }
+
+    #[test]
+    fn public_static_runtime_provider_lifecycle_releases_each_isolated_cell() {
+        let first_drops = Arc::new(AtomicUsize::new(0));
+        let second_drops = Arc::new(AtomicUsize::new(0));
+        let replacement_drops = Arc::new(AtomicUsize::new(0));
+        let mut first = StaticRuntimeSessionBuilder::activate_project(
+            instrumented_runtime_host_project_input(4, first_drops.clone()),
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        let mut second = StaticRuntimeSessionBuilder::activate_project(
+            instrumented_runtime_host_project_input(5, second_drops.clone()),
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        let second_before = second.read_composed_runtime_session().unwrap();
+
+        first.initialize_engine(EngineConfig { seed: 51 }).unwrap();
+        first
+            .load_project_bundle(ProjectBundleLoadRequest {
+                bundle_schema_version: 1,
+                protocol_version: 1,
+                scene_id: 1,
+            })
+            .unwrap();
+        first
+            .load_fps_runtime_session(composed_fps_load_request())
+            .unwrap();
+        let loaded = first.read_composed_runtime_session().unwrap();
+        assert_eq!(loaded.fps_session_epoch, 1);
+        assert_eq!(
+            second.read_composed_runtime_session().unwrap(),
+            second_before
+        );
+
+        let restarted = first
+            .restart_fps_runtime_session(FpsRuntimeSessionRestartRequest { expected_epoch: 1 })
+            .unwrap();
+        assert_eq!(restarted.session_epoch, 2);
+        let after_restart = first.read_composed_runtime_session().unwrap();
+        assert_eq!(after_restart.fps_session_epoch, 2);
+        assert_eq!(
+            after_restart.gameplay.gameplay_registry_digest,
+            loaded.gameplay.gameplay_registry_digest,
+        );
+        assert_eq!(
+            second.read_composed_runtime_session().unwrap(),
+            second_before
+        );
+
+        first.unload_project_bundle().unwrap();
+        assert_eq!(first_drops.load(Ordering::SeqCst), 1);
+        assert!(first.read_composed_runtime_session().is_err());
+        assert_eq!(
+            first
+                .get_project_bundle_composition_status()
+                .unwrap()
+                .loaded_project_bundle,
+            None,
+        );
+
+        let mut replacement = StaticRuntimeSessionBuilder::activate_project(
+            instrumented_runtime_host_project_input(6, replacement_drops.clone()),
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        replacement
+            .initialize_engine(EngineConfig { seed: 52 })
+            .unwrap();
+        replacement
+            .load_project_bundle(ProjectBundleLoadRequest {
+                bundle_schema_version: 1,
+                protocol_version: 1,
+                scene_id: 2,
+            })
+            .unwrap();
+        let switched = replacement.read_composed_runtime_session().unwrap();
+        assert_ne!(
+            switched.runtime_session_hash,
+            after_restart.runtime_session_hash
+        );
+
+        let evidence = serde_json::json!({
+            "schemaVersion": 1,
+            "phase": "provider-lifecycle",
+            "session": ["first", "second", "replacement"],
+            "waveOrAction": "load/restart/unload/project-switch/close",
+            "registryDigest": switched.gameplay.gameplay_registry_digest,
+            "evidenceHashes": [
+                loaded.runtime_session_hash,
+                after_restart.runtime_session_hash,
+                second_before.runtime_session_hash,
+                switched.runtime_session_hash,
+            ],
+            "resourceReleaseCounts": {
+                "unloaded": first_drops.load(Ordering::SeqCst),
+                "closedBeforeDrop": replacement_drops.load(Ordering::SeqCst),
+            },
+        });
+        eprintln!("ASHA_GAMEPLAY_RUNTIME_HOST_EVIDENCE={evidence}");
+
+        drop(replacement);
+        assert_eq!(replacement_drops.load(Ordering::SeqCst), 1);
+        drop(second);
+        assert_eq!(second_drops.load(Ordering::SeqCst), 1);
+        drop(first);
+        assert_eq!(first_drops.load(Ordering::SeqCst), 1);
     }
 
     #[test]

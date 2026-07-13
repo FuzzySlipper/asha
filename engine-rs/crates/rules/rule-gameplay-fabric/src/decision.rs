@@ -35,6 +35,100 @@ impl GameplayDecisionReceipt {
     pub fn accepted(&self) -> bool {
         self.status == GameplayDecisionStatus::Accepted
     }
+
+    /// Recompute the coordinator-owned receipt hash without invoking module or
+    /// owner code. RuntimeSession restore uses this to reject durable decision
+    /// evidence whose visible fields no longer match its recorded hash.
+    pub fn canonical_hash(&self) -> String {
+        let mut parts = vec![
+            self.registry_digest.clone(),
+            self.decision_id.clone(),
+            self.owner_id.clone(),
+            self.initial_workspace_hash.clone(),
+            self.final_workspace_hash.clone(),
+            format!("{:?}", self.status),
+            self.suspension_token
+                .clone()
+                .unwrap_or_else(|| "-".to_owned()),
+        ];
+        for invocation in &self.invocations {
+            parts.extend([
+                invocation.module_id.clone(),
+                invocation.invocation_id.clone(),
+                invocation.delivery_hash.clone(),
+                invocation.output_hash.clone(),
+            ]);
+        }
+        if let Some(routing) = &self.routing {
+            parts.extend([
+                routing.proposal_hash.clone(),
+                routing.owner_id.clone(),
+                routing.accepted.to_string(),
+                routing.routing_hash.clone(),
+            ]);
+        }
+        for diagnostic in &self.diagnostics {
+            parts.extend([
+                diagnostic_code(diagnostic.code).to_owned(),
+                diagnostic.path.clone(),
+                diagnostic.message.clone(),
+            ]);
+        }
+        stable_hash(parts.iter().map(String::as_str))
+    }
+
+    /// Validate hashes nested below the receipt hash. The receipt hash binds
+    /// the coordinator evidence identities; this additionally verifies the
+    /// frozen read values, effective configuration, routing result, and any
+    /// continuation carried by a suspended decision.
+    pub fn nested_hashes_are_valid(&self) -> bool {
+        if self.receipt_hash != self.canonical_hash() {
+            return false;
+        }
+        if !self.invocations.iter().all(|invocation| {
+            let reads_are_valid = match (
+                &invocation.declared_read_set_hash,
+                &invocation.declared_reads,
+            ) {
+                (None, None) => true,
+                (Some(stored_hash), Some(reads)) => {
+                    reads.registry_digest == self.registry_digest
+                        && reads.module_id == invocation.module_id
+                        && reads.invocation_id == invocation.invocation_id
+                        && reads.event_id == format!("decision-read:{}", self.decision_id)
+                        && reads.read_set_hash == *stored_hash
+                        && reads.nested_hashes_are_valid()
+                }
+                _ => false,
+            };
+            let configuration_is_valid = invocation.configuration.as_ref().is_none_or(|value| {
+                crate::gameplay_module_payload_hash(&value.canonical_config) == value.config_hash
+            });
+            reads_are_valid && configuration_is_valid
+        }) {
+            return false;
+        }
+        if self.routing.as_ref().is_some_and(|routing| {
+            routing.registry_digest != self.registry_digest
+                || !crate::verify_gameplay_routing_evidence(routing, &[])
+        }) {
+            return false;
+        }
+        match (&self.suspension_token, &self.continuation) {
+            (Some(token), Some(continuation)) => {
+                self.status == GameplayDecisionStatus::Suspended
+                    && continuation.token == *token
+                    && continuation.decision_id == self.decision_id
+                    && continuation.registry_digest == self.registry_digest
+                    && continuation.owner_id == self.owner_id
+                    && continuation.workspace.workspace_hash == self.final_workspace_hash
+                    && gameplay_payload_hash(&continuation.workspace.canonical_payload)
+                        == continuation.workspace.workspace_hash
+            }
+            (None, None) => self.status != GameplayDecisionStatus::Suspended,
+            _ => false,
+        }
+    }
 }
 
 impl GameplayFabricCoordinator<'_> {
@@ -581,42 +675,7 @@ impl<'registry> DecisionState<'registry> {
                     right.message.as_str(),
                 ))
         });
-        let mut parts = vec![
-            self.coordinator.registry.registry_digest().to_owned(),
-            self.decision_id.clone(),
-            self.owner_id.clone(),
-            self.initial_workspace_hash.clone(),
-            self.final_workspace_hash.clone(),
-            format!("{:?}", self.status),
-            self.suspension_token
-                .clone()
-                .unwrap_or_else(|| "-".to_owned()),
-        ];
-        for invocation in &self.invocations {
-            parts.extend([
-                invocation.module_id.clone(),
-                invocation.invocation_id.clone(),
-                invocation.delivery_hash.clone(),
-                invocation.output_hash.clone(),
-            ]);
-        }
-        if let Some(routing) = &self.routing {
-            parts.extend([
-                routing.proposal_hash.clone(),
-                routing.owner_id.clone(),
-                routing.accepted.to_string(),
-                routing.routing_hash.clone(),
-            ]);
-        }
-        for diagnostic in &self.diagnostics {
-            parts.extend([
-                diagnostic_code(diagnostic.code).to_owned(),
-                diagnostic.path.clone(),
-                diagnostic.message.clone(),
-            ]);
-        }
-        let receipt_hash = stable_hash(parts.iter().map(String::as_str));
-        GameplayDecisionReceipt {
+        let mut receipt = GameplayDecisionReceipt {
             registry_digest: self.coordinator.registry.registry_digest().to_owned(),
             decision_id: self.decision_id,
             owner_id: self.owner_id,
@@ -628,8 +687,10 @@ impl<'registry> DecisionState<'registry> {
             invocations: self.invocations,
             routing: self.routing,
             diagnostics: self.diagnostics,
-            receipt_hash,
-        }
+            receipt_hash: String::new(),
+        };
+        receipt.receipt_hash = receipt.canonical_hash();
+        receipt
     }
 }
 
@@ -639,6 +700,26 @@ struct ContinuationAuthorizationError {
 }
 
 impl GameplayDecisionContinuations {
+    /// Validate the durable continuation table before a restored host can
+    /// authorize any resume token. The enclosing host snapshot binds the full
+    /// serialized table; these checks enforce its internal registry,
+    /// generation, identity, and Workspace invariants.
+    pub fn snapshot_is_valid(&self, registry_digest: &str) -> bool {
+        self.generations.values().all(|generation| *generation > 0)
+            && self.pending.iter().all(|(decision_id, continuation)| {
+                decision_id == &continuation.decision_id
+                    && continuation.registry_digest == registry_digest
+                    && !continuation.token.is_empty()
+                    && !continuation.owner_id.is_empty()
+                    && !continuation.operation_hash.is_empty()
+                    && !continuation.expected_owner_revision.is_empty()
+                    && continuation.generation > 0
+                    && self.generations.get(decision_id) == Some(&continuation.generation)
+                    && gameplay_payload_hash(&continuation.workspace.canonical_payload)
+                        == continuation.workspace.workspace_hash
+            })
+    }
+
     fn authorize(
         &mut self,
         moment: &GameplayDecisionMoment,

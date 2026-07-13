@@ -428,6 +428,11 @@ impl GameplayRuntimeHost {
         }
         validate_replayed_scheduler_codecs(session.registry(), &scheduler)?;
         validate_replayed_reaction_frames(session.registry(), &stored.reaction_frames)?;
+        validate_replayed_decision_evidence(
+            session.registry(),
+            &stored.decision_continuations,
+            &stored.decision_receipts,
+        )?;
         Ok(Self {
             session,
             prefab_registry,
@@ -811,6 +816,11 @@ fn validate_replayed_reaction_frames(
     registry: &svc_gameplay_fabric::GameplayFabricRegistry,
     frames: &[GameplayReactionFrame],
 ) -> Result<(), GameplayRuntimeHostError> {
+    if frames.len() > MAX_REACTION_FRAMES {
+        return Err(GameplayRuntimeHostError::Snapshot(
+            "reaction frame count exceeds the durable host limit".to_owned(),
+        ));
+    }
     for (frame_index, frame) in frames.iter().enumerate() {
         if frame.registry_digest != registry.registry_digest()
             || frame.frame_hash != frame.canonical_hash()
@@ -831,6 +841,48 @@ fn validate_replayed_reaction_frames(
                 })?;
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_replayed_decision_evidence(
+    registry: &svc_gameplay_fabric::GameplayFabricRegistry,
+    continuations: &GameplayDecisionContinuations,
+    receipts: &[GameplayDecisionReceipt],
+) -> Result<(), GameplayRuntimeHostError> {
+    if receipts.len() > MAX_DECISION_RECEIPTS
+        || !continuations.snapshot_is_valid(registry.registry_digest())
+    {
+        return Err(GameplayRuntimeHostError::Snapshot(
+            "decision continuation table or receipt count is invalid".to_owned(),
+        ));
+    }
+    for (receipt_index, receipt) in receipts.iter().enumerate() {
+        if receipt.registry_digest != registry.registry_digest()
+            || !receipt.nested_hashes_are_valid()
+        {
+            return Err(GameplayRuntimeHostError::Snapshot(format!(
+                "decision receipt {receipt_index} registry or nested hash mismatch"
+            )));
+        }
+    }
+    let represented_pending = receipts
+        .iter()
+        .filter(|receipt| {
+            let Some(pending) = continuations.pending(&receipt.decision_id) else {
+                return false;
+            };
+            receipt
+                .continuation
+                .as_ref()
+                .is_some_and(|recorded| recorded == pending)
+        })
+        .map(|receipt| receipt.decision_id.as_str())
+        .collect::<BTreeSet<_>>();
+    if represented_pending.len() != continuations.pending_count() {
+        return Err(GameplayRuntimeHostError::Snapshot(
+            "pending continuation has no matching suspended decision receipt".to_owned(),
+        ));
     }
     Ok(())
 }
@@ -1323,6 +1375,25 @@ mod tests {
     };
     use rule_trigger_volume::TriggerOverlapFactKind;
     use serde::{Deserialize, Serialize};
+
+    fn emit_integration_evidence(
+        phase: &str,
+        session: u64,
+        wave_or_action: &str,
+        readout: &GameplayRuntimeHostReadout,
+        evidence_hashes: &[&str],
+    ) {
+        let artifact = serde_json::json!({
+            "schemaVersion": 1,
+            "phase": phase,
+            "session": session,
+            "waveOrAction": wave_or_action,
+            "registryDigest": readout.gameplay_registry_digest,
+            "runtimeHostHash": readout.runtime_host_hash,
+            "evidenceHashes": evidence_hashes.iter().take(8).collect::<Vec<_>>(),
+        });
+        eprintln!("ASHA_GAMEPLAY_RUNTIME_HOST_EVIDENCE={artifact}");
+    }
 
     fn empty_scheduler_definition() -> GameplayRuntimeSchedulerDefinition {
         GameplayRuntimeSchedulerDefinition::new(
@@ -2193,6 +2264,16 @@ mod tests {
         resumed.workspace = continuation.workspace.clone();
         resumed.resume_token = Some(continuation.token.clone());
         let accepted = restored.decide(resumed, &mut owner);
+        emit_integration_evidence(
+            "continuation-resumed",
+            1,
+            "decision:decision-1",
+            &restored.readout(),
+            &[
+                suspended.receipt_hash.as_str(),
+                accepted.receipt_hash.as_str(),
+            ],
+        );
         assert_eq!(accepted.status, GameplayDecisionStatus::Accepted);
         assert_eq!(owner.committed_payloads.len(), 1);
         let committed: DecisionWorkspace =
@@ -2346,6 +2427,17 @@ mod tests {
         let snapshot = host.compose_snapshot().expect("rejected frame snapshots");
         let restored = GameplayRuntimeHost::restore(wave_fixture_host_input(), &snapshot.text)
             .expect("rejected frame restores");
+        emit_integration_evidence(
+            "root-rollback",
+            1,
+            "wave:1",
+            &restored.readout(),
+            &[
+                reaction.frame.frame_hash.as_str(),
+                reaction.frame.wave_barriers[0].barrier_hash.as_str(),
+                reaction.frame.wave_barriers[1].barrier_hash.as_str(),
+            ],
+        );
         assert_eq!(restored.readout().module_state_hash, state_before);
         assert_eq!(
             restored.reaction_frames(),
@@ -2401,6 +2493,107 @@ mod tests {
                 if message.contains("failed codec admission")
                     && message.contains("not canonical")
         ));
+    }
+
+    #[test]
+    fn snapshot_restore_validates_every_nested_decision_evidence_hash() {
+        let mut host = GameplayRuntimeHost::activate(decision_host_input()).unwrap();
+        let mut owner = DecisionOwnerFixture::default();
+        let suspended = host.decide(decision_moment("decision-1", 0), &mut owner);
+        assert_eq!(suspended.status, GameplayDecisionStatus::Suspended);
+        let snapshot = host.compose_snapshot().expect("decision snapshot");
+
+        let restore_error = |mut stored: StoredGameplayRuntimeHostSnapshot| {
+            stored.snapshot_hash = gameplay_runtime_snapshot_hash(&stored);
+            let text = serde_json::to_string(&stored).expect("tampered snapshot serializes");
+            match GameplayRuntimeHost::restore(decision_host_input(), &text) {
+                Ok(_) => panic!("tampered nested decision evidence must fail restore"),
+                Err(error) => error,
+            }
+        };
+
+        let mut receipt_tampered: StoredGameplayRuntimeHostSnapshot =
+            serde_json::from_str(&snapshot.text).unwrap();
+        receipt_tampered.decision_receipts[0].decision_id = "different-decision".to_owned();
+        assert!(matches!(
+            restore_error(receipt_tampered),
+            GameplayRuntimeHostError::Snapshot(message)
+                if message.contains("decision receipt 0")
+        ));
+
+        let mut read_tampered: StoredGameplayRuntimeHostSnapshot =
+            serde_json::from_str(&snapshot.text).unwrap();
+        read_tampered.decision_receipts[0].invocations[0]
+            .declared_reads
+            .as_mut()
+            .expect("decision fixture records frozen reads")
+            .reads[0]
+            .value_hash = "fnv1a64:tampered".to_owned();
+        assert!(matches!(
+            restore_error(read_tampered),
+            GameplayRuntimeHostError::Snapshot(message)
+                if message.contains("decision receipt 0")
+        ));
+
+        let mut continuation_value: serde_json::Value =
+            serde_json::from_str(&snapshot.text).unwrap();
+        continuation_value["decisionContinuations"]["pending"]["decision-1"]["registryDigest"] =
+            serde_json::Value::String("fnv1a64:foreign".to_owned());
+        let continuation_tampered: StoredGameplayRuntimeHostSnapshot =
+            serde_json::from_value(continuation_value).unwrap();
+        assert!(matches!(
+            restore_error(continuation_tampered),
+            GameplayRuntimeHostError::Snapshot(message)
+                if message.contains("continuation table")
+        ));
+    }
+
+    #[test]
+    fn scheduler_owner_rejection_is_canonical_and_preserves_authority() {
+        let mut host = GameplayRuntimeHost::activate(scheduler_host_input()).unwrap();
+        let authority_before = host.readout().authority_state_hash;
+        let mut draft = scheduled_collision_deactivation();
+        let rejected_payload = rule_gameplay_fabric::CapabilityActivationGameplayProposal {
+            entity: 10,
+            capability: "unsupported-capability".to_owned(),
+            action: "deactivate".to_owned(),
+        };
+        draft.proposal.canonical_payload =
+            serde_json::to_vec(&rejected_payload).expect("rejected proposal serializes");
+        draft.proposal.payload_hash =
+            gameplay_canonical_payload_hash(&draft.proposal.canonical_payload);
+        let action_id = draft.id.clone();
+        {
+            let mut scheduler = host.scheduler_port();
+            scheduler
+                .apply(GameplayRuntimeSchedulerCommand::ScheduleTick(draft))
+                .unwrap();
+            scheduler
+                .apply(GameplayRuntimeSchedulerCommand::ExecuteTick {
+                    action_id: action_id.clone(),
+                    tick: 5,
+                    validity: ScheduledActionValidity::CURRENT,
+                })
+                .unwrap();
+        }
+        let rejected = host.scheduler_port().route(&action_id).unwrap();
+        emit_integration_evidence(
+            "owner-rejected",
+            1,
+            &format!("action:{}", action_id.as_str()),
+            &host.readout(),
+            &[
+                rejected.routing.proposal_hash.as_str(),
+                rejected.routing.routing_hash.as_str(),
+            ],
+        );
+        assert!(!rejected.routing.accepted);
+        assert_eq!(rejected.routing.diagnostic_codes, ["unsupportedCapability"]);
+        assert!(rejected.delivered_events.is_empty());
+        assert!(rejected.reaction.is_none());
+        assert_eq!(host.readout().authority_state_hash, authority_before);
+        assert_eq!(host.scheduler_readout().pending_action_count, 0);
+        assert_eq!(host.scheduler_readout().outstanding_dispatch_count, 0);
     }
 
     #[test]
@@ -2543,7 +2736,38 @@ mod tests {
             1
         );
         let delivered = restored.scheduler_port().route(&action_id).unwrap();
+        emit_integration_evidence(
+            "scheduler-recovered",
+            1,
+            &format!("action:{}", action_id.as_str()),
+            &restored.readout(),
+            &[
+                delivered.routing.proposal_hash.as_str(),
+                delivered.routing.routing_hash.as_str(),
+                delivered
+                    .reaction
+                    .as_ref()
+                    .expect("recovered event delivery reacts")
+                    .frame
+                    .frame_hash
+                    .as_str(),
+            ],
+        );
         assert_eq!(delivered.delivered_events.len(), 1);
+        assert!(rule_gameplay_fabric::verify_gameplay_routing_evidence(
+            &delivered.routing,
+            &delivered.delivered_events,
+        ));
+        assert_eq!(
+            delivered.delivered_events[0].emitter,
+            protocol_game_extension::GameplayEmitterRef::Owner {
+                owner_id: delivered.routing.owner_id.clone(),
+            }
+        );
+        assert_eq!(
+            gameplay_canonical_payload_hash(&delivered.delivered_events[0].canonical_payload),
+            delivered.delivered_events[0].payload_hash,
+        );
         assert!(delivered.reaction.as_ref().unwrap().observe.accepted());
         assert!(matches!(
             delivered.delivery_fact,

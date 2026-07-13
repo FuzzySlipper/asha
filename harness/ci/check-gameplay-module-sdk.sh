@@ -11,7 +11,8 @@ if rg -n --fixed-strings "engine-rs/crates" "$FIXTURE/Cargo.toml"; then
   echo "Downstream gameplay-module fixture must depend only on the public facade." >&2
   exit 1
 fi
-cargo test --locked --offline --manifest-path "$FIXTURE/Cargo.toml"
+cargo test --locked --offline --manifest-path "$FIXTURE/Cargo.toml" -- \
+  --skip public_static_runtime_provider_lifecycle_releases_each_isolated_cell
 
 echo "==> Checking gameplay-module scaffold"
 "$REPO_ROOT/harness/tools/new-gameplay-module.sh" \
