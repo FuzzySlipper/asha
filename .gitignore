@@ -1,4 +1,5 @@
 # ── Rust ────────────────────────────────────────────────────────────────────────
+target/
 engine-rs/target/
 public-rust/*/target/
 public-rust/*/Cargo.lock
