@@ -2,40 +2,40 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:3b0f3dfacec8fc074d6d0a9ddecfd559d8c18b8c3002559c2e49c7b81bf36d72",
+  "inventoryHash": "sha256:d4ab2b41e71d44521517fd173b3b943ab49c81b6c666876b672e535acd636cb0",
   "catalogs": [
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:2e51db06dc21a906ba33f28c7a1db3818db0a727655a24350a2852ff0df29c7f"
+      "hash": "sha256:3d7227262583a8bea01cad4cb0d34ec0f25a788901cdf13ae0a9196237ee7395"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:1335b96725b8d63ca4b446b4f8cf0dfc1772d3572e8d8fdd1a8372398befef7f"
+      "hash": "sha256:ec5af2df5df99ad6c9fe6ef132bd501a4c776256a1fcb5b39821842951b5823c"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
-      "hash": "sha256:20371c8358c1561e886ff5a24ccb0f0425c3387ceaf0def5b6f05c810522819a"
+      "hash": "sha256:516ae1d0465421f16c73fe4df186602f7676c01679c400abfe29570ae2297236"
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:46f8aeb3f9ecccaadb68bbdb504c18c8333d44b88b444a23bc965e24e2cccb4d"
+      "hash": "sha256:2a0d100e17877d2a6e296fdb9c6353e450c4a58094d779acad985b18f5044be2"
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:e772ca4dfa25c1610b996e6bf277e648fa38f199494bebafc26d6154dc10d832"
+      "hash": "sha256:943114ff275e4db5df5f6c0cea230b1451ca637ea39f547df156341b313d53a0"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
-      "hash": "sha256:17e9775677120e35f52b716bfc730fe572dc02278ef74fdba6c28aeeb8fea183"
+      "hash": "sha256:894f9affc30861d47851d7a2241ea88249438b97b56105ac6110f8f6e4566399"
     }
   ],
   "summary": {
     "stableOperationCount": 69,
     "realOperationProbeCount": 69,
     "temporaryOperationExemptionCount": 0,
-    "semanticProbeCount": 20,
-    "deliveryRequirementCount": 32,
-    "publicSurfaceCount": 10
+    "semanticProbeCount": 22,
+    "deliveryRequirementCount": 33,
+    "publicSurfaceCount": 11
   },
   "operations": [
     {
@@ -699,6 +699,12 @@
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
+          "assertion": "bundle_unload_obeys_the_declared_session_retention_rule"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
           "assertion": "camera_view_surface_round_trips_and_fails_closed"
         },
         {
@@ -896,6 +902,12 @@
           "corpus": "bridge.native-transport",
           "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
+          "assertion": "bundle_unload_obeys_the_declared_session_retention_rule"
         },
         {
           "suite": "bridge.rust-authority",
@@ -2043,6 +2055,12 @@
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
+          "assertion": "bundle_unload_obeys_the_declared_session_retention_rule"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/core.rs",
           "assertion": "load_save_status_unload_round_trip"
         }
       ]
@@ -2173,6 +2191,11 @@
       "passed": true
     },
     {
+      "id": "gameplay.runtime-session-composition",
+      "suite": "gameplay.runtime-host",
+      "passed": true
+    },
+    {
       "id": "gameplay.trigger.lifecycle",
       "suite": "gameplay.triggers",
       "passed": true
@@ -2215,6 +2238,11 @@
     {
       "id": "public.prefab-authoring-and-placement",
       "suite": "public.prefab-authoring",
+      "passed": true
+    },
+    {
+      "id": "public.projection-pick",
+      "suite": "public.projection-pick",
       "passed": true
     },
     {

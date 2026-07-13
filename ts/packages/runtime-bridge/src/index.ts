@@ -10,7 +10,12 @@
 // hatches. The manifest-derived conformance tests keep these re-exports stable.
 
 export { MANIFEST_OPERATIONS } from './generated/operations.js';
-export type { BridgeOperation, BridgeSurface } from './generated/operations.js';
+export type {
+  BridgeErrorFamily,
+  BridgeOperation,
+  BridgeOperationDescriptor,
+  BridgeSurface,
+} from './generated/operations.js';
 export {
   ResolvedTimeControlConsumer,
   TIME_CONTROL_INPUT_ACTIONS,

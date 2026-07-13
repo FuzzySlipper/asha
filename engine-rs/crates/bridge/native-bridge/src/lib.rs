@@ -41,6 +41,7 @@ mod audio_projection;
 mod billboard_projection;
 mod camera;
 mod fps;
+mod generated;
 mod generated_tunnel;
 mod input_session;
 mod particle_projection;

@@ -32,8 +32,9 @@ exemptions without reconstructing the gate from CI logs.
 
 Every stable bridge operation must satisfy both conditions:
 
-1. `NATIVE_WIRED_OPERATIONS` routes it to the native transport instead of the
-   fail-closed placeholder.
+1. The generated manifest snapshot marks it native-wired and the exact native
+   declaration/export checks find one matching TypeScript binding and Rust
+   `#[napi]` function.
 2. A named `#[test]` assertion executed by a declared compiled Rust authority or
    native-transport suite calls that exact operation.
 

@@ -147,10 +147,14 @@ def bridge_operations() -> tuple[list[str], set[str]]:
     path = ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml"
     document = tomllib.loads(path.read_text(encoding="utf-8"))
     stable = sorted(item["name"] for item in document["operation"] if item["surface"] == "stable")
-    native_source = (ROOT / "ts/packages/runtime-bridge/src/native.ts").read_text(encoding="utf-8")
-    start = native_source.index("NATIVE_WIRED_OPERATIONS")
-    end = native_source.index("function nativeUnimplemented", start)
-    wired = set(re.findall(r"'([a-z][a-z0-9_]+)'", native_source[start:end]))
+    generated = load_json(
+        ROOT / "ts/packages/runtime-bridge/src/generated/conformance.json"
+    )
+    wired = {
+        operation["manifestName"]
+        for operation in generated["operations"]
+        if operation["nativeWired"]
+    }
     return stable, wired
 
 
@@ -298,7 +302,8 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
     stable, native_wired = bridge_operations()
     native_export_text = "\n".join(
         path.read_text(encoding="utf-8")
-        for path in sorted((ROOT / "engine-rs/crates/bridge/native-bridge/src").glob("*.rs"))
+        for path in sorted((ROOT / "engine-rs/crates/bridge/native-bridge/src").rglob("*.rs"))
+        if "generated" not in path.parts
     )
     exemptions = document.get("temporaryOperationExemptions", [])
     exemption_names = [item.get("operation") for item in exemptions if isinstance(item, dict)]
@@ -333,7 +338,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             if not evidence_assertions:
                 add_gap(gaps, operation, "stable_operation_without_real_probe", "testCorpora", "native-wired stable operation is not called by a named test assertion in an executed real suite")
             if re.search(rf"#\[napi\]\s*pub fn\s+{re.escape(operation)}\s*\(", native_export_text) is None:
-                add_gap(gaps, operation, "native_provider_not_exported", "engine-rs/crates/bridge/native-bridge/src", "NATIVE_WIRED_OPERATIONS entry has no concrete #[napi] export")
+                add_gap(gaps, operation, "native_provider_not_exported", "engine-rs/crates/bridge/native-bridge/src", "manifest-stable operation has no concrete #[napi] export")
             status = "probed"
         else:
             if exemption is None:

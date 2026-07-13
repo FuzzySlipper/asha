@@ -8,6 +8,10 @@ import type {
   RenderFrameDiff,
   RuntimeProjectionFrame,
 } from '@asha/contracts';
+import {
+  GENERATED_NATIVE_ADDON_EXPORTS,
+  type GeneratedNativeAddonDeclaration,
+} from './generated/addon-surface.js';
 
 export interface NativeVec3 {
   readonly x: number;
@@ -189,7 +193,7 @@ interface NativeFpsEncounterTransitionResult extends NativeFpsEncounterDirectorS
  * operations; the generated `#[napi]` wrappers (one-in/one-out) replace the
  * hand-written stubs once the codegen emitter lands.
  */
-export interface NativeAddon {
+interface NativeAddonBindings {
   initializeEngine(seed: number): number;
   loadProjectBundle(
     handle: number,
@@ -325,74 +329,5 @@ export interface NativeAddon {
   redoVoxelEdit(handle: number, requestJson: string): string;
 }
 
-export const REQUIRED_NATIVE_ADDON_EXPORTS = [
-  'initializeEngine',
-  'loadProjectBundle',
-  'submitCommands',
-  'stepSimulation',
-  'configureInputSession',
-  'applyInputContextCommand',
-  'submitRawInput',
-  'replayResolvedInputAction',
-  'readInputContextState',
-  'applyTimeControlCommand',
-  'readTimeControlState',
-  'createCamera',
-  'applyCameraModeCommand',
-  'applyCameraNavigationInput',
-  'readCameraControllerState',
-  'applyCollisionConstrainedCameraInput',
-  'applyFirstPersonCameraInput',
-  'readCameraProjection',
-  'pickVoxel',
-  'selectVoxel',
-  'readVoxelMeshEvidence',
-  'getBuffer',
-  'releaseBuffer',
-  'unloadProjectBundle',
-  'readModelMaterialPreview',
-  'readSceneObjectSnapshot',
-  'applySceneObjectCommand',
-  'applyGeneratedTunnelToRuntimeWorld',
-  'applyEnemyDirectNavMovement',
-  'loadFpsRuntimeSession',
-  'readFpsRuntimeSession',
-  'applyFpsPrimaryFire',
-  'invokeGameExtensionWeaponEffect',
-  'validateGameRuleCatalog',
-  'submitGameRuleEffectIntent',
-  'readGameRuleRuntimeReadout',
-  'restartFpsRuntimeSession',
-  'readFpsEncounterDirector',
-  'applyFpsEncounterTransition',
-  'readRenderDiffs',
-  'readProjectionFrame',
-  'saveProjectBundle',
-  'getProjectBundleCompositionStatus',
-  'planVoxelConversion',
-  'registerVoxelConversionSource',
-  'registerVoxelConversionMeshAsset',
-  'importVoxelConversionMeshSource',
-  'readVoxelConversionSourceMetadata',
-  'previewVoxelConversion',
-  'applyVoxelConversion',
-  'exportVoxelConversionEvidence',
-  'readVoxelModelInfo',
-  'readVoxelModelWindow',
-  'exportVoxelVolumeAsset',
-  'saveVoxelVolumeAsset',
-  'updateVoxelVolumeAssetPalette',
-  'initializeVoxelVolumeAuthoring',
-  'loadVoxelVolumeAsset',
-  'unloadVoxelVolumeAsset',
-  'validateVoxelAnnotationLayer',
-  'loadVoxelAnnotationLayer',
-  'readVoxelAnnotationQuery',
-  'applyVoxelAnnotationEdit',
-  'exportVoxelAnnotationLayer',
-  'readVoxelEditHistory',
-  'previewVoxelEditRevert',
-  'applyVoxelEditRevert',
-  'undoVoxelEdit',
-  'redoVoxelEdit',
-] as const;
+export type NativeAddon = GeneratedNativeAddonDeclaration<NativeAddonBindings>;
+export const REQUIRED_NATIVE_ADDON_EXPORTS = GENERATED_NATIVE_ADDON_EXPORTS;

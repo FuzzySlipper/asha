@@ -200,6 +200,7 @@ mod authority;
 mod bridge;
 pub mod buffer_provider;
 mod errors;
+mod generated;
 mod handles;
 mod payloads;
 

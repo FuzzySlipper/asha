@@ -1,4 +1,5 @@
 import type { CameraCollisionSnapshot, CameraCreateRequest, CameraSnapshot, CollisionConstrainedCameraInputEnvelope, CommandResult, FirstPersonCameraInputEnvelope, RenderFrameDiff, RuntimeProjectionFrame } from '@asha/contracts';
+import { type GeneratedNativeAddonDeclaration } from './generated/addon-surface.js';
 export interface NativeVec3 {
     readonly x: number;
     readonly y: number;
@@ -179,7 +180,7 @@ interface NativeFpsEncounterTransitionResult extends NativeFpsEncounterDirectorS
  * operations; the generated `#[napi]` wrappers (one-in/one-out) replace the
  * hand-written stubs once the codegen emitter lands.
  */
-export interface NativeAddon {
+interface NativeAddonBindings {
     initializeEngine(seed: number): number;
     loadProjectBundle(handle: number, bundleSchemaVersion: number, protocolVersion: number, sceneId: number): {
         loadedProjectBundle: number | null;
@@ -270,6 +271,7 @@ export interface NativeAddon {
     undoVoxelEdit(handle: number, requestJson: string): string;
     redoVoxelEdit(handle: number, requestJson: string): string;
 }
-export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly ["initializeEngine", "loadProjectBundle", "submitCommands", "stepSimulation", "configureInputSession", "applyInputContextCommand", "submitRawInput", "replayResolvedInputAction", "readInputContextState", "applyTimeControlCommand", "readTimeControlState", "createCamera", "applyCameraModeCommand", "applyCameraNavigationInput", "readCameraControllerState", "applyCollisionConstrainedCameraInput", "applyFirstPersonCameraInput", "readCameraProjection", "pickVoxel", "selectVoxel", "readVoxelMeshEvidence", "getBuffer", "releaseBuffer", "unloadProjectBundle", "readModelMaterialPreview", "readSceneObjectSnapshot", "applySceneObjectCommand", "applyGeneratedTunnelToRuntimeWorld", "applyEnemyDirectNavMovement", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "validateGameRuleCatalog", "submitGameRuleEffectIntent", "readGameRuleRuntimeReadout", "restartFpsRuntimeSession", "readFpsEncounterDirector", "applyFpsEncounterTransition", "readRenderDiffs", "readProjectionFrame", "saveProjectBundle", "getProjectBundleCompositionStatus", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "importVoxelConversionMeshSource", "readVoxelConversionSourceMetadata", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "exportVoxelVolumeAsset", "saveVoxelVolumeAsset", "updateVoxelVolumeAssetPalette", "initializeVoxelVolumeAuthoring", "loadVoxelVolumeAsset", "unloadVoxelVolumeAsset", "validateVoxelAnnotationLayer", "loadVoxelAnnotationLayer", "readVoxelAnnotationQuery", "applyVoxelAnnotationEdit", "exportVoxelAnnotationLayer", "readVoxelEditHistory", "previewVoxelEditRevert", "applyVoxelEditRevert", "undoVoxelEdit", "redoVoxelEdit"];
+export type NativeAddon = GeneratedNativeAddonDeclaration<NativeAddonBindings>;
+export declare const REQUIRED_NATIVE_ADDON_EXPORTS: readonly string[];
 export {};
 //# sourceMappingURL=native-addon.d.ts.map

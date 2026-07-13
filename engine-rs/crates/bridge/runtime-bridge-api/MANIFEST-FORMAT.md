@@ -1,115 +1,150 @@
-# Bridge manifest format + generated-glue plan + conformance shape
+# Bridge manifest format, generated glue, and conformance
 
-Task #2249. Companion to `bridge-manifest.toml`. Governs the curated-manifest +
-generated-boring-glue + hand-written-bodies middle path (ADR 0006).
+Companion to `bridge-manifest.toml`. Governs the curated-manifest + generated-boring-glue +
+handwritten-bodies middle path (ADR 0006).
 
-## 1. Why a manifest (and what it is NOT)
+## 1. Why a manifest (and what it is not)
 
-The manifest is a **small, hand-reviewed list of allowed bridge operations** with typed
-input/output, an error channel, and buffer/lifetime notes. It exists so the bridge surface is
+The manifest is a small, hand-reviewed list of allowed bridge operations with typed input/output,
+an error channel, capability ownership, and lifetime notes. It makes the public runtime border
 diffable and review-gated.
 
-It is **not**:
-- a generic RPC registry,
-- a `callRust(methodName, json)` dispatcher,
-- a place for `serde_json::Value` / `any` / `unknown` payloads,
-- a second hand-written schema layer (semantic types live in `protocol-*` crates).
+It is not:
 
-Adding an operation is a deliberate boundary change → contract-steward review.
+- a generic RPC registry;
+- a `callRust(methodName, json)` dispatcher;
+- a place for `serde_json::Value`, `any`, or `unknown` payloads;
+- a second handwritten schema layer (semantic types live in protocol crates);
+- permission for generated code to decide policy, validation, authority, or mutation.
+
+Adding an operation is a deliberate boundary change requiring contract-steward review.
 
 ## 2. Schema
 
-```
+```text
 [manifest]
 version            : int (currently 1)
 owning_crate       : "runtime-bridge-api"
 facade_package     : "@asha/runtime-bridge"
 native_package     : "@asha/native-bridge"
 wasm_replay_package: "@asha/wasm-replay-bridge"
-error_type         : single typed error enum for ALL operations
+error_type         : single typed error enum for all operations
+error_families     : complete snake_case RuntimeBridgeError kind list
 handle_types       : opaque bridge-owned handle type names
 
-[[operation]]            (one table per operation)
+[[capability]]
+id                : snake_case, unique
+interface         : generated TypeScript interface name, unique
+property          : generated RuntimeBridgePorts property, unique
+initialization    : "requiresEngine" | "createsEngine"
+project_bundle    : "retainedAcrossLoadUnload" | "ownsLoadUnload"
+snapshot_hash     : named readout/hash family governed by the cell
+resource_lifetime : "session" | "frame" | "mixedExplicitAndSession"
+operations        : exact operation names; every operation appears once globally
+
+[[operation]]
 name              : snake_case, unique
 surface           : "stable" | "quarantined"
 quarantine_reason : required iff surface == "quarantined"
-input             : exactly one type ref (protocol_*::Type or a declared handle_type or "Unit")
-output            : exactly one type ref (protocol_*::Type, a declared handle_type,
-                    "RuntimeBufferView", or "Unit")
+input             : exactly one protocol ref, declared handle, or Unit
+output            : exactly one protocol ref, declared handle, RuntimeBufferView, or Unit
 errors            : must equal manifest.error_type
-buffers           : optional; required when the op lends/borrows/releases a buffer; states lifetime
+buffers           : required when the operation lends, borrows, or releases a buffer
 summary           : one-line human description
+facade_method     : optional explicit camelCase public method override
+facade_input      : optional bridge::/contracts::/session:: semantic type override
+facade_output     : optional bridge::/contracts::/session:: semantic type override
 ```
 
-### Validation rules (enforced by `harness/bridge/validate-manifest.py`)
-1. Every operation has exactly one `input` and one `output` — no variadic, no `methodName`+payload.
-2. `input`/`output` reference a `protocol_*::` type, a declared `handle_type`, `RuntimeBufferView`,
-   or `Unit`. **Forbidden type tokens:** `serde_json::Value`, `Value`, `Json`, `any`, `unknown`,
-   `Box<dyn`, `dyn `. (These would re-open an opaque escape hatch.)
-3. `errors` equals `manifest.error_type` for every operation.
-4. `surface` ∈ {`stable`, `quarantined`}; `quarantined` requires `quarantine_reason`.
-5. Buffer-lending ops (`get_buffer`/`release_buffer`/anything with `buffers`) must declare a
-   lifetime note in `buffers`.
-6. Operation `name`s are unique and snake_case.
+`harness/bridge/validate-manifest.py` enforces:
 
-## 3. Generated boring glue (the plan)
+1. Every operation has exactly one input and output; there are no variadic or method-name payloads.
+2. Type references are bounded and typed. Opaque escape-hatch tokens are rejected.
+3. Every operation uses the common error type and a valid surface classification.
+4. Buffer operations declare their lifetime contract.
+5. Operation names and error families are unique snake_case values.
+6. Capability ids, interfaces, and properties are unique. Their operation lists are an exact,
+   non-overlapping cover of the manifest.
+7. Facade overrides point only to existing semantic owners: `bridge::`, `contracts::`, or
+   `session::`.
+8. Stable operations have exactly one handwritten TypeScript binding signature and one concrete
+   Rust `#[napi]` export. Missing, duplicate, extra, or mismatched wiring fails before runtime.
+9. Generated artifacts match the committed manifest byte-for-byte.
 
-From `bridge-manifest.toml` + the `protocol-*` crates, codegen (extending `protocol-codegen`)
-emits **only mechanical glue — one operation in, one wrapper out, no hidden behavior**:
+## 3. Generated boring glue
 
-| Artifact | Path (generated, committed, not hand-edited) | Shape |
+`harness/codegen/bridge-emit.py` emits only transparent, mechanical parity surfaces:
+
+| Artifact | Generated path | Shape |
 |---|---|---|
-| TS facade interface | `ts/packages/runtime-bridge/src/generated/operations.ts` | one method signature per operation over `@asha/contracts` types |
-| TS facade skeleton | `ts/packages/runtime-bridge/src/generated/skeleton.ts` | abstract base the hand-written facade + mock implement |
-| N-API wrapper sigs | `engine-rs/crates/bridge/native-bridge/src/generated/exports.rs` | one `#[napi]` fn signature per operation; bodies call hand-written semantic fns |
-| Rust conversion stubs | `engine-rs/crates/bridge/runtime-bridge-api/src/generated/convert.rs` | protocol-type ↔ N-API-visible struct, where shapes differ |
-| Conformance fixtures | `ts/packages/runtime-bridge/src/generated/conformance.json` | manifest signature snapshot the conformance test asserts against |
-| Dep-policy metadata | already in `ownership.toml` | which package may import the raw addon |
+| Operation descriptors | `ts/packages/runtime-bridge/src/generated/operations.ts` | tagged descriptor union, error families, stable/quarantined and native-wiring inventory |
+| Capability facade | `ts/packages/runtime-bridge/src/generated/surfaces.ts` | grouped typed port interfaces, root bridge, ports, and lifecycle contracts |
+| Native TS declaration | `ts/packages/native-bridge/src/generated/addon-surface.ts` | exact stable export-name union checked against handwritten semantic signatures |
+| Runtime Rust metadata | `engine-rs/crates/bridge/runtime-bridge-api/src/generated/mod.rs` | typed operation/capability binding inventory |
+| Native Rust metadata | `engine-rs/crates/bridge/native-bridge/src/generated/mod.rs` | exact stable native-export inventory |
+| Conformance snapshot | `ts/packages/runtime-bridge/src/generated/conformance.json` | machine-readable capability, signature, and wiring snapshot |
+| Native reference | `engine-rs/crates/bridge/native-bridge/src/generated/EXPORTS.md` | inspectable operation/capability/type table |
 
-Rules: generated code is transparent and diffable; **no broad reflection, no dynamic
-`methodName + json` dispatcher**. Codegen never decides policy, state access, ownership, or
-buffer lifetime — those are hand-written bodies.
+Run `python3 harness/codegen/bridge-emit.py --write` to regenerate all seven artifacts. The
+`--check` mode runs in `check-bridge.sh` and fails on source/artifact drift. The manifest validator
+separately compares generated declarations with handwritten TypeScript signatures and concrete
+Rust exports, so a generated name cannot masquerade as real wiring.
 
-> Status: the emitter is implemented at `harness/codegen/bridge-emit.py` and generates the
-> operation registry (`generated/operations.ts`), the conformance snapshot
-> (`generated/conformance.json`), and the napi export reference
-> (`native-bridge/src/generated/EXPORTS.md`). `bridge-emit.py --check` runs in
-> `check-bridge.sh` and fails on any hand-edit drift. Still hand-written (pending the
-> `protocol_runtime` types `EngineConfig`/`StepInputEnvelope`/`StepResult`/
-> `RenderFrameDiffDescriptor`): the facade method *bodies* and the napi *bodies* — only
-> their signatures/registry are generated today.
+There is no broad reflection or dynamic dispatcher. One manifest operation produces one bounded
+method declaration and one row in each relevant inventory.
 
-## 4. Hand-written (NOT generated)
+## 4. Handwritten semantic boundary
 
-Semantic operation bodies stay hand-written and reviewed: engine/session lifecycle, validation
-calls, state-mutation phases, render-diff collection, buffer allocation/lifetime/disposal, error
-classification, native/WASM divergence reporting. The public `@asha/runtime-bridge` facade is
-hand-written for readability **but must satisfy the generated conformance test**.
+Semantic operation bodies stay handwritten and reviewed: engine/session lifecycle, validation,
+state-mutation phases, render-diff collection, buffer allocation and disposal, error
+classification, and native/WASM divergence reporting. The generated facade interface makes the
+handwritten mock and native adapters structurally accountable; it does not implement them.
 
-## 5. Conformance test shape
+Facade overrides map a manifest protocol reference to an existing semantic type owner. They do not
+generate validation or conversion logic. Any Rust/N-API conversion with semantic choices remains
+next to its handwritten native body.
 
-Lives in `ts/packages/runtime-bridge` (facade) and is mirrored by a Rust addon smoke test.
+## 5. Conformance shape
 
-1. **Facade-vs-manifest conformance** (`runtime-bridge`): load
-   `generated/conformance.json`; assert the hand-written facade exposes exactly the manifest
-   operations, with matching arity and contract-typed params/returns. Fails on drift (extra
-   method, missing method, signature mismatch).
-2. **Mock-vs-facade** (`runtime-bridge`): the mock implementation passes the same facade-level
-   behavioral tests as any real transport (so most TS tests need no addon load).
-3. **Native addon smoke** (`native-bridge`, #2250): every exported `#[napi]` op is called once
-   with a tiny fixture; asserts it loads and round-trips a typed value.
-4. **WASM replay conformance** (`wasm-replay-bridge`, #2251): replay fixtures run through the
-   WASM path for deterministic ops; divergence is classified, not discovered.
+The bridge and conformance gates combine four kinds of evidence:
 
-These map to checklist items 3–9 in the source decision note
-(`runtime-boundary-napi-wasm-replay-strategy` §"Binding maintenance checks").
+1. Generated TypeScript exactness: the handwritten facade and native binding declaration satisfy
+   the generated operation and capability surfaces.
+2. Native export exactness: each stable manifest operation has one concrete `#[napi]` export; no
+   non-manifest export is silently added.
+3. Real operation probes: every stable operation is called by a named assertion in an executed
+   compiled Rust or native-transport suite.
+4. WASM replay conformance: deterministic replay fixtures use the WASM verification path and
+   classify divergence explicitly.
 
-## 6. Mechanical guardrails
+Mock behavior and generated declarations are useful structural checks, but they do not count as
+real operation evidence.
 
-`harness/bridge/check-bridge-guardrails.sh` rejects, in **stable** bridge surfaces
-(`runtime-bridge`, `native-bridge`, `runtime-bridge-api`):
-- Rust: `serde_json::Value`, `Box<dyn`, free `dyn ` trait-object dispatch, `methodName`+json dispatch.
-- TS: `: any`, `as any`, `: unknown` in non-test source, `callRust(`-style dispatchers.
+## 6. Extending the bridge
 
-`test`/`devtools`/replay-quarantined paths are exempted (explicit quarantine), matching the
-manifest's `surface = "quarantined"` operations.
+To add one operation without creating parallel inventories:
+
+1. Add its generated protocol DTOs, or an explicit existing semantic facade override, and one
+   `[[operation]]` entry in `bridge-manifest.toml`.
+2. Put it in exactly one capability operation list. A genuinely new capability must declare its
+   initialization, ProjectBundle, hash/readout, and resource-lifetime contract.
+3. Run `python3 harness/codegen/bridge-emit.py --write`; inspect and commit every generated diff.
+4. Implement the handwritten Rust semantic body and `#[napi]` export, its exact
+   `NativeAddonBindings` signature, and the runtime adapter. Do not edit generated files.
+5. Add a real named conformance probe that calls the export and asserts authority-visible
+   behavior. Stable operations cannot stop at generated-only or mock-only evidence.
+6. Run `bash harness/ci/check-bridge.sh` and
+   `python3 harness/conformance/validate.py --write-report`, then the focused Rust and TypeScript
+   tests for the owning capability.
+
+The checks reject a forgotten capability assignment, duplicate operation, stale generated file,
+signature mismatch, absent native export, or stable operation without a real probe before it can
+be advertised downstream.
+
+## 7. Mechanical guardrails
+
+`harness/bridge/check-bridge-guardrails.sh` rejects opaque escape hatches in stable bridge
+surfaces. Rust rejects `serde_json::Value`, `Box<dyn`, free trait-object dispatch, and method-name
+JSON dispatch. TypeScript rejects `any`, `unknown`, and call-by-name tunnels in non-test source.
+
+Test, devtools, and explicitly replay-quarantined paths retain their bounded exemptions.

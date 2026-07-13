@@ -9,6 +9,7 @@ python3 "$REPO_ROOT/harness/bridge/validate-manifest.py"
 
 echo "==> Verifying generated bridge glue is not stale"
 python3 "$REPO_ROOT/harness/codegen/bridge-emit.py" --check
+python3 "$REPO_ROOT/harness/codegen/test-bridge-emit.py"
 
 echo "==> Scanning bridge guardrails (no opaque escape hatches in stable surfaces)"
 bash "$REPO_ROOT/harness/bridge/check-bridge-guardrails.sh"

@@ -17,11 +17,12 @@
       "gameplay.module-named-read": "sha256:0b20352f6bc7fb375de66c3b74a80c4cfa63639c4d3f74420cfefa669712a68f",
       "gameplay.runtime-host": "sha256:e16cdb911d763262e4d373d24920c8a9244cce7574a2c9c5a5394002800fbaa1",
       "gameplay.runtime-host.decision": "sha256:9c52125c2d17fcb435f51beccdb687e2b88d7b895463fdca7ca3640603345e8a",
-      "gameplay.runtime-host.transport": "sha256:06eb4ea80ba6e3b995dfed20d08eb1e6bd2f099dfaae407165f48e9f367c9a12",
+      "gameplay.runtime-session-composition": "sha256:326262f2b60127c0ec0ef9fda7218fca8f07f8e8fa5d481b53787d77eabedad8",
       "gameplay.trigger-lifecycle": "sha256:b23693d8f747c7abe83b0c17c0ee2b35fae96c998061c6042c29362297b400ce",
       "particle.runtime-projection": "sha256:7299ca9463516eebcd8ea332f772bdbd2314e89c268b6970afb1e62025127471",
       "prefab.public-authoring": "sha256:1546d09b8d120d39e560855ebb1ee8867587f4ad11fa6463ddf7648199508ab7",
       "prefab.runtime-placement": "sha256:451df92f6553b5a0b12d65f13f6822200e1b9e62a94766814fcb8774d36ff00a",
+      "renderer.projection-pick": "sha256:19f1c8c9dba64d2d2cd161266a467e64a42a8bc6efbf2c5a43a59c1539253e7b",
       "telemetry.live-snapshot-overlay": "sha256:955207022544a3c57d1a7b473efa9bc9e4946d45d08732709869973f4e06cd3e"
     },
     "deliveryRequirements": {
@@ -55,20 +56,22 @@
       "pulse.public-sdk": "sha256:bd4583af8dfdc8e7d91b788cd7ca9ba1d5d6b82a1ee0847e9d8d639aed131cfc",
       "pulse.read": "sha256:854309ca656179b7d5b6c1cb532f15d217764bb807e30fbb22b9fcfd616b8db5",
       "pulse.runtime-host": "sha256:a25400c50bb65acaf2369fb0b549d1f624c6efa9e92156a45c7ad2b10c2642e5",
+      "pulse.runtime-session-composition": "sha256:ce1f29383fb7aa69728d242578a87de3aa0ac94d8790842ffdecde4e726479db",
       "pulse.subscribe": "sha256:c0e452bb912d99cf79e330540c076ea735609e225fc095cacc0beff6a88088a3",
       "pulse.trigger-lifecycle": "sha256:bed02204d2f41d71b256841d43bb1b8ce001a2132680e51fe2628b84d19cd60c"
     },
     "publicSurfaces": {
       "@asha/contracts": "sha256:6258a91ef1d41c86e63b3211632058c78c2e333397017aef7ba9f5bcc5692c97",
       "@asha/game-workspace": "sha256:9d82f4c9262031bdcfea0a5ea84bad32889932918f112b1dcb66e04495111eaf",
-      "@asha/renderer-host": "sha256:23e8ea67816d3241a4f58a3520c2c8f12a07b9a2cca5cd3d11565fc399963329",
+      "@asha/renderer-host": "sha256:4230075f730b38f0ed85a7815e83a6a4e52c3a4b88e8e67f685340d0dcdfd3f4",
       "@asha/runtime-bridge": "sha256:747dede3362b19f4ffff0bdb29f6276ab94f6f224a138f758db7b65777dd651f",
       "@asha/runtime-session": "sha256:5bb3d39bb0dbbd94e49c6e7665b8edc67ee8c16c2c16969e918fe056497c28e4",
       "@asha/smoke": "sha256:2cdf15f71b06a1dd3ed8fdb67a65add8b89bf9dfaaf3f920d754e5cdea147436",
       "@asha/ui-dom": "sha256:464ed95af0885de029b2fca941fd27747875357e28258e5d74e71d19ecd4dbef",
       "asha-gameplay-module-conformance": "sha256:ecd77d16c70b3bd8102a3a9a034c57d3fe0520b13283327cd3b97dc9f78f02e3",
       "asha-gameplay-module-sdk": "sha256:6d142c50d3135168d726b6758727496266d1a193d73d85066133bca410b183f9",
-      "asha-gameplay-runtime-host": "sha256:316f7859e810e67051983efe7adcab3d54d74f85bfa3bf1eb95e93b2204ad5ac"
+      "asha-gameplay-runtime-host": "sha256:316f7859e810e67051983efe7adcab3d54d74f85bfa3bf1eb95e93b2204ad5ac",
+      "asha-runtime-session-composition": "sha256:e51c6cd57b08196aceb4924235a338af225c0f7421de9fd37af741498c649b6a"
     }
   },
   "testCorpora": [
@@ -181,6 +184,11 @@
       "id": "public.prefab-authoring",
       "executionClass": "publicConsumer",
       "command": "pnpm --dir ts --filter @asha/game-workspace test"
+    },
+    {
+      "id": "public.projection-pick",
+      "executionClass": "publicConsumer",
+      "command": "pnpm --dir ts --filter @asha/renderer-three test"
     },
     {
       "id": "public.telemetry",
@@ -304,16 +312,26 @@
         {
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "approved_public_runtime_host_links_real_downstream_behavior"
-        },
-        {
-          "path": "ts/packages/runtime-bridge/src/runtime-session-gameplay-host.test.ts",
-          "token": "Rust-backed RuntimeSession consumes a consumer-owned static gameplay host"
         }
       ],
-      "capabilities": ["gameplay.runtime-host", "gameplay.runtime-host.transport"],
+      "capabilities": ["gameplay.runtime-host"],
       "consumerNeeds": ["asha-demo.gameplay-runtime-host", "pulse.runtime-host"],
-      "publicSurfaces": ["@asha/runtime-bridge", "@asha/runtime-session", "asha-gameplay-runtime-host"],
+      "publicSurfaces": ["asha-gameplay-runtime-host"],
       "claims": ["actualModuleInvocation", "atomicRejection", "configuredProjectBundleBootstrap", "typedViewDelivery"]
+    },
+    {
+      "id": "gameplay.runtime-session-composition",
+      "suite": "gameplay.runtime-host",
+      "evidence": [
+        {
+          "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
+          "token": "public_static_builder_composes_one_bridge_cell_and_restores_it"
+        }
+      ],
+      "capabilities": ["gameplay.runtime-session-composition"],
+      "consumerNeeds": ["pulse.runtime-session-composition"],
+      "publicSurfaces": ["asha-runtime-session-composition"],
+      "claims": ["atomicRejection", "configuredProjectBundleBootstrap", "typedViewDelivery"]
     },
     {
       "id": "gameplay.trigger.lifecycle",
@@ -535,6 +553,24 @@
       "claims": ["configuredProjectBundleBootstrap", "stablePrefabPartResolution"]
     },
     {
+      "id": "public.projection-pick",
+      "suite": "public.projection-pick",
+      "evidence": [
+        {
+          "path": "ts/packages/renderer-three/src/browser-surface-pick.test.ts",
+          "token": "projection pick returns typed source evidence without changing projection or authority-shaped state"
+        },
+        {
+          "path": "ts/packages/renderer-three/src/browser-surface-pick.test.ts",
+          "token": "projection pick filters are descriptive only and invalid rays fail closed"
+        }
+      ],
+      "capabilities": ["renderer.projection-pick"],
+      "consumerNeeds": [],
+      "publicSurfaces": ["@asha/renderer-host"],
+      "claims": ["atomicRejection", "publicProjectionReadout"]
+    },
+    {
       "id": "public.runtime-session.projection",
       "suite": "public.consumer",
       "evidence": [
@@ -545,7 +581,7 @@
       ],
       "capabilities": ["bridge.project-bundle.load"],
       "consumerNeeds": ["asha-demo.conformance", "asha-demo.playable-encounter-readout", "asha-demo.renderer-host", "asha-demo.runtime-load", "asha-demo.ui-dom"],
-      "publicSurfaces": ["@asha/renderer-host", "@asha/runtime-bridge", "@asha/smoke", "@asha/ui-dom"],
+      "publicSurfaces": ["@asha/renderer-host", "@asha/runtime-bridge", "@asha/runtime-session", "@asha/smoke", "@asha/ui-dom"],
       "claims": ["publicProjectionReadout"]
     },
     {

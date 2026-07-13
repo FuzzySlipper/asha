@@ -86,7 +86,7 @@ export function loadNativeAddon(modulePath = './native-bridge.node'): NativeAddo
         `addon at ${modulePath} is missing expected exports (${missing.join(', ')})`,
       );
     }
-    return mod as NativeAddon;
+    return mod as unknown as NativeAddon;
   } catch (cause) {
     if (cause instanceof NativeAddonUnavailable) throw cause;
     const reason = cause instanceof Error ? cause.message : String(cause);
