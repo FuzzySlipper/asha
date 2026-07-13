@@ -65,6 +65,16 @@ pub enum FpsRuntimeRole {
     Neutral,
 }
 
+impl FpsRuntimeRole {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Player => "player",
+            Self::Enemy => "enemy",
+            Self::Neutral => "neutral",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FpsWeaponMount {
     pub weapon_id: String,
@@ -472,12 +482,17 @@ impl FpsRuntimeSessionState {
             },
         )
         .map_err(FpsRuntimeError::CombatRejected)?;
-        let gameplay_events =
-            gameplay_events::adapt_primary_fire(tick, self.replay_records.len() as u64, &combat)
-                .map_err(|error| {
-                    self.combat = combat_before;
-                    FpsRuntimeError::GameplayEventAdaptation(error.to_string())
-                })?;
+        let gameplay_events = gameplay_events::adapt_primary_fire(
+            tick,
+            self.replay_records.len() as u64,
+            &combat,
+            shooter_role,
+            &weapon.weapon_id,
+        )
+        .map_err(|error| {
+            self.combat = combat_before;
+            FpsRuntimeError::GameplayEventAdaptation(error.to_string())
+        })?;
 
         let hit_target = match combat.outcome {
             CombatFireOutcome::Hit { target, .. } => Some(target),
@@ -1256,6 +1271,13 @@ mod tests {
         assert_eq!(first.target, Some(player));
         assert_eq!(first.target_health_before, Some(HealthState::new(88, 88)));
         assert_eq!(first.target_health_after, Some(HealthState::new(78, 88)));
+        let gameplay_payload =
+            std::str::from_utf8(&first.gameplay_events[0].canonical_payload).unwrap();
+        assert!(gameplay_payload.contains("\"shooterRole\":\"enemy\""));
+        assert!(gameplay_payload.contains("\"weaponId\":\"weapon.enemy_policy.primary\""));
+        assert!(first.gameplay_events[0]
+            .tags
+            .contains(&"shooter-role:enemy".to_owned()));
         assert_eq!(session.health(player), Some(HealthState::new(78, 88)));
         assert_eq!(session.lifecycle_status, FpsLifecycleStatus::Active);
         assert_eq!(

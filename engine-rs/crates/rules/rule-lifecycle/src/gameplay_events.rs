@@ -1,7 +1,8 @@
 use core_ids::EntityId;
 use protocol_game_extension::GameplayEventEnvelope;
 use rule_gameplay_fabric::{
-    adapt_combat_readout, GameplayOwnerEventContext, GameplayOwnerEventError,
+    adapt_combat_readout_with_origin, GameplayCombatSemanticOrigin, GameplayOwnerEventContext,
+    GameplayOwnerEventError,
 };
 use svc_combat::{CombatReadout, HealthState};
 
@@ -24,8 +25,10 @@ pub(crate) fn adapt_primary_fire(
     tick: u64,
     root_sequence: u64,
     combat: &CombatReadout,
+    shooter_role: crate::FpsRuntimeRole,
+    weapon_id: &str,
 ) -> Result<Vec<GameplayEventEnvelope>, GameplayOwnerEventError> {
-    adapt_combat_readout(
+    adapt_combat_readout_with_origin(
         &GameplayOwnerEventContext {
             owner_id: "svc-combat".to_owned(),
             tick,
@@ -35,6 +38,10 @@ pub(crate) fn adapt_primary_fire(
             parent_event_id: None,
         },
         combat,
+        &GameplayCombatSemanticOrigin {
+            shooter_role: Some(shooter_role.label().to_owned()),
+            weapon_id: Some(weapon_id.to_owned()),
+        },
     )
 }
 
@@ -53,4 +60,14 @@ pub(crate) fn assert_primary_fire_events(receipt: &FpsPrimaryFireReceipt) {
         == (protocol_game_extension::GameplayEmitterRef::Owner {
             owner_id: "svc-combat".to_owned(),
         })));
+    assert!(receipt.gameplay_events.iter().all(|event| {
+        event.tags.contains(&"shooter-role:player".to_owned())
+            && event
+                .tags
+                .contains(&"weapon:weapon.custom.primary".to_owned())
+    }));
+    let payload = std::str::from_utf8(&receipt.gameplay_events[0].canonical_payload)
+        .expect("primary-fire semantic origin payload is canonical JSON");
+    assert!(payload.contains("\"shooterRole\":\"player\""));
+    assert!(payload.contains("\"weaponId\":\"weapon.custom.primary\""));
 }

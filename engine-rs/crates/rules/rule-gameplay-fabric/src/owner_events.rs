@@ -40,7 +40,7 @@ impl StandardGameplayProposalKind {
                 "CapabilityActivationGameplayProposal{entity:u64,capability:string,action:string};canonical-json-v1"
             }
             Self::ResolvePrimaryFire => {
-                "PrimaryFireGameplayDecisionWorkspace{shooter:u64,target:?u64,rangeMillimeters:?u32,baseDamage:u32,damage:u32,channelId:string,tick:u64};canonical-json-v1"
+                "PrimaryFireGameplayDecisionWorkspace{shooter:u64,shooterRole:string,target:?u64,rangeMillimeters:?u32,baseDamage:u32,damage:u32,channelId:string,tick:u64};canonical-json-v1"
             }
         }
     }
@@ -89,6 +89,7 @@ pub struct CapabilityActivationGameplayProposal {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PrimaryFireGameplayDecisionWorkspace {
     pub shooter: u64,
+    pub shooter_role: String,
     pub target: Option<u64>,
     pub range_millimeters: Option<u32>,
     pub base_damage: u32,
@@ -189,7 +190,7 @@ impl StandardGameplayEventKind {
             | Self::CombatFireMissed
             | Self::CombatDamageApplied
             | Self::CombatEntityDefeated => {
-                "CombatGameplayPayload{shooter:?u64,target:?u64,distance:?f64,missReason:?string,damage:?u32,healthBefore:?u32,healthAfter:?u32,defeated:bool,tick:u64,combatReplayHash:u64};canonical-json-v1"
+                "CombatGameplayPayload{shooter:?u64,shooterRole:?string,weaponId:?string,target:?u64,distance:?f64,missReason:?string,damage:?u32,healthBefore:?u32,healthAfter:?u32,defeated:bool,tick:u64,combatReplayHash:u64};canonical-json-v1"
             }
             Self::StateMachineAttached | Self::StateMachineTransitioned => {
                 "StateMachineGameplayPayload{entity:u64,machine:u64,from:?u64,to:u64,revision:u64};canonical-json-v1"
@@ -298,6 +299,8 @@ pub struct PrefabPartInteractionGameplayPayload {
 #[serde(rename_all = "camelCase")]
 pub struct CombatGameplayPayload {
     pub shooter: Option<u64>,
+    pub shooter_role: Option<String>,
+    pub weapon_id: Option<String>,
     pub target: Option<u64>,
     pub distance: Option<f64>,
     pub miss_reason: Option<String>,
@@ -307,6 +310,16 @@ pub struct CombatGameplayPayload {
     pub defeated: bool,
     pub tick: u64,
     pub combat_replay_hash: u64,
+}
+
+/// Semantic identity supplied by the combat owner when adapting an FPS
+/// primary-fire result. Runtime EntityIds remain authoritative identities;
+/// these stable labels let downstream selectors express which authored class
+/// of action they consume without hardcoding a Session-local handle.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GameplayCombatSemanticOrigin {
+    pub shooter_role: Option<String>,
+    pub weapon_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -718,10 +731,18 @@ pub fn adapt_combat_readout(
     context: &GameplayOwnerEventContext,
     readout: &CombatReadout,
 ) -> Result<Vec<GameplayEventEnvelope>, GameplayOwnerEventError> {
+    adapt_combat_readout_with_origin(context, readout, &GameplayCombatSemanticOrigin::default())
+}
+
+pub fn adapt_combat_readout_with_origin(
+    context: &GameplayOwnerEventContext,
+    readout: &CombatReadout,
+    origin: &GameplayCombatSemanticOrigin,
+) -> Result<Vec<GameplayEventEnvelope>, GameplayOwnerEventError> {
     let mut envelopes = Vec::with_capacity(readout.events.len());
     let mut accepted_shooter = None;
     for (ordinal, event) in readout.events.iter().enumerate() {
-        let (kind, payload, source, targets, tags) = match event {
+        let (kind, mut payload, source, targets, mut tags) = match event {
             CombatEvent::FireHit {
                 shooter,
                 target,
@@ -733,6 +754,8 @@ pub fn adapt_combat_readout(
                     StandardGameplayEventKind::CombatFireHit,
                     CombatGameplayPayload {
                         shooter: Some(shooter.raw()),
+                        shooter_role: None,
+                        weapon_id: None,
                         target: Some(target.raw()),
                         distance: Some(*distance),
                         miss_reason: None,
@@ -756,6 +779,8 @@ pub fn adapt_combat_readout(
                 StandardGameplayEventKind::CombatFireMissed,
                 CombatGameplayPayload {
                     shooter: Some(shooter.raw()),
+                    shooter_role: None,
+                    weapon_id: None,
                     target: None,
                     distance: None,
                     miss_reason: Some(miss_reason_label(*reason).to_owned()),
@@ -779,6 +804,8 @@ pub fn adapt_combat_readout(
                 StandardGameplayEventKind::CombatDamageApplied,
                 CombatGameplayPayload {
                     shooter: accepted_shooter.map(|entity| entity.raw()),
+                    shooter_role: None,
+                    weapon_id: None,
                     target: Some(target.raw()),
                     distance: None,
                     miss_reason: None,
@@ -797,6 +824,8 @@ pub fn adapt_combat_readout(
                 StandardGameplayEventKind::CombatEntityDefeated,
                 CombatGameplayPayload {
                     shooter: accepted_shooter.map(|entity| entity.raw()),
+                    shooter_role: None,
+                    weapon_id: None,
                     target: Some(target.raw()),
                     distance: None,
                     miss_reason: None,
@@ -812,6 +841,16 @@ pub fn adapt_combat_readout(
                 vec!["defeated".to_owned()],
             ),
         };
+        if payload.shooter.is_some() {
+            payload.shooter_role.clone_from(&origin.shooter_role);
+            payload.weapon_id.clone_from(&origin.weapon_id);
+            if let Some(role) = &origin.shooter_role {
+                tags.push(format!("shooter-role:{role}"));
+            }
+            if let Some(weapon) = &origin.weapon_id {
+                tags.push(format!("weapon:{weapon}"));
+            }
+        }
         envelopes.push(envelope(
             context,
             ordinal,

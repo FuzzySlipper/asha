@@ -74,6 +74,7 @@ impl GameplayRuntimeDecisionOwner for StagedPrimaryFireOwner {
             .into_iter()
             .collect::<Vec<_>>();
         let immutable_fields_match = workspace.shooter == self.initial.shooter
+            && workspace.shooter_role == self.initial.shooter_role
             && workspace.target == self.initial.target
             && workspace.range_millimeters == self.initial.range_millimeters
             && workspace.base_damage == self.initial.base_damage
@@ -254,6 +255,7 @@ impl EngineBridge {
         };
         let initial = PrimaryFireGameplayDecisionWorkspace {
             shooter: preview.shooter.raw(),
+            shooter_role: shooter_role.label().to_owned(),
             target: preview.target.map(EntityId::raw),
             range_millimeters,
             base_damage: weapon.damage,
@@ -449,5 +451,76 @@ impl EngineBridge {
             )
             .map_err(Self::fps_runtime_error)?;
         Ok(Self::encounter_transition_result(receipt, lifecycle))
+    }
+}
+
+#[cfg(test)]
+mod semantic_origin_tests {
+    use super::*;
+
+    fn operation(workspace: &PrimaryFireGameplayDecisionWorkspace) -> GameplayProposalEnvelope {
+        let canonical_payload = serde_json::to_vec(workspace).unwrap();
+        GameplayProposalEnvelope {
+            proposal_id: "proposal.semantic-origin".to_owned(),
+            proposal: StandardGameplayProposalKind::ResolvePrimaryFire.contract(),
+            tick: workspace.tick,
+            root_sequence: 0,
+            wave: 0,
+            proposal_sequence: 0,
+            emitter: GameplayEmitterRef::Owner {
+                owner_id: PRIMARY_FIRE_DECISION_OWNER_ID.to_owned(),
+            },
+            causation: GameplayCausationRef {
+                root_id: "root.semantic-origin".to_owned(),
+                parent_event_id: None,
+                decision_id: Some("decision.semantic-origin".to_owned()),
+            },
+            originating_event_id: None,
+            source: Some(GameplayEntityRef {
+                entity: EntityId::new(workspace.shooter),
+            }),
+            targets: workspace
+                .target
+                .map(|entity| GameplayEntityRef {
+                    entity: EntityId::new(entity),
+                })
+                .into_iter()
+                .collect(),
+            payload_hash: gameplay_payload_hash(&canonical_payload),
+            canonical_payload,
+        }
+    }
+
+    #[test]
+    fn primary_fire_owner_rejects_a_transformed_semantic_shooter_role() {
+        let initial = PrimaryFireGameplayDecisionWorkspace {
+            shooter: 10,
+            shooter_role: "player".to_owned(),
+            target: Some(20),
+            range_millimeters: Some(1_500),
+            base_damage: 40,
+            damage: 40,
+            channel_id: PRIMARY_FIRE_DAMAGE_CHANNEL.to_owned(),
+            tick: 7,
+        };
+        let mut owner = StagedPrimaryFireOwner {
+            expected_revision: "revision.semantic-origin".to_owned(),
+            initial: initial.clone(),
+            final_workspace: None,
+        };
+        let mut transformed = initial;
+        transformed.shooter_role = "enemy".to_owned();
+
+        let output = owner.route_precommit(
+            &StandardGameplayProposalKind::ResolvePrimaryFire.owner(),
+            &operation(&transformed),
+        );
+
+        assert!(!output.accepted);
+        assert_eq!(
+            output.diagnostic_codes,
+            vec!["primaryFireImmutableWorkspaceChanged"]
+        );
+        assert!(owner.final_workspace.is_none());
     }
 }
