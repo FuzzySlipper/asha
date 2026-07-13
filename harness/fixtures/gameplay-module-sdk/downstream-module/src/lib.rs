@@ -1147,9 +1147,12 @@ mod tests {
         assert_eq!(triggered.readout.outstanding_dispatch_count, 1);
         let routed = host.route_scheduled_action(&action_id).unwrap();
         assert!(routed.routing.accepted);
+        assert_eq!(routed.delivered_events.len(), 1);
+        assert!(routed.reaction.as_ref().unwrap().observe.accepted());
         assert_eq!(routed.readout.pending_action_count, 0);
         assert_eq!(routed.readout.outstanding_dispatch_count, 0);
-        assert_eq!(routed.readout.fact_count, 3);
+        assert_eq!(routed.readout.outstanding_event_delivery_count, 0);
+        assert_eq!(routed.readout.fact_count, 4);
         assert_ne!(host.readout().scheduler.state_hash, initial.scheduler.state_hash);
         assert_ne!(host.readout().authority_state_hash, initial.authority_state_hash);
         assert_ne!(host.readout().runtime_host_hash, initial.runtime_host_hash);

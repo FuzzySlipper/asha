@@ -4,13 +4,15 @@ use std::collections::BTreeSet;
 
 use core_entity::EntityStore;
 use protocol_game_extension::{GameplayContractRef, GameplayOwnerRef};
-use rule_gameplay_fabric::{GameplayFabricCoordinator, GameplayRoutingEvidence};
+use rule_gameplay_fabric::{
+    GameplayFabricCoordinator, GameplayReactionSourceFact, GameplayRoutingEvidence,
+};
 use serde::{Deserialize, Serialize};
 
 pub use rule_scheduler::{
     EventConditionedActionDraft, GameplayActionScheduler, GameplayEventCondition,
-    GameplayScheduledDispatch, GameplaySchedulerCommand, GameplaySchedulerError,
-    GameplaySchedulerFact, GameplaySchedulerReceipt, ScheduledActionId,
+    GameplayScheduledDispatch, GameplayScheduledEventDelivery, GameplaySchedulerCommand,
+    GameplaySchedulerError, GameplaySchedulerFact, GameplaySchedulerReceipt, ScheduledActionId,
     ScheduledActionRejectionReason, ScheduledActionValidity, ScheduledGameplayAction,
     TickScheduledActionDraft,
 };
@@ -58,9 +60,11 @@ pub struct GameplayRuntimeSchedulerReadout {
     pub state_hash: String,
     pub pending_action_count: u32,
     pub outstanding_dispatch_count: u32,
+    pub outstanding_event_delivery_count: u32,
     pub fact_count: u32,
     pub pending_actions: Vec<ScheduledGameplayAction>,
     pub outstanding_dispatches: Vec<GameplayScheduledDispatch>,
+    pub outstanding_event_deliveries: Vec<GameplayScheduledEventDelivery>,
     pub truncated: bool,
 }
 
@@ -74,6 +78,9 @@ pub struct GameplayRuntimeSchedulerCommandReceipt {
 pub struct GameplayRuntimeSchedulerRoutingReceipt {
     pub routing: GameplayRoutingEvidence,
     pub fact: GameplaySchedulerFact,
+    pub delivery_fact: Option<GameplaySchedulerFact>,
+    pub delivered_events: Vec<protocol_game_extension::GameplayEventEnvelope>,
+    pub reaction: Option<crate::GameplayRuntimeReactionReceipt>,
     pub readout: GameplayRuntimeSchedulerReadout,
 }
 
@@ -99,6 +106,31 @@ impl GameplayRuntimeHost {
         &mut self,
         action_id: &ScheduledActionId,
     ) -> Result<GameplayRuntimeSchedulerRoutingReceipt, GameplayRuntimeHostError> {
+        if let Some(delivery) = self
+            .scheduler
+            .outstanding_event_deliveries()
+            .into_iter()
+            .find(|delivery| &delivery.action_id == action_id)
+            .cloned()
+        {
+            let routing_fact = self
+                .scheduler
+                .facts()
+                .iter()
+                .rev()
+                .find(|fact| {
+                    matches!(
+                        fact,
+                        GameplaySchedulerFact::RoutingAccepted {
+                            action_id: routed_action_id,
+                            ..
+                        } if routed_action_id == action_id
+                    )
+                })
+                .cloned()
+                .ok_or(GameplaySchedulerError::RoutingMismatch)?;
+            return self.deliver_scheduled_events(delivery, routing_fact);
+        }
         let dispatch = self
             .scheduler
             .outstanding_dispatches()
@@ -113,6 +145,8 @@ impl GameplayRuntimeHost {
             .take()
             .ok_or(GameplayRuntimeHostError::MissingEntityAuthority)?;
         let authority_before = entities.snapshot_durable();
+        let scheduler_before = self.scheduler.clone();
+        let reaction_frame_count_before = self.reaction_frames.len();
         let routing = GameplayFabricCoordinator::new(
             self.session.registry(),
             limits_from_registry(self.session.registry()),
@@ -151,9 +185,91 @@ impl GameplayRuntimeHost {
         };
         self.session.bundle.runtime_entities = Some(entities);
         let GameplaySchedulerReceipt { fact, .. } = recorded;
+        if let Some(delivery) = self
+            .scheduler
+            .outstanding_event_deliveries()
+            .into_iter()
+            .find(|delivery| &delivery.action_id == action_id)
+            .cloned()
+        {
+            let delivered = self.deliver_scheduled_events(delivery, fact.clone());
+            if delivered.is_err() {
+                self.session.bundle.runtime_entities =
+                    Some(EntityStore::from_snapshot(authority_before));
+                self.scheduler = scheduler_before;
+                self.reaction_frames.truncate(reaction_frame_count_before);
+            }
+            return delivered;
+        }
         Ok(GameplayRuntimeSchedulerRoutingReceipt {
             routing: routing_evidence,
             fact,
+            delivery_fact: None,
+            delivered_events: Vec::new(),
+            reaction: None,
+            readout: self.scheduler_readout(),
+        })
+    }
+
+    fn deliver_scheduled_events(
+        &mut self,
+        delivery: GameplayScheduledEventDelivery,
+        routing_fact: GameplaySchedulerFact,
+    ) -> Result<GameplayRuntimeSchedulerRoutingReceipt, GameplayRuntimeHostError> {
+        let scheduler_before = self.scheduler.clone();
+        let reaction_frame_count_before = self.reaction_frames.len();
+        let authority_before = self
+            .session
+            .bundle
+            .runtime_entities
+            .as_ref()
+            .ok_or(GameplayRuntimeHostError::MissingEntityAuthority)?
+            .snapshot_durable();
+        let scheduler_owner = self.scheduler.owner().clone();
+        let completed = self.scheduler.apply(
+            &scheduler_owner,
+            GameplaySchedulerCommand::CompleteEventDelivery {
+                action_id: delivery.action_id.clone(),
+                routing_hash: delivery.routing.routing_hash.clone(),
+            },
+        )?;
+        let source_fact = GameplayReactionSourceFact::new(
+            delivery.routing.owner_id.clone(),
+            "gameplayOwnerRouting".to_owned(),
+            serde_json::to_vec(&delivery.routing)
+                .expect("routing evidence serializes for reaction replay"),
+        );
+        let reaction = self
+            .observe_routed_events_with_source_facts(delivery.events.clone(), vec![source_fact]);
+        let reaction = match reaction {
+            Ok(reaction) if reaction.observe.accepted() => reaction,
+            Ok(reaction) => {
+                let error = reaction
+                    .observe
+                    .diagnostics
+                    .first()
+                    .cloned()
+                    .ok_or(GameplaySchedulerError::RoutingMismatch)?;
+                self.session.bundle.runtime_entities =
+                    Some(EntityStore::from_snapshot(authority_before));
+                self.scheduler = scheduler_before;
+                self.reaction_frames.truncate(reaction_frame_count_before);
+                return Err(GameplayRuntimeHostError::SchedulerRouting(error));
+            }
+            Err(error) => {
+                self.session.bundle.runtime_entities =
+                    Some(EntityStore::from_snapshot(authority_before));
+                self.scheduler = scheduler_before;
+                self.reaction_frames.truncate(reaction_frame_count_before);
+                return Err(error);
+            }
+        };
+        Ok(GameplayRuntimeSchedulerRoutingReceipt {
+            routing: delivery.routing,
+            fact: routing_fact,
+            delivery_fact: Some(completed.fact),
+            delivered_events: delivery.events,
+            reaction: Some(reaction),
             readout: self.scheduler_readout(),
         })
     }
@@ -161,6 +277,7 @@ impl GameplayRuntimeHost {
     pub fn scheduler_readout(&self) -> GameplayRuntimeSchedulerReadout {
         let pending_action_count = self.scheduler.pending_len();
         let outstanding_dispatch_count = self.scheduler.outstanding_dispatches().len();
+        let outstanding_event_delivery_count = self.scheduler.outstanding_event_deliveries().len();
         let pending_actions = self
             .scheduler
             .pending_actions()
@@ -175,17 +292,28 @@ impl GameplayRuntimeHost {
             .take(MAX_SCHEDULER_READOUT_ITEMS)
             .cloned()
             .collect();
+        let outstanding_event_deliveries = self
+            .scheduler
+            .outstanding_event_deliveries()
+            .into_iter()
+            .take(MAX_SCHEDULER_READOUT_ITEMS)
+            .cloned()
+            .collect();
         GameplayRuntimeSchedulerReadout {
             owner_id: self.scheduler.owner().owner_id.clone(),
             state_hash: self.scheduler.state_hash(),
             pending_action_count: u32::try_from(pending_action_count).unwrap_or(u32::MAX),
             outstanding_dispatch_count: u32::try_from(outstanding_dispatch_count)
                 .unwrap_or(u32::MAX),
+            outstanding_event_delivery_count: u32::try_from(outstanding_event_delivery_count)
+                .unwrap_or(u32::MAX),
             fact_count: u32::try_from(self.scheduler.facts().len()).unwrap_or(u32::MAX),
             pending_actions,
             outstanding_dispatches,
+            outstanding_event_deliveries,
             truncated: pending_action_count > MAX_SCHEDULER_READOUT_ITEMS
-                || outstanding_dispatch_count > MAX_SCHEDULER_READOUT_ITEMS,
+                || outstanding_dispatch_count > MAX_SCHEDULER_READOUT_ITEMS
+                || outstanding_event_delivery_count > MAX_SCHEDULER_READOUT_ITEMS,
         }
     }
 }

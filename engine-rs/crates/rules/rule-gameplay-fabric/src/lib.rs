@@ -17,7 +17,9 @@ mod types;
 
 pub use decision::gameplay_payload_hash;
 pub use legacy_weapon_transform::*;
-pub use observe::{gameplay_proposal_hash, GameplayFabricCoordinator};
+pub use observe::{
+    gameplay_proposal_hash, verify_gameplay_routing_evidence, GameplayFabricCoordinator,
+};
 pub use owner_events::*;
 pub use reaction_adapter::{
     resolve_declared_reactions, ReactionBehavior, ReactionDefinition, ReactionResolution,

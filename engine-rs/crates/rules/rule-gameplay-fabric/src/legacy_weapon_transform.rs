@@ -23,9 +23,9 @@ use svc_gameplay_fabric::{
 use crate::{
     FrozenGameplayViews, GameplayDecisionContinuations, GameplayDecisionMoment,
     GameplayDecisionOutput, GameplayDecisionOwner, GameplayDecisionReceipt,
-    GameplayFabricCoordinator, GameplayInvocationCall, GameplayInvocationHost,
-    GameplayInvocationOutput, GameplayOperationWorkspace, GameplayOwnerRoutingCall,
-    GameplayOwnerRoutingOutput, GameplayRuntimeLimits, GameplayViewSource,
+    GameplayDecisionRoutingOutput, GameplayFabricCoordinator, GameplayInvocationCall,
+    GameplayInvocationHost, GameplayInvocationOutput, GameplayOperationWorkspace,
+    GameplayOwnerRoutingCall, GameplayRuntimeLimits, GameplayViewSource,
     GameplayWorkspaceTransform,
 };
 
@@ -253,7 +253,10 @@ impl GameplayDecisionOwner for LegacyWeaponTransformOwner<'_> {
         COMPAT_OWNER_REVISION.to_owned()
     }
 
-    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+    fn route_precommit(
+        &mut self,
+        call: &GameplayOwnerRoutingCall,
+    ) -> GameplayDecisionRoutingOutput {
         let workspace: LegacyWeaponEffectWorkspace =
             match serde_json::from_slice(&call.proposal.canonical_payload) {
                 Ok(workspace) => workspace,
@@ -283,20 +286,18 @@ impl GameplayDecisionOwner for LegacyWeaponTransformOwner<'_> {
         }
         self.damage_delta = Some(*amount_delta);
         self.proposal = Some(proposal);
-        GameplayOwnerRoutingOutput {
+        GameplayDecisionRoutingOutput {
             accepted: true,
             fact_hashes: Vec::new(),
-            events: Vec::new(),
             diagnostic_codes: Vec::new(),
         }
     }
 }
 
-fn rejected_owner_output(code: &str) -> GameplayOwnerRoutingOutput {
-    GameplayOwnerRoutingOutput {
+fn rejected_owner_output(code: &str) -> GameplayDecisionRoutingOutput {
+    GameplayDecisionRoutingOutput {
         accepted: false,
         fact_hashes: Vec::new(),
-        events: Vec::new(),
         diagnostic_codes: vec![format!("legacyWeaponTransform.{code}")],
     }
 }

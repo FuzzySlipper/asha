@@ -214,6 +214,17 @@ pub struct GameplayOwnerRoutingOutput {
     pub diagnostic_codes: Vec<String>,
 }
 
+/// Pre-commit decisions cannot publish post-commit events as part of the
+/// atomic owner call. This narrower result makes an unsupported event-producing
+/// decision impossible to represent; post-commit proposal routes use
+/// [`GameplayOwnerRoutingOutput`] instead.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GameplayDecisionRoutingOutput {
+    pub accepted: bool,
+    pub fact_hashes: Vec<String>,
+    pub diagnostic_codes: Vec<String>,
+}
+
 pub trait GameplayProposalRouter {
     fn route(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput;
 }
@@ -222,7 +233,8 @@ pub trait GameplayProposalRouter {
 /// invocation and immediately before the single atomic route.
 pub trait GameplayDecisionOwner {
     fn revision_hash(&self, owner: &GameplayOwnerRef) -> String;
-    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput;
+    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall)
+        -> GameplayDecisionRoutingOutput;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,6 +276,7 @@ pub enum GameplayRuntimeDiagnosticCode {
     ReactionCancelled,
     ReactionSuspended,
     OwnerRejected,
+    InvalidOwnerEvent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -295,6 +308,7 @@ pub struct GameplayInvocationEvidence {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameplayRoutingEvidence {
+    pub registry_digest: String,
     pub proposal_id: String,
     pub proposal_kind: String,
     pub proposal_hash: String,
@@ -311,11 +325,22 @@ pub struct GameplayRoutingEvidence {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameplayRoutingReceipt {
     pub(crate) evidence: GameplayRoutingEvidence,
+    pub(crate) accepted_events: Vec<GameplayEventEnvelope>,
 }
 
 impl GameplayRoutingReceipt {
     pub fn evidence(&self) -> &GameplayRoutingEvidence {
         &self.evidence
+    }
+
+    /// Canonically ordered owner events that the caller must enqueue or
+    /// explicitly reject before considering this route complete.
+    pub fn accepted_events(&self) -> &[GameplayEventEnvelope] {
+        &self.accepted_events
+    }
+
+    pub fn into_parts(self) -> (GameplayRoutingEvidence, Vec<GameplayEventEnvelope>) {
+        (self.evidence, self.accepted_events)
     }
 }
 

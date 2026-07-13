@@ -1,15 +1,14 @@
 use crate::observe::{
-    delivery_hash, diagnostic_code, gameplay_proposal_hash, routing_hash, semantic_output_hash,
-    stable_hash,
+    delivery_hash, diagnostic_code, gameplay_proposal_hash, semantic_output_hash, stable_hash,
 };
 use crate::{
     FrozenGameplayViews, GameplayDecisionContinuation, GameplayDecisionContinuations,
     GameplayDecisionMoment, GameplayDecisionOutput, GameplayDecisionOwner, GameplayDecisionReceipt,
     GameplayDecisionStatus, GameplayFabricCoordinator, GameplayGuardVote, GameplayInvocationCall,
     GameplayInvocationEvidence, GameplayInvocationHost, GameplayInvocationInput,
-    GameplayOperationWorkspace, GameplayOwnerRoutingCall, GameplayRoutingEvidence,
-    GameplayRuntimeDiagnostic, GameplayRuntimeDiagnosticCode, GameplayViewSource,
-    GameplayWorkspaceTransform,
+    GameplayOperationWorkspace, GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput,
+    GameplayRoutingEvidence, GameplayRuntimeDiagnostic, GameplayRuntimeDiagnosticCode,
+    GameplayViewSource, GameplayWorkspaceTransform,
 };
 use protocol_game_extension::GameplayInvocationFamily;
 
@@ -125,20 +124,18 @@ impl GameplayFabricCoordinator<'_> {
             owner: owner.clone(),
             proposal: moment.operation.clone(),
         };
-        let mut output = owner_port.route_precommit(&call);
-        output.fact_hashes.sort();
-        output.diagnostic_codes.sort();
-        let proposal_hash = gameplay_proposal_hash(&call.proposal);
-        state.routing = Some(GameplayRoutingEvidence {
-            proposal_id: call.proposal.proposal_id.clone(),
-            proposal_kind: call.proposal.proposal.key(),
-            proposal_hash: proposal_hash.clone(),
-            owner_id: owner.owner_id,
-            accepted: output.accepted,
-            fact_hashes: output.fact_hashes.clone(),
-            diagnostic_codes: output.diagnostic_codes.clone(),
-            routing_hash: routing_hash(&proposal_hash, &call.owner.owner_id, &output),
-        });
+        let decision_output = owner_port.route_precommit(&call);
+        let output = GameplayOwnerRoutingOutput {
+            accepted: decision_output.accepted,
+            fact_hashes: decision_output.fact_hashes,
+            events: Vec::new(),
+            diagnostic_codes: decision_output.diagnostic_codes,
+        };
+        let routing = self
+            .finalize_routing_output(call, output, 0)
+            .expect("pre-commit decision output cannot contain post-commit events");
+        let output = routing.evidence();
+        state.routing = Some(output.clone());
         if output.accepted {
             state.status = GameplayDecisionStatus::Accepted;
         } else {

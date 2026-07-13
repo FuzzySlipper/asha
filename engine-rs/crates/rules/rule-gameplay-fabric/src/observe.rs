@@ -33,6 +33,15 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
         proposal: GameplayProposalEnvelope,
         router: &mut dyn GameplayProposalRouter,
     ) -> Result<GameplayRoutingReceipt, GameplayRuntimeDiagnostic> {
+        self.route_proposal_at(proposal, 0, router)
+    }
+
+    pub(crate) fn route_proposal_at(
+        &self,
+        proposal: GameplayProposalEnvelope,
+        first_event_sequence: u32,
+        router: &mut dyn GameplayProposalRouter,
+    ) -> Result<GameplayRoutingReceipt, GameplayRuntimeDiagnostic> {
         let Some(owner) = self.registry.proposal_owner(&proposal.proposal).cloned() else {
             return Err(GameplayRuntimeDiagnostic {
                 code: GameplayRuntimeDiagnosticCode::MissingProposalOwner,
@@ -44,21 +53,116 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
             });
         };
         let call = GameplayOwnerRoutingCall { owner, proposal };
-        let mut output = router.route(&call);
+        let output = router.route(&call);
+        self.finalize_routing_output(call, output, first_event_sequence)
+    }
+
+    pub(crate) fn finalize_routing_output(
+        &self,
+        call: GameplayOwnerRoutingCall,
+        mut output: crate::GameplayOwnerRoutingOutput,
+        first_event_sequence: u32,
+    ) -> Result<GameplayRoutingReceipt, GameplayRuntimeDiagnostic> {
         output.fact_hashes.sort();
         output.diagnostic_codes.sort();
-        let proposal_hash = gameplay_proposal_hash(&call.proposal);
-        Ok(GameplayRoutingReceipt {
-            evidence: GameplayRoutingEvidence {
-                proposal_id: call.proposal.proposal_id.clone(),
-                proposal_kind: call.proposal.proposal.key(),
-                proposal_hash: proposal_hash.clone(),
+        if !output.accepted && !output.events.is_empty() {
+            return Err(invalid_owner_event(
+                &call.proposal,
+                "a rejected owner route cannot emit accepted events",
+            ));
+        }
+        if output.events.len() > self.limits.max_events_per_root as usize {
+            return Err(invalid_owner_event(
+                &call.proposal,
+                "owner event output exceeds the Session event budget",
+            ));
+        }
+        let payload_bytes = output
+            .events
+            .iter()
+            .map(|event| event.canonical_payload.len() as u64)
+            .sum::<u64>();
+        if payload_bytes > u64::from(self.limits.max_payload_bytes_per_root) {
+            return Err(invalid_owner_event(
+                &call.proposal,
+                "owner event output exceeds the Session payload budget",
+            ));
+        }
+        for event in &mut output.events {
+            canonicalize_headers(event);
+            if !self.registry.event_is_declared(&event.event) {
+                return Err(GameplayRuntimeDiagnostic {
+                    code: GameplayRuntimeDiagnosticCode::UndeclaredEvent,
+                    path: format!("proposals.{}.events", call.proposal.proposal_id),
+                    message: format!("owner emitted undeclared event `{}`", event.event.key()),
+                });
+            }
+            let actual_hash = crate::gameplay_payload_hash(&event.canonical_payload);
+            if event.payload_hash != actual_hash {
+                return Err(invalid_owner_event(
+                    &call.proposal,
+                    format!(
+                        "owner event `{}` payload hash `{}` does not match `{actual_hash}`",
+                        event.event.key(),
+                        event.payload_hash
+                    ),
+                ));
+            }
+        }
+        output.events.sort_by(|left, right| {
+            (left.event.key(), semantic_event_hash(left))
+                .cmp(&(right.event.key(), semantic_event_hash(right)))
+        });
+        let next_wave = call.proposal.wave.saturating_add(1);
+        for (offset, event) in output.events.iter_mut().enumerate() {
+            let offset = u32::try_from(offset).map_err(|_| {
+                invalid_owner_event(&call.proposal, "owner event sequence overflow")
+            })?;
+            let sequence = first_event_sequence.checked_add(offset).ok_or_else(|| {
+                invalid_owner_event(&call.proposal, "owner event sequence overflow")
+            })?;
+            event.event_id = format!(
+                "{}/event/{next_wave}/{sequence}",
+                call.proposal.causation.root_id
+            );
+            event.tick = call.proposal.tick;
+            event.root_sequence = call.proposal.root_sequence;
+            event.wave = next_wave;
+            event.event_sequence = sequence;
+            event.phase = GameplayEventPhase::PostCommit;
+            event.emitter = GameplayEmitterRef::Owner {
                 owner_id: call.owner.owner_id.clone(),
-                accepted: output.accepted,
-                fact_hashes: output.fact_hashes.clone(),
-                diagnostic_codes: output.diagnostic_codes.clone(),
-                routing_hash: routing_hash(&proposal_hash, &call.owner.owner_id, &output),
-            },
+            };
+            event.causation = GameplayCausationRef {
+                root_id: call.proposal.causation.root_id.clone(),
+                parent_event_id: call
+                    .proposal
+                    .originating_event_id
+                    .clone()
+                    .or_else(|| call.proposal.causation.parent_event_id.clone()),
+                decision_id: call.proposal.causation.decision_id.clone(),
+            };
+        }
+        let proposal_hash = gameplay_proposal_hash(&call.proposal);
+        let evidence = GameplayRoutingEvidence {
+            registry_digest: self.registry.registry_digest().to_owned(),
+            proposal_id: call.proposal.proposal_id.clone(),
+            proposal_kind: call.proposal.proposal.key(),
+            proposal_hash: proposal_hash.clone(),
+            owner_id: call.owner.owner_id.clone(),
+            accepted: output.accepted,
+            fact_hashes: output.fact_hashes.clone(),
+            diagnostic_codes: output.diagnostic_codes.clone(),
+            routing_hash: routing_hash(&proposal_hash, &call.owner.owner_id, &output),
+        };
+        let accepted_events = if output.accepted {
+            output.events
+        } else {
+            Vec::new()
+        };
+        Ok(GameplayRoutingReceipt {
+            evidence,
+            accepted_events,
         })
     }
 
@@ -72,28 +176,76 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
         root_event.wave = 0;
         root_event.event_sequence = 0;
         canonicalize_headers(&mut root_event);
+        self.observe_events(vec![root_event], views, host, router)
+    }
 
-        let root_id = root_event.causation.root_id.clone();
-        let mut state = ObserveState::new(self.registry, self.limits, root_id, root_event);
-        if !state.registry.event_is_declared(&state.events[0].event) {
-            state.diagnostic(
-                GameplayRuntimeDiagnosticCode::UnknownEvent,
-                "root.event",
-                format!(
-                    "root event `{}` is not declared",
-                    state.events[0].event.key()
-                ),
-            );
+    /// Delivers one already-routed owner-event batch at its canonical next-wave
+    /// coordinates. Unlike [`Self::observe`], this does not rewrite the batch
+    /// to wave zero; scheduler recovery can therefore resume delivery without
+    /// rerouting authority or losing causation/order.
+    pub fn observe_routed_events(
+        &self,
+        events: Vec<GameplayEventEnvelope>,
+        views: &dyn GameplayViewSource,
+        host: &dyn GameplayInvocationHost,
+        router: &mut dyn GameplayProposalRouter,
+    ) -> GameplayObserveReceipt {
+        self.observe_events(events, views, host, router)
+    }
+
+    fn observe_events(
+        &self,
+        mut initial_events: Vec<GameplayEventEnvelope>,
+        views: &dyn GameplayViewSource,
+        host: &dyn GameplayInvocationHost,
+        router: &mut dyn GameplayProposalRouter,
+    ) -> GameplayObserveReceipt {
+        initial_events.sort_by(|left, right| {
+            (left.wave, left.event_sequence, left.event_id.as_str()).cmp(&(
+                right.wave,
+                right.event_sequence,
+                right.event_id.as_str(),
+            ))
+        });
+        let Some(first) = initial_events.first() else {
+            return empty_observe_receipt(self.registry.registry_digest());
+        };
+        let root_id = first.causation.root_id.clone();
+        let tick = first.tick;
+        let root_sequence = first.root_sequence;
+        let initial_wave = first.wave;
+        let mut state = ObserveState::new(self.registry, self.limits, root_id, initial_events);
+        for (index, event) in state.events.clone().iter().enumerate() {
+            if !state.registry.event_is_declared(&event.event) {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::UnknownEvent,
+                    format!("rootEvents[{index}].event"),
+                    format!("root event `{}` is not declared", event.event.key()),
+                );
+            }
+            if event.causation.root_id != state.root_id
+                || event.tick != tick
+                || event.root_sequence != root_sequence
+                || event.wave != initial_wave
+            {
+                state.diagnostic(
+                    GameplayRuntimeDiagnosticCode::InvalidOwnerEvent,
+                    format!("rootEvents[{index}]"),
+                    "routed owner-event batch does not share one root/tick/wave",
+                );
+            }
+        }
+        if !state.diagnostics.is_empty() {
             return state.finish();
         }
         if !state.charge_initial_payload() {
             return state.finish();
         }
 
-        let mut wave_events = vec![state.events[0].clone()];
+        let mut wave_events = state.events.clone();
         while !wave_events.is_empty() {
-            let wave = state.waves_processed;
-            if wave >= state.limits.max_waves {
+            let wave = wave_events[0].wave;
+            if state.waves_processed >= state.limits.max_waves {
                 state.diagnostic(
                     GameplayRuntimeDiagnosticCode::WaveBudgetExceeded,
                     format!("waves[{wave}]"),
@@ -299,57 +451,17 @@ impl<'registry> GameplayFabricCoordinator<'registry> {
         }
 
         for proposal in proposal_queue {
-            let Some(owner) = self.registry.proposal_owner(&proposal.proposal).cloned() else {
-                state.diagnostic(
-                    GameplayRuntimeDiagnosticCode::MissingProposalOwner,
-                    format!("proposals.{}", proposal.proposal_id),
-                    format!(
-                        "proposal `{}` has no registered owner",
-                        proposal.proposal.key()
-                    ),
-                );
-                continue;
-            };
-            let call = GameplayOwnerRoutingCall {
-                owner: owner.clone(),
-                proposal: proposal.clone(),
-            };
-            let mut output = router.route(&call);
-            output.fact_hashes.sort();
-            output.diagnostic_codes.sort();
-            let proposal_hash = gameplay_proposal_hash(&proposal);
-            let routing_hash = routing_hash(&proposal_hash, &owner.owner_id, &output);
-            state.routing.push(GameplayRoutingEvidence {
-                proposal_id: proposal.proposal_id.clone(),
-                proposal_kind: proposal.proposal.key(),
-                proposal_hash,
-                owner_id: owner.owner_id.clone(),
-                accepted: output.accepted,
-                fact_hashes: output.fact_hashes.clone(),
-                diagnostic_codes: output.diagnostic_codes.clone(),
-                routing_hash,
-            });
-            if !output.accepted {
-                continue;
-            }
-            for event in output.events {
-                if !self.registry.event_is_declared(&event.event) {
-                    state.diagnostic(
-                        GameplayRuntimeDiagnosticCode::UndeclaredEvent,
-                        format!("proposals.{}.events", proposal.proposal_id),
-                        format!("owner emitted undeclared event `{}`", event.event.key()),
-                    );
+            let first_event_sequence = state.next_event_sequence_value(next_wave);
+            let receipt = match self.route_proposal_at(proposal, first_event_sequence, router) {
+                Ok(receipt) => receipt,
+                Err(error) => {
+                    state.diagnostics.push(error);
                     continue;
                 }
-                let normalized = state.normalize_owner_event(
-                    event,
-                    &owner.owner_id,
-                    proposal.originating_event_id.as_deref(),
-                    next_wave,
-                );
-                if state.charge_owner_event(&normalized) {
-                    next_events.push(normalized);
-                }
+            };
+            state.routing.push(receipt.evidence().clone());
+            if state.enqueue_owner_events(receipt.accepted_events()) {
+                next_events.extend(receipt.accepted_events().iter().cloned());
             }
         }
         next_events
@@ -360,6 +472,38 @@ struct PendingInvocationOutput {
     module_id: String,
     parent_event_id: String,
     output: GameplayInvocationOutput,
+}
+
+fn invalid_owner_event(
+    proposal: &GameplayProposalEnvelope,
+    message: impl Into<String>,
+) -> GameplayRuntimeDiagnostic {
+    GameplayRuntimeDiagnostic {
+        code: GameplayRuntimeDiagnosticCode::InvalidOwnerEvent,
+        path: format!("proposals.{}.events", proposal.proposal_id),
+        message: message.into(),
+    }
+}
+
+fn empty_observe_receipt(registry_digest: &str) -> GameplayObserveReceipt {
+    let diagnostic = GameplayRuntimeDiagnostic {
+        code: GameplayRuntimeDiagnosticCode::InvalidOwnerEvent,
+        path: "rootEvents".to_owned(),
+        message: "routed owner-event batch is empty".to_owned(),
+    };
+    GameplayObserveReceipt {
+        registry_digest: registry_digest.to_owned(),
+        root_id: String::new(),
+        waves_processed: 0,
+        wave_views: Vec::new(),
+        events: Vec::new(),
+        event_evidence: Vec::new(),
+        invocations: Vec::new(),
+        routing: Vec::new(),
+        module_facts: Vec::new(),
+        diagnostics: vec![diagnostic],
+        receipt_hash: stable_hash([registry_digest, "emptyRoutedOwnerEventBatch"]),
+    }
 }
 
 #[derive(Default)]
@@ -399,14 +543,18 @@ impl<'registry> ObserveState<'registry> {
         registry: &'registry GameplayFabricRegistry,
         limits: GameplayRuntimeLimits,
         root_id: String,
-        root_event: GameplayEventEnvelope,
+        root_events: Vec<GameplayEventEnvelope>,
     ) -> Self {
-        let tick = root_event.tick;
-        let root_sequence = root_event.root_sequence;
-        let root_evidence = GameplayEventEvidence {
-            event_id: root_event.event_id.clone(),
-            event_hash: event_hash(&root_event),
-        };
+        let tick = root_events.first().map_or(0, |event| event.tick);
+        let root_sequence = root_events.first().map_or(0, |event| event.root_sequence);
+        let root_evidence = root_events
+            .iter()
+            .map(|event| GameplayEventEvidence {
+                event_id: event.event_id.clone(),
+                event_hash: event_hash(event),
+            })
+            .collect();
+        let total_events = u32::try_from(root_events.len()).unwrap_or(u32::MAX);
         Self {
             registry,
             limits,
@@ -414,7 +562,7 @@ impl<'registry> ObserveState<'registry> {
             tick,
             root_sequence,
             waves_processed: 0,
-            total_events: 1,
+            total_events,
             total_proposals: 0,
             total_invocations: 0,
             total_payload_bytes: 0,
@@ -423,8 +571,8 @@ impl<'registry> ObserveState<'registry> {
             subscription_deliveries: BTreeMap::new(),
             module_usage: BTreeMap::new(),
             wave_views: Vec::new(),
-            events: vec![root_event],
-            event_evidence: vec![root_evidence],
+            events: root_events,
+            event_evidence: root_evidence,
             invocations: Vec::new(),
             routing: Vec::new(),
             module_facts: Vec::new(),
@@ -441,7 +589,11 @@ impl<'registry> ObserveState<'registry> {
             );
             return false;
         }
-        self.total_payload_bytes = self.events[0].canonical_payload.len() as u64;
+        self.total_payload_bytes = self
+            .events
+            .iter()
+            .map(|event| event.canonical_payload.len() as u64)
+            .sum();
         if self.total_payload_bytes > u64::from(self.limits.max_payload_bytes_per_root) {
             self.diagnostic(
                 GameplayRuntimeDiagnosticCode::PayloadBudgetExceeded,
@@ -693,32 +845,6 @@ impl<'registry> ObserveState<'registry> {
         event
     }
 
-    fn normalize_owner_event(
-        &mut self,
-        mut event: GameplayEventEnvelope,
-        owner_id: &str,
-        parent_event_id: Option<&str>,
-        wave: u32,
-    ) -> GameplayEventEnvelope {
-        let sequence = self.next_event_sequence(wave);
-        event.event_id = format!("{}/event/{wave}/{sequence}", self.root_id);
-        event.tick = self.tick;
-        event.root_sequence = self.root_sequence;
-        event.wave = wave;
-        event.event_sequence = sequence;
-        event.phase = GameplayEventPhase::PostCommit;
-        event.emitter = GameplayEmitterRef::Owner {
-            owner_id: owner_id.to_owned(),
-        };
-        event.causation = GameplayCausationRef {
-            root_id: self.root_id.clone(),
-            parent_event_id: parent_event_id.map(str::to_owned),
-            decision_id: None,
-        };
-        canonicalize_headers(&mut event);
-        event
-    }
-
     fn normalize_proposal(
         &mut self,
         mut proposal: GameplayProposalEnvelope,
@@ -746,28 +872,40 @@ impl<'registry> ObserveState<'registry> {
         proposal
     }
 
-    fn charge_owner_event(&mut self, event: &GameplayEventEnvelope) -> bool {
-        self.total_events += 1;
-        self.total_payload_bytes = self
-            .total_payload_bytes
-            .saturating_add(event.canonical_payload.len() as u64);
-        if self.total_events > self.limits.max_events_per_root {
+    fn enqueue_owner_events(&mut self, events: &[GameplayEventEnvelope]) -> bool {
+        let event_count = u32::try_from(events.len()).unwrap_or(u32::MAX);
+        let total_events = self.total_events.saturating_add(event_count);
+        let payload_bytes = events
+            .iter()
+            .map(|event| event.canonical_payload.len() as u64)
+            .sum::<u64>();
+        let total_payload_bytes = self.total_payload_bytes.saturating_add(payload_bytes);
+        if total_events > self.limits.max_events_per_root {
             self.diagnostic(
                 GameplayRuntimeDiagnosticCode::EventBudgetExceeded,
-                format!("events.{}", event.event_id),
-                "owner event exceeded the Session event budget",
+                "ownerEvents",
+                "owner events exceeded the Session event budget",
             );
             return false;
         }
-        if self.total_payload_bytes > u64::from(self.limits.max_payload_bytes_per_root) {
+        if total_payload_bytes > u64::from(self.limits.max_payload_bytes_per_root) {
             self.diagnostic(
                 GameplayRuntimeDiagnosticCode::PayloadBudgetExceeded,
-                format!("events.{}.canonicalPayload", event.event_id),
-                "owner event exceeded the Session payload budget",
+                "ownerEvents.canonicalPayload",
+                "owner events exceeded the Session payload budget",
             );
             return false;
         }
-        self.record_event(event);
+        self.total_events = total_events;
+        self.total_payload_bytes = total_payload_bytes;
+        for event in events {
+            let next = event.event_sequence.saturating_add(1);
+            self.next_event_sequence
+                .entry(event.wave)
+                .and_modify(|sequence| *sequence = (*sequence).max(next))
+                .or_insert(next);
+            self.record_event(event);
+        }
         true
     }
 
@@ -784,6 +922,10 @@ impl<'registry> ObserveState<'registry> {
         let value = *sequence;
         *sequence += 1;
         value
+    }
+
+    fn next_event_sequence_value(&self, wave: u32) -> u32 {
+        self.next_event_sequence.get(&wave).copied().unwrap_or(0)
     }
 
     fn host_failure(
@@ -1009,6 +1151,49 @@ pub(crate) fn routing_hash(
     stable_hash(parts.iter().map(String::as_str))
 }
 
+/// Recomputes the durable portion of a typed routing result without invoking
+/// the owner. Scheduler and reaction replay use this to reject corrupted
+/// accepted-event evidence before reconstructing pending delivery state.
+pub fn verify_gameplay_routing_evidence(
+    evidence: &GameplayRoutingEvidence,
+    events: &[GameplayEventEnvelope],
+) -> bool {
+    if evidence.registry_digest.is_empty()
+        || evidence.proposal_id.is_empty()
+        || evidence.proposal_kind.is_empty()
+        || evidence.owner_id.is_empty()
+        || (!evidence.accepted && !events.is_empty())
+    {
+        return false;
+    }
+    let mut previous_key: Option<(String, String)> = None;
+    for event in events {
+        let mut canonical = event.clone();
+        canonicalize_headers(&mut canonical);
+        let key = (event.event.key(), semantic_event_hash(event));
+        if canonical != *event
+            || crate::gameplay_payload_hash(&event.canonical_payload) != event.payload_hash
+            || event.emitter
+                != (GameplayEmitterRef::Owner {
+                    owner_id: evidence.owner_id.clone(),
+                })
+            || previous_key
+                .as_ref()
+                .is_some_and(|previous| previous > &key)
+        {
+            return false;
+        }
+        previous_key = Some(key);
+    }
+    let output = crate::GameplayOwnerRoutingOutput {
+        accepted: evidence.accepted,
+        fact_hashes: evidence.fact_hashes.clone(),
+        events: events.to_vec(),
+        diagnostic_codes: evidence.diagnostic_codes.clone(),
+    };
+    routing_hash(&evidence.proposal_hash, &evidence.owner_id, &output) == evidence.routing_hash
+}
+
 fn receipt_hash(state: &ObserveState<'_>) -> String {
     let mut parts = vec![
         state.registry.registry_digest().to_owned(),
@@ -1157,6 +1342,7 @@ pub(crate) fn diagnostic_code(code: GameplayRuntimeDiagnosticCode) -> &'static s
         GameplayRuntimeDiagnosticCode::ReactionCancelled => "reactionCancelled",
         GameplayRuntimeDiagnosticCode::ReactionSuspended => "reactionSuspended",
         GameplayRuntimeDiagnosticCode::OwnerRejected => "ownerRejected",
+        GameplayRuntimeDiagnosticCode::InvalidOwnerEvent => "invalidOwnerEvent",
     }
 }
 

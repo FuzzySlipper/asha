@@ -3,13 +3,18 @@
 use core_entity::EntityStore;
 use protocol_entity_authoring::{
     ActivatableCapabilityKind, CapabilityActivationAction, CapabilityActivationOutcome,
-    CapabilityActivationRequest,
+    CapabilityActivationPresence, CapabilityActivationRequest,
 };
-use protocol_game_extension::GameplayOwnerRef;
+use protocol_game_extension::{
+    GameplayCausationRef, GameplayEmitterRef, GameplayEntityRef, GameplayEventEnvelope,
+    GameplayEventPhase, GameplayOwnerRef,
+};
 use rule_gameplay_fabric::{
-    gameplay_module_payload_hash, CapabilityActivationGameplayProposal, GameplayDecisionOwner,
+    gameplay_module_payload_hash, gameplay_payload_hash, CapabilityActivationGameplayPayload,
+    CapabilityActivationGameplayProposal, GameplayDecisionOwner, GameplayDecisionRoutingOutput,
     GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput, GameplayProposalRouter,
-    StandardGameplayProposalKind, CAPABILITY_ACTIVATION_PROPOSAL_OWNER_ID,
+    StandardGameplayEventKind, StandardGameplayProposalKind,
+    CAPABILITY_ACTIVATION_PROPOSAL_OWNER_ID,
 };
 use svc_entity_authoring::{apply_rule_owned_capability_activation, EcrpRuleOwner};
 
@@ -24,12 +29,14 @@ impl GameplayDecisionOwner for RuntimeSessionDecisionOwner<'_> {
         self.owner.revision_hash(owner)
     }
 
-    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+    fn route_precommit(
+        &mut self,
+        call: &GameplayOwnerRoutingCall,
+    ) -> GameplayDecisionRoutingOutput {
         let output = self.owner.route_precommit(&call.owner, &call.proposal);
-        GameplayOwnerRoutingOutput {
+        GameplayDecisionRoutingOutput {
             accepted: output.accepted,
             fact_hashes: output.fact_hashes,
-            events: output.events,
             diagnostic_codes: output.diagnostic_codes,
         }
     }
@@ -87,13 +94,20 @@ impl GameplayProposalRouter for RuntimeSessionOwnerRouter<'_> {
                 action,
             },
         ) {
-            CapabilityActivationOutcome::Accepted { .. } => GameplayOwnerRoutingOutput {
-                accepted: true,
-                fact_hashes: vec![gameplay_module_payload_hash(
-                    &call.proposal.canonical_payload,
-                )],
-                ..GameplayOwnerRoutingOutput::default()
-            },
+            CapabilityActivationOutcome::Accepted { event, .. } => {
+                let event = match capability_activation_event(call, event) {
+                    Ok(event) => event,
+                    Err(_) => return rejected_owner_output("ownerEventEncodeFailed"),
+                };
+                GameplayOwnerRoutingOutput {
+                    accepted: true,
+                    fact_hashes: vec![gameplay_module_payload_hash(
+                        &call.proposal.canonical_payload,
+                    )],
+                    events: vec![event],
+                    ..GameplayOwnerRoutingOutput::default()
+                }
+            }
             CapabilityActivationOutcome::Rejected { diagnostic }
             | CapabilityActivationOutcome::Forbidden { diagnostic } => GameplayOwnerRoutingOutput {
                 accepted: false,
@@ -102,6 +116,58 @@ impl GameplayProposalRouter for RuntimeSessionOwnerRouter<'_> {
             },
         }
     }
+}
+
+fn capability_activation_event(
+    call: &GameplayOwnerRoutingCall,
+    event: protocol_entity_authoring::CapabilityActivationEvent,
+) -> Result<GameplayEventEnvelope, serde_json::Error> {
+    let capability = match event.capability {
+        ActivatableCapabilityKind::Collision => "collision",
+        ActivatableCapabilityKind::Controller => "controller",
+    };
+    let presence = |value| match value {
+        CapabilityActivationPresence::Absent => "absent",
+        CapabilityActivationPresence::Inactive => "inactive",
+        CapabilityActivationPresence::Active => "active",
+    };
+    let payload = CapabilityActivationGameplayPayload {
+        entity: event.entity.raw(),
+        capability: capability.to_owned(),
+        from: presence(event.from).to_owned(),
+        to: presence(event.to).to_owned(),
+    };
+    let canonical_payload = serde_json::to_vec(&payload)?;
+    Ok(GameplayEventEnvelope {
+        event_id: "candidate-owner-event".to_owned(),
+        event: StandardGameplayEventKind::CapabilityActivationChanged.contract(),
+        tick: call.proposal.tick,
+        root_sequence: call.proposal.root_sequence,
+        wave: call.proposal.wave,
+        event_sequence: 0,
+        phase: GameplayEventPhase::PostCommit,
+        emitter: GameplayEmitterRef::Owner {
+            owner_id: call.owner.owner_id.clone(),
+        },
+        causation: GameplayCausationRef {
+            root_id: call.proposal.causation.root_id.clone(),
+            parent_event_id: call
+                .proposal
+                .originating_event_id
+                .clone()
+                .or_else(|| call.proposal.causation.parent_event_id.clone()),
+            decision_id: call.proposal.causation.decision_id.clone(),
+        },
+        source: None,
+        subjects: vec![GameplayEntityRef {
+            entity: event.entity,
+        }],
+        targets: Vec::new(),
+        scope: Some("capability-activation".to_owned()),
+        tags: vec![capability.to_owned(), presence(event.to).to_owned()],
+        payload_hash: gameplay_payload_hash(&canonical_payload),
+        canonical_payload,
+    })
 }
 
 fn rejected_owner_output(code: &str) -> GameplayOwnerRoutingOutput {

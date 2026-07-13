@@ -8,11 +8,14 @@ use protocol_game_extension::{
     GameplayCausationRef, GameplayContractRef, GameplayEmitterRef, GameplayEventEnvelope,
     GameplayHeaderSelector, GameplayOwnerRef, GameplayProposalEnvelope,
 };
-use rule_gameplay_fabric::{gameplay_proposal_hash, GameplayRoutingReceipt};
+use rule_gameplay_fabric::{
+    gameplay_proposal_hash, verify_gameplay_routing_evidence, GameplayRoutingEvidence,
+    GameplayRoutingReceipt,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-const SNAPSHOT_SCHEMA_VERSION: u32 = 2;
+const SNAPSHOT_SCHEMA_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -163,6 +166,10 @@ pub enum GameplaySchedulerCommand {
         action_id: ScheduledActionId,
         receipt: GameplayRoutingReceipt,
     },
+    CompleteEventDelivery {
+        action_id: ScheduledActionId,
+        routing_hash: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -203,17 +210,17 @@ pub enum GameplaySchedulerFact {
     },
     RoutingAccepted {
         action_id: ScheduledActionId,
-        proposal_hash: String,
-        owner_id: String,
-        fact_hashes: Vec<String>,
-        routing_hash: String,
+        routing: GameplayRoutingEvidence,
+        events: Vec<GameplayEventEnvelope>,
     },
     RoutingRejected {
         action_id: ScheduledActionId,
-        proposal_hash: String,
-        owner_id: String,
-        diagnostic_codes: Vec<String>,
+        routing: GameplayRoutingEvidence,
+    },
+    EventDeliveryCompleted {
+        action_id: ScheduledActionId,
         routing_hash: String,
+        event_ids: Vec<String>,
     },
 }
 
@@ -225,6 +232,14 @@ pub struct GameplayScheduledDispatch {
     pub proposal_hash: String,
     pub priority: i32,
     pub insertion_sequence: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameplayScheduledEventDelivery {
+    pub action_id: ScheduledActionId,
+    pub routing: GameplayRoutingEvidence,
+    pub events: Vec<GameplayEventEnvelope>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -296,6 +311,7 @@ struct GameplaySchedulerSnapshot {
     next_insertion_sequence: u64,
     pending: Vec<ScheduledGameplayAction>,
     awaiting_routing: BTreeMap<ScheduledActionId, GameplayScheduledDispatch>,
+    awaiting_event_delivery: BTreeMap<ScheduledActionId, GameplayScheduledEventDelivery>,
     retired_ids: BTreeSet<ScheduledActionId>,
     facts: Vec<GameplaySchedulerFact>,
     state_hash: String,
@@ -309,6 +325,7 @@ pub struct GameplayActionScheduler {
     next_insertion_sequence: u64,
     pending: BTreeMap<ScheduledActionId, ScheduledGameplayAction>,
     awaiting_routing: BTreeMap<ScheduledActionId, GameplayScheduledDispatch>,
+    awaiting_event_delivery: BTreeMap<ScheduledActionId, GameplayScheduledEventDelivery>,
     retired_ids: BTreeSet<ScheduledActionId>,
     facts: Vec<GameplaySchedulerFact>,
 }
@@ -330,6 +347,7 @@ impl GameplayActionScheduler {
             next_insertion_sequence: 0,
             pending: BTreeMap::new(),
             awaiting_routing: BTreeMap::new(),
+            awaiting_event_delivery: BTreeMap::new(),
             retired_ids: BTreeSet::new(),
             facts: Vec::new(),
         }
@@ -377,6 +395,13 @@ impl GameplayActionScheduler {
                 ))
         });
         dispatches
+    }
+
+    /// Accepted, registry-routed owner events that have not yet been delivered
+    /// into the gameplay fabric. These survive snapshot/replay so retry never
+    /// reroutes the already-applied authority proposal.
+    pub fn outstanding_event_deliveries(&self) -> Vec<&GameplayScheduledEventDelivery> {
+        self.awaiting_event_delivery.values().collect()
     }
 
     pub fn due_action_ids(&self, tick: u64) -> Vec<ScheduledActionId> {
@@ -543,26 +568,57 @@ impl GameplayActionScheduler {
                 {
                     return Err(GameplaySchedulerError::RoutingMismatch);
                 }
-                let evidence = evidence.clone();
+                let (evidence, events) = receipt.into_parts();
                 self.awaiting_routing.remove(&action_id);
                 let fact = if evidence.accepted {
+                    if !events.is_empty() {
+                        self.awaiting_event_delivery.insert(
+                            action_id.clone(),
+                            GameplayScheduledEventDelivery {
+                                action_id: action_id.clone(),
+                                routing: evidence.clone(),
+                                events: events.clone(),
+                            },
+                        );
+                    }
                     GameplaySchedulerFact::RoutingAccepted {
                         action_id,
-                        proposal_hash: evidence.proposal_hash,
-                        owner_id: evidence.owner_id,
-                        fact_hashes: evidence.fact_hashes,
-                        routing_hash: evidence.routing_hash,
+                        routing: evidence,
+                        events,
                     }
                 } else {
                     GameplaySchedulerFact::RoutingRejected {
                         action_id,
-                        proposal_hash: evidence.proposal_hash,
-                        owner_id: evidence.owner_id,
-                        diagnostic_codes: evidence.diagnostic_codes,
-                        routing_hash: evidence.routing_hash,
+                        routing: evidence,
                     }
                 };
                 (fact, None)
+            }
+            GameplaySchedulerCommand::CompleteEventDelivery {
+                action_id,
+                routing_hash,
+            } => {
+                let delivery = self
+                    .awaiting_event_delivery
+                    .get(&action_id)
+                    .ok_or(GameplaySchedulerError::UnknownAction)?;
+                if delivery.routing.routing_hash != routing_hash {
+                    return Err(GameplaySchedulerError::RoutingMismatch);
+                }
+                let event_ids = delivery
+                    .events
+                    .iter()
+                    .map(|event| event.event_id.clone())
+                    .collect();
+                self.awaiting_event_delivery.remove(&action_id);
+                (
+                    GameplaySchedulerFact::EventDeliveryCompleted {
+                        action_id,
+                        routing_hash,
+                        event_ids,
+                    },
+                    None,
+                )
             }
         };
         self.facts.push(fact.clone());
@@ -583,6 +639,7 @@ impl GameplayActionScheduler {
             self.next_insertion_sequence,
             pending,
             &self.awaiting_routing,
+            &self.awaiting_event_delivery,
             &self.retired_ids,
             &self.facts,
         ))
@@ -597,6 +654,7 @@ impl GameplayActionScheduler {
             next_insertion_sequence: self.next_insertion_sequence,
             pending: self.pending.values().cloned().collect(),
             awaiting_routing: self.awaiting_routing.clone(),
+            awaiting_event_delivery: self.awaiting_event_delivery.clone(),
             retired_ids: self.retired_ids.clone(),
             facts: self.facts.clone(),
             state_hash: self.state_hash(),
@@ -632,6 +690,7 @@ impl GameplayActionScheduler {
         if replayed.next_insertion_sequence != snapshot.next_insertion_sequence
             || replayed.pending != pending
             || replayed.awaiting_routing != snapshot.awaiting_routing
+            || replayed.awaiting_event_delivery != snapshot.awaiting_event_delivery
             || replayed.retired_ids != snapshot.retired_ids
         {
             return Err(GameplaySchedulerError::InvalidSnapshot(
@@ -645,6 +704,7 @@ impl GameplayActionScheduler {
             next_insertion_sequence: snapshot.next_insertion_sequence,
             pending,
             awaiting_routing: snapshot.awaiting_routing,
+            awaiting_event_delivery: snapshot.awaiting_event_delivery,
             retired_ids: snapshot.retired_ids,
             facts: snapshot.facts,
         };
@@ -720,19 +780,62 @@ impl GameplayActionScheduler {
                 }
                 GameplaySchedulerFact::RoutingAccepted {
                     action_id,
-                    proposal_hash,
-                    ..
-                }
-                | GameplaySchedulerFact::RoutingRejected {
-                    action_id,
-                    proposal_hash,
-                    ..
+                    routing,
+                    events,
                 } => {
                     let expected = scheduler
                         .awaiting_routing
                         .remove(action_id)
                         .ok_or(GameplaySchedulerError::UnknownAction)?;
-                    if &expected.proposal_hash != proposal_hash {
+                    if expected.proposal_hash != routing.proposal_hash
+                        || !routing.accepted
+                        || !verify_gameplay_routing_evidence(routing, events)
+                    {
+                        return Err(GameplaySchedulerError::RoutingMismatch);
+                    }
+                    if !events.is_empty() {
+                        scheduler.awaiting_event_delivery.insert(
+                            action_id.clone(),
+                            GameplayScheduledEventDelivery {
+                                action_id: action_id.clone(),
+                                routing: routing.clone(),
+                                events: events.clone(),
+                            },
+                        );
+                    }
+                }
+                GameplaySchedulerFact::RoutingRejected { action_id, routing } => {
+                    let expected = scheduler
+                        .awaiting_routing
+                        .remove(action_id)
+                        .ok_or(GameplaySchedulerError::UnknownAction)?;
+                    if expected.proposal_hash != routing.proposal_hash
+                        || routing.accepted
+                        || !verify_gameplay_routing_evidence(routing, &[])
+                    {
+                        return Err(GameplaySchedulerError::RoutingMismatch);
+                    }
+                }
+                GameplaySchedulerFact::EventDeliveryCompleted {
+                    action_id,
+                    routing_hash,
+                    event_ids,
+                } => {
+                    let delivery = scheduler
+                        .awaiting_event_delivery
+                        .remove(action_id)
+                        .ok_or(GameplaySchedulerError::UnknownAction)?;
+                    let expected_event_ids = delivery
+                        .events
+                        .iter()
+                        .map(|event| event.event_id.as_str())
+                        .collect::<Vec<_>>();
+                    if delivery.routing.routing_hash != *routing_hash
+                        || !expected_event_ids
+                            .iter()
+                            .copied()
+                            .eq(event_ids.iter().map(String::as_str))
+                    {
                         return Err(GameplaySchedulerError::RoutingMismatch);
                     }
                 }
@@ -748,6 +851,7 @@ impl GameplayActionScheduler {
         }
         if self.pending.contains_key(id)
             || self.awaiting_routing.contains_key(id)
+            || self.awaiting_event_delivery.contains_key(id)
             || self.retired_ids.contains(id)
         {
             return Err(GameplaySchedulerError::DuplicateAction);

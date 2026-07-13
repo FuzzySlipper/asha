@@ -82,16 +82,27 @@ state hash. Triggering persists the canonical proposal instead of leaving it
 only in a transient command receipt. Decode rejects newer schemas, duplicates,
 hash drift, and any snapshot whose queue does not equal replaying its facts.
 
-`outstanding_dispatches` is the deterministic interruption/reload recovery
+`outstanding_dispatches` is the deterministic pre-route interruption/reload
 surface. Dispatches survive save/reload and fact replay and retire only when the
-scheduler receives an opaque `GameplayRoutingReceipt` created by
-`GameplayFabricCoordinator::route_proposal`. The scheduler checks its stored
-proposal id, contract, and the fabric's public canonical proposal hash against
-that receipt. Callers cannot independently assert the destination owner,
-accepted flag, fact hashes, diagnostics, or routing hash.
+scheduler receives the opaque `GameplayRoutingReceipt` created by the canonical
+`GameplayFabricCoordinator` route. The scheduler checks its stored proposal id,
+contract, and canonical proposal hash against the receipt. Callers cannot
+independently assert the registry, destination owner, accepted flag, fact
+hashes, diagnostics, routing hash, or emitted events.
 
-Playback consumes the recorded facts; verification replay can rerun event
-matching and owner routing against the same declared contracts.
+An accepted receipt with owner events enters a second typed recovery state,
+`outstanding_event_deliveries`. The routing fact persists the full normalized
+event envelopes and routing evidence, not only their hashes. After interruption
+the host delivers that recorded batch through `observe_routed_events`; it does
+not invoke the owner again. `EventDeliveryCompleted` consumes the batch using
+the exact routing hash and event IDs. Snapshot decode and fact replay recompute
+routing evidence before recreating this state, so altered events cannot become
+pending work.
+
+Playback consumes the recorded facts; verification replay can reconstruct both
+pre-route dispatches and post-route event delivery without rerunning authority.
+Wrong completion hashes and duplicate completion attempts fail without queue
+mutation.
 
 ## Public RuntimeSession composition
 
@@ -103,11 +114,20 @@ registry used by module dispatch. The host exposes typed
 consumes the actual fabric receipt from the registry-resolved proposal owner,
 not caller-authored completion evidence.
 
+`route_scheduled_action` is also the retry operation. For an outstanding
+dispatch it routes authority, records the typed result, delivers any returned
+events, and records completion as one host transaction. For an outstanding
+event delivery it skips authority and resumes only the recorded Observe batch.
+Invalid owner output, scheduler recording failure, or rejected downstream
+delivery restores authority, scheduler state, and reaction evidence to their
+pre-call values.
+
 The host snapshot embeds the complete scheduler snapshot, including pending
-actions and outstanding dispatches. Its public readout provides the scheduler
-state hash and full counts with an ordered 256-item projection window and an
-explicit truncation bit. `runtimeHostHash` binds both that scheduler state hash
-and the canonical current EntityStore/prefab authority hash.
+actions, outstanding dispatches, and outstanding owner-event deliveries. Its
+public readout provides the scheduler state hash and full counts with an ordered
+256-item projection window and an explicit truncation bit. `runtimeHostHash`
+binds both that scheduler state hash and the canonical current
+EntityStore/prefab authority hash.
 
 The transport-neutral TypeScript host contract exposes the same authority as a
 required scheduler load definition, typed `schedulerCommand` and
@@ -122,6 +142,7 @@ fabric registry and records the resulting routing receipt. This is the intended
 expressive path: semantic condition, explicit deferred authority, normal
 owner-routed mutation.
 
-The public-runtime-host fixture additionally proves interruption recovery:
-schedule, trigger to an outstanding dispatch, save/restore, route through the
-closed owner, and exactly-once retirement.
+The public-runtime-host fixture additionally proves both interruption windows:
+an outstanding dispatch survives save/restore before routing, and a recorded
+owner-event delivery survives save/restore after authority mutation. Retrying
+the latter delivers the recorded event exactly once without rerouting authority.

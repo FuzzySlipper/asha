@@ -1,11 +1,12 @@
 use protocol_game_extension::{
     GameplayCausationRef, GameplayContractRef, GameplayEmitterRef, GameplayEventEnvelope,
-    GameplayEventPhase, GameplayExecutionBudget, GameplayHeaderSelector, GameplayModuleManifest,
-    GameplayModuleRef, GameplayOwnerRef, GameplayProposalDeclaration, GameplayProposalEnvelope,
+    GameplayEventPhase, GameplayEventSchemaDeclaration, GameplayExecutionBudget,
+    GameplayHeaderSelector, GameplayModuleManifest, GameplayModuleRef, GameplayOwnerRef,
+    GameplayProposalDeclaration, GameplayProposalEnvelope,
 };
 use rule_gameplay_fabric::{
-    GameplayFabricCoordinator, GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput,
-    GameplayProposalRouter, GameplayRuntimeLimits,
+    gameplay_payload_hash, GameplayFabricCoordinator, GameplayOwnerRoutingCall,
+    GameplayOwnerRoutingOutput, GameplayProposalRouter, GameplayRuntimeLimits,
 };
 use rule_scheduler::{
     EventConditionedActionDraft, GameplayActionScheduler, GameplayEventCondition,
@@ -15,7 +16,7 @@ use rule_scheduler::{
 use std::collections::BTreeSet;
 use svc_gameplay_fabric::{
     GameplayFabricRegistry, GameplayFabricRegistryBuilder, GameplayLinkedProvider,
-    GameplayProposalOwnerRegistration,
+    GameplayProposalOwnerRegistration, TypedGameplayEventCodec,
 };
 
 fn contract(namespace: &str, name: &str) -> GameplayContractRef {
@@ -33,6 +34,10 @@ fn completion_event_contract() -> GameplayContractRef {
 
 fn increment_proposal_contract() -> GameplayContractRef {
     contract("game.progression", "increment-production")
+}
+
+fn incremented_event_contract() -> GameplayContractRef {
+    contract("game.progression", "production-incremented")
 }
 
 fn scheduler_owner() -> GameplayOwnerRef {
@@ -68,7 +73,10 @@ fn fabric_registry() -> GameplayFabricRegistry {
             artifact_hash: "sha256:progression-artifact".to_owned(),
             provider_id: "provider.progression".to_owned(),
         },
-        published_events: Vec::new(),
+        published_events: vec![GameplayEventSchemaDeclaration {
+            event: incremented_event_contract(),
+            codec_id: "codec.game.progression.production-incremented.v1".to_owned(),
+        }],
         subscriptions: Vec::new(),
         invocations: Vec::new(),
         read_views: Vec::new(),
@@ -91,6 +99,14 @@ fn fabric_registry() -> GameplayFabricRegistry {
     };
     let mut builder = GameplayFabricRegistryBuilder::new();
     builder
+        .register_event_codec(TypedGameplayEventCodec::<Vec<u8>>::new(
+            GameplayEventSchemaDeclaration {
+                event: incremented_event_contract(),
+                codec_id: "codec.game.progression.production-incremented.v1".to_owned(),
+            },
+            |payload| Ok(payload.clone()),
+            |bytes| Ok(bytes.to_vec()),
+        ))
         .register_linked_provider(GameplayLinkedProvider {
             provider_id: module.module_ref.provider_id.clone(),
             module_id: module.module_ref.module_id.clone(),
@@ -268,6 +284,43 @@ fn tick_actions_execute_once_at_or_after_the_tick_in_stable_order() {
 
 struct ProgressionRouter {
     accepted: bool,
+}
+
+struct ProgressionEventRouter;
+
+impl GameplayProposalRouter for ProgressionEventRouter {
+    fn route(&mut self, _call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+        let canonical_payload = br#"{"counter":"widgets","value":1}"#.to_vec();
+        GameplayOwnerRoutingOutput {
+            accepted: true,
+            fact_hashes: vec!["fact:production-counter-1".to_owned()],
+            events: vec![GameplayEventEnvelope {
+                event_id: "owner-candidate".to_owned(),
+                event: incremented_event_contract(),
+                tick: 999,
+                root_sequence: 999,
+                wave: 999,
+                event_sequence: 999,
+                phase: GameplayEventPhase::ScheduledMoment,
+                emitter: GameplayEmitterRef::Scheduler {
+                    scheduler_id: "untrusted-output".to_owned(),
+                },
+                causation: GameplayCausationRef {
+                    root_id: "untrusted-output".to_owned(),
+                    parent_event_id: None,
+                    decision_id: None,
+                },
+                source: None,
+                subjects: Vec::new(),
+                targets: Vec::new(),
+                scope: Some("factory.floor-a".to_owned()),
+                tags: vec!["production".to_owned()],
+                payload_hash: gameplay_payload_hash(&canonical_payload),
+                canonical_payload,
+            }],
+            diagnostic_codes: Vec::new(),
+        }
+    }
 }
 
 impl GameplayProposalRouter for ProgressionRouter {
@@ -551,6 +604,100 @@ fn triggered_dispatch_survives_reload_and_fact_replay_until_routing_acceptance()
         },
     );
     assert!(restored.outstanding_dispatches().is_empty());
+}
+
+#[test]
+fn accepted_owner_events_survive_interruption_and_complete_delivery_exactly_once() {
+    let mut scheduler = scheduler();
+    apply(
+        &mut scheduler,
+        GameplaySchedulerCommand::ScheduleTick(tick_draft("action.event-recovery", 25, 0)),
+    );
+    let dispatch = apply(
+        &mut scheduler,
+        GameplaySchedulerCommand::ExecuteTick {
+            action_id: ScheduledActionId::new("action.event-recovery"),
+            tick: 25,
+            validity: ScheduledActionValidity::CURRENT,
+        },
+    )
+    .dispatch
+    .expect("triggered dispatch");
+    let registry = fabric_registry();
+    let mut router = ProgressionEventRouter;
+    let route = GameplayFabricCoordinator::new(&registry, runtime_limits())
+        .route_proposal(dispatch.proposal, &mut router)
+        .expect("accepted owner event route");
+    apply(
+        &mut scheduler,
+        GameplaySchedulerCommand::RecordRouting {
+            action_id: dispatch.action_id.clone(),
+            receipt: route,
+        },
+    );
+    assert!(scheduler.outstanding_dispatches().is_empty());
+    let delivery = scheduler.outstanding_event_deliveries()[0].clone();
+    assert_eq!(delivery.events.len(), 1);
+    assert_eq!(delivery.events[0].wave, 1);
+    assert_eq!(
+        delivery.events[0].emitter,
+        GameplayEmitterRef::Owner {
+            owner_id: progression_owner().owner_id,
+        }
+    );
+
+    let snapshot = scheduler
+        .encode_snapshot()
+        .expect("pending delivery snapshot");
+    let mut restored = GameplayActionScheduler::decode_snapshot(&snapshot).expect("restore");
+    assert_eq!(restored.outstanding_event_deliveries(), vec![&delivery]);
+    let replayed = GameplayActionScheduler::replay(
+        scheduler_owner(),
+        BTreeSet::from([completion_event_contract()]),
+        BTreeSet::from([increment_proposal_contract()]),
+        scheduler.facts(),
+    )
+    .expect("verification replay");
+    assert_eq!(replayed.outstanding_event_deliveries(), vec![&delivery]);
+
+    let before_wrong = restored.state_hash();
+    assert_eq!(
+        restored.apply(
+            &scheduler_owner(),
+            GameplaySchedulerCommand::CompleteEventDelivery {
+                action_id: dispatch.action_id.clone(),
+                routing_hash: "wrong-routing-hash".to_owned(),
+            },
+        ),
+        Err(GameplaySchedulerError::RoutingMismatch)
+    );
+    assert_eq!(restored.state_hash(), before_wrong);
+
+    apply(
+        &mut restored,
+        GameplaySchedulerCommand::CompleteEventDelivery {
+            action_id: dispatch.action_id.clone(),
+            routing_hash: delivery.routing.routing_hash.clone(),
+        },
+    );
+    assert!(restored.outstanding_event_deliveries().is_empty());
+    assert_eq!(
+        restored.apply(
+            &scheduler_owner(),
+            GameplaySchedulerCommand::CompleteEventDelivery {
+                action_id: dispatch.action_id,
+                routing_hash: delivery.routing.routing_hash,
+            },
+        ),
+        Err(GameplaySchedulerError::UnknownAction)
+    );
+    GameplayActionScheduler::replay(
+        scheduler_owner(),
+        BTreeSet::from([completion_event_contract()]),
+        BTreeSet::from([increment_proposal_contract()]),
+        restored.facts(),
+    )
+    .expect("completed delivery verification replay");
 }
 
 #[test]

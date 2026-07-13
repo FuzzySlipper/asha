@@ -1,10 +1,11 @@
 use gameplay_module_sdk::*;
 use rule_gameplay_fabric::{
     gameplay_module_payload_hash, FrozenGameplayViews, GameplayDecisionContinuations,
-    GameplayDecisionMoment, GameplayDecisionOwner, GameplayDecisionStatus,
-    GameplayFabricCoordinator, GameplayModuleInitialization, GameplayModuleStateError,
-    GameplayModuleStateStore, GameplayOperationWorkspace, GameplayOwnerRoutingCall,
-    GameplayOwnerRoutingOutput, GameplayProposalRouter, GameplayRuntimeLimits, GameplayViewSource,
+    GameplayDecisionMoment, GameplayDecisionOwner, GameplayDecisionRoutingOutput,
+    GameplayDecisionStatus, GameplayFabricCoordinator, GameplayModuleInitialization,
+    GameplayModuleStateError, GameplayModuleStateStore, GameplayOperationWorkspace,
+    GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput, GameplayProposalRouter,
+    GameplayRuntimeLimits, GameplayViewSource,
 };
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -695,16 +696,19 @@ impl GameplayDecisionOwner for WeaponOwner {
         "revision-1".to_owned()
     }
 
-    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+    fn route_precommit(
+        &mut self,
+        call: &GameplayOwnerRoutingCall,
+    ) -> GameplayDecisionRoutingOutput {
         let proposal: GameExtensionProposal =
             serde_json::from_slice(&call.proposal.canonical_payload).unwrap();
         let GameExtensionProposal::DamageModifier { amount_delta, .. } = proposal else {
             panic!("expected damage modifier")
         };
         self.amount.replace(Some(amount_delta));
-        GameplayOwnerRoutingOutput {
+        GameplayDecisionRoutingOutput {
             accepted: true,
-            ..GameplayOwnerRoutingOutput::default()
+            ..GameplayDecisionRoutingOutput::default()
         }
     }
 }

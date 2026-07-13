@@ -174,7 +174,6 @@ pub trait GameplayRuntimeDecisionOwner {
 pub struct GameplayRuntimeDecisionOwnerOutput {
     pub accepted: bool,
     pub fact_hashes: Vec<String>,
-    pub events: Vec<GameplayEventEnvelope>,
     pub diagnostic_codes: Vec<String>,
 }
 
@@ -677,6 +676,23 @@ impl GameplayRuntimeHost {
         event: GameplayEventEnvelope,
         source_facts: Vec<GameplayReactionSourceFact>,
     ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
+        self.observe_event_batch_with_source_facts(vec![event], false, source_facts)
+    }
+
+    fn observe_routed_events_with_source_facts(
+        &mut self,
+        events: Vec<GameplayEventEnvelope>,
+        source_facts: Vec<GameplayReactionSourceFact>,
+    ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
+        self.observe_event_batch_with_source_facts(events, true, source_facts)
+    }
+
+    fn observe_event_batch_with_source_facts(
+        &mut self,
+        mut events: Vec<GameplayEventEnvelope>,
+        routed: bool,
+        source_facts: Vec<GameplayReactionSourceFact>,
+    ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
         let state_hash_before = self.session.module_state.state_hash();
         let mut authority_entities = self
             .session
@@ -686,26 +702,35 @@ impl GameplayRuntimeHost {
             .expect("runtime entity authority initialized");
         let authority_before = authority_entities.snapshot_durable();
         let frozen_entities = EntityStore::from_snapshot(authority_before.clone());
-        let observe = GameplayFabricCoordinator::new(
+        let coordinator = GameplayFabricCoordinator::new(
             self.session.registry(),
             limits_from_registry(self.session.registry()),
-        )
-        .observe(
-            event,
-            &RuntimeSessionViews {
-                registry: self.session.registry(),
-                module_state: &self.session.module_state,
-                entities: &frozen_entities,
-                triggers: self.session.trigger_rule(),
-                prefab_registry: &self.prefab_registry,
-                prefab_instances: &self.session.bundle.prefab_instances,
-                declared_reads: &self.declared_reads,
-            },
-            self.session.invocation_host(),
-            &mut RuntimeSessionOwnerRouter {
-                entities: &mut authority_entities,
-            },
         );
+        let views = RuntimeSessionViews {
+            registry: self.session.registry(),
+            module_state: &self.session.module_state,
+            entities: &frozen_entities,
+            triggers: self.session.trigger_rule(),
+            prefab_registry: &self.prefab_registry,
+            prefab_instances: &self.session.bundle.prefab_instances,
+            declared_reads: &self.declared_reads,
+        };
+        let mut router = RuntimeSessionOwnerRouter {
+            entities: &mut authority_entities,
+        };
+        let observe = if routed {
+            coordinator.observe_routed_events(
+                events,
+                &views,
+                self.session.invocation_host(),
+                &mut router,
+            )
+        } else {
+            let event = events
+                .pop()
+                .expect("single root-event delivery is nonempty");
+            coordinator.observe(event, &views, self.session.invocation_host(), &mut router)
+        };
         if !observe.accepted() {
             authority_entities = EntityStore::from_snapshot(authority_before.clone());
         }
@@ -1384,6 +1409,80 @@ mod tests {
         }
     }
 
+    fn scheduler_host_input() -> GameplayRuntimeHostInput {
+        let mut bundle = bundle();
+        create_spatial(&mut bundle, EntityId::new(10), 0.0, true);
+        let mut composition = GameplayStaticCompositionBuilder::new();
+        composition.include_standard_owner_events();
+        GameplayRuntimeHostInput {
+            bundle,
+            composition: composition.build().expect("scheduler composition"),
+            bindings: GameplayModuleBindingRegistryBuilder::new().build(),
+            entity_targets: GameplayBindingEntityTargets::new(),
+            spatial_entities: Vec::new(),
+            declared_reads: Vec::new(),
+            triggers: Vec::new(),
+            scheduler: GameplayRuntimeSchedulerDefinition::new(
+                GameplayOwnerRef {
+                    owner_id: "authority.fixture-scheduler".to_owned(),
+                    provider_id: "provider.fixture-scheduler".to_owned(),
+                },
+                Vec::new(),
+                vec![
+                    rule_gameplay_fabric::StandardGameplayProposalKind::SetCapabilityActivation
+                        .contract(),
+                ],
+            ),
+        }
+    }
+
+    fn scheduled_collision_deactivation() -> TickScheduledActionDraft {
+        let payload = rule_gameplay_fabric::CapabilityActivationGameplayProposal {
+            entity: 10,
+            capability: "collision".to_owned(),
+            action: "deactivate".to_owned(),
+        };
+        let canonical_payload = serde_json::to_vec(&payload).expect("proposal serializes");
+        TickScheduledActionDraft {
+            id: ScheduledActionId::new("fixture.scheduler.deactivate-collision"),
+            execute_at: 5,
+            priority: 0,
+            proposal: GameplayProposalEnvelope {
+                proposal_id: "draft.scheduler.deactivate-collision".to_owned(),
+                proposal:
+                    rule_gameplay_fabric::StandardGameplayProposalKind::SetCapabilityActivation
+                        .contract(),
+                tick: 0,
+                root_sequence: 5,
+                wave: 0,
+                proposal_sequence: 0,
+                emitter: protocol_game_extension::GameplayEmitterRef::Owner {
+                    owner_id: "authority.fixture".to_owned(),
+                },
+                causation: protocol_game_extension::GameplayCausationRef {
+                    root_id: "fixture.scheduler.root".to_owned(),
+                    parent_event_id: None,
+                    decision_id: None,
+                },
+                originating_event_id: None,
+                source: None,
+                targets: vec![protocol_game_extension::GameplayEntityRef {
+                    entity: EntityId::new(10),
+                }],
+                payload_hash: gameplay_module_payload_hash(&canonical_payload),
+                canonical_payload,
+            },
+            source: protocol_game_extension::GameplayEmitterRef::Owner {
+                owner_id: "authority.fixture".to_owned(),
+            },
+            causation: protocol_game_extension::GameplayCausationRef {
+                root_id: "fixture.scheduler.root".to_owned(),
+                parent_event_id: None,
+                decision_id: None,
+            },
+        }
+    }
+
     fn decision_moment(decision_id: &str, owner_revision: u64) -> GameplayDecisionMoment {
         let payload = serde_json::to_vec(&DecisionWorkspace {
             amount: 4,
@@ -1572,5 +1671,84 @@ mod tests {
             .unwrap()
             .text
             .contains("triggerSnapshot"));
+    }
+
+    #[test]
+    fn scheduler_restore_delivers_recorded_owner_events_without_rerouting_authority() {
+        let mut host = GameplayRuntimeHost::activate(scheduler_host_input()).unwrap();
+        host.apply_scheduler_command(GameplaySchedulerCommand::ScheduleTick(
+            scheduled_collision_deactivation(),
+        ))
+        .unwrap();
+        let action_id = ScheduledActionId::new("fixture.scheduler.deactivate-collision");
+        host.apply_scheduler_command(GameplaySchedulerCommand::ExecuteTick {
+            action_id: action_id.clone(),
+            tick: 5,
+            validity: ScheduledActionValidity::CURRENT,
+        })
+        .unwrap();
+
+        // Model interruption after authority routing was durably recorded but
+        // before the returned owner event entered its next Observe wave.
+        let dispatch = host.scheduler.outstanding_dispatches()[0].clone();
+        let mut entities = host.session.bundle.runtime_entities.take().unwrap();
+        let route = GameplayFabricCoordinator::new(
+            host.session.registry(),
+            limits_from_registry(host.session.registry()),
+        )
+        .route_proposal(
+            dispatch.proposal,
+            &mut RuntimeSessionOwnerRouter {
+                entities: &mut entities,
+            },
+        )
+        .unwrap();
+        let scheduler_owner = host.scheduler.owner().clone();
+        host.scheduler
+            .apply(
+                &scheduler_owner,
+                GameplaySchedulerCommand::RecordRouting {
+                    action_id: action_id.clone(),
+                    receipt: route,
+                },
+            )
+            .unwrap();
+        host.session.bundle.runtime_entities = Some(entities);
+        assert_eq!(host.scheduler.outstanding_event_deliveries().len(), 1);
+        let authority_after_route = host.readout().authority_state_hash;
+
+        let snapshot = host.compose_snapshot().unwrap();
+        let mut restored = GameplayRuntimeHost::restore(scheduler_host_input(), &snapshot.text)
+            .expect("pending event delivery restores");
+        assert_eq!(
+            restored
+                .scheduler_readout()
+                .outstanding_event_delivery_count,
+            1
+        );
+        let delivered = restored.route_scheduled_action(&action_id).unwrap();
+        assert_eq!(delivered.delivered_events.len(), 1);
+        assert!(delivered.reaction.as_ref().unwrap().observe.accepted());
+        assert!(matches!(
+            delivered.delivery_fact,
+            Some(GameplaySchedulerFact::EventDeliveryCompleted { .. })
+        ));
+        assert_eq!(
+            restored
+                .scheduler_readout()
+                .outstanding_event_delivery_count,
+            0
+        );
+        assert_eq!(
+            restored.readout().authority_state_hash,
+            authority_after_route
+        );
+        assert_eq!(restored.reaction_frames().len(), 1);
+        assert!(matches!(
+            restored.route_scheduled_action(&action_id),
+            Err(GameplayRuntimeHostError::Scheduler(
+                GameplaySchedulerError::UnknownAction
+            ))
+        ));
     }
 }

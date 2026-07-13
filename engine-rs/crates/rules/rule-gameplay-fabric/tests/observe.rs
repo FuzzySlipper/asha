@@ -7,14 +7,15 @@ use protocol_game_extension::{
     GameplayProposalDeclaration, GameplayProposalEnvelope, GameplaySubscriptionDeclaration,
 };
 use rule_gameplay_fabric::{
-    resolve_declared_reactions, FrozenGameplayViews, GameplayDecisionContinuations,
-    GameplayDecisionMoment, GameplayDecisionOutput, GameplayDecisionOwner, GameplayDecisionStatus,
-    GameplayFabricCoordinator, GameplayGuardVote, GameplayInvocationCall, GameplayInvocationHost,
-    GameplayInvocationInput, GameplayInvocationOutput, GameplayOperationWorkspace,
-    GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput, GameplayProposalRouter,
-    GameplayReactionDisposition, GameplayRuntimeDiagnosticCode, GameplayRuntimeLimits,
-    GameplayViewSource, GameplayWorkspaceTransform, ReactionBehavior, ReactionDefinition,
-    ReactionResolutionInput, ReactionWindowKind,
+    gameplay_payload_hash, resolve_declared_reactions, verify_gameplay_routing_evidence,
+    FrozenGameplayViews, GameplayDecisionContinuations, GameplayDecisionMoment,
+    GameplayDecisionOutput, GameplayDecisionOwner, GameplayDecisionRoutingOutput,
+    GameplayDecisionStatus, GameplayFabricCoordinator, GameplayGuardVote, GameplayInvocationCall,
+    GameplayInvocationHost, GameplayInvocationInput, GameplayInvocationOutput,
+    GameplayOperationWorkspace, GameplayOwnerRoutingCall, GameplayOwnerRoutingOutput,
+    GameplayProposalRouter, GameplayReactionDisposition, GameplayRuntimeDiagnosticCode,
+    GameplayRuntimeLimits, GameplayViewSource, GameplayWorkspaceTransform, ReactionBehavior,
+    ReactionDefinition, ReactionResolutionInput, ReactionWindowKind,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -197,6 +198,7 @@ fn registry(observer_count: usize, observe_applied: bool) -> GameplayFabricRegis
 }
 
 fn dummy_event(event: GameplayContractRef) -> GameplayEventEnvelope {
+    let canonical_payload = vec![7];
     GameplayEventEnvelope {
         event_id: "module-controlled-id".to_owned(),
         event,
@@ -218,8 +220,8 @@ fn dummy_event(event: GameplayContractRef) -> GameplayEventEnvelope {
         targets: Vec::new(),
         scope: None,
         tags: vec!["gameplay".to_owned()],
-        canonical_payload: vec![7],
-        payload_hash: "sha256:payload".to_owned(),
+        payload_hash: gameplay_payload_hash(&canonical_payload),
+        canonical_payload,
     }
 }
 
@@ -685,15 +687,17 @@ impl GameplayDecisionOwner for DecisionOwner {
         self.revision.borrow().clone()
     }
 
-    fn route_precommit(&mut self, call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+    fn route_precommit(
+        &mut self,
+        call: &GameplayOwnerRoutingCall,
+    ) -> GameplayDecisionRoutingOutput {
         assert_eq!(call.owner, owner());
         assert_eq!(call.proposal.canonical_payload, vec![2]);
         self.commits.set(self.commits.get() + 1);
         *self.revision.borrow_mut() = format!("revision-{}", self.commits.get() + 1);
-        GameplayOwnerRoutingOutput {
+        GameplayDecisionRoutingOutput {
             accepted: true,
             fact_hashes: vec!["fact:operation-accepted".to_owned()],
-            events: Vec::new(),
             diagnostic_codes: Vec::new(),
         }
     }
@@ -1061,4 +1065,139 @@ fn react_invocation_preserves_existing_priority_then_stable_id_resolution() {
         host.observed_order.into_inner(),
         vec!["3".to_owned(), "reaction.a".to_owned(), "1".to_owned()]
     );
+}
+
+struct FixedRouter(GameplayOwnerRoutingOutput);
+
+impl GameplayProposalRouter for FixedRouter {
+    fn route(&mut self, _call: &GameplayOwnerRoutingCall) -> GameplayOwnerRoutingOutput {
+        self.0.clone()
+    }
+}
+
+#[test]
+fn canonical_route_validates_normalizes_and_orders_owner_events() {
+    let registry = registry(0, false);
+    let mut first = dummy_event(applied_contract());
+    first.canonical_payload = vec![9];
+    first.payload_hash = gameplay_payload_hash(&first.canonical_payload);
+    first.tags = vec!["z".to_owned(), "a".to_owned(), "a".to_owned()];
+    let mut second = dummy_event(applied_contract());
+    second.canonical_payload = vec![3];
+    second.payload_hash = gameplay_payload_hash(&second.canonical_payload);
+    let mut router = FixedRouter(GameplayOwnerRoutingOutput {
+        accepted: true,
+        fact_hashes: vec!["fact:z".to_owned(), "fact:a".to_owned()],
+        events: vec![first, second],
+        diagnostic_codes: Vec::new(),
+    });
+    let mut proposal = dummy_proposal();
+    proposal.tick = 42;
+    proposal.root_sequence = 7;
+    proposal.wave = 3;
+    proposal.proposal_sequence = 2;
+    proposal.causation = GameplayCausationRef {
+        root_id: "route-root".to_owned(),
+        parent_event_id: Some("parent-event".to_owned()),
+        decision_id: Some("decision-1".to_owned()),
+    };
+    proposal.originating_event_id = Some("origin-event".to_owned());
+
+    let receipt = GameplayFabricCoordinator::new(&registry, limits(4))
+        .route_proposal(proposal, &mut router)
+        .expect("canonical owner route");
+    assert_eq!(
+        receipt.evidence().registry_digest,
+        registry.registry_digest()
+    );
+    assert_eq!(receipt.evidence().owner_id, owner().owner_id);
+    assert_eq!(receipt.evidence().fact_hashes, vec!["fact:a", "fact:z"]);
+    assert_eq!(receipt.accepted_events().len(), 2);
+    for (sequence, event) in receipt.accepted_events().iter().enumerate() {
+        assert_eq!(event.event_id, format!("route-root/event/4/{sequence}"));
+        assert_eq!(event.tick, 42);
+        assert_eq!(event.root_sequence, 7);
+        assert_eq!(event.wave, 4);
+        assert_eq!(event.event_sequence, sequence as u32);
+        assert_eq!(
+            event.emitter,
+            GameplayEmitterRef::Owner {
+                owner_id: owner().owner_id,
+            }
+        );
+        assert_eq!(event.causation.root_id, "route-root");
+        assert_eq!(
+            event.causation.parent_event_id.as_deref(),
+            Some("origin-event")
+        );
+        assert_eq!(event.causation.decision_id.as_deref(), Some("decision-1"));
+    }
+    assert!(verify_gameplay_routing_evidence(
+        receipt.evidence(),
+        receipt.accepted_events()
+    ));
+}
+
+#[test]
+fn canonical_route_rejects_missing_owner_undeclared_event_and_wrong_payload_hash() {
+    let registry = registry(0, false);
+    let coordinator = GameplayFabricCoordinator::new(&registry, limits(4));
+    let mut missing_proposal = dummy_proposal();
+    missing_proposal.proposal = contract("game.missing", "proposal");
+    let mut router = FixedRouter(GameplayOwnerRoutingOutput::default());
+    let missing = coordinator
+        .route_proposal(missing_proposal, &mut router)
+        .expect_err("missing owner fails closed");
+    assert_eq!(
+        missing.code,
+        GameplayRuntimeDiagnosticCode::MissingProposalOwner
+    );
+
+    let mut undeclared = dummy_event(contract("game.missing", "event"));
+    undeclared.payload_hash = gameplay_payload_hash(&undeclared.canonical_payload);
+    let mut router = FixedRouter(GameplayOwnerRoutingOutput {
+        accepted: true,
+        events: vec![undeclared],
+        ..GameplayOwnerRoutingOutput::default()
+    });
+    let undeclared = coordinator
+        .route_proposal(dummy_proposal(), &mut router)
+        .expect_err("undeclared owner event fails closed");
+    assert_eq!(
+        undeclared.code,
+        GameplayRuntimeDiagnosticCode::UndeclaredEvent
+    );
+
+    let mut wrong_hash = dummy_event(applied_contract());
+    wrong_hash.payload_hash = "wrong-hash".to_owned();
+    let mut router = FixedRouter(GameplayOwnerRoutingOutput {
+        accepted: true,
+        events: vec![wrong_hash],
+        ..GameplayOwnerRoutingOutput::default()
+    });
+    let wrong_hash = coordinator
+        .route_proposal(dummy_proposal(), &mut router)
+        .expect_err("wrong owner event hash fails closed");
+    assert_eq!(
+        wrong_hash.code,
+        GameplayRuntimeDiagnosticCode::InvalidOwnerEvent
+    );
+}
+
+#[test]
+fn canonical_rejected_route_retains_sorted_evidence_without_events() {
+    let registry = registry(0, false);
+    let mut router = FixedRouter(GameplayOwnerRoutingOutput {
+        accepted: false,
+        fact_hashes: Vec::new(),
+        events: Vec::new(),
+        diagnostic_codes: vec!["z".to_owned(), "a".to_owned()],
+    });
+    let receipt = GameplayFabricCoordinator::new(&registry, limits(4))
+        .route_proposal(dummy_proposal(), &mut router)
+        .expect("typed owner rejection");
+    assert!(!receipt.evidence().accepted);
+    assert_eq!(receipt.evidence().diagnostic_codes, vec!["a", "z"]);
+    assert!(receipt.accepted_events().is_empty());
+    assert!(verify_gameplay_routing_evidence(receipt.evidence(), &[]));
 }
