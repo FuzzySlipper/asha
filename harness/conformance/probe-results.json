@@ -2,15 +2,23 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:7f5bdf56bacf78b6db3a8c5944ba05fbf59c7756c002cafbca80799553d74005",
+  "inventoryHash": "sha256:bb6ff3031b1bb0d57d1f7802303e699dedf695640b824e23d0bf50affc8e7cd7",
+  "identityCatalog": {
+    "path": "harness/identity/catalog.json",
+    "hash": "sha256:5c19f709979b0aa6b4e995fd58a719a849f69e459f40db92a8f1b2c6dfa26419"
+  },
   "catalogs": [
+    {
+      "path": "harness/identity/catalog.json",
+      "hash": "sha256:9289ac61a5da48e32ccbbd0f8ef1befb06ac2b105ca019fb13ee02f4053c0dc5"
+    },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
       "hash": "sha256:e1185f2474cbf84c89a8eab6412647e58c90cb0cc7bb62975e9fb0e3caeb6724"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:c6a14b8fea895c7abeef71509ddca7815b6abb6e302ead924087c724a4333ee5"
+      "hash": "sha256:5c805f0b4e659f8c668423a3eac95c53bbf1bbe9c5bee269691522f8501f0dc5"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -22,7 +30,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:d0e730d0c407ac988d3c25a84e394fb345480b559ae1a4b66c06a4c2fee408a8"
+      "hash": "sha256:31bcbeb3848ef778cb0d0eccaac1e7072747f2d9ebf841179e88119809c5a576"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
@@ -2145,111 +2153,229 @@
     {
       "id": "gameplay.binding.bootstrap",
       "suite": "gameplay.binding",
+      "executionId": "rust.project-bundle.gameplay-bindings",
+      "assertionIds": [
+        "assertion.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
+        "assertion.gameplay.binding.bootstrap.stale-contracts-foreign-modules-bad-roles-reads-outputs-and-overrides-reject"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.downstream.invocation",
       "suite": "gameplay.downstream-module",
+      "executionId": "rust.downstream-gameplay-module",
+      "assertionIds": [
+        "assertion.gameplay.downstream.invocation.public-facade-executes-real-downstream-code-and-hashes-behavior"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.read.event-bound",
       "suite": "gameplay.reads",
+      "executionId": "rust.gameplay-fabric.reads",
+      "assertionIds": [
+        "assertion.gameplay.read.event-bound.coordinator-delivers-declared-reads-and-binds-them-into-delivery-evidence",
+        "assertion.gameplay.read.event-bound.downstream-read-plan-is-typed-bounded-frozen-and-stable"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.read.module-state",
       "suite": "gameplay.static-composition",
+      "executionId": "rust.gameplay-module-sdk.static-composition",
+      "assertionIds": [
+        "assertion.gameplay.read.module-state.provider-state-adapters-initialize-and-apply-recorded-local-facts"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.read.zz-module-conformance",
       "suite": "gameplay.downstream-module",
+      "executionId": "rust.downstream-gameplay-module",
+      "assertionIds": [
+        "assertion.gameplay.read.zz-module-conformance.one-command-conformance-covers-bootstrap-invocation-state-and-replay",
+        "assertion.gameplay.read.zz-module-conformance.provider-drift-and-bad-config-fail-before-partial-bootstrap"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.runtime-host.decision",
       "suite": "gameplay.runtime-host",
+      "executionId": "gate.gameplay-runtime-host",
+      "assertionIds": [
+        "assertion.gameplay.runtime-host.decision.approved-public-decision-host-resumes-exactly-once-with-declared-reads",
+        "assertion.gameplay.runtime-host.decision.public-decision-host-delivers-reads-persists-continuations-and-consumes-tokens"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.runtime-host.product-loop",
       "suite": "gameplay.runtime-host",
+      "executionId": "gate.gameplay-runtime-host",
+      "assertionIds": [
+        "assertion.gameplay.runtime-host.product-loop.approved-public-runtime-host-links-real-downstream-behavior"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.runtime-session-composition",
       "suite": "gameplay.runtime-host",
+      "executionId": "gate.gameplay-runtime-host",
+      "assertionIds": [
+        "assertion.gameplay.runtime-session-composition.public-static-builder-composes-one-bridge-cell-and-restores-it"
+      ],
       "passed": true
     },
     {
       "id": "gameplay.trigger.lifecycle",
       "suite": "gameplay.triggers",
+      "executionId": "gate.trigger-volumes",
+      "assertionIds": [
+        "assertion.gameplay.trigger.lifecycle.current-trigger-overlaps-flow-through-declared-owner-query-boundary",
+        "assertion.gameplay.trigger.lifecycle.downstream-trigger-observer-proposes-visible-follow-up-without-collision-access",
+        "assertion.gameplay.trigger.lifecycle.enter-continue-exit-are-exactly-once-and-stably-hashed",
+        "assertion.gameplay.trigger.lifecycle.runtime-session-reconciles-persists-and-restores-trigger-overlap-authority"
+      ],
       "passed": true
     },
     {
       "id": "public.animation-projection",
       "suite": "public.animation",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.animation-projection.accepted-gameplay-fact-is-retained-in-transition-state-and-verification-replay",
+        "assertion.public.animation-projection.animationsampledcueevidence",
+        "assertion.public.animation-projection.g1-controller-sequence-drives-deterministic-renderer-local-blend-and-smooth-sampling"
+      ],
       "passed": true
     },
     {
       "id": "public.audio-projection",
       "suite": "public.audio",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.audio-projection.audioprojectionevidence",
+        "assertion.public.audio-projection.web-audio-host-emits-catalog-hash-bound-3d-cues-and-caches-decoded-clips"
+      ],
       "passed": true
     },
     {
       "id": "public.billboard-projection",
       "suite": "public.billboard",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.billboard-projection.billboard-host-creates-updates-localizes-lays-out-and-destroys-multiple-entity-cues",
+        "assertion.public.billboard-projection.billboardprojectionevidence"
+      ],
       "passed": true
     },
     {
       "id": "public.camera-controller",
       "suite": "public.camera-flow",
+      "executionId": "ts.app.tests",
+      "assertionIds": [
+        "assertion.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
+        "assertion.public.camera-controller.editor-selection-drives-the-public-orbit-pan-zoom-and-fps-return-flow",
+        "assertion.public.camera-controller.one-resolved-input-path-switches-fps-orbit-and-top-down-without-simultaneous-controllers",
+        "assertion.public.camera-controller.pivot-camera-distance-is-clamped-by-runtime-terrain-and-can-fail-closed"
+      ],
       "passed": true
     },
     {
       "id": "public.input-pause-demo",
       "suite": "public.input-pause-demo",
+      "executionId": "gate.asha-demo-input-live",
+      "assertionIds": [
+        "assertion.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
+        "assertion.public.input-pause-demo.duplicaterejected",
+        "assertion.public.input-pause-demo.resolved-input-owns-pause-consumption-resume-and-semantic-replay"
+      ],
       "passed": true
     },
     {
       "id": "public.integrated-feedback-projection",
       "suite": "public.animation",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.integrated-feedback-projection.exercisepresentationdegradation",
+        "assertion.public.integrated-feedback-projection.font-and-icon-resources-are-sha-256-validated-cached-and-fail-with-typed-diagnostics",
+        "assertion.public.integrated-feedback-projection.missing-audio-resources-fail-locally-with-origin-preserving-diagnostics",
+        "assertion.public.integrated-feedback-projection.missing-overlay-realization-does-not-block-scene-or-other-telemetry-access",
+        "assertion.public.integrated-feedback-projection.missing-particle-resources-fail-locally-without-consuming-the-burst",
+        "assertion.public.integrated-feedback-projection.primary-fire-audio-retains-the-accepted-origin"
+      ],
       "passed": true
     },
     {
       "id": "public.particle-projection",
       "suite": "public.particle",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.particle-projection.burst-and-retained-lifecycle-are-catalog-validated-and-budgeted",
+        "assertion.public.particle-projection.particle-host-realizes-deterministic-bursts-and-expires-disposable-billboards",
+        "assertion.public.particle-projection.particleprojectionevidence"
+      ],
       "passed": true
     },
     {
       "id": "public.prefab-authoring-and-placement",
       "suite": "public.prefab-authoring",
+      "executionId": "ts.game-workspace.tests",
+      "assertionIds": [
+        "assertion.public.prefab-authoring-and-placement.prefabauthoringreadout",
+        "assertion.public.prefab-authoring-and-placement.public-prefab-authoring-creates-edits-places-and-inspects-a-multi-part-definition",
+        "assertion.public.prefab-authoring-and-placement.public-prefab-bootstrap-places-resolves-and-restores-multiple-instances"
+      ],
       "passed": true
     },
     {
       "id": "public.projection-pick",
       "suite": "public.projection-pick",
+      "executionId": "ts.renderer-three.tests",
+      "assertionIds": [
+        "assertion.public.projection-pick.projection-pick-filters-are-descriptive-only-and-invalid-rays-fail-closed",
+        "assertion.public.projection-pick.projection-pick-returns-typed-source-evidence-without-changing-projection-or-authority-shaped-state"
+      ],
       "passed": true
     },
     {
       "id": "public.runtime-session.projection",
       "suite": "public.consumer",
+      "executionId": "ts.smoke.tests",
+      "assertionIds": [
+        "assertion.public.runtime-session.projection.asha-demo-public-roots-cover-runtimesession-readouts-and-hud-menu-projection"
+      ],
       "passed": true
     },
     {
       "id": "public.session-input-replay",
       "suite": "bridge.rust-authority",
+      "executionId": "rust.runtime-bridge-api.lib",
+      "assertionIds": [
+        "assertion.public.session-input-replay.resolved-pause-context-records-and-replays-without-browser-events-or-double-delivery",
+        "assertion.public.session-input-replay.runtime-bridge-replays-authority-issued-actions-exactly-once-without-raw-input"
+      ],
       "passed": true
     },
     {
       "id": "public.session-time-control",
       "suite": "bridge.rust-authority",
+      "executionId": "rust.runtime-bridge-api.lib",
+      "assertionIds": [
+        "assertion.public.session-time-control.exact-steps-advance-the-requested-count-and-remain-paused",
+        "assertion.public.session-time-control.headless-runtimesession-pause-and-exact-stepping-use-validated-authority-commands"
+      ],
       "passed": true
     },
     {
       "id": "public.telemetry-snapshot-overlay",
       "suite": "public.telemetry",
+      "executionId": "ts.renderer-host.tests",
+      "assertionIds": [
+        "assertion.public.telemetry-snapshot-overlay.headless-live-telemetry-omits-unavailable-counters-and-preserves-bounded-history",
+        "assertion.public.telemetry-snapshot-overlay.livetelemetrysnapshot",
+        "assertion.public.telemetry-snapshot-overlay.retained-overlay-lifecycle-is-typed-atomic-and-bounded"
+      ],
       "passed": true
     }
   ],

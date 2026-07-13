@@ -208,12 +208,13 @@
     }
   ],
   "gaps": [],
+  "identityCatalogHash": "sha256:5c19f709979b0aa6b4e995fd58a719a849f69e459f40db92a8f1b2c6dfa26419",
   "semanticValidation": {
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",
     "valid": true,
     "consumerNeedsManifestHash": "fnv1a64:d9db1ebdb1c2daf8",
-    "registryDigest": "fnv1a64:53e9b2b710ebeba0",
-    "bindingRegistryHash": "fnv1a64:1e0f1d657d44cd22",
+    "registryDigest": "fnv1a64:153b7b52a4ee1769",
+    "bindingRegistryHash": "fnv1a64:84d16603e2307058",
     "checks": [
       {
         "id": "consumerNeed.pulse.configuration",

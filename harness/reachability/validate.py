@@ -17,33 +17,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEFAULT_MANIFEST = ROOT / "harness/reachability/manifest.json"
 DEFAULT_REPORT = ROOT / "harness/reachability/validation-report.json"
 
-# This independent inventory prevents a reachability entry from proving its own
-# completeness or silently changing which downstream contract it represents.
-EXPECTED_CAPABILITIES: dict[str, str | None] = {
-    "animation.runtime-projection": "asha-demo.animation-controller-projection",
-    "audio.runtime-projection": "asha-demo.audio-projection",
-    "billboard.runtime-projection": "asha-demo.billboard-projection",
-    "bridge.camera-controller": None,
-    "bridge.project-bundle.load": "asha-demo.runtime-load",
-    "bridge.session-input-replay": "asha-demo.input-replay",
-    "bridge.session-time-control": "asha-demo.time-control-command",
-    "feedback.integrated-public-projection": "asha-demo.integrated-feedback-projection",
-    "gameplay.event-bound-read": None,
-    "gameplay.generic-event": "pulse.subscribe",
-    "gameplay.module-binding": "pulse.configuration",
-    "gameplay.module-conformance": "pulse.conformance",
-    "gameplay.module-named-read": "pulse.read",
-    "gameplay.runtime-host": "pulse.runtime-host",
-    "gameplay.runtime-session-composition": "pulse.runtime-session-composition",
-    "gameplay.runtime-host.decision": "pulse.runtime-host",
-    "gameplay.trigger-lifecycle": "pulse.trigger-lifecycle",
-    "particle.runtime-projection": "asha-demo.particle-projection",
-    "prefab.public-authoring": "asha-demo.game-workspace-prefab-authoring",
-    "prefab.runtime-placement": "asha-demo.prefab-runtime-placement",
-    "renderer.projection-pick": None,
-    "telemetry.live-snapshot-overlay": "asha-demo.telemetry-live-overlay",
-}
-
 COMPATIBLE_NEED_KINDS: dict[str, set[str]] = {
     "bridgeOperation": {"runtimeOperation"},
     "gameplayBinding": {"gameplayBindingSchema"},
@@ -153,6 +126,11 @@ def bridge_operations() -> dict[str, dict[str, Any]]:
 
 def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
     document = load_json(manifest_path)
+    identity_catalog = load_json(ROOT / "harness/identity/catalog.json")
+    expected_capabilities = {
+        item["id"]: item["consumerRequirementId"]
+        for item in identity_catalog["families"]["capabilities"]
+    }
     gaps: list[dict[str, str]] = []
     assertions = document.get("catalogAssertions")
     capabilities = document.get("capabilities")
@@ -172,8 +150,8 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
     ids = [item.get("id") for item in capabilities if isinstance(item, dict)]
     if ids != sorted(ids) or len(ids) != len(set(ids)):
         gap(gaps, "manifest", "noncanonical_capabilities", "capabilities", "capability ids must be sorted and unique")
-    missing_capabilities = sorted(set(EXPECTED_CAPABILITIES) - set(ids))
-    unexpected_capabilities = sorted(set(ids) - set(EXPECTED_CAPABILITIES))
+    missing_capabilities = sorted(set(expected_capabilities) - set(ids))
+    unexpected_capabilities = sorted(set(ids) - set(expected_capabilities))
     for capability in missing_capabilities:
         gap(
             gaps, capability, "missing_required_capability", "capabilities",
@@ -309,7 +287,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             gap(gaps, capability, "invalid_public_surface", "publicSurface.kind", "publicSurface kind must be typescript or rust")
 
         need = item.get("consumerNeed")
-        expected_need = EXPECTED_CAPABILITIES.get(capability)
+        expected_need = expected_capabilities.get(capability)
         if need != expected_need:
             gap(
                 gaps, capability, "consumer_need_mismatch", "consumerNeed",
@@ -372,6 +350,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
 
     gaps.sort(key=lambda item: (item["capability"], item["code"], item["path"], item["message"]))
     catalog_paths = [
+        ROOT / "harness/identity/catalog.json",
         ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
         ROOT / "harness/public-surface/ts-packages.json",
         ROOT / "harness/public-surface/rust-crates.json",
@@ -383,6 +362,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
         "valid": not gaps,
         "manifest": relative(manifest_path),
         "manifestHash": digest(manifest_path),
+        "identityCatalogHash": identity_catalog["catalogHash"],
         "catalogs": [
             {"path": relative(path), "hash": digest(path)} for path in catalog_paths
         ],

@@ -3,7 +3,12 @@
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
   "manifestHash": "sha256:377723241d6eeee3a710877afce5238d400f9c093e3a3c94126873787de2ef12",
+  "identityCatalogHash": "sha256:5c19f709979b0aa6b4e995fd58a719a849f69e459f40db92a8f1b2c6dfa26419",
   "catalogs": [
+    {
+      "path": "harness/identity/catalog.json",
+      "hash": "sha256:9289ac61a5da48e32ccbbd0f8ef1befb06ac2b105ca019fb13ee02f4053c0dc5"
+    },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
       "hash": "sha256:e1185f2474cbf84c89a8eab6412647e58c90cb0cc7bb62975e9fb0e3caeb6724"
@@ -18,7 +23,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:c6a14b8fea895c7abeef71509ddca7815b6abb6e302ead924087c724a4333ee5"
+      "hash": "sha256:5c805f0b4e659f8c668423a3eac95c53bbf1bbe9c5bee269691522f8501f0dc5"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",

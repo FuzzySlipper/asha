@@ -11,8 +11,9 @@ echo "==> Checking public gameplay-module conformance crate"
 cargo test --locked --offline --manifest-path "$PUBLIC_CRATE"
 
 echo "==> Running downstream module conformance and negative fixtures"
-cargo test --locked --offline --manifest-path "$FIXTURE" -- \
-  --skip public_static_runtime_provider_lifecycle_releases_each_isolated_cell
+python3 "$REPO_ROOT/harness/identity/execution.py" \
+  --execution rust.downstream-gameplay-module \
+  --attribution gate.gameplay-module-conformance
 cargo run --locked --offline --manifest-path "$FIXTURE" --bin conformance -- --json "$REPORT"
 jq -e '.valid == true and (.gaps | length) == 0 and (.checks | all(.passed))' "$REPORT" >/dev/null
 

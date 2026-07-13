@@ -1,85 +1,13 @@
 {
   "schemaVersion": 1,
-  "catalogEntryHashes": {
-    "reachabilityCapabilities": {
-      "animation.runtime-projection": "sha256:cca14e54578e405c84e801ca0ef7ab4229efee487c93c79d217822bd3a622f38",
-      "audio.runtime-projection": "sha256:af145e2ea56e03175e95bd6f47544a81bafb22eba97c640c2ef17f3ccb72ebc0",
-      "billboard.runtime-projection": "sha256:99a805abfd9dd9882c71f77f46eff34a25a027147525e73375cbccb9701eb17e",
-      "bridge.camera-controller": "sha256:852e5bcf66f5d8dc7f48f21a73cc8fe1610e03f80a83ba88cde2dd9f4c1584db",
-      "bridge.project-bundle.load": "sha256:c441edcdf2e5a706aba7af56799b171275f3d14fb48213fa54a9e9c005af6f9c",
-      "bridge.session-input-replay": "sha256:83d2802e9e5cdb614ad97736c26e1a0f006115c3c5d0d041ed21343fdd647354",
-      "bridge.session-time-control": "sha256:ff2e9b1c0b53eea1fa8b26f65b26c0343e72cad0692b86f0ee1e8f6f1f8fb4af",
-      "feedback.integrated-public-projection": "sha256:a63c5f9af670e5bc9b45e19c545e7743fd42b15300ef764fcb477d8dcfa50792",
-      "gameplay.event-bound-read": "sha256:764a812f8a2f5dd779235c95a04b15227594410a50e56bf6b5f6d4517d3f2cf8",
-      "gameplay.generic-event": "sha256:a6bf9087baeee4fe5edbe68e353e082541a32e43f306b9b2e0fc90cb761cb921",
-      "gameplay.module-binding": "sha256:b534672ef528b7910d8f6b5062b721ee386b76ed4366cc47315d8b0eb6bd2ca7",
-      "gameplay.module-conformance": "sha256:79590b056116e622d2cb1b40f25f17df70543da6063c39d7ec0a7518f8d12f2c",
-      "gameplay.module-named-read": "sha256:0b20352f6bc7fb375de66c3b74a80c4cfa63639c4d3f74420cfefa669712a68f",
-      "gameplay.runtime-host": "sha256:e16cdb911d763262e4d373d24920c8a9244cce7574a2c9c5a5394002800fbaa1",
-      "gameplay.runtime-host.decision": "sha256:9c52125c2d17fcb435f51beccdb687e2b88d7b895463fdca7ca3640603345e8a",
-      "gameplay.runtime-session-composition": "sha256:326262f2b60127c0ec0ef9fda7218fca8f07f8e8fa5d481b53787d77eabedad8",
-      "gameplay.trigger-lifecycle": "sha256:b23693d8f747c7abe83b0c17c0ee2b35fae96c998061c6042c29362297b400ce",
-      "particle.runtime-projection": "sha256:7299ca9463516eebcd8ea332f772bdbd2314e89c268b6970afb1e62025127471",
-      "prefab.public-authoring": "sha256:1546d09b8d120d39e560855ebb1ee8867587f4ad11fa6463ddf7648199508ab7",
-      "prefab.runtime-placement": "sha256:451df92f6553b5a0b12d65f13f6822200e1b9e62a94766814fcb8774d36ff00a",
-      "renderer.projection-pick": "sha256:19f1c8c9dba64d2d2cd161266a467e64a42a8bc6efbf2c5a43a59c1539253e7b",
-      "telemetry.live-snapshot-overlay": "sha256:955207022544a3c57d1a7b473efa9bc9e4946d45d08732709869973f4e06cd3e"
-    },
-    "deliveryRequirements": {
-      "asha-demo.animation-controller-projection": "sha256:36400321652b48a7ab9862c0d99fd20431a04caac0d1285cef7de5b68eb4928c",
-      "asha-demo.audio-projection": "sha256:178a43433998fbebf614a2e984e1350ecd4636f5ee49b247fd14d017a3745412",
-      "asha-demo.billboard-projection": "sha256:1e5350d2374ab6fd415c17b25bd217fef42f35e9ae1c3d480df95d3fdd62de90",
-      "asha-demo.configure-input-session": "sha256:a373b35750a846ac79b9a3d991d28ecf898b36bd510b2814b6264605729e4994",
-      "asha-demo.conformance": "sha256:5dded0400e6ad77ac277bf07b6cd017ca1a3f55b522561b50916100316b1c276",
-      "asha-demo.game-workspace-prefab-authoring": "sha256:ee2968ac162f99d9b9f0175e9eea05101c2be3da392846a93e01edc42b93e84c",
-      "asha-demo.gameplay-runtime-host": "sha256:1ba02576fe3491ea9a5976827b3fd0ca02c98cd7c814cd533d4947d1577ca57d",
-      "asha-demo.input-context-state": "sha256:2107431ddad5f1878476a91d6a36d71bf8430aabd0ec8d50f3677a05fdb9dbfe",
-      "asha-demo.input-replay": "sha256:1d2576b6fe0f592da6a479624c66cf3764aa3ab18512355a5e8f4315f2235911",
-      "asha-demo.input-replay-receipt": "sha256:0829db0607cdff274ba45a5e6d515d674689e49abc96572785746caf842fef60",
-      "asha-demo.integrated-feedback-projection": "sha256:466956428e8ede75ccccf6a75e36223b008c38e963651a01d9a6b1527818bd6a",
-      "asha-demo.particle-projection": "sha256:d90a3043bdf3d84cad027be945133539719fd74ca2374e93a18a376cb811cded",
-      "asha-demo.playable-encounter-readout": "sha256:b02a888a1bfa46f40a90c9bf23b060aaf477b01e88e609335b0c06680706a6a6",
-      "asha-demo.prefab-part": "sha256:24900aa51b03603b90a750ab2a92936e7a23cbf0ef07752d5168ac7dcc8e751d",
-      "asha-demo.prefab-runtime-placement": "sha256:065c1591ca5152366407b85949f4879ed78eb2834ec48ee393997db65e3639f8",
-      "asha-demo.recorded-input-action": "sha256:e4149278d9b5bf4c6788e8f3a9632e39cabe17d1eaffba9e47d2281dd2b39222",
-      "asha-demo.renderer-host": "sha256:794290f0569f26bf5d081921bf0a8a7625de1f33ebea78702e71c110786164d0",
-      "asha-demo.runtime-load": "sha256:20a72218396b9ae8ea6ed34b0eff5e375c93d1b15dcc201f8226e3bede55eba3",
-      "asha-demo.submit-raw-input": "sha256:68f505ec8cb517a9a9f6bd7a2aff489c091be82b50ade5584e43524687e22993",
-      "asha-demo.telemetry-live-overlay": "sha256:cf9e022f3d9636b48f2e094061bd4441d9b480ee3ac2a1c76eb0eb20d6a70b89",
-      "asha-demo.time-control-command": "sha256:6ffaae73d19b4b50929235e50b756fcf4a1d4afd96c2add8d6fb8768ef201f2b",
-      "asha-demo.time-control-state": "sha256:35d5b88daffd5b78ff4b302c25e15cb212f33e5902bc22f1d399a9ef3af7cdd1",
-      "asha-demo.ui-dom": "sha256:f7fd72231ff20eac61a04ec6e9f9a22b35b27a3a6aa97097e8ec9a0c9a1d3c04",
-      "pulse.conformance": "sha256:e99733d00fd41458d366b158753a7c8c31a32375ea66fa61e510d17fb8ca0d06",
-      "pulse.configuration": "sha256:54eb9d357e8d7eda1cb114c2058051005f840b7fe60310b36799433b902e4684",
-      "pulse.module": "sha256:da28f8e2ca847fa03f7564540284eae4d94d0abaa2db6f09857981edf5d8bb9a",
-      "pulse.observe": "sha256:400daf758430aa400d96f929dd4ad18c47e520af690ee734e8fd9d55e2d7edee",
-      "pulse.public-sdk": "sha256:bd4583af8dfdc8e7d91b788cd7ca9ba1d5d6b82a1ee0847e9d8d639aed131cfc",
-      "pulse.read": "sha256:854309ca656179b7d5b6c1cb532f15d217764bb807e30fbb22b9fcfd616b8db5",
-      "pulse.runtime-host": "sha256:a25400c50bb65acaf2369fb0b549d1f624c6efa9e92156a45c7ad2b10c2642e5",
-      "pulse.runtime-session-composition": "sha256:ce1f29383fb7aa69728d242578a87de3aa0ac94d8790842ffdecde4e726479db",
-      "pulse.subscribe": "sha256:c0e452bb912d99cf79e330540c076ea735609e225fc095cacc0beff6a88088a3",
-      "pulse.trigger-lifecycle": "sha256:bed02204d2f41d71b256841d43bb1b8ce001a2132680e51fe2628b84d19cd60c"
-    },
-    "publicSurfaces": {
-      "@asha/contracts": "sha256:6258a91ef1d41c86e63b3211632058c78c2e333397017aef7ba9f5bcc5692c97",
-      "@asha/game-workspace": "sha256:9d82f4c9262031bdcfea0a5ea84bad32889932918f112b1dcb66e04495111eaf",
-      "@asha/renderer-host": "sha256:4230075f730b38f0ed85a7815e83a6a4e52c3a4b88e8e67f685340d0dcdfd3f4",
-      "@asha/runtime-bridge": "sha256:747dede3362b19f4ffff0bdb29f6276ab94f6f224a138f758db7b65777dd651f",
-      "@asha/runtime-session": "sha256:5bb3d39bb0dbbd94e49c6e7665b8edc67ee8c16c2c16969e918fe056497c28e4",
-      "@asha/smoke": "sha256:2cdf15f71b06a1dd3ed8fdb67a65add8b89bf9dfaaf3f920d754e5cdea147436",
-      "@asha/ui-dom": "sha256:464ed95af0885de029b2fca941fd27747875357e28258e5d74e71d19ecd4dbef",
-      "asha-gameplay-module-conformance": "sha256:6e4e9dfa31784db6450b5842fc01878cd6cb4acda068916aa6e1f9ad226d2f55",
-      "asha-gameplay-module-sdk": "sha256:56b3e77f5370ece6c5769f98ed72a3d73306ac4b21d34f82ee350cf1ec98dd6f",
-      "asha-gameplay-runtime-host": "sha256:2e438e49476fa27b557bba508544ca70d09800d64c2712c508f0d93a7c4b815b",
-      "asha-runtime-session-composition": "sha256:07c599674acf3741075a11f768955a0d7ca1fe3f6bd89fa8becd4176cef85a09"
-    }
-  },
   "testCorpora": [
     {
       "id": "bridge.native-transport",
       "executionClass": "nativeTransport",
       "suite": "bridge.native-wrapper",
-      "paths": ["engine-rs/crates/bridge/native-bridge/src/lib.rs"]
+      "paths": [
+        "engine-rs/crates/bridge/native-bridge/src/lib.rs"
+      ]
     },
     {
       "id": "bridge.rust-authority",
@@ -104,72 +32,72 @@
     {
       "id": "bridge.native-wrapper",
       "executionClass": "nativeTransport",
-      "command": "cargo test --locked --offline --manifest-path engine-rs/crates/bridge/native-bridge/Cargo.toml --lib"
+      "executionId": "rust.native-bridge.lib"
     },
     {
       "id": "bridge.rust-authority",
       "executionClass": "compiledRustAuthority",
-      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p runtime-bridge-api --lib"
+      "executionId": "rust.runtime-bridge-api.lib"
     },
     {
       "id": "gameplay.binding",
       "executionClass": "compiledRustAuthority",
-      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p rule-project-bundle --test gameplay_bindings"
+      "executionId": "rust.project-bundle.gameplay-bindings"
     },
     {
       "id": "gameplay.downstream-module",
       "executionClass": "compiledDownstreamConsumer",
-      "command": "cargo test --locked --offline --manifest-path harness/fixtures/gameplay-module-sdk/downstream-module/Cargo.toml"
+      "executionId": "rust.downstream-gameplay-module"
     },
     {
       "id": "gameplay.reads",
       "executionClass": "compiledRustAuthority",
-      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p rule-gameplay-fabric --test reads"
+      "executionId": "rust.gameplay-fabric.reads"
     },
     {
       "id": "gameplay.runtime-host",
       "executionClass": "compiledDownstreamConsumer",
-      "command": "harness/ci/check-gameplay-runtime-host.sh"
+      "executionId": "gate.gameplay-runtime-host"
     },
     {
       "id": "gameplay.static-composition",
       "executionClass": "compiledRustAuthority",
-      "command": "cargo test --locked --offline --manifest-path engine-rs/Cargo.toml -p gameplay-module-sdk --test static_composition"
+      "executionId": "rust.gameplay-module-sdk.static-composition"
     },
     {
       "id": "gameplay.triggers",
       "executionClass": "compiledDownstreamConsumer",
-      "command": "harness/ci/check-trigger-volumes.sh"
+      "executionId": "gate.trigger-volumes"
     },
     {
       "id": "public.animation",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+      "executionId": "ts.renderer-host.tests"
     },
     {
       "id": "public.audio",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+      "executionId": "ts.renderer-host.tests"
     },
     {
       "id": "public.billboard",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+      "executionId": "ts.renderer-host.tests"
     },
     {
       "id": "public.camera-flow",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/app test"
+      "executionId": "ts.app.tests"
     },
     {
       "id": "public.consumer",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/smoke test"
+      "executionId": "ts.smoke.tests"
     },
     {
       "id": "public.input-pause-demo",
       "executionClass": "publicConsumer",
-      "command": "harness/ci/check-asha-demo-input-live.sh",
+      "executionId": "gate.asha-demo-input-live",
       "liveAssertion": {
         "path": "../asha-demo/tests/live-ui.spec.mjs",
         "token": "resolved input owns pause, consumption, resume, and semantic replay"
@@ -178,22 +106,22 @@
     {
       "id": "public.particle",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+      "executionId": "ts.renderer-host.tests"
     },
     {
       "id": "public.prefab-authoring",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/game-workspace test"
+      "executionId": "ts.game-workspace.tests"
     },
     {
       "id": "public.projection-pick",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-three test"
+      "executionId": "ts.renderer-three.tests"
     },
     {
       "id": "public.telemetry",
       "executionClass": "publicConsumer",
-      "command": "pnpm --dir ts --filter @asha/renderer-host test"
+      "executionId": "ts.renderer-host.tests"
     }
   ],
   "semanticProbes": [
@@ -202,79 +130,140 @@
       "suite": "gameplay.binding",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
+          "artifactId": "evidence.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
           "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
           "token": "bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authority"
         },
         {
+          "assertionId": "assertion.gameplay.binding.bootstrap.stale-contracts-foreign-modules-bad-roles-reads-outputs-and-overrides-reject",
+          "artifactId": "evidence.gameplay.binding.bootstrap.stale-contracts-foreign-modules-bad-roles-reads-outputs-and-overrides-reject",
           "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
           "token": "stale_contracts_foreign_modules_bad_roles_reads_outputs_and_overrides_reject"
         }
       ],
-      "capabilities": ["gameplay.module-binding"],
-      "consumerNeeds": ["pulse.configuration"],
-      "publicSurfaces": ["asha-gameplay-module-sdk"],
-      "claims": ["atomicRejection", "configuredProjectBundleBootstrap", "stablePrefabPartResolution"]
+      "capabilities": [
+        "gameplay.module-binding"
+      ],
+      "consumerNeeds": [
+        "pulse.configuration"
+      ],
+      "publicSurfaces": [
+        "asha-gameplay-module-sdk"
+      ],
+      "claims": [
+        "atomicRejection",
+        "configuredProjectBundleBootstrap",
+        "stablePrefabPartResolution"
+      ]
     },
     {
       "id": "gameplay.downstream.invocation",
       "suite": "gameplay.downstream-module",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.downstream.invocation.public-facade-executes-real-downstream-code-and-hashes-behavior",
+          "artifactId": "evidence.gameplay.downstream.invocation.public-facade-executes-real-downstream-code-and-hashes-behavior",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "public_facade_executes_real_downstream_code_and_hashes_behavior"
         }
       ],
-      "capabilities": ["gameplay.generic-event"],
-      "consumerNeeds": ["pulse.module", "pulse.observe", "pulse.public-sdk", "pulse.subscribe"],
-      "publicSurfaces": ["asha-gameplay-module-sdk"],
-      "claims": ["actualModuleInvocation", "eventIdentity"]
+      "capabilities": [
+        "gameplay.generic-event"
+      ],
+      "consumerNeeds": [
+        "pulse.module",
+        "pulse.observe",
+        "pulse.public-sdk",
+        "pulse.subscribe"
+      ],
+      "publicSurfaces": [
+        "asha-gameplay-module-sdk"
+      ],
+      "claims": [
+        "actualModuleInvocation",
+        "eventIdentity"
+      ]
     },
     {
       "id": "gameplay.read.event-bound",
       "suite": "gameplay.reads",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.read.event-bound.downstream-read-plan-is-typed-bounded-frozen-and-stable",
+          "artifactId": "evidence.gameplay.read.event-bound.downstream-read-plan-is-typed-bounded-frozen-and-stable",
           "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
           "token": "downstream_read_plan_is_typed_bounded_frozen_and_stable"
         },
         {
+          "assertionId": "assertion.gameplay.read.event-bound.coordinator-delivers-declared-reads-and-binds-them-into-delivery-evidence",
+          "artifactId": "evidence.gameplay.read.event-bound.coordinator-delivers-declared-reads-and-binds-them-into-delivery-evidence",
           "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
           "token": "coordinator_delivers_declared_reads_and_binds_them_into_delivery_evidence"
         }
       ],
-      "capabilities": ["gameplay.event-bound-read"],
+      "capabilities": [
+        "gameplay.event-bound-read"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["asha-gameplay-module-sdk"],
-      "claims": ["eventBoundIdentity", "fieldSelection", "quota", "selectorResolution", "stableOrdering", "typedViewDelivery"]
+      "publicSurfaces": [
+        "asha-gameplay-module-sdk"
+      ],
+      "claims": [
+        "eventBoundIdentity",
+        "fieldSelection",
+        "quota",
+        "selectorResolution",
+        "stableOrdering",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "gameplay.read.module-state",
       "suite": "gameplay.static-composition",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.read.module-state.provider-state-adapters-initialize-and-apply-recorded-local-facts",
+          "artifactId": "evidence.gameplay.read.module-state.provider-state-adapters-initialize-and-apply-recorded-local-facts",
           "path": "engine-rs/crates/rules/gameplay-module-sdk/tests/static_composition.rs",
           "token": "provider_state_adapters_initialize_and_apply_recorded_local_facts"
         }
       ],
-      "capabilities": ["gameplay.module-named-read"],
+      "capabilities": [
+        "gameplay.module-named-read"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["asha-gameplay-module-sdk"],
-      "claims": ["fieldSelection", "quota", "selectorResolution", "stableOrdering", "typedViewDelivery"]
+      "publicSurfaces": [
+        "asha-gameplay-module-sdk"
+      ],
+      "claims": [
+        "fieldSelection",
+        "quota",
+        "selectorResolution",
+        "stableOrdering",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "gameplay.read.zz-module-conformance",
       "suite": "gameplay.downstream-module",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.read.zz-module-conformance.one-command-conformance-covers-bootstrap-invocation-state-and-replay",
+          "artifactId": "evidence.gameplay.read.zz-module-conformance.one-command-conformance-covers-bootstrap-invocation-state-and-replay",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "one_command_conformance_covers_bootstrap_invocation_state_and_replay"
         },
         {
+          "assertionId": "assertion.gameplay.read.zz-module-conformance.provider-drift-and-bad-config-fail-before-partial-bootstrap",
+          "artifactId": "evidence.gameplay.read.zz-module-conformance.provider-drift-and-bad-config-fail-before-partial-bootstrap",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "provider_drift_and_bad_config_fail_before_partial_bootstrap"
         }
       ],
-      "capabilities": ["gameplay.module-conformance"],
+      "capabilities": [
+        "gameplay.module-conformance"
+      ],
       "consumerNeeds": [
         "pulse.configuration",
         "pulse.conformance",
@@ -284,7 +273,9 @@
         "pulse.read",
         "pulse.subscribe"
       ],
-      "publicSurfaces": ["asha-gameplay-module-conformance"],
+      "publicSurfaces": [
+        "asha-gameplay-module-conformance"
+      ],
       "claims": []
     },
     {
@@ -292,71 +283,123 @@
       "suite": "gameplay.runtime-host",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.runtime-host.decision.public-decision-host-delivers-reads-persists-continuations-and-consumes-tokens",
+          "artifactId": "evidence.gameplay.runtime-host.decision.public-decision-host-delivers-reads-persists-continuations-and-consumes-tokens",
           "path": "engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs",
           "token": "public_decision_host_delivers_reads_persists_continuations_and_consumes_tokens"
         },
         {
+          "assertionId": "assertion.gameplay.runtime-host.decision.approved-public-decision-host-resumes-exactly-once-with-declared-reads",
+          "artifactId": "evidence.gameplay.runtime-host.decision.approved-public-decision-host-resumes-exactly-once-with-declared-reads",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "approved_public_decision_host_resumes_exactly_once_with_declared_reads"
         }
       ],
-      "capabilities": ["gameplay.runtime-host.decision"],
+      "capabilities": [
+        "gameplay.runtime-host.decision"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["asha-gameplay-runtime-host"],
-      "claims": ["actualModuleInvocation", "atomicRejection", "typedViewDelivery"]
+      "publicSurfaces": [
+        "asha-gameplay-runtime-host"
+      ],
+      "claims": [
+        "actualModuleInvocation",
+        "atomicRejection",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "gameplay.runtime-host.product-loop",
       "suite": "gameplay.runtime-host",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.runtime-host.product-loop.approved-public-runtime-host-links-real-downstream-behavior",
+          "artifactId": "evidence.gameplay.runtime-host.product-loop.approved-public-runtime-host-links-real-downstream-behavior",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "approved_public_runtime_host_links_real_downstream_behavior"
         }
       ],
-      "capabilities": ["gameplay.runtime-host"],
-      "consumerNeeds": ["asha-demo.gameplay-runtime-host", "pulse.runtime-host"],
-      "publicSurfaces": ["asha-gameplay-runtime-host"],
-      "claims": ["actualModuleInvocation", "atomicRejection", "configuredProjectBundleBootstrap", "typedViewDelivery"]
+      "capabilities": [
+        "gameplay.runtime-host"
+      ],
+      "consumerNeeds": [
+        "asha-demo.gameplay-runtime-host",
+        "pulse.runtime-host"
+      ],
+      "publicSurfaces": [
+        "asha-gameplay-runtime-host"
+      ],
+      "claims": [
+        "actualModuleInvocation",
+        "atomicRejection",
+        "configuredProjectBundleBootstrap",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "gameplay.runtime-session-composition",
       "suite": "gameplay.runtime-host",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.runtime-session-composition.public-static-builder-composes-one-bridge-cell-and-restores-it",
+          "artifactId": "evidence.gameplay.runtime-session-composition.public-static-builder-composes-one-bridge-cell-and-restores-it",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "public_static_builder_composes_one_bridge_cell_and_restores_it"
         }
       ],
-      "capabilities": ["gameplay.runtime-session-composition"],
-      "consumerNeeds": ["pulse.runtime-session-composition"],
-      "publicSurfaces": ["asha-runtime-session-composition"],
-      "claims": ["atomicRejection", "configuredProjectBundleBootstrap", "typedViewDelivery"]
+      "capabilities": [
+        "gameplay.runtime-session-composition"
+      ],
+      "consumerNeeds": [
+        "pulse.runtime-session-composition"
+      ],
+      "publicSurfaces": [
+        "asha-runtime-session-composition"
+      ],
+      "claims": [
+        "atomicRejection",
+        "configuredProjectBundleBootstrap",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "gameplay.trigger.lifecycle",
       "suite": "gameplay.triggers",
       "evidence": [
         {
+          "assertionId": "assertion.gameplay.trigger.lifecycle.enter-continue-exit-are-exactly-once-and-stably-hashed",
+          "artifactId": "evidence.gameplay.trigger.lifecycle.enter-continue-exit-are-exactly-once-and-stably-hashed",
           "path": "engine-rs/crates/rules/rule-trigger-volume/src/lib.rs",
           "token": "enter_continue_exit_are_exactly_once_and_stably_hashed"
         },
         {
+          "assertionId": "assertion.gameplay.trigger.lifecycle.runtime-session-reconciles-persists-and-restores-trigger-overlap-authority",
+          "artifactId": "evidence.gameplay.trigger.lifecycle.runtime-session-reconciles-persists-and-restores-trigger-overlap-authority",
           "path": "engine-rs/crates/rules/rule-project-bundle/tests/gameplay_bindings.rs",
           "token": "runtime_session_reconciles_persists_and_restores_trigger_overlap_authority"
         },
         {
+          "assertionId": "assertion.gameplay.trigger.lifecycle.current-trigger-overlaps-flow-through-declared-owner-query-boundary",
+          "artifactId": "evidence.gameplay.trigger.lifecycle.current-trigger-overlaps-flow-through-declared-owner-query-boundary",
           "path": "engine-rs/crates/rules/rule-gameplay-fabric/tests/reads.rs",
           "token": "current_trigger_overlaps_flow_through_declared_owner_query_boundary"
         },
         {
+          "assertionId": "assertion.gameplay.trigger.lifecycle.downstream-trigger-observer-proposes-visible-follow-up-without-collision-access",
+          "artifactId": "evidence.gameplay.trigger.lifecycle.downstream-trigger-observer-proposes-visible-follow-up-without-collision-access",
           "path": "harness/fixtures/gameplay-module-sdk/downstream-module/src/lib.rs",
           "token": "downstream_trigger_observer_proposes_visible_follow_up_without_collision_access"
         }
       ],
-      "capabilities": ["gameplay.trigger-lifecycle"],
-      "consumerNeeds": ["pulse.trigger-lifecycle"],
-      "publicSurfaces": ["asha-gameplay-module-sdk"],
+      "capabilities": [
+        "gameplay.trigger-lifecycle"
+      ],
+      "consumerNeeds": [
+        "pulse.trigger-lifecycle"
+      ],
+      "publicSurfaces": [
+        "asha-gameplay-module-sdk"
+      ],
       "claims": []
     },
     {
@@ -364,103 +407,167 @@
       "suite": "public.animation",
       "evidence": [
         {
+          "assertionId": "assertion.public.animation-projection.accepted-gameplay-fact-is-retained-in-transition-state-and-verification-replay",
+          "artifactId": "evidence.public.animation-projection.accepted-gameplay-fact-is-retained-in-transition-state-and-verification-replay",
           "path": "engine-rs/crates/rules/rule-animation-controller/tests/authority.rs",
           "token": "accepted_gameplay_fact_is_retained_in_transition_state_and_verification_replay"
         },
         {
+          "assertionId": "assertion.public.animation-projection.g1-controller-sequence-drives-deterministic-renderer-local-blend-and-smooth-sampling",
+          "artifactId": "evidence.public.animation-projection.g1-controller-sequence-drives-deterministic-renderer-local-blend-and-smooth-sampling",
           "path": "ts/packages/renderer-host/src/animation-host.test.ts",
           "token": "G1 controller sequence drives deterministic renderer-local blend and smooth sampling"
         },
         {
+          "assertionId": "assertion.public.animation-projection.animationsampledcueevidence",
+          "artifactId": "evidence.public.animation-projection.animationsampledcueevidence",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "animationSampledCueEvidence"
         }
       ],
-      "capabilities": ["animation.runtime-projection"],
-      "consumerNeeds": ["asha-demo.animation-controller-projection"],
-      "publicSurfaces": ["@asha/contracts", "@asha/renderer-host", "@asha/runtime-bridge"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "animation.runtime-projection"
+      ],
+      "consumerNeeds": [
+        "asha-demo.animation-controller-projection"
+      ],
+      "publicSurfaces": [
+        "@asha/contracts",
+        "@asha/renderer-host",
+        "@asha/runtime-bridge"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.audio-projection",
       "suite": "public.audio",
       "evidence": [
         {
+          "assertionId": "assertion.public.audio-projection.web-audio-host-emits-catalog-hash-bound-3d-cues-and-caches-decoded-clips",
+          "artifactId": "evidence.public.audio-projection.web-audio-host-emits-catalog-hash-bound-3d-cues-and-caches-decoded-clips",
           "path": "ts/packages/renderer-host/src/audio-host.test.ts",
           "token": "Web Audio host emits catalog-hash-bound 3D cues and caches decoded clips"
         },
         {
+          "assertionId": "assertion.public.audio-projection.audioprojectionevidence",
+          "artifactId": "evidence.public.audio-projection.audioprojectionevidence",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "audioProjectionEvidence"
         }
       ],
-      "capabilities": ["audio.runtime-projection"],
-      "consumerNeeds": ["asha-demo.audio-projection"],
-      "publicSurfaces": ["@asha/renderer-host"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "audio.runtime-projection"
+      ],
+      "consumerNeeds": [
+        "asha-demo.audio-projection"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.billboard-projection",
       "suite": "public.billboard",
       "evidence": [
         {
+          "assertionId": "assertion.public.billboard-projection.billboard-host-creates-updates-localizes-lays-out-and-destroys-multiple-entity-cues",
+          "artifactId": "evidence.public.billboard-projection.billboard-host-creates-updates-localizes-lays-out-and-destroys-multiple-entity-cues",
           "path": "ts/packages/renderer-host/src/billboard-host.test.ts",
           "token": "billboard host creates updates localizes lays out and destroys multiple entity cues"
         },
         {
+          "assertionId": "assertion.public.billboard-projection.billboardprojectionevidence",
+          "artifactId": "evidence.public.billboard-projection.billboardprojectionevidence",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "billboardProjectionEvidence"
         }
       ],
-      "capabilities": ["billboard.runtime-projection"],
-      "consumerNeeds": ["asha-demo.billboard-projection"],
-      "publicSurfaces": ["@asha/renderer-host"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "billboard.runtime-projection"
+      ],
+      "consumerNeeds": [
+        "asha-demo.billboard-projection"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.camera-controller",
       "suite": "public.camera-flow",
       "evidence": [
         {
+          "assertionId": "assertion.public.camera-controller.one-resolved-input-path-switches-fps-orbit-and-top-down-without-simultaneous-controllers",
+          "artifactId": "evidence.public.camera-controller.one-resolved-input-path-switches-fps-orbit-and-top-down-without-simultaneous-controllers",
           "path": "ts/packages/runtime-bridge/src/camera-modes.test.ts",
           "token": "one resolved-input path switches FPS, orbit, and top-down without simultaneous controllers"
         },
         {
+          "assertionId": "assertion.public.camera-controller.editor-selection-drives-the-public-orbit-pan-zoom-and-fps-return-flow",
+          "artifactId": "evidence.public.camera-controller.editor-selection-drives-the-public-orbit-pan-zoom-and-fps-return-flow",
           "path": "ts/packages/app/src/camera-editor-flow.test.ts",
           "token": "editor selection drives the public orbit pan zoom and FPS return flow"
         },
         {
+          "assertionId": "assertion.public.camera-controller.pivot-camera-distance-is-clamped-by-runtime-terrain-and-can-fail-closed",
+          "artifactId": "evidence.public.camera-controller.pivot-camera-distance-is-clamped-by-runtime-terrain-and-can-fail-closed",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/camera_modes.rs",
           "token": "pivot_camera_distance_is_clamped_by_runtime_terrain_and_can_fail_closed"
         },
         {
+          "assertionId": "assertion.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
+          "artifactId": "evidence.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
           "path": "ts/packages/renderer-host/src/camera-transition.test.ts",
           "token": "camera transition sampling is disposable and preserves exact authority endpoints"
         }
       ],
-      "capabilities": ["bridge.camera-controller"],
+      "capabilities": [
+        "bridge.camera-controller"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["@asha/runtime-session"],
-      "claims": ["atomicRejection", "publicProjectionReadout"]
+      "publicSurfaces": [
+        "@asha/runtime-session"
+      ],
+      "claims": [
+        "atomicRejection",
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.input-pause-demo",
       "suite": "public.input-pause-demo",
       "evidence": [
         {
+          "assertionId": "assertion.public.input-pause-demo.resolved-input-owns-pause-consumption-resume-and-semantic-replay",
+          "artifactId": "evidence.public.input-pause-demo.resolved-input-owns-pause-consumption-resume-and-semantic-replay",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "resolved input owns pause, consumption, resume, and semantic replay"
         },
         {
+          "assertionId": "assertion.public.input-pause-demo.duplicaterejected",
+          "artifactId": "evidence.public.input-pause-demo.duplicaterejected",
           "path": "../asha-demo/src/bootstrap/boot-game.ts",
           "token": "duplicateRejected"
         },
         {
+          "assertionId": "assertion.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
+          "artifactId": "evidence.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
           "path": "ts/packages/browser-host/src/index.test.ts",
           "token": "browser host isolates RuntimeBridge factory clients and bounds their identities"
         }
       ],
-      "capabilities": ["bridge.session-input-replay", "bridge.session-time-control"],
+      "capabilities": [
+        "bridge.session-input-replay",
+        "bridge.session-time-control"
+      ],
       "consumerNeeds": [
         "asha-demo.configure-input-session",
         "asha-demo.input-context-state",
@@ -471,176 +578,305 @@
         "asha-demo.time-control-command",
         "asha-demo.time-control-state"
       ],
-      "publicSurfaces": ["@asha/contracts", "@asha/renderer-host", "@asha/runtime-bridge", "@asha/runtime-session"],
-      "claims": ["atomicRejection", "typedViewDelivery"]
+      "publicSurfaces": [
+        "@asha/contracts",
+        "@asha/renderer-host",
+        "@asha/runtime-bridge",
+        "@asha/runtime-session"
+      ],
+      "claims": [
+        "atomicRejection",
+        "typedViewDelivery"
+      ]
     },
     {
       "id": "public.integrated-feedback-projection",
       "suite": "public.animation",
       "evidence": [
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.primary-fire-audio-retains-the-accepted-origin",
+          "artifactId": "evidence.public.integrated-feedback-projection.primary-fire-audio-retains-the-accepted-origin",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/fps.rs",
           "token": "primary-fire audio retains the accepted origin"
         },
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.missing-audio-resources-fail-locally-with-origin-preserving-diagnostics",
+          "artifactId": "evidence.public.integrated-feedback-projection.missing-audio-resources-fail-locally-with-origin-preserving-diagnostics",
           "path": "ts/packages/renderer-host/src/audio-host.test.ts",
           "token": "missing audio resources fail locally with origin-preserving diagnostics"
         },
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.missing-particle-resources-fail-locally-without-consuming-the-burst",
+          "artifactId": "evidence.public.integrated-feedback-projection.missing-particle-resources-fail-locally-without-consuming-the-burst",
           "path": "ts/packages/renderer-host/src/particle-host.test.ts",
           "token": "missing particle resources fail locally without consuming the burst"
         },
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.font-and-icon-resources-are-sha-256-validated-cached-and-fail-with-typed-diagnostics",
+          "artifactId": "evidence.public.integrated-feedback-projection.font-and-icon-resources-are-sha-256-validated-cached-and-fail-with-typed-diagnostics",
           "path": "ts/packages/renderer-host/src/billboard-host.test.ts",
           "token": "font and icon resources are SHA-256 validated cached and fail with typed diagnostics"
         },
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.missing-overlay-realization-does-not-block-scene-or-other-telemetry-access",
+          "artifactId": "evidence.public.integrated-feedback-projection.missing-overlay-realization-does-not-block-scene-or-other-telemetry-access",
           "path": "ts/packages/renderer-host/src/telemetry-host.test.ts",
           "token": "missing overlay realization does not block scene or other telemetry access"
         },
         {
+          "assertionId": "assertion.public.integrated-feedback-projection.exercisepresentationdegradation",
+          "artifactId": "evidence.public.integrated-feedback-projection.exercisepresentationdegradation",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "exercisePresentationDegradation"
         }
       ],
-      "capabilities": ["feedback.integrated-public-projection"],
-      "consumerNeeds": ["asha-demo.integrated-feedback-projection"],
-      "publicSurfaces": ["@asha/contracts", "@asha/renderer-host", "@asha/runtime-bridge"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "feedback.integrated-public-projection"
+      ],
+      "consumerNeeds": [
+        "asha-demo.integrated-feedback-projection"
+      ],
+      "publicSurfaces": [
+        "@asha/contracts",
+        "@asha/renderer-host",
+        "@asha/runtime-bridge"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.particle-projection",
       "suite": "public.particle",
       "evidence": [
         {
+          "assertionId": "assertion.public.particle-projection.burst-and-retained-lifecycle-are-catalog-validated-and-budgeted",
+          "artifactId": "evidence.public.particle-projection.burst-and-retained-lifecycle-are-catalog-validated-and-budgeted",
           "path": "engine-rs/crates/render/render-particle/src/lib.rs",
           "token": "burst_and_retained_lifecycle_are_catalog_validated_and_budgeted"
         },
         {
+          "assertionId": "assertion.public.particle-projection.particle-host-realizes-deterministic-bursts-and-expires-disposable-billboards",
+          "artifactId": "evidence.public.particle-projection.particle-host-realizes-deterministic-bursts-and-expires-disposable-billboards",
           "path": "ts/packages/renderer-host/src/particle-host.test.ts",
           "token": "particle host realizes deterministic bursts and expires disposable billboards"
         },
         {
+          "assertionId": "assertion.public.particle-projection.particleprojectionevidence",
+          "artifactId": "evidence.public.particle-projection.particleprojectionevidence",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "particleProjectionEvidence"
         }
       ],
-      "capabilities": ["particle.runtime-projection"],
-      "consumerNeeds": ["asha-demo.particle-projection"],
-      "publicSurfaces": ["@asha/renderer-host"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "particle.runtime-projection"
+      ],
+      "consumerNeeds": [
+        "asha-demo.particle-projection"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.prefab-authoring-and-placement",
       "suite": "public.prefab-authoring",
       "evidence": [
         {
+          "assertionId": "assertion.public.prefab-authoring-and-placement.public-prefab-authoring-creates-edits-places-and-inspects-a-multi-part-definition",
+          "artifactId": "evidence.public.prefab-authoring-and-placement.public-prefab-authoring-creates-edits-places-and-inspects-a-multi-part-definition",
           "path": "ts/packages/game-workspace/src/prefab-authoring.test.ts",
           "token": "public prefab authoring creates edits places and inspects a multi-part definition"
         },
         {
+          "assertionId": "assertion.public.prefab-authoring-and-placement.public-prefab-bootstrap-places-resolves-and-restores-multiple-instances",
+          "artifactId": "evidence.public.prefab-authoring-and-placement.public-prefab-bootstrap-places-resolves-and-restores-multiple-instances",
           "path": "engine-rs/crates/rules/gameplay-runtime-host/src/prefab.rs",
           "token": "public_prefab_bootstrap_places_resolves_and_restores_multiple_instances"
         },
         {
+          "assertionId": "assertion.public.prefab-authoring-and-placement.prefabauthoringreadout",
+          "artifactId": "evidence.public.prefab-authoring-and-placement.prefabauthoringreadout",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "prefabAuthoringReadout"
         }
       ],
-      "capabilities": ["prefab.public-authoring", "prefab.runtime-placement"],
-      "consumerNeeds": ["asha-demo.game-workspace-prefab-authoring", "asha-demo.prefab-part", "asha-demo.prefab-runtime-placement"],
-      "publicSurfaces": ["@asha/game-workspace", "@asha/runtime-session", "asha-gameplay-runtime-host"],
-      "claims": ["configuredProjectBundleBootstrap", "stablePrefabPartResolution"]
+      "capabilities": [
+        "prefab.public-authoring",
+        "prefab.runtime-placement"
+      ],
+      "consumerNeeds": [
+        "asha-demo.game-workspace-prefab-authoring",
+        "asha-demo.prefab-part",
+        "asha-demo.prefab-runtime-placement"
+      ],
+      "publicSurfaces": [
+        "@asha/game-workspace",
+        "@asha/runtime-session",
+        "asha-gameplay-runtime-host"
+      ],
+      "claims": [
+        "configuredProjectBundleBootstrap",
+        "stablePrefabPartResolution"
+      ]
     },
     {
       "id": "public.projection-pick",
       "suite": "public.projection-pick",
       "evidence": [
         {
+          "assertionId": "assertion.public.projection-pick.projection-pick-returns-typed-source-evidence-without-changing-projection-or-authority-shaped-state",
+          "artifactId": "evidence.public.projection-pick.projection-pick-returns-typed-source-evidence-without-changing-projection-or-authority-shaped-state",
           "path": "ts/packages/renderer-three/src/browser-surface-pick.test.ts",
           "token": "projection pick returns typed source evidence without changing projection or authority-shaped state"
         },
         {
+          "assertionId": "assertion.public.projection-pick.projection-pick-filters-are-descriptive-only-and-invalid-rays-fail-closed",
+          "artifactId": "evidence.public.projection-pick.projection-pick-filters-are-descriptive-only-and-invalid-rays-fail-closed",
           "path": "ts/packages/renderer-three/src/browser-surface-pick.test.ts",
           "token": "projection pick filters are descriptive only and invalid rays fail closed"
         }
       ],
-      "capabilities": ["renderer.projection-pick"],
+      "capabilities": [
+        "renderer.projection-pick"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["@asha/renderer-host"],
-      "claims": ["atomicRejection", "publicProjectionReadout"]
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "atomicRejection",
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.runtime-session.projection",
       "suite": "public.consumer",
       "evidence": [
         {
+          "assertionId": "assertion.public.runtime-session.projection.asha-demo-public-roots-cover-runtimesession-readouts-and-hud-menu-projection",
+          "artifactId": "evidence.public.runtime-session.projection.asha-demo-public-roots-cover-runtimesession-readouts-and-hud-menu-projection",
           "path": "ts/packages/smoke/src/public-consumer-compat.test.ts",
           "token": "asha-demo public roots cover RuntimeSession readouts and HUD/menu projection"
         }
       ],
-      "capabilities": ["bridge.project-bundle.load"],
-      "consumerNeeds": ["asha-demo.conformance", "asha-demo.playable-encounter-readout", "asha-demo.renderer-host", "asha-demo.runtime-load", "asha-demo.ui-dom"],
-      "publicSurfaces": ["@asha/renderer-host", "@asha/runtime-bridge", "@asha/runtime-session", "@asha/smoke", "@asha/ui-dom"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "bridge.project-bundle.load"
+      ],
+      "consumerNeeds": [
+        "asha-demo.conformance",
+        "asha-demo.playable-encounter-readout",
+        "asha-demo.renderer-host",
+        "asha-demo.runtime-load",
+        "asha-demo.ui-dom"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host",
+        "@asha/runtime-bridge",
+        "@asha/runtime-session",
+        "@asha/smoke",
+        "@asha/ui-dom"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.session-input-replay",
       "suite": "bridge.rust-authority",
       "evidence": [
         {
+          "assertionId": "assertion.public.session-input-replay.runtime-bridge-replays-authority-issued-actions-exactly-once-without-raw-input",
+          "artifactId": "evidence.public.session-input-replay.runtime-bridge-replays-authority-issued-actions-exactly-once-without-raw-input",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/input.rs",
           "token": "runtime_bridge_replays_authority_issued_actions_exactly_once_without_raw_input"
         },
         {
+          "assertionId": "assertion.public.session-input-replay.resolved-pause-context-records-and-replays-without-browser-events-or-double-delivery",
+          "artifactId": "evidence.public.session-input-replay.resolved-pause-context-records-and-replays-without-browser-events-or-double-delivery",
           "path": "ts/packages/runtime-bridge/src/browser-input-host.test.ts",
           "token": "resolved pause context records and replays without browser events or double delivery"
         }
       ],
-      "capabilities": ["bridge.session-input-replay", "bridge.session-time-control"],
+      "capabilities": [
+        "bridge.session-input-replay",
+        "bridge.session-time-control"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["@asha/runtime-session"],
-      "claims": ["atomicRejection", "publicProjectionReadout"]
+      "publicSurfaces": [
+        "@asha/runtime-session"
+      ],
+      "claims": [
+        "atomicRejection",
+        "publicProjectionReadout"
+      ]
     },
     {
       "id": "public.session-time-control",
       "suite": "bridge.rust-authority",
       "evidence": [
         {
+          "assertionId": "assertion.public.session-time-control.exact-steps-advance-the-requested-count-and-remain-paused",
+          "artifactId": "evidence.public.session-time-control.exact-steps-advance-the-requested-count-and-remain-paused",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/time_control.rs",
           "token": "exact_steps_advance_the_requested_count_and_remain_paused"
         },
         {
+          "assertionId": "assertion.public.session-time-control.headless-runtimesession-pause-and-exact-stepping-use-validated-authority-commands",
+          "artifactId": "evidence.public.session-time-control.headless-runtimesession-pause-and-exact-stepping-use-validated-authority-commands",
           "path": "ts/packages/runtime-bridge/src/time-control.test.ts",
           "token": "headless RuntimeSession pause and exact stepping use validated authority commands"
         }
       ],
-      "capabilities": ["bridge.session-time-control"],
+      "capabilities": [
+        "bridge.session-time-control"
+      ],
       "consumerNeeds": [],
-      "publicSurfaces": ["@asha/runtime-session"],
-      "claims": ["atomicRejection"]
+      "publicSurfaces": [
+        "@asha/runtime-session"
+      ],
+      "claims": [
+        "atomicRejection"
+      ]
     },
     {
       "id": "public.telemetry-snapshot-overlay",
       "suite": "public.telemetry",
       "evidence": [
         {
+          "assertionId": "assertion.public.telemetry-snapshot-overlay.retained-overlay-lifecycle-is-typed-atomic-and-bounded",
+          "artifactId": "evidence.public.telemetry-snapshot-overlay.retained-overlay-lifecycle-is-typed-atomic-and-bounded",
           "path": "engine-rs/crates/render/render-telemetry-overlay/src/lib.rs",
           "token": "retained_overlay_lifecycle_is_typed_atomic_and_bounded"
         },
         {
+          "assertionId": "assertion.public.telemetry-snapshot-overlay.headless-live-telemetry-omits-unavailable-counters-and-preserves-bounded-history",
+          "artifactId": "evidence.public.telemetry-snapshot-overlay.headless-live-telemetry-omits-unavailable-counters-and-preserves-bounded-history",
           "path": "ts/packages/renderer-host/src/telemetry-host.test.ts",
           "token": "headless live telemetry omits unavailable counters and preserves bounded history"
         },
         {
+          "assertionId": "assertion.public.telemetry-snapshot-overlay.livetelemetrysnapshot",
+          "artifactId": "evidence.public.telemetry-snapshot-overlay.livetelemetrysnapshot",
           "path": "../asha-demo/tests/live-ui.spec.mjs",
           "token": "liveTelemetrySnapshot"
         }
       ],
-      "capabilities": ["telemetry.live-snapshot-overlay"],
-      "consumerNeeds": ["asha-demo.telemetry-live-overlay"],
-      "publicSurfaces": ["@asha/renderer-host"],
-      "claims": ["publicProjectionReadout"]
+      "capabilities": [
+        "telemetry.live-snapshot-overlay"
+      ],
+      "consumerNeeds": [
+        "asha-demo.telemetry-live-overlay"
+      ],
+      "publicSurfaces": [
+        "@asha/renderer-host"
+      ],
+      "claims": [
+        "publicProjectionReadout"
+      ]
     }
   ],
   "temporaryOperationExemptions": []

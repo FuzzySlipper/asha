@@ -9,10 +9,8 @@ import hashlib
 import json
 import pathlib
 import re
-import shlex
 import sys
 import tempfile
-import tomllib
 from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -89,11 +87,6 @@ def digest(path: pathlib.Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def entry_digest(value: Any) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return "sha256:" + hashlib.sha256(encoded).hexdigest()
-
-
 def add_gap(gaps: list[dict[str, str]], identity: str, code: str, path: str, message: str) -> None:
     gaps.append({"identity": identity, "code": code, "path": path, "message": message})
 
@@ -144,9 +137,9 @@ def rust_test_assertions(source: str, text: str) -> list[dict[str, str]]:
 
 
 def bridge_operations() -> tuple[list[str], set[str], list[dict[str, Any]]]:
-    path = ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml"
-    document = tomllib.loads(path.read_text(encoding="utf-8"))
-    stable = sorted(item["name"] for item in document["operation"] if item["surface"] == "stable")
+    catalog = load_json(ROOT / "harness/identity/catalog.json")
+    operations = catalog["families"]["operations"]
+    stable = sorted(item["id"] for item in operations if item["surface"] == "stable")
     generated = load_json(
         ROOT / "ts/packages/runtime-bridge/src/generated/conformance.json"
     )
@@ -157,33 +150,31 @@ def bridge_operations() -> tuple[list[str], set[str], list[dict[str, Any]]]:
     }
     quarantined = sorted([
         {
-            "operation": item["name"],
-            "nativeWired": item["name"] in wired,
-            "reason": item["quarantine_reason"],
+            "operation": item["id"],
+            "nativeWired": item["id"] in wired,
+            "reason": item["quarantineReason"],
         }
-        for item in document["operation"]
+        for item in operations
         if item["surface"] == "quarantined"
     ], key=lambda item: item["operation"])
     return stable, wired, quarantined
 
 
 def reachability_capabilities() -> set[str]:
-    document = load_json(ROOT / "harness/reachability/manifest.json")
-    return {item["id"] for item in document["capabilities"]}
+    document = load_json(ROOT / "harness/identity/catalog.json")
+    return {item["id"] for item in document["families"]["capabilities"]}
 
 
 def public_surfaces() -> set[str]:
-    ts = load_json(ROOT / "harness/public-surface/ts-packages.json")
-    rust = load_json(ROOT / "harness/public-surface/rust-crates.json")
-    return {item["package"] for item in ts["packages"]} | {item["crate"] for item in rust["crates"]}
+    document = load_json(ROOT / "harness/identity/catalog.json")
+    return {item["id"] for item in document["families"]["publicSurfaces"]}
 
 
 def public_surface_dispositions() -> dict[str, str]:
-    ts = load_json(ROOT / "harness/public-surface/ts-packages.json")
-    rust = load_json(ROOT / "harness/public-surface/rust-crates.json")
+    document = load_json(ROOT / "harness/identity/catalog.json")
     return {
-        **{item["package"]: "preferred" for item in ts["packages"]},
-        **{item["crate"]: item["disposition"] for item in rust["crates"]},
+        item["id"]: item["disposition"]
+        for item in document["families"]["publicSurfaces"]
     }
 
 
@@ -207,56 +198,17 @@ def delivery_requirements() -> tuple[set[str], set[str]]:
     return needs, referenced_surfaces
 
 
-def required_catalog_entry_hashes() -> dict[str, dict[str, str]]:
-    reachability = load_json(ROOT / "harness/reachability/manifest.json")
-    capability_hashes = {
-        item["id"]: entry_digest(item) for item in reachability["capabilities"]
-    }
-    need_hashes: dict[str, str] = {}
-    for path in sorted((ROOT / "harness/consumer-needs/manifests").glob("*.json")):
-        for item in load_json(path)["requirements"]:
-            if item["requiredLevel"] == "delivery":
-                need_hashes[item["id"]] = entry_digest(item)
-    required_needs, required_surfaces = delivery_requirements()
-    surface_entries: dict[str, Any] = {}
-    ts = load_json(ROOT / "harness/public-surface/ts-packages.json")
-    rust = load_json(ROOT / "harness/public-surface/rust-crates.json")
-    surface_entries.update({item["package"]: item for item in ts["packages"]})
-    surface_entries.update({item["crate"]: item for item in rust["crates"]})
-    assert set(need_hashes) == required_needs
-    return {
-        "reachabilityCapabilities": dict(sorted(capability_hashes.items())),
-        "deliveryRequirements": dict(sorted(need_hashes.items())),
-        "publicSurfaces": {
-            identity: entry_digest(surface_entries[identity])
-            for identity in sorted(required_surfaces)
-        },
-    }
-
-
 def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
     document = load_json(manifest_path)
     gaps: list[dict[str, str]] = []
     if document.get("schemaVersion") != 1:
         add_gap(gaps, "manifest", "unsupported_schema", "schemaVersion", "schemaVersion must be 1")
 
-    expected_hashes = document.get("catalogEntryHashes")
-    actual_hashes = required_catalog_entry_hashes()
-    if not isinstance(expected_hashes, dict):
-        add_gap(gaps, "manifest", "missing_catalog_entry_hashes", "catalogEntryHashes", "reviewed catalog entry hashes are required")
-    else:
-        for family, actual_entries in actual_hashes.items():
-            expected_entries = expected_hashes.get(family)
-            if not isinstance(expected_entries, dict):
-                add_gap(gaps, family, "missing_catalog_hash_family", f"catalogEntryHashes.{family}", "catalog hash family is required")
-                continue
-            for identity in sorted(set(actual_entries) | set(expected_entries)):
-                if identity not in actual_entries:
-                    add_gap(gaps, identity, "stale_catalog_entry_hash", f"catalogEntryHashes.{family}", "hash remains for an entry no longer requiring a probe")
-                elif identity not in expected_entries:
-                    add_gap(gaps, identity, "unreviewed_catalog_entry", f"catalogEntryHashes.{family}", "new catalog entry requires a reviewed semantic probe and hash")
-                elif expected_entries[identity] != actual_entries[identity]:
-                    add_gap(gaps, identity, "catalog_entry_changed", f"catalogEntryHashes.{family}.{identity}", "fields, selectors, quotas, provider, or delivery evidence changed; review the real probe")
+    identity_catalog = load_json(ROOT / "harness/identity/catalog.json")
+    execution_definitions = {
+        item["id"]: item
+        for item in load_json(ROOT / "harness/identity/executions.json")["executions"]
+    }
 
     suites = document.get("suites", [])
     suite_ids = [item.get("id") for item in suites if isinstance(item, dict)]
@@ -270,13 +222,14 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             continue
         if suite.get("executionClass") not in REAL_EXECUTION_CLASSES:
             add_gap(gaps, identity, "mock_or_schema_suite", "executionClass", "suite must execute real compiled, native, or public-consumer code")
-        if not isinstance(suite.get("command"), str) or not suite["command"].strip():
-            add_gap(gaps, identity, "missing_suite_command", "command", "suite command is required")
+        execution = execution_definitions.get(suite.get("executionId"))
+        if execution is None:
+            add_gap(gaps, identity, "unknown_suite_execution", "executionId", "suite must reference a shared proof execution")
         live_assertion = suite.get("liveAssertion")
         if live_assertion is not None:
             evidence_token(gaps, identity, live_assertion, "liveAssertion")
-            command_parts = shlex.split(suite.get("command", ""))
-            command_path = ROOT / command_parts[0] if command_parts else None
+            command = execution.get("command", []) if execution is not None else []
+            command_path = ROOT / command[0] if command else None
             assertion_token = live_assertion.get("token") if isinstance(live_assertion, dict) else None
             if (
                 command_path is None
@@ -401,12 +354,28 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             add_gap(gaps, identity, "missing_probe_evidence", "evidence", "at least one semantic assertion is required")
         else:
             for evidence_index, item in enumerate(evidence):
+                if not isinstance(item.get("assertionId"), str) or not isinstance(item.get("artifactId"), str):
+                    add_gap(
+                        gaps,
+                        identity,
+                        "missing_evidence_identity",
+                        f"evidence[{evidence_index}]",
+                        "assertionId and artifactId are required",
+                    )
                 evidence_token(gaps, identity, item, f"evidence[{evidence_index}]")
         covered_capabilities.update(probe.get("capabilities", []))
         covered_needs.update(probe.get("consumerNeeds", []))
         covered_surfaces.update(probe.get("publicSurfaces", []))
         covered_claims.update(probe.get("claims", []))
-        probe_results.append({"id": identity, "suite": probe.get("suite"), "passed": len(gaps) == before})
+        probe_results.append({
+            "id": identity,
+            "suite": probe.get("suite"),
+            "executionId": suite.get("executionId") if suite is not None else None,
+            "assertionIds": sorted(
+                item.get("assertionId") for item in evidence if isinstance(item, dict)
+            ),
+            "passed": len(gaps) == before,
+        })
 
     required_capabilities = reachability_capabilities()
     required_needs, required_surfaces = delivery_requirements()
@@ -468,6 +437,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
 
     gaps.sort(key=lambda item: (item["identity"], item["code"], item["path"], item["message"]))
     catalog_paths = [
+        ROOT / "harness/identity/catalog.json",
         ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
         ROOT / "harness/consumer-needs/validation-report.json",
         ROOT / "harness/public-surface/rust-crates.json",
@@ -480,6 +450,10 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
         "valid": not gaps,
         "inventory": relative(manifest_path),
         "inventoryHash": digest(manifest_path),
+        "identityCatalog": {
+            "path": "harness/identity/catalog.json",
+            "hash": identity_catalog["catalogHash"],
+        },
         "catalogs": [{"path": relative(path), "hash": digest(path)} for path in catalog_paths],
         "summary": {
             "stableOperationCount": len(stable),
@@ -532,9 +506,8 @@ def apply_fixture_mutation(document: dict[str, Any], fixture: dict[str, Any]) ->
     elif action == "removeSemanticClaim":
         for probe in document["semanticProbes"]:
             probe["claims"] = [item for item in probe["claims"] if item != identity]
-    elif action == "changeCatalogEntryHash":
-        family, entry = identity.split("/", 1)
-        document["catalogEntryHashes"][family][entry] = "sha256:stale"
+    elif action == "changeSuiteExecution":
+        next(item for item in document["suites"] if item["id"] == identity)["executionId"] = "missing.execution"
     elif action == "breakEvidenceToken":
         probe = next(item for item in document["semanticProbes"] if item["id"] == identity)
         probe["evidence"][0]["token"] = "missing-conformance-token"

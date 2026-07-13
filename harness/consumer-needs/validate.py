@@ -472,6 +472,8 @@ def main() -> int:
     args = parser.parse_args()
     paths = sorted(MANIFEST_DIR.glob("*.json"))
     report = build_report(paths)
+    identity_catalog = read_json(ROOT / "harness/identity/catalog.json")
+    report["identityCatalogHash"] = identity_catalog["catalogHash"]
     semantic_validation, semantic_gaps = run_gameplay_semantic_validation()
     report["semanticValidation"] = semantic_validation
     report["gaps"].extend(semantic_gaps)
