@@ -1130,7 +1130,7 @@
       "manifestName": "invoke_game_extension_weapon_effect",
       "facadeMethod": "invokeGameExtensionWeaponEffect",
       "capability": "gameplay",
-      "surface": "stable",
+      "surface": "quarantined",
       "nativeWired": true,
       "maxInputBytes": 8388608,
       "maxOutputBytes": 8388608,

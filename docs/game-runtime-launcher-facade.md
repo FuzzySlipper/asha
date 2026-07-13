@@ -126,7 +126,8 @@ const provider = await resolveNativeRustRuntimeBridgeProvider({
 The preferred global is `globalThis.ashaRuntimeBridge` with provider kind
 `asha.runtime_bridge.native_rust_provider.v1`. The resolver also accepts the
 existing `globalThis.ashaDemoRuntimeBridge` /
-`asha_demo.native_runtime_bridge_provider.v1` alias for current demo hosts.
+`asha_demo.native_runtime_bridge_provider.v1` alias only as a #5734 quarantine
+for the current Demo host. New hosts may not select that alias.
 Providers must declare `backend: "native_rust"`, `productAuthority: true`, and
 `referenceFallback: false`, and must return the public `RuntimeBridge` facade
 operations needed by RuntimeSession. Missing providers, spoofed reference

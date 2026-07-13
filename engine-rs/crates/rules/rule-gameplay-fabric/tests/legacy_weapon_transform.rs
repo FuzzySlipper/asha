@@ -6,8 +6,11 @@ use game_rule_extension::{
 };
 use protocol_game_extension::GameExtensionHookKind;
 use rule_gameplay_fabric::{
-    run_legacy_weapon_effect_transform, GameplayRuntimeDiagnosticCode,
-    LegacyWeaponEffectTransformError,
+    compatibility::{
+        run_legacy_weapon_effect_transform, LegacyWeaponEffectTransformError,
+        LEGACY_WEAPON_EFFECT_COMPATIBILITY_DIAGNOSTIC,
+    },
+    GameplayRuntimeDiagnosticCode,
 };
 
 struct FixtureModule {
@@ -91,6 +94,10 @@ fn request() -> WeaponEffectHookRequest {
 
 #[test]
 fn legacy_weapon_behavior_runs_inside_common_transform_and_owner_route() {
+    assert_eq!(
+        LEGACY_WEAPON_EFFECT_COMPATIBILITY_DIAGNOSTIC,
+        "asha.compat.wave1.legacy-weapon-effect-hook"
+    );
     let outcome =
         run_legacy_weapon_effect_transform(&module(FixtureBehavior::Accept), &request()).unwrap();
     assert_eq!(outcome.damage_delta, 5);

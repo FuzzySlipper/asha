@@ -143,7 +143,7 @@ def rust_test_assertions(source: str, text: str) -> list[dict[str, str]]:
     return assertions
 
 
-def bridge_operations() -> tuple[list[str], set[str]]:
+def bridge_operations() -> tuple[list[str], set[str], list[dict[str, Any]]]:
     path = ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml"
     document = tomllib.loads(path.read_text(encoding="utf-8"))
     stable = sorted(item["name"] for item in document["operation"] if item["surface"] == "stable")
@@ -155,7 +155,16 @@ def bridge_operations() -> tuple[list[str], set[str]]:
         for operation in generated["operations"]
         if operation["nativeWired"]
     }
-    return stable, wired
+    quarantined = sorted([
+        {
+            "operation": item["name"],
+            "nativeWired": item["name"] in wired,
+            "reason": item["quarantine_reason"],
+        }
+        for item in document["operation"]
+        if item["surface"] == "quarantined"
+    ], key=lambda item: item["operation"])
+    return stable, wired, quarantined
 
 
 def reachability_capabilities() -> set[str]:
@@ -167,6 +176,15 @@ def public_surfaces() -> set[str]:
     ts = load_json(ROOT / "harness/public-surface/ts-packages.json")
     rust = load_json(ROOT / "harness/public-surface/rust-crates.json")
     return {item["package"] for item in ts["packages"]} | {item["crate"] for item in rust["crates"]}
+
+
+def public_surface_dispositions() -> dict[str, str]:
+    ts = load_json(ROOT / "harness/public-surface/ts-packages.json")
+    rust = load_json(ROOT / "harness/public-surface/rust-crates.json")
+    return {
+        **{item["package"]: "preferred" for item in ts["packages"]},
+        **{item["crate"]: item["disposition"] for item in rust["crates"]},
+    }
 
 
 def delivery_requirements() -> tuple[set[str], set[str]]:
@@ -299,7 +317,7 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             assertion["corpus"] = identity
         corpus_assertions[identity] = assertions
 
-    stable, native_wired = bridge_operations()
+    stable, native_wired, quarantined_operations = bridge_operations()
     native_export_text = "\n".join(
         path.read_text(encoding="utf-8")
         for path in sorted((ROOT / "engine-rs/crates/bridge/native-bridge/src").rglob("*.rs"))
@@ -435,6 +453,19 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             "valid": valid,
         })
 
+    dispositions = public_surface_dispositions()
+    surface_coverage = [
+        {
+            "identity": identity,
+            "disposition": dispositions[identity],
+            "probes": sorted(
+                probe["id"] for probe in probes
+                if identity in probe.get("publicSurfaces", [])
+            ),
+        }
+        for identity in sorted(required_surfaces)
+    ]
+
     gaps.sort(key=lambda item: (item["identity"], item["code"], item["path"], item["message"]))
     catalog_paths = [
         ROOT / "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -454,12 +485,15 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             "stableOperationCount": len(stable),
             "realOperationProbeCount": sum(item["status"] == "probed" for item in operation_results),
             "temporaryOperationExemptionCount": sum(item["status"] == "temporaryExemption" for item in operation_results),
+            "quarantinedOperationCount": len(quarantined_operations),
             "semanticProbeCount": len(probe_results),
             "deliveryRequirementCount": len(required_needs),
             "publicSurfaceCount": len(required_surfaces),
         },
         "operations": operation_results,
+        "quarantinedOperations": quarantined_operations,
         "semanticProbes": probe_results,
+        "publicSurfaceCoverage": surface_coverage,
         "semanticClaimBindings": claim_bindings,
         "gaps": gaps,
     }

@@ -22,6 +22,12 @@ pub use protocol_game_extension::{
     GameplayTopologyEdge, WeaponEffectHookRequest,
 };
 
+/// Machine-readable deprecation diagnostic for the Wave 1 hook facade. New
+/// consumers use `asha-gameplay-module-sdk` and a native fabric invocation;
+/// asha-demo task #5734 owns removal of the remaining consumer.
+pub const GAME_RULE_EXTENSION_COMPATIBILITY_DIAGNOSTIC: &str =
+    "asha.compat.wave1.legacy-weapon-effect-hook";
+
 /// Result type used by game rule modules. Errors are typed diagnostics, never
 /// raw dynamic payloads.
 pub type GameRuleExtensionResult<T> = Result<T, GameExtensionDiagnostic>;

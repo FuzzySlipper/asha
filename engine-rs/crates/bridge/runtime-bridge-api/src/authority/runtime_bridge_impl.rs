@@ -1176,12 +1176,12 @@ impl RuntimeBridge for EngineBridge {
             &self.gameplay.game_rule_modules,
             &request.hook,
         )?;
-        let transformed = match rule_gameplay_fabric::run_legacy_weapon_effect_transform(
+        let transformed = match rule_gameplay_fabric::compatibility::run_legacy_weapon_effect_transform(
             &module,
             &request.hook,
         ) {
             Ok(outcome) => outcome,
-            Err(rule_gameplay_fabric::LegacyWeaponEffectTransformError::ModuleRejected(
+            Err(rule_gameplay_fabric::compatibility::LegacyWeaponEffectTransformError::ModuleRejected(
                 diagnostic,
             )) => {
                 let hook_receipt = rejected_receipt(&request.hook, diagnostic);
@@ -1193,7 +1193,7 @@ impl RuntimeBridge for EngineBridge {
                     primary_fire: None,
                 });
             }
-            Err(rule_gameplay_fabric::LegacyWeaponEffectTransformError::DecisionRejected(
+            Err(rule_gameplay_fabric::compatibility::LegacyWeaponEffectTransformError::DecisionRejected(
                 receipt,
             )) => {
                 let detail = receipt
@@ -1218,7 +1218,10 @@ impl RuntimeBridge for EngineBridge {
             Err(error) => {
                 return Err(RuntimeBridgeError::new(
                     RuntimeBridgeErrorKind::Internal,
-                    format!("legacy weapon Transform compatibility failed: {error}"),
+                    format!(
+                        "{}: legacy weapon Transform compatibility failed: {error}",
+                        rule_gameplay_fabric::compatibility::LEGACY_WEAPON_EFFECT_COMPATIBILITY_DIAGNOSTIC
+                    ),
                 ));
             }
         };

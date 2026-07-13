@@ -255,6 +255,7 @@ Check the relevant package scripts before adding new commands; this workspace in
 | `docs/capability-activation.md` | Typed collision/controller activation, lifecycle interaction, persistence, and owner gates |
 | `docs/runtime-session-facade.md` | Current `RuntimeSessionFacade` methods, non-claims, and reference/native boundary |
 | `docs/gameplay-runtime-host.md` | Public static gameplay RuntimeSession host, native-provider composition, authority loop, replay, and limits |
+| `docs/wave1-compatibility-quarantine.md` | Preferred versus quarantined public paths, real consumers, diagnostics, and deletion ownership |
 | `docs/game-agent-code-organization.md` | Game consumer repo structure: `app.ts` entrypoint-only, TS source, ports/adapters, feature modules |
 | `docs/nav-pathfinding-substrate.md` | Read-only voxel navigation projection and deterministic path query evidence |
 | `docs/policy-authoring.md` | Policy package authoring and testing |

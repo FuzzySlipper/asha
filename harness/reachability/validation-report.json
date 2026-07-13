@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
-  "manifestHash": "sha256:9052f35daae42e8effc736d1bf2b01fdba7deab466efa36e5542929b0af3eec4",
+  "manifestHash": "sha256:377723241d6eeee3a710877afce5238d400f9c093e3a3c94126873787de2ef12",
   "catalogs": [
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:2e51db06dc21a906ba33f28c7a1db3818db0a727655a24350a2852ff0df29c7f"
+      "hash": "sha256:e1185f2474cbf84c89a8eab6412647e58c90cb0cc7bb62975e9fb0e3caeb6724"
     },
     {
       "path": "harness/public-surface/ts-packages.json",
@@ -14,11 +14,11 @@
     },
     {
       "path": "harness/public-surface/rust-crates.json",
-      "hash": "sha256:516ae1d0465421f16c73fe4df186602f7676c01679c400abfe29570ae2297236"
+      "hash": "sha256:201042bf9ba0d56d779ef7c3b4c1a933280af0ebe6b8e9bea1c9e8f9de041aeb"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:ec5af2df5df99ad6c9fe6ef132bd501a4c776256a1fcb5b39821842951b5823c"
+      "hash": "sha256:c6a14b8fea895c7abeef71509ddca7815b6abb6e302ead924087c724a4333ee5"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",
@@ -45,7 +45,7 @@
       "id": "catalog.generated-contracts",
       "kind": "generatedContracts",
       "valid": true,
-      "actualCount": 610
+      "actualCount": 617
     },
     {
       "id": "catalog.rust-public-surfaces",

@@ -48,6 +48,7 @@ operations        : exact operation names; every operation appears once globally
 name              : snake_case, unique
 surface           : "stable" | "quarantined"
 quarantine_reason : required iff surface == "quarantined"
+native_wired      : optional bool; defaults true for stable and false for quarantined
 input             : exactly one protocol ref, declared handle, or Unit
 output            : exactly one protocol ref, declared handle, RuntimeBufferView, or Unit
 errors            : must equal manifest.error_type
@@ -71,8 +72,9 @@ max_output_bytes  : optional positive operation-specific response bound
    non-overlapping cover of the manifest.
 7. Facade overrides point only to existing semantic owners: `bridge::`, `contracts::`, or
    `session::`.
-8. Stable operations have exactly one handwritten TypeScript binding signature and one concrete
-   Rust `#[napi]` export. Missing, duplicate, extra, or mismatched wiring fails before runtime.
+8. Stable operations, plus an explicitly `native_wired = true` quarantined compatibility
+   operation, have exactly one handwritten TypeScript binding signature and one concrete Rust
+   `#[napi]` export. Missing, duplicate, extra, or mismatched wiring fails before runtime.
 9. Generated artifacts match the committed manifest byte-for-byte.
 10. Every operation resolves positive request/response limits and generated wire type ownership.
 
@@ -84,9 +86,9 @@ max_output_bytes  : optional positive operation-specific response bound
 |---|---|---|
 | Operation descriptors | `ts/packages/runtime-bridge/src/generated/operations.ts` | tagged descriptor union, wire type ownership, byte limits, error families, stable/quarantined and native-wiring inventory |
 | Capability facade | `ts/packages/runtime-bridge/src/generated/surfaces.ts` | grouped typed port interfaces, root bridge, ports, and lifecycle contracts |
-| Native TS declaration | `ts/packages/native-bridge/src/generated/addon-surface.ts` | exact stable export-name union checked against handwritten semantic signatures |
+| Native TS declaration | `ts/packages/native-bridge/src/generated/addon-surface.ts` | exact native-wired export-name union checked against handwritten semantic signatures |
 | Runtime Rust metadata | `engine-rs/crates/bridge/runtime-bridge-api/src/generated/mod.rs` | typed operation/capability binding inventory |
-| Native Rust metadata | `engine-rs/crates/bridge/native-bridge/src/generated/mod.rs` | exact stable native-export inventory plus request/response limits |
+| Native Rust metadata | `engine-rs/crates/bridge/native-bridge/src/generated/mod.rs` | exact native-wired export inventory plus request/response limits |
 | Conformance snapshot | `ts/packages/runtime-bridge/src/generated/conformance.json` | machine-readable capability, signature, and wiring snapshot |
 | Native reference | `engine-rs/crates/bridge/native-bridge/src/generated/EXPORTS.md` | inspectable operation/capability/type table |
 
@@ -128,8 +130,8 @@ The bridge and conformance gates combine four kinds of evidence:
 
 1. Generated TypeScript exactness: the handwritten facade and native binding declaration satisfy
    the generated operation and capability surfaces.
-2. Native export exactness: each stable manifest operation has one concrete `#[napi]` export; no
-   non-manifest export is silently added.
+2. Native export exactness: each native-wired manifest operation has one concrete `#[napi]`
+   export; no non-manifest export is silently added. Quarantined native wiring must be explicit.
 3. Real operation probes: every stable operation is called by a named assertion in an executed
    compiled Rust or native-transport suite.
 4. WASM replay conformance: deterministic replay fixtures use the WASM verification path and

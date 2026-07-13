@@ -4,7 +4,10 @@ import {
 } from './bridge.js';
 
 export const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
+/** @deprecated Quarantined for asha-demo only; #5734 removes this alias. */
 export const LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha_demo.native_runtime_bridge_provider.v1';
+export const ASHA_DEMO_NATIVE_PROVIDER_COMPATIBILITY_DIAGNOSTIC =
+  'asha.compat.wave1.asha-demo-native-provider-alias';
 
 export const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS = [
   'ashaRuntimeBridge',

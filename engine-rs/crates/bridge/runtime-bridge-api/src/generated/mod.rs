@@ -461,7 +461,7 @@ pub(crate) const GENERATED_BRIDGE_BINDINGS: &[GeneratedBridgeBinding] = &[
         errors: "RuntimeBridgeError",
         max_input_bytes: 8388608,
         max_output_bytes: 8388608,
-        surface: GeneratedBridgeSurface::Stable,
+        surface: GeneratedBridgeSurface::Quarantined,
     },
     GeneratedBridgeBinding {
         manifest_name: "validate_game_rule_catalog",

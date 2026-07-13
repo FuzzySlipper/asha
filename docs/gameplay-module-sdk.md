@@ -255,10 +255,9 @@ behavior, route proposals, or mutate authority.
 
 ## Legacy weapon compatibility
 
-`LegacyWeaponEffectTransformBehavior<M>` adapts the prior public
-`GameRuleModule` weapon hook into the common Transform family. The test uses a
-real downstream module whose close- and long-range proposals differ, routes the
-transformed Workspace through the registered owner, and proves distinct final
-Workspace hashes. This is named compatibility code, not the permanent provider
-model; delete it after legacy weapon consumers have moved to native gameplay
-module contracts.
+The SDK no longer exports `LegacyWeaponEffectTransformBehavior<M>`. It had no
+downstream consumer and duplicated the actual bridge adapter. The one retained
+legacy weapon path is namespaced under `rule_gameplay_fabric::compatibility`,
+is quarantined to `asha-demo`, and is deleted by #5734 after the Demo rule is a
+native Transform. New modules cannot reach compatibility through the preferred
+SDK root.

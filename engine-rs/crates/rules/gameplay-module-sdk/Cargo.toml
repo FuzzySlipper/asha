@@ -9,6 +9,8 @@ workspace = true
 [dependencies]
 core-ids = { path = "../../foundation/core-ids" }
 core-time = { path = "../../foundation/core-time" }
+# Quarantine lock-shape edge only: no SDK source imports or re-exports this
+# crate. Remove with Demo #5734 and Rulebench #5715 downstream lock migration.
 game-rule-extension = { path = "../game-rule-extension" }
 protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
 rule-gameplay-fabric = { path = "../rule-gameplay-fabric" }

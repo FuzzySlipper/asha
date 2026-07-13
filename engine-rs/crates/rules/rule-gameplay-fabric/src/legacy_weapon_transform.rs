@@ -14,6 +14,12 @@ use protocol_game_extension::{
     GameplayProposalDeclaration, GameplayProposalEnvelope,
 };
 use serde::{Deserialize, Serialize};
+
+/// Stable diagnostic carried by the Wave 1 compatibility inventory and error
+/// paths. Delete with the adapter after asha-demo task #5734 migrates the
+/// weapon rule to a native Transform in the composed RuntimeSession.
+pub const LEGACY_WEAPON_EFFECT_COMPATIBILITY_DIAGNOSTIC: &str =
+    "asha.compat.wave1.legacy-weapon-effect-hook";
 use std::cell::RefCell;
 use svc_gameplay_fabric::{
     gameplay_canonical_codec_id, gameplay_contract, stable_identity, GameplayFabricRegistryBuilder,

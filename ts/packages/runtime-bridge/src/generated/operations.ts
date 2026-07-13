@@ -600,7 +600,7 @@ const BRIDGE_OPERATION_DESCRIPTORS = [
     nativeWired: true,
     output: 'protocol_runtime::GameExtensionWeaponEffectInvocationResult',
     outputWire: { name: 'GameExtensionWeaponEffectInvocationResult', owner: 'custom', repeated: false },
-    surface: 'stable',
+    surface: 'quarantined',
   },
   {
     capability: 'gameplay',

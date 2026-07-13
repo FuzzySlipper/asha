@@ -181,8 +181,8 @@ families describe invocation roles without granting mutation authority.
 the successor bootstrap boundary. They validate linked provider agreement,
 typed codecs, subscriptions, exact authority owners, read-view providers,
 namespace ownership, budgets, and ordering before a Session can use the graph.
-The original `GameRuleModuleManifest` and weapon-effect trait remain as a
-compatibility path until the later invocation/migration tasks land. See
+The original `GameRuleModuleManifest` and weapon-effect trait remain only in
+the Wave 1 compatibility quarantine until Demo #5734 removes the last caller. See
 `docs/gameplay-fabric-contracts.md` for the implemented boundary and non-goals.
 
 Task #5634 adds the public successor lane at
@@ -190,8 +190,10 @@ Task #5634 adds the public successor lane at
 `GameplayModuleBehavior`, use typed handler helpers and declared reads, and
 contribute a static provider containing their manifest, codecs, state/view
 adapters, configuration schema metadata, and behavior instance. Composition
-consumes the same immutable registry builder. The old weapon trait survives
-only through the named `LegacyWeaponEffectTransformBehavior` adapter.
+consumes the same immutable registry builder. The preferred SDK no longer
+exports the old weapon trait or its former duplicate adapter. The one retained
+bridge adapter is available only through the fabric's `compatibility`
+namespace and is not a new-consumer path.
 
 ## Remaining Extension Points
 

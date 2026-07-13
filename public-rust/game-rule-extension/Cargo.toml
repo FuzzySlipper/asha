@@ -6,6 +6,12 @@ publish = false
 
 [package.metadata.asha.public-surface]
 status = "public"
+disposition = "quarantined"
+compatibility-entry = "legacy-weapon-effect-hook"
+compatibility-version = "wave1.v1"
+diagnostic = "asha.compat.wave1.legacy-weapon-effect-hook"
+replacement = "asha-gameplay-module-sdk + asha-runtime-session-composition"
+deletion-tasks = [5734]
 role = "downstream-game-rule-module-api"
 source-of-truth = "engine-rs/crates/rules/game-rule-extension"
 allowed-consumer-roles = ["asha-demo"]

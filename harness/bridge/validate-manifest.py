@@ -113,6 +113,10 @@ def facade_method(operation):
     return operation.get("facade_method") or snake_to_camel(operation["name"])
 
 
+def native_wired(operation):
+    return operation.get("native_wired", operation.get("surface") == "stable")
+
+
 def interface_methods(path, interface_name):
     text = path.read_text(encoding="utf-8")
     marker = f"interface {interface_name} {{"
@@ -238,6 +242,10 @@ def main():
             fail(errors, f"[{name}] surface must be 'stable' or 'quarantined'")
         if surface == "quarantined" and not op.get("quarantine_reason"):
             fail(errors, f"[{name}] quarantined surface requires quarantine_reason")
+        if "native_wired" in op and not isinstance(op["native_wired"], bool):
+            fail(errors, f"[{name}] native_wired override must be boolean")
+        if surface == "stable" and not native_wired(op):
+            fail(errors, f"[{name}] stable surface must remain native wired")
 
         # Rule 5: buffer-lending ops declare lifetime
         if name in ("get_buffer", "release_buffer") and not op.get("buffers"):
@@ -306,8 +314,8 @@ def main():
     # The generated exact declaration is backed by one handwritten semantic
     # signature per stable operation and one concrete Rust #[napi] export. These
     # checks fail an unwired manifest addition before a runtime smoke can begin.
-    stable_operations = [op for op in ops if op.get("surface") == "stable"]
-    expected_ts_methods = {facade_method(op) for op in stable_operations}
+    native_operations = [op for op in ops if native_wired(op)]
+    expected_ts_methods = {facade_method(op) for op in native_operations}
     if NATIVE_ADDON_TS.exists():
         actual_ts_methods, interface_error = interface_methods(NATIVE_ADDON_TS, "NativeAddonBindings")
         if interface_error:
@@ -318,7 +326,7 @@ def main():
     else:
         fail(errors, f"native addon declarations not found at {NATIVE_ADDON_TS}")
 
-    expected_rust_exports = {op["name"] for op in stable_operations}
+    expected_rust_exports = {op["name"] for op in native_operations}
     actual_rust_exports = rust_napi_exports()
     validate_exact_inventory(
         errors, "native-bridge #[napi] exports", expected_rust_exports, actual_rust_exports

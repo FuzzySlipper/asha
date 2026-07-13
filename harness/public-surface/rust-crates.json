@@ -1,21 +1,25 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "consumerPolicies": [
     {
       "consumerRole": "asha-demo",
-      "approvedCrates": [
-        "asha-game-rule-extension",
+      "preferredCrates": [
         "asha-gameplay-module-conformance",
         "asha-gameplay-module-sdk",
-        "asha-gameplay-runtime-host",
         "asha-runtime-session-composition"
       ],
-      "approvedDependencyPaths": [
-        "../asha-engine/public-rust/game-rule-extension",
+      "quarantinedCrates": [
+        "asha-game-rule-extension",
+        "asha-gameplay-runtime-host"
+      ],
+      "preferredDependencyPaths": [
         "../asha-engine/public-rust/gameplay-module-conformance",
         "../asha-engine/public-rust/gameplay-module-sdk",
-        "../asha-engine/public-rust/gameplay-runtime-host",
         "../asha-engine/public-rust/runtime-session-composition"
+      ],
+      "quarantinedDependencyPaths": [
+        "../asha-engine/public-rust/game-rule-extension",
+        "../asha-engine/public-rust/gameplay-runtime-host"
       ],
       "forbiddenPathPatterns": [
         "engine-rs/crates/*"
@@ -23,17 +27,21 @@
     },
     {
       "consumerRole": "asha-testing",
-      "approvedCrates": [
+      "preferredCrates": [
         "asha-gameplay-module-conformance",
         "asha-gameplay-module-sdk",
-        "asha-gameplay-runtime-host",
         "asha-runtime-session-composition"
       ],
-      "approvedDependencyPaths": [
+      "quarantinedCrates": [
+        "asha-gameplay-runtime-host"
+      ],
+      "preferredDependencyPaths": [
         "../asha-engine/public-rust/gameplay-module-conformance",
         "../asha-engine/public-rust/gameplay-module-sdk",
-        "../asha-engine/public-rust/gameplay-runtime-host",
         "../asha-engine/public-rust/runtime-session-composition"
+      ],
+      "quarantinedDependencyPaths": [
+        "../asha-engine/public-rust/gameplay-runtime-host"
       ],
       "forbiddenPathPatterns": [
         "engine-rs/crates/*"
@@ -41,17 +49,21 @@
     },
     {
       "consumerRole": "asha-rulebench",
-      "approvedCrates": [
+      "preferredCrates": [
         "asha-gameplay-module-conformance",
         "asha-gameplay-module-sdk",
-        "asha-gameplay-runtime-host",
         "asha-runtime-session-composition"
       ],
-      "approvedDependencyPaths": [
+      "quarantinedCrates": [
+        "asha-gameplay-runtime-host"
+      ],
+      "preferredDependencyPaths": [
         "../asha-engine/public-rust/gameplay-module-conformance",
         "../asha-engine/public-rust/gameplay-module-sdk",
-        "../asha-engine/public-rust/gameplay-runtime-host",
         "../asha-engine/public-rust/runtime-session-composition"
+      ],
+      "quarantinedDependencyPaths": [
+        "../asha-engine/public-rust/gameplay-runtime-host"
       ],
       "forbiddenPathPatterns": [
         "engine-rs/crates/*"
@@ -62,6 +74,8 @@
     {
       "crate": "asha-game-rule-extension",
       "status": "public",
+      "disposition": "quarantined",
+      "compatibilityEntry": "legacy-weapon-effect-hook",
       "facadePath": "public-rust/game-rule-extension",
       "sourceOfTruth": "engine-rs/crates/rules/game-rule-extension",
       "intendedConsumerRole": "Public Rust trait and DTO facade for downstream ASHA Game Project rule modules.",
@@ -74,6 +88,7 @@
       },
       "exposes": [
         "GameRuleModule",
+        "GAME_RULE_EXTENSION_COMPATIBILITY_DIAGNOSTIC",
         "GameRuleExtensionResult",
         "GameRuleModuleManifest",
         "GameRuleModuleRef",
@@ -94,6 +109,7 @@
     {
       "crate": "asha-gameplay-module-conformance",
       "status": "public",
+      "disposition": "preferred",
       "facadePath": "public-rust/gameplay-module-conformance",
       "sourceOfTruth": "engine-rs/crates/rules/rule-project-bundle",
       "intendedConsumerRole": "Public statically linked build, ProjectBundle bootstrap, invocation, state, save/reload, playback, and verification-replay conformance runner for downstream gameplay modules.",
@@ -125,6 +141,7 @@
     {
       "crate": "asha-gameplay-module-sdk",
       "status": "public",
+      "disposition": "preferred",
       "facadePath": "public-rust/gameplay-module-sdk",
       "sourceOfTruth": "engine-rs/crates/rules/gameplay-module-sdk",
       "intendedConsumerRole": "Public Rust authoring, declared-read, state, and static-composition facade for downstream ASHA gameplay modules.",
@@ -169,6 +186,8 @@
     {
       "crate": "asha-gameplay-runtime-host",
       "status": "public",
+      "disposition": "quarantined",
+      "compatibilityEntry": "standalone-gameplay-runtime-host",
       "facadePath": "public-rust/gameplay-runtime-host",
       "sourceOfTruth": "engine-rs/crates/rules/gameplay-runtime-host",
       "intendedConsumerRole": "Public Rust host seam for statically composed gameplay modules, ProjectBundle bindings, validated prefab bootstrap/placement, trigger reconciliation, pre-commit decisions, actor pose binding, snapshots, and bounded readouts.",
@@ -183,6 +202,7 @@
       },
       "exposes": [
         "GameplayRuntimeHost",
+        "GAMEPLAY_RUNTIME_HOST_COMPATIBILITY_DIAGNOSTIC",
         "GameplayRuntimeHostError",
         "GameplayRuntimeHostInput",
         "GameplayRuntimeProjectInput",
@@ -224,6 +244,7 @@
     {
       "crate": "asha-runtime-session-composition",
       "status": "public",
+      "disposition": "preferred",
       "facadePath": "public-rust/runtime-session-composition",
       "sourceOfTruth": "engine-rs/crates/bridge/runtime-bridge-api",
       "intendedConsumerRole": "Public builder for one native RuntimeSession authority cell containing the bounded RuntimeBridge root and statically linked gameplay modules.",

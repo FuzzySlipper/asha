@@ -68,7 +68,7 @@ reaction dispatcher.
 
 ## Legacy Weapon Compatibility
 
-`run_legacy_weapon_effect_transform` is a bounded compatibility adapter for the
+`compatibility::run_legacy_weapon_effect_transform` is a bounded compatibility adapter for the
 old `GameRuleModule::evaluate_weapon_effect` hook. It builds a closed one-module
 registry, invokes the real legacy behavior as the standard `Transform` family,
 updates a typed damage Workspace, and routes that Workspace to the existing
@@ -80,11 +80,11 @@ Workspace, and decision-receipt hashes. Module rejection stays typed; invalid
 proposal kind, target, channel, or hash fails at the common owner route and no
 primary-fire mutation runs.
 
-This compatibility adapter is intentionally named and bounded. The deletion
-condition has now been met: real static provider and public host composition
-exist. New behavior must use that normal provider/host path. The wrapper remains
-only for existing weapon-hook consumers and should be removed when those
-callers migrate; it is not precedent for adding another bespoke hook.
+This compatibility adapter is intentionally named, namespaced, and bounded.
+The preferred static provider and one-cell composition path exists; #5734 owns
+the remaining Demo migration and deletion. New behavior must use that normal
+provider path. The wrapper is not root-re-exported and is not precedent for
+adding another bespoke hook.
 
 ## Non-Claims
 

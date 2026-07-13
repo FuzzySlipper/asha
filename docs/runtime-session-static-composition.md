@@ -68,8 +68,8 @@ engine-session resources retain the explicit lifetime documented by
   generic RPC, callback registry, or TypeScript semantic-event route.
 - The older standalone `asha-gameplay-runtime-host` remains an implementation
   and migration boundary for named Wave 1 consumers. It is not the preferred
-  provider topology; its quarantine and deletion conditions are owned by the
-  compatibility campaign task.
+  provider topology; its diagnostic, real consumers, and deletion tasks are in
+  `wave1-compatibility-quarantine.md` and the machine-readable inventory.
 - Native wire declarations, operation limits, runtime validation, and structured
   error envelopes are generated or bound from the bridge/protocol source of
   truth. This builder establishes the authority object graph behind that

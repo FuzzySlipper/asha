@@ -19,6 +19,194 @@
       "requirementCount": 12
     }
   ],
+  "surfaceUsage": [
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.animation-controller-projection",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.audio-projection",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.billboard-projection",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.browser-host",
+      "surface": "@asha/browser-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.catalog-core",
+      "surface": "@asha/catalog-core",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.configure-input-session",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.conformance",
+      "surface": "@asha/smoke",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.game-workspace-prefab-authoring",
+      "surface": "@asha/game-workspace",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.gameplay-runtime-host",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.input-context-state",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.input-replay",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.input-replay-receipt",
+      "surface": "@asha/contracts",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.integrated-feedback-projection",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.particle-projection",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.playable-encounter-readout",
+      "surface": "@asha/runtime-bridge",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.prefab-part",
+      "surface": "asha-gameplay-runtime-host",
+      "disposition": "quarantined"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.prefab-runtime-placement",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.recorded-input-action",
+      "surface": "@asha/contracts",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.renderer-host",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.runtime-bridge",
+      "surface": "@asha/runtime-bridge",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.runtime-load",
+      "surface": "@asha/runtime-bridge",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.runtime-session-fixture",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.submit-raw-input",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.telemetry-live-overlay",
+      "surface": "@asha/renderer-host",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.time-control-command",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.time-control-state",
+      "surface": "@asha/runtime-session",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "asha-demo.current-browser-game",
+      "requirement": "asha-demo.ui-dom",
+      "surface": "@asha/ui-dom",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "gameplay-module-sdk.pulse-fixture",
+      "requirement": "pulse.conformance",
+      "surface": "asha-gameplay-module-conformance",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "gameplay-module-sdk.pulse-fixture",
+      "requirement": "pulse.public-sdk",
+      "surface": "asha-gameplay-module-sdk",
+      "disposition": "preferred"
+    },
+    {
+      "consumerId": "gameplay-module-sdk.pulse-fixture",
+      "requirement": "pulse.runtime-host",
+      "surface": "asha-gameplay-runtime-host",
+      "disposition": "quarantined"
+    },
+    {
+      "consumerId": "gameplay-module-sdk.pulse-fixture",
+      "requirement": "pulse.runtime-session-composition",
+      "surface": "asha-runtime-session-composition",
+      "disposition": "preferred"
+    }
+  ],
   "gaps": [],
   "semanticValidation": {
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",

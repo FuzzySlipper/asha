@@ -68,6 +68,10 @@ use svc_serialization::{
 pub use svc_serialization::{LoadPlan, LoadStep};
 
 pub const GAMEPLAY_RUNTIME_HOST_SNAPSHOT_PATH: &str = "session/gameplay-runtime-host.snapshot.json";
+/// Machine-readable deprecation diagnostic for the standalone Wave 1 host.
+/// New consumers compose modules inside `asha-runtime-session-composition`.
+pub const GAMEPLAY_RUNTIME_HOST_COMPATIBILITY_DIAGNOSTIC: &str =
+    "asha.compat.wave1.standalone-gameplay-runtime-host";
 const GAMEPLAY_RUNTIME_HOST_SNAPSHOT_VERSION: u32 = 3;
 const MAX_REACTION_FRAMES: usize = 256;
 const MAX_DECISION_RECEIPTS: usize = 256;

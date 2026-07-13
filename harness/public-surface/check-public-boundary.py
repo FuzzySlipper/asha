@@ -12,6 +12,7 @@ from typing import Any, NoReturn, cast
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 TS_MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "ts-packages.json"
 RUST_MANIFEST_PATH = REPO_ROOT / "harness" / "public-surface" / "rust-crates.json"
+WAVE1_COMPATIBILITY_PATH = REPO_ROOT / "harness" / "public-surface" / "wave1-compatibility.json"
 RAW_TRANSPORT_PACKAGES = {"@asha/native-bridge", "@asha/wasm-replay-bridge"}
 VALID_STATUSES = {"public", "unstable", "internal"}
 
@@ -357,17 +358,27 @@ def check_rust_consumer_policies(
             fail(f"Rust consumer policy duplicates role {role}")
         seen_roles.add(role)
 
-        approved_crates = policy.get("approvedCrates")
-        approved_paths = policy.get("approvedDependencyPaths")
+        preferred_crates = policy.get("preferredCrates")
+        quarantined_crates = policy.get("quarantinedCrates")
+        preferred_paths = policy.get("preferredDependencyPaths")
+        quarantined_paths = policy.get("quarantinedDependencyPaths")
         forbidden_patterns = policy.get("forbiddenPathPatterns")
-        if not isinstance(approved_crates, list) or not all(
-            isinstance(crate, str) for crate in approved_crates
+        if not isinstance(preferred_crates, list) or not all(
+            isinstance(crate, str) for crate in preferred_crates
         ):
-            fail(f"{role} Rust policy approvedCrates must be a string array")
-        if not isinstance(approved_paths, list) or not all(
-            isinstance(path, str) for path in approved_paths
+            fail(f"{role} Rust policy preferredCrates must be a string array")
+        if not isinstance(quarantined_crates, list) or not all(
+            isinstance(crate, str) for crate in quarantined_crates
         ):
-            fail(f"{role} Rust policy approvedDependencyPaths must be a string array")
+            fail(f"{role} Rust policy quarantinedCrates must be a string array")
+        if not isinstance(preferred_paths, list) or not all(
+            isinstance(path, str) for path in preferred_paths
+        ):
+            fail(f"{role} Rust policy preferredDependencyPaths must be a string array")
+        if not isinstance(quarantined_paths, list) or not all(
+            isinstance(path, str) for path in quarantined_paths
+        ):
+            fail(f"{role} Rust policy quarantinedDependencyPaths must be a string array")
         if not isinstance(forbidden_patterns, list) or not all(
             isinstance(pattern, str) for pattern in forbidden_patterns
         ):
@@ -375,7 +386,12 @@ def check_rust_consumer_policies(
         if "engine-rs/crates/*" not in forbidden_patterns:
             fail(f"{role} Rust policy must forbid private engine-rs/crates/* dependency paths")
 
-        approved_set = set(cast(list[str], approved_crates))
+        preferred_set = set(cast(list[str], preferred_crates))
+        quarantined_set = set(cast(list[str], quarantined_crates))
+        overlap = sorted(preferred_set & quarantined_set)
+        if overlap:
+            fail(f"{role} Rust policy marks crate(s) preferred and quarantined: {', '.join(overlap)}")
+        approved_set = preferred_set | quarantined_set
         for crate_name in sorted(approved_set):
             record = records_by_crate.get(crate_name)
             if record is None:
@@ -385,18 +401,144 @@ def check_rust_consumer_policies(
             allowed_roles = record.get("allowedConsumerRoles")
             if not isinstance(allowed_roles, list) or role not in allowed_roles:
                 fail(f"{role} Rust policy approves {crate_name}, but the crate record does not allow that role")
+            expected_disposition = "quarantined" if crate_name in quarantined_set else "preferred"
+            if record.get("disposition") != expected_disposition:
+                fail(
+                    f"{role} Rust policy lists {crate_name} as {expected_disposition}, "
+                    f"but the crate record is {record.get('disposition')!r}"
+                )
 
-        for dependency_path in cast(list[str], approved_paths):
+        for crate_name, record in sorted(records_by_crate.items()):
+            allowed_roles = record.get("allowedConsumerRoles")
+            if isinstance(allowed_roles, list) and role in allowed_roles and crate_name not in approved_set:
+                fail(f"{role} is allowed by {crate_name}, but its Rust policy does not classify that root")
+
+        all_paths = [*cast(list[str], preferred_paths), *cast(list[str], quarantined_paths)]
+        for dependency_path in all_paths:
             if "engine-rs/crates" in dependency_path:
-                fail(f"{role} Rust policy approved path must not point into engine internals: {dependency_path}")
+                fail(f"{role} Rust policy dependency path must not point into engine internals: {dependency_path}")
             if not (REPO_ROOT / dependency_path.removeprefix("../asha-engine/")).exists():
-                fail(f"{role} Rust policy approved path does not exist in this checkout: {dependency_path}")
+                fail(f"{role} Rust policy dependency path does not exist in this checkout: {dependency_path}")
+
+        expected_preferred_paths = {
+            f"../asha-engine/{records_by_crate[name]['facadePath']}" for name in preferred_set
+        }
+        expected_quarantined_paths = {
+            f"../asha-engine/{records_by_crate[name]['facadePath']}" for name in quarantined_set
+        }
+        if set(cast(list[str], preferred_paths)) != expected_preferred_paths:
+            fail(f"{role} preferred Rust paths must exactly match preferredCrates")
+        if set(cast(list[str], quarantined_paths)) != expected_quarantined_paths:
+            fail(f"{role} quarantined Rust paths must exactly match quarantinedCrates")
+
+
+def check_wave1_compatibility(
+    records_by_crate: dict[str, dict[str, Any]],
+    policies: list[dict[str, Any]],
+) -> None:
+    document = read_json(WAVE1_COMPATIBILITY_PATH)
+    if document.get("schemaVersion") != 1:
+        fail("Wave 1 compatibility inventory schemaVersion must be 1")
+    entries = document.get("entries")
+    if not isinstance(entries, list) or not entries:
+        fail("Wave 1 compatibility inventory must declare entries")
+    ids = [entry.get("id") for entry in entries if isinstance(entry, dict)]
+    if ids != sorted(ids) or len(ids) != len(set(ids)):
+        fail("Wave 1 compatibility entries must be sorted and unique by id")
+    entries_by_id: dict[str, dict[str, Any]] = {}
+    required_fields = {
+        "id", "disposition", "compatibilityVersion", "owningLane", "publicSurfaces",
+        "publicSymbols", "codeBoundaries", "realConsumers", "replacementPublicPaths",
+        "diagnostic", "deletionTasks", "deletionCondition", "failClosedEvidence",
+        "forbiddenNewConsumers",
+    }
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != required_fields:
+            fail("Wave 1 compatibility entries must use the canonical field set")
+        entry_id = entry["id"]
+        entries_by_id[entry_id] = entry
+        for field in ("id", "compatibilityVersion", "owningLane", "diagnostic", "deletionCondition"):
+            if not isinstance(entry[field], str) or not entry[field]:
+                fail(f"Wave 1 compatibility {entry_id} must declare non-empty {field}")
+        if entry["disposition"] != "quarantined" or entry["forbiddenNewConsumers"] is not True:
+            fail(f"Wave 1 compatibility {entry_id} must be quarantined and forbid new consumers")
+        if not entry["diagnostic"].startswith("asha.compat.wave1."):
+            fail(f"Wave 1 compatibility {entry_id} diagnostic must use asha.compat.wave1.*")
+        for field in (
+            "publicSurfaces", "publicSymbols", "codeBoundaries", "realConsumers",
+            "replacementPublicPaths",
+        ):
+            values = entry[field]
+            if not isinstance(values, list) or not values or not all(isinstance(item, str) and item for item in values):
+                fail(f"Wave 1 compatibility {entry_id} {field} must be a non-empty string array")
+            if values != sorted(set(values)):
+                fail(f"Wave 1 compatibility {entry_id} {field} must be sorted and unique")
+        tasks = entry["deletionTasks"]
+        if not isinstance(tasks, list) or not tasks or tasks != sorted(set(tasks)) or not all(
+            isinstance(task, int) and task > 0 for task in tasks
+        ):
+            fail(f"Wave 1 compatibility {entry_id} deletionTasks must be sorted unique task IDs")
+        for boundary in entry["codeBoundaries"]:
+            if not (REPO_ROOT / boundary).exists():
+                fail(f"Wave 1 compatibility {entry_id} boundary is missing: {boundary}")
+        diagnostic_sources: list[pathlib.Path] = []
+        for boundary in entry["codeBoundaries"]:
+            boundary_path = REPO_ROOT / boundary
+            if boundary_path.is_file():
+                diagnostic_sources.append(boundary_path)
+            else:
+                diagnostic_sources.extend(
+                    path for path in boundary_path.rglob("*")
+                    if path.is_file() and path.suffix in {".rs", ".ts", ".toml"}
+                )
+        if not any(entry["diagnostic"] in source.read_text() for source in diagnostic_sources):
+            fail(f"Wave 1 compatibility {entry_id} diagnostic is absent from its code boundary")
+        evidence = entry["failClosedEvidence"]
+        if not isinstance(evidence, list) or not evidence:
+            fail(f"Wave 1 compatibility {entry_id} must cite fail-closed evidence")
+        for item in evidence:
+            if not isinstance(item, dict) or set(item) != {"path", "token"}:
+                fail(f"Wave 1 compatibility {entry_id} evidence must contain path and token")
+            evidence_path = REPO_ROOT / item["path"]
+            if not evidence_path.is_file():
+                fail(f"Wave 1 compatibility {entry_id} evidence path is missing: {item['path']}")
+            if item["token"] not in evidence_path.read_text():
+                fail(f"Wave 1 compatibility {entry_id} evidence token is missing: {item['token']}")
+
+    policy_by_role = {policy["consumerRole"]: policy for policy in policies}
+    for crate_name, record in sorted(records_by_crate.items()):
+        disposition = record.get("disposition")
+        compatibility_entry = record.get("compatibilityEntry")
+        if disposition == "quarantined":
+            entry = entries_by_id.get(compatibility_entry)
+            if entry is None:
+                fail(f"{crate_name} must reference a canonical Wave 1 compatibility entry")
+            if crate_name not in entry["publicSurfaces"]:
+                fail(f"{crate_name} compatibility entry must name the quarantined public surface")
+            consumers = sorted(record.get("allowedConsumerRoles", []))
+            if consumers != entry["realConsumers"]:
+                fail(f"{crate_name} allowed consumers must exactly match its quarantine inventory")
+            for consumer in consumers:
+                policy = policy_by_role.get(consumer)
+                if policy is None or crate_name not in policy.get("quarantinedCrates", []):
+                    fail(f"{crate_name} consumer {consumer} must use the quarantined policy lane")
+        elif compatibility_entry is not None:
+            fail(f"preferred crate {crate_name} must not reference a compatibility entry")
+
+    sdk_source = (REPO_ROOT / "engine-rs/crates/rules/gameplay-module-sdk/src/lib.rs").read_text()
+    if "legacy_weapon" in sdk_source or "LegacyWeaponEffectTransformBehavior" in sdk_source:
+        fail("preferred gameplay-module SDK must not root-export the removed weapon compatibility adapter")
+    if (REPO_ROOT / "engine-rs/crates/rules/gameplay-module-sdk/src/legacy_weapon.rs").exists():
+        fail("duplicate gameplay-module SDK weapon compatibility adapter must remain deleted")
+    fabric_source = (REPO_ROOT / "engine-rs/crates/rules/rule-gameplay-fabric/src/lib.rs").read_text()
+    if "pub use legacy_weapon_transform::*" in fabric_source:
+        fail("fabric must expose the retained weapon adapter only through compatibility::")
 
 
 def check_rust_manifest() -> None:
     manifest = read_json(RUST_MANIFEST_PATH)
-    if manifest.get("schemaVersion") != 1:
-        fail("Rust public surface manifest schemaVersion must be 1")
+    if manifest.get("schemaVersion") != 2:
+        fail("Rust public surface manifest schemaVersion must be 2")
 
     records = manifest.get("crates")
     if not isinstance(records, list) or not records:
@@ -418,6 +560,9 @@ def check_rust_manifest() -> None:
         status = record.get("status")
         if status not in {"public", "unstable"}:
             fail(f"{crate_name} has invalid Rust public surface status {status!r}")
+        disposition = record.get("disposition")
+        if disposition not in {"preferred", "quarantined"}:
+            fail(f"{crate_name} must declare preferred or quarantined disposition")
 
         facade_path = record.get("facadePath")
         if not isinstance(facade_path, str) or not facade_path:
@@ -433,6 +578,15 @@ def check_rust_manifest() -> None:
             fail(f"{crate_name} facade Cargo.toml must declare package.metadata.asha.public-surface")
         if public_surface.get("status") != status:
             fail(f"{crate_name} facade metadata status must match rust-crates.json")
+        if public_surface.get("disposition") != disposition:
+            fail(f"{crate_name} facade metadata disposition must match rust-crates.json")
+        if disposition == "quarantined":
+            compatibility_entry = record.get("compatibilityEntry")
+            if public_surface.get("compatibility-entry") != compatibility_entry:
+                fail(f"{crate_name} facade compatibility-entry must match rust-crates.json")
+            for field in ("compatibility-version", "diagnostic", "replacement", "deletion-tasks"):
+                if public_surface.get(field) in (None, "", []):
+                    fail(f"{crate_name} quarantined facade metadata must declare {field}")
 
         source_of_truth = record.get("sourceOfTruth")
         if not isinstance(source_of_truth, str) or not source_of_truth:
@@ -483,6 +637,7 @@ def check_rust_manifest() -> None:
         require_doc_anchor(changelog, f"{crate_name} Rust public surface changelog")
 
     check_rust_consumer_policies(manifest, records_by_crate)
+    check_wave1_compatibility(records_by_crate, cast(list[dict[str, Any]], manifest["consumerPolicies"]))
 
 
 check_ts_manifest()

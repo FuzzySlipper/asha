@@ -68,10 +68,10 @@
       "@asha/runtime-session": "sha256:5bb3d39bb0dbbd94e49c6e7665b8edc67ee8c16c2c16969e918fe056497c28e4",
       "@asha/smoke": "sha256:2cdf15f71b06a1dd3ed8fdb67a65add8b89bf9dfaaf3f920d754e5cdea147436",
       "@asha/ui-dom": "sha256:464ed95af0885de029b2fca941fd27747875357e28258e5d74e71d19ecd4dbef",
-      "asha-gameplay-module-conformance": "sha256:ecd77d16c70b3bd8102a3a9a034c57d3fe0520b13283327cd3b97dc9f78f02e3",
-      "asha-gameplay-module-sdk": "sha256:6d142c50d3135168d726b6758727496266d1a193d73d85066133bca410b183f9",
-      "asha-gameplay-runtime-host": "sha256:316f7859e810e67051983efe7adcab3d54d74f85bfa3bf1eb95e93b2204ad5ac",
-      "asha-runtime-session-composition": "sha256:e51c6cd57b08196aceb4924235a338af225c0f7421de9fd37af741498c649b6a"
+      "asha-gameplay-module-conformance": "sha256:6e4e9dfa31784db6450b5842fc01878cd6cb4acda068916aa6e1f9ad226d2f55",
+      "asha-gameplay-module-sdk": "sha256:56b3e77f5370ece6c5769f98ed72a3d73306ac4b21d34f82ee350cf1ec98dd6f",
+      "asha-gameplay-runtime-host": "sha256:2e438e49476fa27b557bba508544ca70d09800d64c2712c508f0d93a7c4b815b",
+      "asha-runtime-session-composition": "sha256:07c599674acf3741075a11f768955a0d7ca1fe3f6bd89fa8becd4176cef85a09"
     }
   },
   "testCorpora": [

@@ -90,10 +90,14 @@ impl EnemyDirectNavMovementError {
     }
 }
 
-// PROTOTYPE NOTE: these stand in for the generated
+// QUARANTINED PROTOTYPE (asha.compat.wave1.prototype-project-bundle-bridge-dtos):
+// these stand in for the generated
 // `protocol_project_bundle::{ProjectBundleManifest, SaveSummary}` /
 // `protocol_diagnostics::DiagnosticReportSet` contract types named in the
-// manifest. The *shape* of the load/save verbs is the stable part.
+// manifest. The *shape* of the load/save verbs is the stable part. Demo #5737
+// and Studio #5736/#5733 own downstream migration; remove these facade
+// overrides in the matching upstream contract revision once those consumers
+// use the generated contracts.
 
 /// A bounded request to load a ProjectBundle. Identifies the bundle and its
 /// versions; the runtime resolves artifacts itself (never a raw path or JSON).

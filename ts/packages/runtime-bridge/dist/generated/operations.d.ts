@@ -858,7 +858,7 @@ declare const BRIDGE_OPERATION_DESCRIPTORS: readonly [{
         readonly owner: "custom";
         readonly repeated: false;
     };
-    readonly surface: "stable";
+    readonly surface: "quarantined";
 }, {
     readonly capability: "gameplay";
     readonly errors: "RuntimeBridgeError";

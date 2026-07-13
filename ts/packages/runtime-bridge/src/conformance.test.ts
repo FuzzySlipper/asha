@@ -55,6 +55,8 @@ const MODEL_MATERIAL_PREVIEW_REQUEST: ModelMaterialPreviewRequest = {
 };
 
 import {
+  ASHA_DEMO_NATIVE_PROVIDER_COMPATIBILITY_DIAGNOSTIC,
+  LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
   MANIFEST_OPERATIONS,
   RuntimeBridgeError,
   assertNativeRustRuntimeBridgeAuthority,
@@ -509,6 +511,40 @@ void test('native Rust RuntimeBridge provider resolver accepts public native pro
   assert.equal(resolution.bridge, bridge);
   assert.equal(resolution.providerGlobal, 'globalThis.ashaRuntimeBridge');
   assert.equal(resolution.profile.providerContract, 'asha.runtime_bridge.native_rust_provider.v1');
+});
+
+void test('quarantined Demo provider alias uses the same fail-closed provider validation', async () => {
+  assert.equal(
+    ASHA_DEMO_NATIVE_PROVIDER_COMPATIBILITY_DIAGNOSTIC,
+    'asha.compat.wave1.asha-demo-native-provider-alias',
+  );
+  const bridge = createMockRuntimeBridge();
+  const available = await resolveNativeRustRuntimeBridgeProvider({
+    provider: {
+      kind: LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
+      backend: 'native_rust',
+      productAuthority: true,
+      referenceFallback: false,
+      createRuntimeBridge: () => bridge,
+    },
+  });
+  assert.equal(available.status, 'available');
+  assert.equal(
+    available.profile.providerContract,
+    LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
+  );
+
+  const spoofed = await resolveNativeRustRuntimeBridgeProvider({
+    provider: {
+      kind: LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
+      backend: 'reference_bridge',
+      productAuthority: true,
+      referenceFallback: true,
+      createRuntimeBridge: createMockRuntimeBridge,
+    },
+  });
+  assert.equal(spoofed.status, 'unavailable');
+  assert.equal(spoofed.diagnostics[0]?.code, 'invalid_rust_runtime_provider');
 });
 
 void test('native Rust RuntimeBridge provider helper creates product-authority provider metadata', async () => {

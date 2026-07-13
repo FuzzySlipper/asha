@@ -80,7 +80,9 @@ def role_indexes() -> tuple[dict[str, set[str]], dict[str, set[str]], dict[str, 
         for item in ts["consumerPolicies"]
     }
     rust_roles = {
-        item["consumerRole"]: set(item["approvedCrates"])
+        item["consumerRole"]: (
+            set(item["preferredCrates"]) | set(item["quarantinedCrates"])
+        )
         for item in rust["consumerPolicies"]
     }
     rust_exports = {
@@ -334,10 +336,36 @@ def validate_manifest(path: Path) -> tuple[list[Gap], dict[str, Any]]:
 def build_report(paths: list[Path]) -> dict[str, Any]:
     gaps: list[Gap] = []
     manifests = []
+    surface_usage: list[dict[str, str]] = []
+    ts_public = read_json(TS_PUBLIC_PATH)
+    rust_public = read_json(RUST_PUBLIC_PATH)
+    surface_dispositions = {
+        **{item["package"]: "preferred" for item in ts_public["packages"]},
+        **{item["crate"]: item["disposition"] for item in rust_public["crates"]},
+    }
     for path in sorted(paths):
         manifest_gaps, summary = validate_manifest(path)
         gaps.extend(manifest_gaps)
         manifests.append(summary)
+        value = read_json(path)
+        consumer = value.get("consumer", {}) if isinstance(value, dict) else {}
+        for requirement in value.get("requirements", []) if isinstance(value, dict) else []:
+            if not isinstance(requirement, dict):
+                continue
+            surfaces = {
+                surface
+                for surface in (requirement.get("identity"), requirement.get("provider"))
+                if isinstance(surface, str)
+            }
+            for surface in sorted(surfaces):
+                if surface not in surface_dispositions:
+                    continue
+                surface_usage.append({
+                    "consumerId": str(consumer.get("id", "<unknown>")),
+                    "requirement": str(requirement.get("id", "<unknown>")),
+                    "surface": str(surface),
+                    "disposition": surface_dispositions[surface],
+                })
     rendered_gaps = [gap.json() for gap in sorted(set(gaps))]
     return {
         "schemaVersion": 1,
@@ -345,6 +373,10 @@ def build_report(paths: list[Path]) -> dict[str, Any]:
         "manifestCount": len(manifests),
         "requirementCount": sum(item["requirementCount"] for item in manifests),
         "manifests": sorted(manifests, key=lambda item: item["consumerId"]),
+        "surfaceUsage": sorted(
+            surface_usage,
+            key=lambda item: (item["consumerId"], item["requirement"], item["surface"]),
+        ),
         "gaps": rendered_gaps,
     }
 

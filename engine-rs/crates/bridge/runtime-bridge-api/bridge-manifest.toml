@@ -456,7 +456,9 @@ summary = "Submit a primary-fire intent through Rust svc-combat plus rule-lifecy
 
 [[operation]]
 name = "invoke_game_extension_weapon_effect"
-surface = "stable"
+surface = "quarantined"
+quarantine_reason = "Wave 1 legacy weapon-hook adapter retained only for asha-demo task #5734 migration"
+native_wired = true
 input = "protocol_runtime::GameExtensionWeaponEffectInvocationRequest"
 output = "protocol_runtime::GameExtensionWeaponEffectInvocationResult"
 errors = "RuntimeBridgeError"

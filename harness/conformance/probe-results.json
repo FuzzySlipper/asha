@@ -2,19 +2,19 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:d4ab2b41e71d44521517fd173b3b943ab49c81b6c666876b672e535acd636cb0",
+  "inventoryHash": "sha256:7f5bdf56bacf78b6db3a8c5944ba05fbf59c7756c002cafbca80799553d74005",
   "catalogs": [
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:96950478c98dd749e738679ebcdd69304de07309e105d1f7ae42a07ebe922bbd"
+      "hash": "sha256:e1185f2474cbf84c89a8eab6412647e58c90cb0cc7bb62975e9fb0e3caeb6724"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:ec5af2df5df99ad6c9fe6ef132bd501a4c776256a1fcb5b39821842951b5823c"
+      "hash": "sha256:c6a14b8fea895c7abeef71509ddca7815b6abb6e302ead924087c724a4333ee5"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
-      "hash": "sha256:516ae1d0465421f16c73fe4df186602f7676c01679c400abfe29570ae2297236"
+      "hash": "sha256:201042bf9ba0d56d779ef7c3b4c1a933280af0ebe6b8e9bea1c9e8f9de041aeb"
     },
     {
       "path": "harness/public-surface/ts-packages.json",
@@ -22,7 +22,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:943114ff275e4db5df5f6c0cea230b1451ca637ea39f547df156341b313d53a0"
+      "hash": "sha256:d0e730d0c407ac988d3c25a84e394fb345480b559ae1a4b66c06a4c2fee408a8"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
@@ -30,9 +30,10 @@
     }
   ],
   "summary": {
-    "stableOperationCount": 69,
-    "realOperationProbeCount": 69,
+    "stableOperationCount": 68,
+    "realOperationProbeCount": 68,
     "temporaryOperationExemptionCount": 0,
+    "quarantinedOperationCount": 3,
     "semanticProbeCount": 22,
     "deliveryRequirementCount": 33,
     "publicSurfaceCount": 11
@@ -743,37 +744,6 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
           "assertion": "initialize_voxel_volume_authoring_commits_a_real_runtime_model_atomically"
-        }
-      ]
-    },
-    {
-      "operation": "invoke_game_extension_weapon_effect",
-      "status": "probed",
-      "nativeWired": true,
-      "evidenceAssertions": [
-        {
-          "suite": "bridge.rust-authority",
-          "corpus": "bridge.rust-authority",
-          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
-          "assertion": "game_extension_weapon_effect_applies_validated_proposal_through_combat_authority"
-        },
-        {
-          "suite": "bridge.rust-authority",
-          "corpus": "bridge.rust-authority",
-          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
-          "assertion": "game_extension_weapon_effect_commits_lethal_demo_damage_to_session_readout"
-        },
-        {
-          "suite": "bridge.rust-authority",
-          "corpus": "bridge.rust-authority",
-          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
-          "assertion": "game_extension_weapon_effect_invokes_downstream_registered_module_ref"
-        },
-        {
-          "suite": "bridge.rust-authority",
-          "corpus": "bridge.rust-authority",
-          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/game_extension_tests.rs",
-          "assertion": "game_extension_weapon_effect_requires_declared_module"
         }
       ]
     },
@@ -2154,6 +2124,23 @@
       ]
     }
   ],
+  "quarantinedOperations": [
+    {
+      "operation": "invoke_game_extension_weapon_effect",
+      "nativeWired": true,
+      "reason": "Wave 1 legacy weapon-hook adapter retained only for asha-demo task #5734 migration"
+    },
+    {
+      "operation": "load_replay_fixture",
+      "nativeWired": false,
+      "reason": "replay/golden harness; not in the production runtime path"
+    },
+    {
+      "operation": "run_replay_step",
+      "nativeWired": false,
+      "reason": "replay/golden harness; not in the production runtime path"
+    }
+  ],
   "semanticProbes": [
     {
       "id": "gameplay.binding.bootstrap",
@@ -2264,6 +2251,109 @@
       "id": "public.telemetry-snapshot-overlay",
       "suite": "public.telemetry",
       "passed": true
+    }
+  ],
+  "publicSurfaceCoverage": [
+    {
+      "identity": "@asha/contracts",
+      "disposition": "preferred",
+      "probes": [
+        "public.animation-projection",
+        "public.input-pause-demo",
+        "public.integrated-feedback-projection"
+      ]
+    },
+    {
+      "identity": "@asha/game-workspace",
+      "disposition": "preferred",
+      "probes": [
+        "public.prefab-authoring-and-placement"
+      ]
+    },
+    {
+      "identity": "@asha/renderer-host",
+      "disposition": "preferred",
+      "probes": [
+        "public.animation-projection",
+        "public.audio-projection",
+        "public.billboard-projection",
+        "public.input-pause-demo",
+        "public.integrated-feedback-projection",
+        "public.particle-projection",
+        "public.projection-pick",
+        "public.runtime-session.projection",
+        "public.telemetry-snapshot-overlay"
+      ]
+    },
+    {
+      "identity": "@asha/runtime-bridge",
+      "disposition": "preferred",
+      "probes": [
+        "public.animation-projection",
+        "public.input-pause-demo",
+        "public.integrated-feedback-projection",
+        "public.runtime-session.projection"
+      ]
+    },
+    {
+      "identity": "@asha/runtime-session",
+      "disposition": "preferred",
+      "probes": [
+        "public.camera-controller",
+        "public.input-pause-demo",
+        "public.prefab-authoring-and-placement",
+        "public.runtime-session.projection",
+        "public.session-input-replay",
+        "public.session-time-control"
+      ]
+    },
+    {
+      "identity": "@asha/smoke",
+      "disposition": "preferred",
+      "probes": [
+        "public.runtime-session.projection"
+      ]
+    },
+    {
+      "identity": "@asha/ui-dom",
+      "disposition": "preferred",
+      "probes": [
+        "public.runtime-session.projection"
+      ]
+    },
+    {
+      "identity": "asha-gameplay-module-conformance",
+      "disposition": "preferred",
+      "probes": [
+        "gameplay.read.zz-module-conformance"
+      ]
+    },
+    {
+      "identity": "asha-gameplay-module-sdk",
+      "disposition": "preferred",
+      "probes": [
+        "gameplay.binding.bootstrap",
+        "gameplay.downstream.invocation",
+        "gameplay.read.event-bound",
+        "gameplay.read.module-state",
+        "gameplay.trigger.lifecycle"
+      ]
+    },
+    {
+      "identity": "asha-gameplay-runtime-host",
+      "disposition": "quarantined",
+      "probes": [
+        "gameplay.runtime-host.decision",
+        "gameplay.runtime-host.product-loop",
+        "public.prefab-authoring-and-placement"
+      ]
+    },
+    {
+      "identity": "asha-runtime-session-composition",
+      "disposition": "preferred",
+      "probes": [
+        "gameplay.runtime-session-composition"
+      ]
     }
   ],
   "semanticClaimBindings": [

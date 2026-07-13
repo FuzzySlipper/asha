@@ -6,6 +6,7 @@ publish = false
 
 [package.metadata.asha.public-surface]
 status = "public"
+disposition = "preferred"
 role = "downstream-gameplay-module-sdk"
 source-of-truth = "engine-rs/crates/rules/gameplay-module-sdk"
 allowed-consumer-roles = ["asha-demo", "asha-testing", "asha-rulebench"]

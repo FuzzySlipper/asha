@@ -1,6 +1,8 @@
 import { type RuntimeBridge } from './bridge.js';
 export declare const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = "asha.runtime_bridge.native_rust_provider.v1";
+/** @deprecated Quarantined for asha-demo only; #5734 removes this alias. */
 export declare const LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = "asha_demo.native_runtime_bridge_provider.v1";
+export declare const ASHA_DEMO_NATIVE_PROVIDER_COMPATIBILITY_DIAGNOSTIC = "asha.compat.wave1.asha-demo-native-provider-alias";
 export declare const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS: readonly ["ashaRuntimeBridge", "ashaDemoRuntimeBridge"];
 export type NativeRustRuntimeBridgeProviderGlobalName = typeof NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS[number];
 export declare const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS: readonly ["initializeEngine", "loadProjectBundle", "getProjectBundleCompositionStatus", "createCamera", "applyCollisionConstrainedCameraInput", "loadFpsRuntimeSession", "readFpsRuntimeSession", "applyFpsPrimaryFire", "invokeGameExtensionWeaponEffect", "restartFpsRuntimeSession", "applyEnemyDirectNavMovement", "planVoxelConversion", "registerVoxelConversionSource", "registerVoxelConversionMeshAsset", "importVoxelConversionMeshSource", "readVoxelConversionSourceMetadata", "previewVoxelConversion", "applyVoxelConversion", "exportVoxelConversionEvidence", "readVoxelModelInfo", "readVoxelModelWindow", "readVoxelEditHistory", "previewVoxelEditRevert", "applyVoxelEditRevert", "undoVoxelEdit", "redoVoxelEdit", "unloadProjectBundle"];
