@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import tempfile
 import unittest
@@ -53,6 +54,11 @@ class ProofExecutionTests(unittest.TestCase):
         baseline_environment = {
             "CC": "gcc",
             "CFLAGS": "-O1",
+            "CPATH": "/opt/headers-one",
+            "C_INCLUDE_PATH": "/opt/c-headers-one",
+            "HOME": "/home/proof-one",
+            "MACOSX_DEPLOYMENT_TARGET": "13.0",
+            "MAKEFLAGS": "-j2",
             "NODE_ENV": "development",
             "TMPDIR": "/tmp/proof-one",
         }
@@ -70,6 +76,11 @@ class ProofExecutionTests(unittest.TestCase):
         for key, changed_value in (
             ("CC", "clang"),
             ("CFLAGS", "-O2"),
+            ("CPATH", "/opt/headers-two"),
+            ("C_INCLUDE_PATH", "/opt/c-headers-two"),
+            ("HOME", "/home/proof-two"),
+            ("MACOSX_DEPLOYMENT_TARGET", "14.0"),
+            ("MAKEFLAGS", "-j8"),
             ("NODE_ENV", "production"),
             ("TMPDIR", "/tmp/proof-two"),
         ):
@@ -84,6 +95,73 @@ class ProofExecutionTests(unittest.TestCase):
             )
             with self.subTest(key=key):
                 self.assertNotEqual(baseline, changed)
+
+    def test_cargo_toolchain_tracks_configured_external_tools_and_libclang(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            tool = root / "configured-tool"
+            tool.write_text("#!/bin/sh\necho configured-tool-one\n", encoding="utf-8")
+            tool.chmod(0o755)
+            libclang = root / "libclang.so"
+            libclang.write_bytes(b"libclang-one")
+            environment = {
+                **os.environ,
+                "AR": str(tool),
+                "CC": str(tool),
+                "CXX": str(tool),
+                "LD": str(tool),
+                "RANLIB": str(tool),
+                "RUSTC_LINKER": str(tool),
+                "CLANG_PATH": str(tool),
+                "LLVM_CONFIG_PATH": str(tool),
+                "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER": str(tool),
+                "LIBCLANG_PATH": str(libclang),
+                "HOME": str(root / "home"),
+                "CARGO_HOME": str(root / "cargo-home"),
+            }
+            cargo_home = pathlib.Path(environment["CARGO_HOME"])
+            cargo_home.mkdir(parents=True)
+            cargo_config = cargo_home / "config.toml"
+            cargo_config.write_text(
+                "[target.x86_64-unknown-linux-gnu]\n"
+                f'linker = "{tool}"\n',
+                encoding="utf-8",
+            )
+            first = execution.toolchain_digest(["cargo", "test"], environment)
+            for key in (
+                "external:ar",
+                "external:cc",
+                "external:cxx",
+                "external:linker",
+                "external:ranlib",
+                "external:CLANG_PATH",
+                "external:LLVM_CONFIG_PATH",
+                "external:CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER",
+                "external:LIBCLANG_PATH",
+                f"cargo-config:{cargo_config}:target.x86_64-unknown-linux-gnu.linker",
+            ):
+                with self.subTest(key=key):
+                    self.assertIn(key, first)
+
+            tool.write_text("#!/bin/sh\necho configured-tool-two\n", encoding="utf-8")
+            tool.chmod(0o755)
+            libclang.write_bytes(b"libclang-two")
+            cargo_config.write_text(
+                "[target.x86_64-unknown-linux-gnu]\n"
+                f'linker = "{tool}"\n'
+                'rustflags = ["-C", "target-cpu=native"]\n',
+                encoding="utf-8",
+            )
+            second = execution.toolchain_digest(["cargo", "test"], environment)
+            self.assertNotEqual(first["external:cc"], second["external:cc"])
+            self.assertNotEqual(
+                first["external:LIBCLANG_PATH"],
+                second["external:LIBCLANG_PATH"],
+            )
+            self.assertNotEqual(
+                first["cargo-configuration"],
+                second["cargo-configuration"],
+            )
 
     def test_command_input_toolchain_and_provider_changes_invalidate_fingerprint(self) -> None:
         definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": ["provider"]}

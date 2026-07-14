@@ -8,8 +8,12 @@ import hashlib
 import json
 import os
 import pathlib
+import re
+import shlex
+import shutil
 import subprocess
 import sys
+import tomllib
 from typing import Any, Iterable
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -88,28 +92,229 @@ def selected_environment(
     return {key: values.get(key, "<unset>") for key in sorted(keys)}
 
 
-def toolchain_digest(command: list[str]) -> dict[str, str]:
+def executable_identity(
+    command_value: str,
+    environment: dict[str, str],
+    *,
+    required: bool,
+) -> str:
+    try:
+        command = shlex.split(command_value)
+    except ValueError as error:
+        raise ExecutionError(f"invalid configured tool command {command_value!r}: {error}") from error
+    if not command:
+        raise ExecutionError("configured tool command is empty")
+    resolved = shutil.which(command[0], path=environment.get("PATH"))
+    if resolved is None:
+        if required:
+            raise ExecutionError(f"toolchain executable is unavailable: {command[0]}")
+        return json.dumps(
+            {"command": command, "status": "unavailable"},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    resolved_path = pathlib.Path(resolved).resolve()
+    version_attempts: list[dict[str, Any]] = []
+    version_output: str | None = None
+    for version_argument in ("--version", "-v"):
+        completed = subprocess.run(
+            [*command, version_argument],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+            env=environment,
+        )
+        output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr) if part.strip()
+        )[:16_384]
+        version_attempts.append({
+            "argument": version_argument,
+            "exitCode": completed.returncode,
+            "output": output,
+        })
+        if completed.returncode == 0:
+            version_output = output
+            break
+    if version_output is None and required:
+        raise ExecutionError(f"toolchain probe failed: {command_value}")
+
+    executable_hash = "<not-a-file>"
+    if resolved_path.is_file():
+        executable_hash = "sha256:" + hashlib.sha256(resolved_path.read_bytes()).hexdigest()
+    return json.dumps(
+        {
+            "command": command,
+            "resolvedExecutable": resolved_path.as_posix(),
+            "executableHash": executable_hash,
+            "version": version_output,
+            "versionAttempts": version_attempts,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def configured_path_identity(value: str) -> str:
+    path = pathlib.Path(value).expanduser().resolve()
+    if not path.exists():
+        return json.dumps(
+            {"configuredPath": path.as_posix(), "status": "unavailable"},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    candidates = [path] if path.is_file() else sorted(
+        candidate
+        for candidate in path.glob("libclang*")
+        if candidate.is_file()
+    )
+    entries = [
+        {
+            "path": candidate.as_posix(),
+            "hash": "sha256:" + hashlib.sha256(candidate.read_bytes()).hexdigest(),
+        }
+        for candidate in candidates
+    ]
+    return json.dumps(
+        {
+            "configuredPath": path.as_posix(),
+            "entries": entries,
+            "status": "available",
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def cargo_configuration_paths(environment: dict[str, str]) -> list[pathlib.Path]:
+    candidates: list[pathlib.Path] = []
+    for directory in (ROOT, *ROOT.parents):
+        candidates.extend((directory / ".cargo/config.toml", directory / ".cargo/config"))
+    cargo_home = environment.get("CARGO_HOME")
+    if cargo_home is None:
+        home = environment.get("HOME")
+        cargo_home = str(pathlib.Path(home) / ".cargo") if home else None
+    if cargo_home is not None:
+        directory = pathlib.Path(cargo_home).expanduser()
+        candidates.extend((directory / "config.toml", directory / "config"))
+    unique: dict[str, pathlib.Path] = {}
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved.is_file():
+            unique[resolved.as_posix()] = resolved
+    return [unique[key] for key in sorted(unique)]
+
+
+def cargo_configuration_identity(paths: list[pathlib.Path]) -> str:
+    return json.dumps(
+        [
+            {
+                "path": path.as_posix(),
+                "hash": "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for path in paths
+        ],
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def cargo_configuration_tool_commands(paths: list[pathlib.Path]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for path in paths:
+        try:
+            document = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as error:
+            raise ExecutionError(f"cannot read Cargo configuration {path}: {error}") from error
+        build = document.get("build", {})
+        if isinstance(build, dict):
+            for key in ("rustc", "rustc-wrapper", "rustc-workspace-wrapper"):
+                value = build.get(key)
+                if isinstance(value, str) and value:
+                    result[f"cargo-config:{path}:{key}"] = value
+        target = document.get("target", {})
+        if isinstance(target, dict):
+            for target_name, settings in target.items():
+                if not isinstance(settings, dict):
+                    continue
+                for key in ("ar", "linker"):
+                    value = settings.get(key)
+                    if isinstance(value, str) and value:
+                        result[f"cargo-config:{path}:target.{target_name}.{key}"] = value
+        configured_environment = document.get("env", {})
+        if isinstance(configured_environment, dict):
+            for key in ("AR", "CC", "CLANG_PATH", "CXX", "LD", "LLVM_CONFIG_PATH", "RANLIB", "RUSTC_LINKER"):
+                value = configured_environment.get(key)
+                if isinstance(value, dict):
+                    value = value.get("value")
+                if isinstance(value, str) and value:
+                    result[f"cargo-config:{path}:env.{key}"] = value
+    return result
+
+
+def cargo_external_tool_commands(environment: dict[str, str]) -> dict[str, tuple[str, bool]]:
+    configured: dict[str, tuple[str, bool]] = {
+        "external:cc": (environment.get("CC", "cc"), "CC" in environment),
+        "external:cxx": (environment.get("CXX", "c++"), "CXX" in environment),
+        "external:ar": (environment.get("AR", "ar"), "AR" in environment),
+        "external:ranlib": (environment.get("RANLIB", "ranlib"), "RANLIB" in environment),
+        "external:linker": (
+            environment.get("RUSTC_LINKER", environment.get("LD", environment.get("CC", "cc"))),
+            any(key in environment for key in ("RUSTC_LINKER", "LD", "CC")),
+        ),
+    }
+    optional_keys = (
+        "CLANG_PATH",
+        "LLVM_CONFIG_PATH",
+        "RUSTC",
+        "RUSTC_WRAPPER",
+        "RUSTC_WORKSPACE_WRAPPER",
+    )
+    for key in optional_keys:
+        value = environment.get(key)
+        if value:
+            configured[f"external:{key}"] = (value, True)
+    target_tool = re.compile(
+        r"^(?:AR|CC|CXX|RANLIB)_.+$"
+        r"|^(?:HOST|TARGET)_(?:AR|CC|CXX|RANLIB)$"
+        r"|^CARGO_TARGET_.+_(?:AR|LINKER)$"
+    )
+    for key, value in environment.items():
+        if value and target_tool.fullmatch(key):
+            configured[f"external:{key}"] = (value, True)
+    return configured
+
+
+def toolchain_digest(
+    command: list[str], environment: dict[str, str] | None = None
+) -> dict[str, str]:
+    effective_environment = dict(os.environ if environment is None else environment)
     executable = command[0]
     if executable == "cargo":
-        probes = [["cargo", "--version"], ["rustc", "--version", "--verbose"]]
+        probes = {"cargo": "cargo", "rustc": effective_environment.get("RUSTC", "rustc")}
     elif executable == "pnpm":
-        probes = [["pnpm", "--version"], ["node", "--version"]]
+        probes = {"pnpm": "pnpm", "node": "node"}
     else:
-        probes = [
-            ["bash", "--version"],
-            ["cargo", "--version"],
-            ["rustc", "--version", "--verbose"],
-            ["pnpm", "--version"],
-            ["node", "--version"],
-        ]
+        probes = {"bash": "bash", "cargo": "cargo", "rustc": "rustc", "pnpm": "pnpm", "node": "node"}
     result: dict[str, str] = {}
-    for probe in probes:
-        completed = subprocess.run(
-            probe, cwd=ROOT, check=False, text=True, capture_output=True
-        )
-        if completed.returncode != 0:
-            raise ExecutionError(f"toolchain probe failed: {' '.join(probe)}")
-        result[" ".join(probe)] = completed.stdout.strip()
+    for label, probe in probes.items():
+        result[label] = executable_identity(probe, effective_environment, required=True)
+    if executable == "cargo":
+        configuration_paths = cargo_configuration_paths(effective_environment)
+        result["cargo-configuration"] = cargo_configuration_identity(configuration_paths)
+        configured_tools = cargo_external_tool_commands(effective_environment)
+        for label, value in cargo_configuration_tool_commands(configuration_paths).items():
+            configured_tools[label] = (value, True)
+        for label, (value, explicitly_configured) in sorted(configured_tools.items()):
+            result[label] = executable_identity(
+                value,
+                effective_environment,
+                required=explicitly_configured,
+            )
+        libclang_path = effective_environment.get("LIBCLANG_PATH")
+        if libclang_path:
+            result["external:LIBCLANG_PATH"] = configured_path_identity(libclang_path)
     return result
 
 
@@ -180,15 +385,19 @@ def make_plan(
     common_inputs = settings.get("commonInputs", [])
     planned: list[dict[str, Any]] = []
     toolchains: dict[tuple[str, ...], dict[str, str]] = {}
+    effective_environment = dict(os.environ if environment is None else environment)
     for identity in selected_ids:
         definition = definitions[identity]
         command = definition["command"]
-        toolchain = toolchains.setdefault(tuple(command[:1]), toolchain_digest(command))
+        toolchain_key = tuple(command[:1])
+        if toolchain_key not in toolchains:
+            toolchains[toolchain_key] = toolchain_digest(command, effective_environment)
+        toolchain = toolchains[toolchain_key]
         fingerprint, inputs = execution_fingerprint(
             definition,
             settings,
             catalog,
-            dict(os.environ if environment is None else environment),
+            effective_environment,
             toolchain,
             input_digest(common_inputs + definition.get("inputs", [])),
         )
