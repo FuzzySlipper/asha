@@ -21,7 +21,6 @@ new-consumer endorsement.
 
 | Concern | Existing consumers | Preferred replacement | Deletion owner |
 |---|---|---|---|
-| Demo-native provider kind/global alias | `asha-demo` | Standard `asha.runtime_bridge.native_rust_provider.v1` at `globalThis.ashaRuntimeBridge` | #5734 |
 | Legacy weapon-effect hook and bridge verb | `asha-demo` | Native `GameplayModuleBehavior` Transform inside `asha-runtime-session-composition` | #5734 |
 | Standalone `asha-gameplay-runtime-host` product host | `asha-demo`, `asha-rulebench`, quarantine fixture `asha-testing` | `StaticRuntimeSessionBuilder` from `asha-runtime-session-composition` | #5734 and Rulebench #5715 |
 | Prototype ProjectBundle bridge DTOs (`ProjectBundleLoadRequest`, `CompositionStatus`, `ProjectBundleSaveSummary`) | engine app/devtools/runtime, `asha-demo`, `asha-studio` | Generated `ProjectBundleManifest`, `DiagnosticReportSet`, and `SaveSummary` contracts | #5737, #5736, and #5733, followed by the same bridge contract revision upstream |
@@ -30,6 +29,10 @@ The inventory records the compatibility version, owning lane, exact code
 boundary, real consumers, diagnostic, fail-closed evidence, and deletion
 condition for each row. Adding an unlisted consumer or reclassifying a
 quarantined Rust root as preferred fails the public-boundary gate.
+
+The Demo-specific native provider kind/global alias is no longer active
+upstream. #5732 removed it as part of #5734's migration to
+`asha.runtime_bridge.native_rust_provider.v1` at `globalThis.ashaRuntimeBridge`.
 
 ## Structural rules
 

@@ -4,14 +4,9 @@ import {
 } from './bridge.js';
 
 export const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha.runtime_bridge.native_rust_provider.v1';
-/** @deprecated Quarantined for asha-demo only; #5734 removes this alias. */
-export const LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND = 'asha_demo.native_runtime_bridge_provider.v1';
-export const ASHA_DEMO_NATIVE_PROVIDER_COMPATIBILITY_DIAGNOSTIC =
-  'asha.compat.wave1.asha-demo-native-provider-alias';
 
 export const NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS = [
   'ashaRuntimeBridge',
-  'ashaDemoRuntimeBridge',
 ] as const;
 export type NativeRustRuntimeBridgeProviderGlobalName = typeof NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS[number];
 
@@ -45,9 +40,7 @@ export const NATIVE_RUST_RUNTIME_BRIDGE_REQUIRED_METHODS = [
   'unloadProjectBundle',
 ] as const;
 
-export type NativeRustRuntimeBridgeProviderKind =
-  | typeof NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND
-  | typeof LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND;
+export type NativeRustRuntimeBridgeProviderKind = typeof NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND;
 
 export type NativeRustRuntimeBridgeProviderDiagnosticCode =
   | 'missing_rust_runtime_backend'
@@ -111,13 +104,12 @@ export interface NativeRustRuntimeBridgeProviderInstallation {
 export interface ResolveNativeRustRuntimeBridgeProviderRequest {
   readonly provider?: NativeRustRuntimeBridgeProviderCandidate | null;
   readonly globalScope?: Record<string, NativeRustRuntimeBridgeProviderCandidate | null | undefined>;
-  readonly providerGlobalNames?: readonly string[];
+  readonly providerGlobalNames?: readonly NativeRustRuntimeBridgeProviderGlobalName[];
   readonly providerKinds?: readonly NativeRustRuntimeBridgeProviderKind[];
 }
 
 interface NativeRustRuntimeBridgeProviderGlobalThis {
   readonly ashaRuntimeBridge?: NativeRustRuntimeBridgeProviderCandidate | null;
-  readonly ashaDemoRuntimeBridge?: NativeRustRuntimeBridgeProviderCandidate | null;
 }
 
 export type NativeRustRuntimeBridgeProviderResolution =
@@ -220,10 +212,7 @@ export async function resolveNativeRustRuntimeBridgeProvider(
   request: ResolveNativeRustRuntimeBridgeProviderRequest = {},
 ): Promise<NativeRustRuntimeBridgeProviderResolution> {
   const lookup = readProviderCandidate(request);
-  const providerKinds = request.providerKinds ?? [
-    NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
-    LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND,
-  ];
+  const providerKinds = request.providerKinds ?? [NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND];
   const fallbackKind = providerKinds[0] ?? NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND;
   const invalidProfile = nativeRustRuntimeBridgeProviderProfile(lookup.providerGlobal, fallbackKind);
   if (lookup.provider === null) {
@@ -315,6 +304,9 @@ function readProviderCandidate(request: ResolveNativeRustRuntimeBridgeProviderRe
   }
   const scope = request.globalScope ?? defaultNativeRustRuntimeBridgeProviderGlobals();
   for (const name of request.providerGlobalNames ?? NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS) {
+    if (!(NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_GLOBALS as readonly string[]).includes(name)) {
+      continue;
+    }
     if (scope[name] !== undefined && scope[name] !== null) {
       return { provider: scope[name], providerGlobal: `globalThis.${name}` };
     }
@@ -326,7 +318,6 @@ function defaultNativeRustRuntimeBridgeProviderGlobals(): Record<string, NativeR
   const globals = globalThis as typeof globalThis & NativeRustRuntimeBridgeProviderGlobalThis;
   return {
     ashaRuntimeBridge: globals.ashaRuntimeBridge,
-    ashaDemoRuntimeBridge: globals.ashaDemoRuntimeBridge,
   };
 }
 

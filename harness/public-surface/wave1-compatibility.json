@@ -2,50 +2,6 @@
   "schemaVersion": 1,
   "entries": [
     {
-      "id": "asha-demo-native-provider-alias",
-      "disposition": "quarantined",
-      "compatibilityVersion": "wave1.v1",
-      "owningLane": "ts-shell",
-      "publicSurfaces": [
-        "@asha/runtime-bridge"
-      ],
-      "publicSymbols": [
-        "LEGACY_ASHA_DEMO_NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND",
-        "NativeRustRuntimeBridgeProviderKind",
-        "globalThis.ashaDemoRuntimeBridge"
-      ],
-      "codeBoundaries": [
-        "ts/packages/runtime-bridge/src/native-runtime-provider.ts"
-      ],
-      "realConsumers": [
-        "asha-demo"
-      ],
-      "replacementPublicPaths": [
-        "@asha/runtime-bridge::NATIVE_RUST_RUNTIME_BRIDGE_PROVIDER_KIND",
-        "globalThis.ashaRuntimeBridge"
-      ],
-      "diagnostic": "asha.compat.wave1.asha-demo-native-provider-alias",
-      "deletionTasks": [
-        5734
-      ],
-      "deletionCondition": "Delete the old provider kind and ashaDemoRuntimeBridge global when #5734 moves Demo to the standard one-cell RuntimeSession provider at globalThis.ashaRuntimeBridge.",
-      "failClosedEvidence": [
-        {
-          "path": "../asha-demo/tests/live-ui.spec.mjs",
-          "token": "asha_demo.native_runtime_bridge_provider.v1"
-        },
-        {
-          "path": "ts/packages/runtime-bridge/src/conformance.test.ts",
-          "token": "quarantined Demo provider alias uses the same fail-closed provider validation"
-        },
-        {
-          "path": "ts/packages/runtime-bridge/src/conformance.test.ts",
-          "token": "native Rust RuntimeBridge provider resolver fails closed without a provider"
-        }
-      ],
-      "forbiddenNewConsumers": true
-    },
-    {
       "id": "legacy-weapon-effect-hook",
       "disposition": "quarantined",
       "compatibilityVersion": "wave1.v1",
