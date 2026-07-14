@@ -4,6 +4,7 @@ import type {
   CameraSnapshot,
   CollisionConstrainedCameraInputEnvelope,
   CommandResult,
+  DeveloperConsoleSnapshot,
   FirstPersonCameraInputEnvelope,
   RenderFrameDiff,
   RuntimeProjectionFrame,
@@ -366,6 +367,7 @@ interface NativeAddonBindings {
   ): NativeFpsEncounterTransitionResult;
   readRenderDiffs(handle: number, cursor: number): RenderFrameDiff;
   readProjectionFrame(handle: number, cursor: number): RuntimeProjectionFrame;
+  readDeveloperConsole(handle: number): DeveloperConsoleSnapshot;
   saveProjectBundle(handle: number): {
     artifactsWritten: number;
     compactedEdits: number;

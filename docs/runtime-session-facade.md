@@ -2,6 +2,8 @@
 
 Status: current public semantic facade. Rust-backed RuntimeSession authority is the product/live path; the explicit reference helper remains a fixture and compatibility surface only.
 
+The facade also exposes `readDeveloperConsole()`, a bounded generated-contract snapshot for game pull-down consoles and authoring activity/status presentation. See [developer-console-projection.md](developer-console-projection.md). It is observational current-session state, not replay evidence or an authority mutation surface.
+
 Named input action contracts and the Rust Session-level resolver are described
 in [named-input-actions.md](named-input-actions.md). Browser platform samples,
 resolved gameplay/editor actions, and Session time control all converge on typed

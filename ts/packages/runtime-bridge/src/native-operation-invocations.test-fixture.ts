@@ -171,6 +171,7 @@ export function createNativeOperationInvocations(
     ['applySceneObjectCommand', (bridge) => bridge.applySceneObjectCommand({ expectedDocumentHash: 1, command: { kind: 'select', id: null } })],
     ['readRenderDiffs', (bridge) => bridge.readRenderDiffs(frameCursor(0))],
     ['readProjectionFrame', (bridge) => bridge.readProjectionFrame(frameCursor(0))],
+    ['readDeveloperConsole', (bridge) => bridge.readDeveloperConsole()],
     ['createCamera', (bridge) => bridge.createCamera(input.cameraCreate)],
     ['applyCameraModeCommand', (bridge) => bridge.applyCameraModeCommand(input.cameraMode)],
     ['applyCameraNavigationInput', (bridge) => bridge.applyCameraNavigationInput(input.cameraNavigation)],

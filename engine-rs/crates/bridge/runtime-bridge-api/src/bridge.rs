@@ -263,6 +263,9 @@ pub trait RuntimeBridge {
     ) -> BridgeResult<GameplayPrefabPartInteractionReceipt>;
     /// Read the generated scene plus ordered non-scene projection frame.
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame>;
+    /// Read bounded consumer-facing runtime status records. Observational only;
+    /// this is neither durable replay evidence nor an authority mutation path.
+    fn read_developer_console(&self) -> BridgeResult<DeveloperConsoleSnapshot>;
     /// Invoke a declared game-owned Rust weapon-effect hook, validate its
     /// bounded proposal, and apply accepted output through FPS combat authority.
     fn invoke_game_extension_weapon_effect(

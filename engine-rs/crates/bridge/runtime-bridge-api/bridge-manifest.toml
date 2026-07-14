@@ -111,7 +111,7 @@ initialization = "requiresEngine"
 project_bundle = "retainedAcrossLoadUnload"
 snapshot_hash = "projectionFrame"
 resource_lifetime = "frame"
-operations = ["read_render_diffs", "read_projection_frame"]
+operations = ["read_render_diffs", "read_projection_frame", "read_developer_console"]
 
 [[capability]]
 id = "bundle_lifecycle"
@@ -543,6 +543,14 @@ input = "FrameCursor"
 output = "protocol_presentation::RuntimeProjectionFrame"
 errors = "RuntimeBridgeError"
 summary = "Read one authority-tick scene frame plus ordered typed non-scene presentation operations. Presentation realization is excluded from replay truth."
+
+[[operation]]
+name = "read_developer_console"
+surface = "stable"
+input = "Unit"
+output = "protocol_diagnostics::DeveloperConsoleSnapshot"
+errors = "RuntimeBridgeError"
+summary = "Read a bounded, deterministic consumer developer-console projection. This observational snapshot is not durable replay evidence or an authority command path."
 
 [[operation]]
 name = "read_render_diffs"

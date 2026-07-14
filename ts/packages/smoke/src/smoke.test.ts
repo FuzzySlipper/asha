@@ -203,6 +203,7 @@ function bridgeWith(overrides: Partial<RuntimeBridge>): RuntimeBridge {
     applySceneObjectCommand: base.applySceneObjectCommand.bind(base),
     readRenderDiffs: base.readRenderDiffs.bind(base),
     readProjectionFrame: base.readProjectionFrame.bind(base),
+    readDeveloperConsole: base.readDeveloperConsole.bind(base),
     createCamera: base.createCamera.bind(base),
     applyCameraModeCommand: base.applyCameraModeCommand.bind(base),
     applyCameraNavigationInput: base.applyCameraNavigationInput.bind(base),

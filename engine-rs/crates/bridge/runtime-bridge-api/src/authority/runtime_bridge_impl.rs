@@ -46,7 +46,25 @@ impl RuntimeBridge for EngineBridge {
     }
 
     fn submit_commands(&mut self, batch: CommandBatch) -> BridgeResult<CommandResult> {
-        self.submit_commands_with_voxel_history(batch)
+        let result = self.submit_commands_with_voxel_history(batch)?;
+        if result.rejected > 0 {
+            self.record_developer_console(DeveloperConsoleEmission {
+                severity: DiagnosticSeverity::Warning,
+                category: DeveloperConsoleCategory::Runtime,
+                source: DeveloperConsoleSource::Authority,
+                message: format!("authority rejected {} voxel command(s)", result.rejected),
+                correlation: None,
+                authority_tick: Some(self.time.authority_tick),
+                detail: DeveloperConsoleDetail {
+                    code: "operation_rejected".to_owned(),
+                    operation: Some("submit_commands".to_owned()),
+                    resource_kind: None,
+                    resource_id: None,
+                    reason: result.rejections.first().map(ToString::to_string),
+                },
+            });
+        }
+        Ok(result)
     }
 
     fn pick_voxel(&self, ray: PickRay) -> BridgeResult<PickResult> {
@@ -1171,6 +1189,36 @@ impl RuntimeBridge for EngineBridge {
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame> {
         self.require_initialized("read_projection_frame")?;
         let frame = self.projection.projection_frame.as_ref().ok_or_else(|| {
+            self.record_developer_console(DeveloperConsoleEmission {
+                severity: DiagnosticSeverity::Error,
+                category: DeveloperConsoleCategory::Capability,
+                source: DeveloperConsoleSource::RuntimeHost,
+                message: "render projection capability is unavailable".to_owned(),
+                correlation: Some(format!("projection-cursor:{cursor}")),
+                authority_tick: Some(self.time.authority_tick),
+                detail: DeveloperConsoleDetail {
+                    code: "capability_unavailable".to_owned(),
+                    operation: Some("read_projection_frame".to_owned()),
+                    resource_kind: None,
+                    resource_id: None,
+                    reason: Some("projection frame missing after initialization".to_owned()),
+                },
+            });
+            self.record_developer_console(DeveloperConsoleEmission {
+                severity: DiagnosticSeverity::Error,
+                category: DeveloperConsoleCategory::Resource,
+                source: DeveloperConsoleSource::Projection,
+                message: "render projection is unavailable".to_owned(),
+                correlation: Some(format!("projection-cursor:{cursor}")),
+                authority_tick: Some(self.time.authority_tick),
+                detail: DeveloperConsoleDetail {
+                    code: "resource_degraded".to_owned(),
+                    operation: Some("read_projection_frame".to_owned()),
+                    resource_kind: Some("render_projection".to_owned()),
+                    resource_id: None,
+                    reason: Some("projection frame missing after initialization".to_owned()),
+                },
+            });
             RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::Internal,
                 "projection frame is unavailable after initialization",
@@ -1183,6 +1231,11 @@ impl RuntimeBridge for EngineBridge {
             ));
         }
         Ok(frame.clone())
+    }
+
+    fn read_developer_console(&self) -> BridgeResult<DeveloperConsoleSnapshot> {
+        self.require_initialized("read_developer_console")?;
+        Ok(self.developer_console_snapshot())
     }
 
     fn invoke_game_extension_weapon_effect(

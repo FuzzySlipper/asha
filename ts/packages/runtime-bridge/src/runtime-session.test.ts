@@ -520,6 +520,10 @@ void test('RuntimeSession initializes, ticks, reads projection and telemetry, th
   assert.equal(projection.renderDiffCount, 0);
   assert.ok(projection.projectionHash.startsWith('fnv1a64:'));
 
+  const developerConsole = session.readDeveloperConsole();
+  assert.equal(developerConsole.records[0]?.detail.code, 'capability_attached');
+  assert.equal(developerConsole.records[0]?.source, 'authority');
+
   const telemetry = session.readTelemetry();
   assert.equal(telemetry.acceptedCommandCount, 1);
   assert.equal(telemetry.rejectedCommandCount, 0);

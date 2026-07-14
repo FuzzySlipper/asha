@@ -1005,6 +1005,11 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
     };
   }
 
+  readDeveloperConsole() {
+    this.#requireInitialized('readDeveloperConsole');
+    return this.#bridge.readDeveloperConsole();
+  }
+
   readTelemetry(): RuntimeSessionTelemetrySummary {
     this.#requireInitialized('readTelemetry');
     return {

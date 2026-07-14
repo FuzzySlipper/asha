@@ -56,6 +56,7 @@ handwritten semantic exports. Quarantined compatibility wiring is explicit.
 | `read_fps_encounter_director` | `gameplay` | stable | `protocol_runtime::FpsEncounterLifecycleInput` | `protocol_runtime::FpsEncounterDirectorSnapshot` | `RuntimeBridgeError` |
 | `apply_fps_encounter_transition` | `gameplay` | stable | `protocol_runtime::FpsEncounterTransitionRequest` | `protocol_runtime::FpsEncounterTransitionResult` | `RuntimeBridgeError` |
 | `read_projection_frame` | `projection` | stable | `FrameCursor` | `protocol_presentation::RuntimeProjectionFrame` | `RuntimeBridgeError` |
+| `read_developer_console` | `projection` | stable | `Unit` | `protocol_diagnostics::DeveloperConsoleSnapshot` | `RuntimeBridgeError` |
 | `read_render_diffs` | `projection` | stable | `FrameCursor` | `protocol_render::RenderFrameDiffDescriptor` | `RuntimeBridgeError` |
 | `read_model_material_preview` | `scene_entities` | stable | `protocol_render::ModelMaterialPreviewRequest` | `protocol_render::ModelMaterialPreviewSnapshot` | `RuntimeBridgeError` |
 | `read_scene_object_snapshot` | `scene_entities` | stable | `Unit` | `protocol_scene::SceneObjectSnapshot` | `RuntimeBridgeError` |

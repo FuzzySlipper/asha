@@ -574,6 +574,17 @@ pub(crate) const GENERATED_BRIDGE_BINDINGS: &[GeneratedBridgeBinding] = &[
         surface: GeneratedBridgeSurface::Stable,
     },
     GeneratedBridgeBinding {
+        manifest_name: "read_developer_console",
+        facade_method: "readDeveloperConsole",
+        capability: "projection",
+        input: "Unit",
+        output: "protocol_diagnostics::DeveloperConsoleSnapshot",
+        errors: "RuntimeBridgeError",
+        max_input_bytes: 8388608,
+        max_output_bytes: 8388608,
+        surface: GeneratedBridgeSurface::Stable,
+    },
+    GeneratedBridgeBinding {
         manifest_name: "read_render_diffs",
         facade_method: "readRenderDiffs",
         capability: "projection",

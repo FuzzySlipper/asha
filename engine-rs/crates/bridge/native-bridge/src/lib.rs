@@ -338,6 +338,79 @@ pub struct NativeRuntimeProjectionFrame {
     pub presentation: NativePresentationFrameDiff,
 }
 
+#[napi(object)]
+pub struct NativeDeveloperConsoleDetail {
+    pub code: String,
+    pub operation: Option<String>,
+    pub resource_kind: Option<String>,
+    pub resource_id: Option<String>,
+    pub reason: Option<String>,
+}
+
+#[napi(object)]
+pub struct NativeDeveloperConsoleRecord {
+    pub sequence: i64,
+    pub severity: String,
+    pub category: String,
+    pub source: String,
+    pub message: String,
+    pub correlation: Option<String>,
+    pub authority_tick: Option<i64>,
+    pub session: Option<String>,
+    pub detail: NativeDeveloperConsoleDetail,
+}
+
+#[napi(object)]
+pub struct NativeDeveloperConsoleSnapshot {
+    pub schema_version: u32,
+    pub records: Vec<NativeDeveloperConsoleRecord>,
+    pub dropped_record_count: i64,
+    pub first_sequence: Option<i64>,
+    pub next_sequence: i64,
+    pub snapshot_hash: String,
+}
+
+impl From<runtime_bridge_api::DeveloperConsoleSnapshot> for NativeDeveloperConsoleSnapshot {
+    fn from(value: runtime_bridge_api::DeveloperConsoleSnapshot) -> Self {
+        Self {
+            schema_version: value.schema_version,
+            records: value
+                .records
+                .into_iter()
+                .map(|record| NativeDeveloperConsoleRecord {
+                    sequence: record.sequence as i64,
+                    severity: record.severity.as_str().to_owned(),
+                    category: serde_json::to_value(record.category)
+                        .expect("console category serializes")
+                        .as_str()
+                        .expect("console category is a string")
+                        .to_owned(),
+                    source: serde_json::to_value(record.source)
+                        .expect("console source serializes")
+                        .as_str()
+                        .expect("console source is a string")
+                        .to_owned(),
+                    message: record.message,
+                    correlation: record.correlation,
+                    authority_tick: record.authority_tick.map(|tick| tick as i64),
+                    session: record.session,
+                    detail: NativeDeveloperConsoleDetail {
+                        code: record.detail.code,
+                        operation: record.detail.operation,
+                        resource_kind: record.detail.resource_kind,
+                        resource_id: record.detail.resource_id,
+                        reason: record.detail.reason,
+                    },
+                })
+                .collect(),
+            dropped_record_count: value.dropped_record_count as i64,
+            first_sequence: value.first_sequence.map(|sequence| sequence as i64),
+            next_sequence: value.next_sequence as i64,
+            snapshot_hash: value.snapshot_hash,
+        }
+    }
+}
+
 impl From<RuntimeProjectionFrame> for NativeRuntimeProjectionFrame {
     fn from(value: RuntimeProjectionFrame) -> Self {
         debug_assert!(
@@ -713,6 +786,16 @@ pub fn read_projection_frame(
         bridge
             .read_projection_frame(cursor)
             .map(NativeRuntimeProjectionFrame::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
+pub fn read_developer_console(handle: i64) -> napi::Result<NativeDeveloperConsoleSnapshot> {
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_developer_console()
+            .map(NativeDeveloperConsoleSnapshot::from)
             .map_err(to_napi)
     })
 }

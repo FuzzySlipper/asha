@@ -362,6 +362,7 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
 
 mod camera_modes;
 mod core;
+mod developer_console;
 mod fps;
 mod input;
 mod mesh_import;

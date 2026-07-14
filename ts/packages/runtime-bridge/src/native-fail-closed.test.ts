@@ -788,6 +788,14 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       calls.push(`projection:${cursor}`);
       return { schemaVersion: 1, authorityTick: cursor, scene: { ops: [] }, presentation: { replayScope: 'excludedFromReplayTruth', ops: [] } };
     },
+    readDeveloperConsole: (_handle: number) => ({
+      schemaVersion: 1,
+      records: [],
+      droppedRecordCount: 0,
+      firstSequence: null,
+      nextSequence: 0,
+      snapshotHash: 'fnv1a64:console-empty',
+    }),
     saveProjectBundle: (handle: number) => {
       void handle;
       calls.push('save');
@@ -1655,6 +1663,31 @@ void test('native projection decoding restores nullable contract fields omitted 
       visible: null,
     });
   }
+});
+
+void test('native developer console restores nullable fields omitted by napi', () => {
+  const addon = fakeAddon();
+  addon.readDeveloperConsole = () => ({
+    schemaVersion: 1,
+    records: [{
+      sequence: 0,
+      severity: 'warning',
+      category: 'resource',
+      source: 'projection',
+      message: 'audio unavailable',
+      detail: { code: 'resource_degraded' },
+    }],
+    droppedRecordCount: 0,
+    nextSequence: 1,
+    snapshotHash: 'fnv1a64:console',
+  }) as never;
+  const bridge = new NativeRuntimeBridge(addon);
+  bridge.initializeEngine({ seed: 1 });
+
+  const snapshot = bridge.readDeveloperConsole();
+  assert.equal(snapshot.firstSequence, null);
+  assert.equal(snapshot.records[0]?.correlation, null);
+  assert.equal(snapshot.records[0]?.detail.resourceId, null);
 });
 
 void test('native addon semantic errors are reclassified into RuntimeBridgeError', () => {

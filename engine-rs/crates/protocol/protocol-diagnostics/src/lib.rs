@@ -646,6 +646,78 @@ impl RendererResourceReport {
     }
 }
 
+// ── Consumer developer console ───────────────────────────────────────────────────────────────
+
+/// Contract version for the bounded consumer-facing developer console.
+pub const DEVELOPER_CONSOLE_SCHEMA_VERSION: u32 = 1;
+
+/// Hard authority-side retention limit for one runtime session.
+pub const DEVELOPER_CONSOLE_MAX_RECORDS: usize = 128;
+
+/// Hard per-authority-tick admission limit. Additional records are counted but
+/// not retained, preventing one failing subsystem from flooding consumers.
+pub const DEVELOPER_CONSOLE_MAX_RECORDS_PER_TICK: usize = 16;
+
+/// Consumer-oriented grouping; this is intentionally smaller than the proof and
+/// lane-routing taxonomies used by operator tooling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DeveloperConsoleCategory {
+    Runtime,
+    Capability,
+    Resource,
+    Gameplay,
+}
+
+/// Engine subsystem that observed a console-worthy condition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DeveloperConsoleSource {
+    Authority,
+    Projection,
+    RuntimeHost,
+}
+
+/// Stable structured context. This deliberately avoids arbitrary JSON and raw
+/// state dumps while retaining useful correlation fields for a game or editor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeveloperConsoleDetail {
+    pub code: String,
+    pub operation: Option<String>,
+    pub resource_kind: Option<String>,
+    pub resource_id: Option<String>,
+    pub reason: Option<String>,
+}
+
+/// One deterministically ordered, observational runtime console record.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeveloperConsoleRecord {
+    pub sequence: u64,
+    pub severity: DiagnosticSeverity,
+    pub category: DeveloperConsoleCategory,
+    pub source: DeveloperConsoleSource,
+    pub message: String,
+    pub correlation: Option<String>,
+    pub authority_tick: Option<u64>,
+    pub session: Option<String>,
+    pub detail: DeveloperConsoleDetail,
+}
+
+/// Bounded current-session projection. It is not durable replay evidence and it
+/// carries no authority mutation verbs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeveloperConsoleSnapshot {
+    pub schema_version: u32,
+    pub records: Vec<DeveloperConsoleRecord>,
+    pub dropped_record_count: u64,
+    pub first_sequence: Option<u64>,
+    pub next_sequence: u64,
+    pub snapshot_hash: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

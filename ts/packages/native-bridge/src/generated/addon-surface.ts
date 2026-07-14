@@ -54,6 +54,7 @@ const GENERATED_NATIVE_ADDON_EXPORT_NAMES = [
   'readFpsEncounterDirector',
   'applyFpsEncounterTransition',
   'readProjectionFrame',
+  'readDeveloperConsole',
   'readRenderDiffs',
   'readModelMaterialPreview',
   'readSceneObjectSnapshot',

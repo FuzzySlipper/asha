@@ -165,6 +165,25 @@ struct BridgeReplayEvidenceState {
     voxel_conversion_evidence: Vec<VoxelConversionEvidenceRef>,
 }
 
+#[derive(Debug, Default)]
+struct BridgeDeveloperConsoleState {
+    records: Vec<DeveloperConsoleRecord>,
+    dropped_record_count: u64,
+    next_sequence: u64,
+    admitted_tick: Option<u64>,
+    admitted_count: usize,
+}
+
+pub(crate) struct DeveloperConsoleEmission {
+    pub severity: DiagnosticSeverity,
+    pub category: DeveloperConsoleCategory,
+    pub source: DeveloperConsoleSource,
+    pub message: String,
+    pub correlation: Option<String>,
+    pub authority_tick: Option<u64>,
+    pub detail: DeveloperConsoleDetail,
+}
+
 /// Engine-owned RuntimeBridge authority state. Large payloads are owned by the
 /// [`RuntimeBufferProvider`]; the seed buffer is allocated as the first handle
 /// (`0`) so buffer verbs exercise the real provider rather than a bespoke `Vec`.
@@ -179,6 +198,7 @@ pub struct EngineBridge {
     gameplay: BridgeGameplayState,
     projection: BridgeProjectionState,
     evidence: BridgeReplayEvidenceState,
+    developer_console: RefCell<BridgeDeveloperConsoleState>,
 }
 
 /// The bundle schema and protocol versions this engine bridge understands.
@@ -199,6 +219,92 @@ const GAME_RULE_DETERMINISTIC_REQUIREMENTS: &[&str] = &[
     "no-ts-callback",
 ];
 const VOXEL_MODEL_WINDOW_MAX_SAMPLES: u64 = 4096;
+
+impl EngineBridge {
+    pub(crate) fn reset_developer_console(&self) {
+        *self.developer_console.borrow_mut() = BridgeDeveloperConsoleState::default();
+    }
+
+    pub(crate) fn record_developer_console(&self, emission: DeveloperConsoleEmission) {
+        let mut state = self.developer_console.borrow_mut();
+        if state.admitted_tick != emission.authority_tick {
+            state.admitted_tick = emission.authority_tick;
+            state.admitted_count = 0;
+        }
+        if state.admitted_count >= DEVELOPER_CONSOLE_MAX_RECORDS_PER_TICK {
+            state.dropped_record_count = state.dropped_record_count.saturating_add(1);
+            return;
+        }
+        state.admitted_count += 1;
+
+        let sequence = state.next_sequence;
+        state.next_sequence = state.next_sequence.saturating_add(1);
+        let session = self
+            .bundle
+            .engine
+            .map(|handle| format!("engine:{}", handle.raw()));
+        state.records.push(DeveloperConsoleRecord {
+            sequence,
+            severity: emission.severity,
+            category: emission.category,
+            source: emission.source,
+            message: Self::bounded_console_text(&emission.message, 512),
+            correlation: emission
+                .correlation
+                .map(|value| Self::bounded_console_text(&value, 160)),
+            authority_tick: emission.authority_tick,
+            session,
+            detail: DeveloperConsoleDetail {
+                code: Self::bounded_console_text(&emission.detail.code, 96),
+                operation: emission
+                    .detail
+                    .operation
+                    .map(|value| Self::bounded_console_text(&value, 96)),
+                resource_kind: emission
+                    .detail
+                    .resource_kind
+                    .map(|value| Self::bounded_console_text(&value, 96)),
+                resource_id: emission
+                    .detail
+                    .resource_id
+                    .map(|value| Self::bounded_console_text(&value, 160)),
+                reason: emission
+                    .detail
+                    .reason
+                    .map(|value| Self::bounded_console_text(&value, 256)),
+            },
+        });
+        if state.records.len() > DEVELOPER_CONSOLE_MAX_RECORDS {
+            state.records.remove(0);
+            state.dropped_record_count = state.dropped_record_count.saturating_add(1);
+        }
+    }
+
+    pub(crate) fn developer_console_snapshot(&self) -> DeveloperConsoleSnapshot {
+        let state = self.developer_console.borrow();
+        let first_sequence = state.records.first().map(|record| record.sequence);
+        let canonical = serde_json::to_string(&(
+            DEVELOPER_CONSOLE_SCHEMA_VERSION,
+            &state.records,
+            state.dropped_record_count,
+            first_sequence,
+            state.next_sequence,
+        ))
+        .expect("developer console contract is serializable");
+        DeveloperConsoleSnapshot {
+            schema_version: DEVELOPER_CONSOLE_SCHEMA_VERSION,
+            records: state.records.clone(),
+            dropped_record_count: state.dropped_record_count,
+            first_sequence,
+            next_sequence: state.next_sequence,
+            snapshot_hash: format!("fnv1a64:{}", Self::fnv1a64(&canonical)),
+        }
+    }
+
+    fn bounded_console_text(value: &str, max_chars: usize) -> String {
+        value.chars().take(max_chars).collect()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 struct VoxelConversionTargetAuthority {

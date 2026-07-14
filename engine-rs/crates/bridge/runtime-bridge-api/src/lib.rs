@@ -18,7 +18,10 @@
 
 #![forbid(unsafe_code)]
 
-pub(crate) use std::collections::{BTreeMap, BTreeSet};
+pub(crate) use std::{
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet},
+};
 
 pub(crate) use core_assets::{AssetHash, AssetId, AssetReference, AssetVersionReq};
 pub(crate) use core_catalog::{Catalog, CatalogEntry};
@@ -46,7 +49,12 @@ pub use game_rule_extension::{
     GameExtensionTraceEntry, GameRuleHookDeclaration, GameRuleModuleManifest, GameRuleModuleRef,
     WeaponEffectHookRequest,
 };
-pub(crate) use protocol_diagnostics::DiagnosticSeverity;
+pub use protocol_diagnostics::{
+    DeveloperConsoleCategory, DeveloperConsoleDetail, DeveloperConsoleRecord,
+    DeveloperConsoleSnapshot, DeveloperConsoleSource, DiagnosticSeverity,
+    DEVELOPER_CONSOLE_MAX_RECORDS, DEVELOPER_CONSOLE_MAX_RECORDS_PER_TICK,
+    DEVELOPER_CONSOLE_SCHEMA_VERSION,
+};
 pub(crate) use protocol_entity_authoring::{
     AuthoringTransform, EntityDefinition, EntityDefinitionCapability, EntityDefinitionSourceTrace,
 };

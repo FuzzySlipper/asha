@@ -15,6 +15,7 @@ import type {
   CollisionConstrainedCameraInputEnvelope,
   CommandBatch,
   CommandResult,
+  DeveloperConsoleSnapshot,
   Face,
   FirstPersonCameraInputEnvelope,
   FlatSceneDocument,
@@ -1383,6 +1384,36 @@ export class MockRuntimeBridge implements RuntimeBridge {
         replayScope: 'excludedFromReplayTruth',
         ops: [],
       },
+    };
+  }
+
+  readDeveloperConsole(): DeveloperConsoleSnapshot {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'readDeveloperConsole before initializeEngine');
+    }
+    return {
+      schemaVersion: 1,
+      records: [{
+        sequence: 0,
+        severity: 'info',
+        category: 'capability',
+        source: 'authority',
+        message: 'mock runtime capability set attached',
+        correlation: `engine:${this.#engine}`,
+        authorityTick: 0,
+        session: `engine:${this.#engine}`,
+        detail: {
+          code: 'capability_attached',
+          operation: 'initialize_engine',
+          resourceKind: null,
+          resourceId: null,
+          reason: null,
+        },
+      }],
+      droppedRecordCount: 0,
+      firstSequence: 0,
+      nextSequence: 1,
+      snapshotHash: `mock-console:${this.#engine}`,
     };
   }
 

@@ -1126,6 +1126,11 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
     };
   }
 
+  readDeveloperConsole() {
+    this.#requireInitialized('readDeveloperConsole');
+    return this.#bridge.readDeveloperConsole();
+  }
+
   readTelemetry(): RuntimeSessionTelemetrySummary {
     this.#requireInitialized('readTelemetry');
     return {

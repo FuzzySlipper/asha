@@ -9,6 +9,7 @@ import type {
   CameraProjectionRequest,
   CollisionConstrainedCameraInputEnvelope,
   CommandBatch,
+  DeveloperConsoleSnapshot,
   FirstPersonCameraInputEnvelope,
   GameRuleCatalog,
   GameRuleResolutionRequest,
@@ -207,6 +208,7 @@ export interface RuntimeSessionFacade {
   readEcrpRuntimeReadout(): RuntimeSessionEcrpReadout;
   readCameraProjection(request: CameraProjectionRequest): RuntimeSessionCameraProjectionReadout;
   readAnimationIntent(): RuntimeSessionAnimationIntentReadout; readProjection(): RuntimeSessionProjectionSummary;
+  readDeveloperConsole(): DeveloperConsoleSnapshot;
   readTelemetry(): RuntimeSessionTelemetrySummary;
   restart(): RuntimeSessionRestartResult;
 }

@@ -844,6 +844,9 @@ mod tests {
                 "diagnostics.DiagnosticReportSet",
                 "diagnostics.SourceTrace",
                 "diagnostics.RendererResourceReport",
+                "diagnostics.DeveloperConsoleDetail",
+                "diagnostics.DeveloperConsoleRecord",
+                "diagnostics.DeveloperConsoleSnapshot",
             ],
             LEGACY_GAP_REASON,
         );
@@ -1082,6 +1085,9 @@ mod tests {
         }
         assert!(d.contains("export interface DiagnosticReport {"));
         assert!(d.contains("export interface DiagnosticReportSet {"));
+        assert!(d.contains("export interface DeveloperConsoleSnapshot {"));
+        assert!(d.contains("readonly records: readonly DeveloperConsoleRecord[];"));
+        assert!(d.contains("readonly detail: DeveloperConsoleDetail;"));
         assert!(d.contains("export interface DiagnosticSourceRef {"));
         assert!(d.contains("export interface SourceTrace {"));
         assert!(d.contains("export interface RendererResourceReport {"));

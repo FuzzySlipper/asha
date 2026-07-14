@@ -158,7 +158,8 @@
       "resource_lifetime": "frame",
       "operations": [
         "read_render_diffs",
-        "read_projection_frame"
+        "read_projection_frame",
+        "read_developer_console"
       ]
     },
     {
@@ -1389,6 +1390,30 @@
       "outputWire": {
         "owner": "generated",
         "name": "presentation.RuntimeProjectionFrame",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_developer_console",
+      "facadeMethod": "readDeveloperConsole",
+      "capability": "projection",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "Unit",
+      "output": "protocol_diagnostics::DeveloperConsoleSnapshot",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "unit",
+        "name": "Unit",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "diagnostics.DeveloperConsoleSnapshot",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

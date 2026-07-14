@@ -2,6 +2,7 @@
 
 export * from './combat-feedback.js';
 export * from './combat-readout.js';
+export * from './developer-console.js';
 export * from './ecrp-render-target.js';
 export * from './encounter-director.js';
 export * from './enemy-policy.js';

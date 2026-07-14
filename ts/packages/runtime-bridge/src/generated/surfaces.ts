@@ -92,6 +92,7 @@ export interface RuntimeGameplayPort {
 export interface RuntimeProjectionPort {
   readRenderDiffs(input: Session.FrameCursor): Contracts.RenderFrameDiff;
   readProjectionFrame(input: Session.FrameCursor): Contracts.RuntimeProjectionFrame;
+  readDeveloperConsole(): Contracts.DeveloperConsoleSnapshot;
 }
 
 export interface RuntimeBundleLifecyclePort {

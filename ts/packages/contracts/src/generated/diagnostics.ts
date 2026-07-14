@@ -70,3 +70,44 @@ export interface RendererResourceReport {
   readonly resourcesDisposed: number;
   readonly fallbackMaterials: number;
 }
+
+// Contract version for the bounded consumer-facing developer console.
+export const DEVELOPER_CONSOLE_SCHEMA_VERSION = 1;
+
+// Consumer-oriented grouping; this is intentionally smaller than the proof and lane-routing taxonomies used by operator tooling.
+export type DeveloperConsoleCategory = 'runtime' | 'capability' | 'resource' | 'gameplay';
+
+// Engine subsystem that observed a console-worthy condition.
+export type DeveloperConsoleSource = 'authority' | 'projection' | 'runtimeHost';
+
+// Stable structured context. This deliberately avoids arbitrary JSON and raw state dumps while retaining useful correlation fields for a game or editor.
+export interface DeveloperConsoleDetail {
+  readonly code: string;
+  readonly operation: string | null;
+  readonly resourceKind: string | null;
+  readonly resourceId: string | null;
+  readonly reason: string | null;
+}
+
+// One deterministically ordered, observational runtime console record.
+export interface DeveloperConsoleRecord {
+  readonly sequence: number;
+  readonly severity: DiagnosticSeverity;
+  readonly category: DeveloperConsoleCategory;
+  readonly source: DeveloperConsoleSource;
+  readonly message: string;
+  readonly correlation: string | null;
+  readonly authorityTick: number | null;
+  readonly session: string | null;
+  readonly detail: DeveloperConsoleDetail;
+}
+
+// Bounded current-session projection. It is not durable replay evidence and it carries no authority mutation verbs.
+export interface DeveloperConsoleSnapshot {
+  readonly schemaVersion: number;
+  readonly records: readonly DeveloperConsoleRecord[];
+  readonly droppedRecordCount: number;
+  readonly firstSequence: number | null;
+  readonly nextSequence: number;
+  readonly snapshotHash: string;
+}

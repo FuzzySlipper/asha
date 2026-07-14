@@ -936,7 +936,7 @@ const MODULE_PLANS: &[ModulePlan] = &[
         name: "diagnostics",
         preferred_paths: &["protocol/protocol-diagnostics"],
         imports: &[],
-        declarations: "type:DiagnosticSeverity type:DiagnosticScope type:DiagnosticCode type:RemedyAction type:SuggestedRemedy type:DiagnosticSourceRef type:DiagnosticReport type:DiagnosticReportSet type:SourceTrace type:RendererResourceReport",
+        declarations: "type:DiagnosticSeverity type:DiagnosticScope type:DiagnosticCode type:RemedyAction type:SuggestedRemedy type:DiagnosticSourceRef type:DiagnosticReport type:DiagnosticReportSet type:SourceTrace type:RendererResourceReport const:DEVELOPER_CONSOLE_SCHEMA_VERSION type:DeveloperConsoleCategory type:DeveloperConsoleSource type:DeveloperConsoleDetail type:DeveloperConsoleRecord type:DeveloperConsoleSnapshot",
     },
     ModulePlan {
         name: "entityAuthoring",

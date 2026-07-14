@@ -12,6 +12,7 @@ import type {
   CameraSnapshot,
   CommandBatch,
   CommandResult,
+  DeveloperConsoleSnapshot,
   CollisionConstrainedCameraInputEnvelope,
   FirstPersonCameraInputEnvelope,
   ModelMaterialPreviewRequest,
@@ -1376,6 +1377,32 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       () => this.#addon.readProjectionFrame(handle, frame) as NativeRuntimeProjectionFrameDto,
     );
     return projectionFrameFromNative(nativeFrame);
+  }
+
+  readDeveloperConsole(): DeveloperConsoleSnapshot {
+    const handle = this.#requireHandle('readDeveloperConsole');
+    const nativeSnapshot = callNative(() => this.#addon.readDeveloperConsole(handle));
+    const snapshot: DeveloperConsoleSnapshot = {
+      ...nativeSnapshot,
+      firstSequence: nativeSnapshot.firstSequence ?? null,
+      records: nativeSnapshot.records.map((record) => ({
+        ...record,
+        correlation: record.correlation ?? null,
+        authorityTick: record.authorityTick ?? null,
+        session: record.session ?? null,
+        detail: {
+          ...record.detail,
+          operation: record.detail.operation ?? null,
+          resourceKind: record.detail.resourceKind ?? null,
+          resourceId: record.detail.resourceId ?? null,
+          reason: record.detail.reason ?? null,
+        },
+      })),
+    };
+    return validateOperationOutput(
+      'read_developer_console',
+      snapshot,
+    ) as DeveloperConsoleSnapshot;
   }
 
   saveProjectBundle(): ProjectBundleSaveSummary {

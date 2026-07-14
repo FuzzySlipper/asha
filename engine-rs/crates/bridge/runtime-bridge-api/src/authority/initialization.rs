@@ -6,6 +6,7 @@ pub(super) fn initialize(
 ) -> BridgeResult<EngineHandle> {
     let handle = EngineHandle::new(config.seed);
     bridge.bundle.engine = Some(handle);
+    bridge.reset_developer_console();
     bridge.voxel.buffers.reset();
     bridge.scene.scene_document = Some(EngineBridge::initial_scene_document());
     let seed_handle = bridge.voxel.buffers.create(
@@ -50,5 +51,20 @@ pub(super) fn initialize(
     bridge.voxel.voxel_model_infos.clear();
     bridge.voxel.active_voxel_model = None;
     bridge.voxel.voxel_annotation_layers.clear();
+    bridge.record_developer_console(DeveloperConsoleEmission {
+        severity: DiagnosticSeverity::Info,
+        category: DeveloperConsoleCategory::Capability,
+        source: DeveloperConsoleSource::Authority,
+        message: "runtime capability set attached".to_owned(),
+        correlation: Some(format!("engine:{}", handle.raw())),
+        authority_tick: Some(0),
+        detail: DeveloperConsoleDetail {
+            code: "capability_attached".to_owned(),
+            operation: Some("initialize_engine".to_owned()),
+            resource_kind: None,
+            resource_id: None,
+            reason: None,
+        },
+    });
     Ok(handle)
 }

@@ -858,26 +858,60 @@ impl EngineBridge {
                 },
             },
         };
-        let projected = self
+        if self.projection.audio_projector.is_none() {
+            self.record_developer_console(DeveloperConsoleEmission {
+                severity: DiagnosticSeverity::Error,
+                category: DeveloperConsoleCategory::Resource,
+                source: DeveloperConsoleSource::Projection,
+                message: "primary-fire audio presentation is unavailable".to_owned(),
+                correlation: Some(format!("primary-fire:{}", result.replay_hash)),
+                authority_tick: Some(request.tick),
+                detail: DeveloperConsoleDetail {
+                    code: "resource_degraded".to_owned(),
+                    operation: Some("apply_fps_primary_fire".to_owned()),
+                    resource_kind: Some("audio_projector".to_owned()),
+                    resource_id: Some("audio/asha-primary-fire-pulse".to_owned()),
+                    reason: Some("audio projector unavailable".to_owned()),
+                },
+            });
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "audio projector is unavailable after initialization",
+            ));
+        }
+        let projection_result = self
             .projection
             .audio_projector
             .as_mut()
-            .ok_or_else(|| {
-                RuntimeBridgeError::new(
-                    RuntimeBridgeErrorKind::Internal,
-                    "audio projector is unavailable after initialization",
-                )
-            })?
-            .project(meta, op)
-            .map_err(|diagnostic| {
-                RuntimeBridgeError::new(
+            .expect("audio projector availability checked")
+            .project(meta, op);
+        let projected = match projection_result {
+            Ok(projected) => projected,
+            Err(diagnostic) => {
+                self.record_developer_console(DeveloperConsoleEmission {
+                    severity: DiagnosticSeverity::Warning,
+                    category: DeveloperConsoleCategory::Resource,
+                    source: DeveloperConsoleSource::Projection,
+                    message: "primary-fire audio resource was rejected by projection".to_owned(),
+                    correlation: Some(format!("primary-fire:{}", result.replay_hash)),
+                    authority_tick: Some(request.tick),
+                    detail: DeveloperConsoleDetail {
+                        code: "resource_degraded".to_owned(),
+                        operation: Some("apply_fps_primary_fire".to_owned()),
+                        resource_kind: Some("audio_clip".to_owned()),
+                        resource_id: Some("audio/asha-primary-fire-pulse".to_owned()),
+                        reason: Some(format!("{:?}", diagnostic.code)),
+                    },
+                });
+                return Err(RuntimeBridgeError::new(
                     RuntimeBridgeErrorKind::Internal,
                     format!(
                         "built-in primary-fire audio projection rejected: {:?}",
                         diagnostic.code
                     ),
-                )
-            })?;
+                ));
+            }
+        };
 
         if self
             .projection
