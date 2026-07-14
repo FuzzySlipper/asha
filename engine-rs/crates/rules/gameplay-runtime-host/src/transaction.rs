@@ -20,6 +20,7 @@ pub struct GameplayRuntimeResetCheckpoint {
 /// handle and is deliberately not a downstream persistence surface.
 #[derive(Clone)]
 pub struct GameplayRuntimeTransactionCheckpoint {
+    module_state: rule_gameplay_fabric::GameplayModuleStateCheckpoint,
     reaction_frames: Vec<GameplayReactionFrame>,
     decision_continuations: GameplayDecisionContinuations,
     decision_receipts: Vec<GameplayDecisionReceipt>,
@@ -55,6 +56,7 @@ impl GameplayRuntimeHost {
     #[doc(hidden)]
     pub fn checkpoint_transaction_evidence(&self) -> GameplayRuntimeTransactionCheckpoint {
         GameplayRuntimeTransactionCheckpoint {
+            module_state: self.session.module_state.checkpoint(),
             reaction_frames: self.reaction_frames.clone(),
             decision_continuations: self.decision_continuations.clone(),
             decision_receipts: self.decision_receipts.clone(),
@@ -66,6 +68,9 @@ impl GameplayRuntimeHost {
         &mut self,
         checkpoint: GameplayRuntimeTransactionCheckpoint,
     ) {
+        self.session
+            .module_state
+            .restore_checkpoint(checkpoint.module_state);
         self.reaction_frames = checkpoint.reaction_frames;
         self.decision_continuations = checkpoint.decision_continuations;
         self.decision_receipts = checkpoint.decision_receipts;

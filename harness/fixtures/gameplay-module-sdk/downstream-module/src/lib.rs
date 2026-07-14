@@ -986,7 +986,8 @@ mod tests {
     };
     use asha_gameplay_runtime_host::GameplayRuntimeHost;
     use asha_runtime_session_composition::{
-        BundleArtifacts, EnemyDirectNavAuthoritySource, EnemyDirectNavMovementRequest,
+        BundleArtifacts, ComposedGameplayOwner, ComposedGameplayOwnerCheckpoint,
+        ComposedGameplayOwnerOutput, EnemyDirectNavAuthoritySource, EnemyDirectNavMovementRequest,
         EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding,
         FpsBridgeRole, FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability,
         FpsBridgeWeaponMount, FpsPrimaryFireRequest, FpsRuntimeSessionLoadRequest,
@@ -1761,6 +1762,136 @@ mod tests {
     }
 
     #[test]
+    fn composed_rulebench_owner_is_atomic_checkpointed_and_replay_bound() {
+        let mut bridge =
+            StaticRuntimeSessionBuilder::activate_project(rulebench_combat_project_input())
+                .unwrap()
+                .with_gameplay_owner(RulebenchCombatOwner::new(false))
+                .unwrap()
+                .build()
+                .unwrap();
+        let initial = bridge.read_composed_runtime_session().unwrap();
+        let initial_owner = initial.gameplay_owner.clone().unwrap();
+
+        let suspended = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("rulebench-combat"))
+            .unwrap();
+        assert_eq!(suspended.decision.status, GameplayDecisionStatus::Suspended);
+        assert!(suspended.reaction_frame_hashes.is_empty());
+        assert_eq!(suspended.gameplay_owner, initial_owner);
+        let continuation = suspended.decision.continuation.clone().unwrap();
+
+        let mut resumed = public_decision_moment("rulebench-combat");
+        resumed.workspace = continuation.workspace.clone();
+        resumed.resume_token = Some(continuation.token.clone());
+        let accepted = bridge.transact_composed_gameplay_owner(resumed).unwrap();
+        assert_eq!(accepted.decision.status, GameplayDecisionStatus::Accepted);
+        assert_eq!(accepted.reaction_frame_hashes.len(), 1);
+        assert_eq!(
+            accepted.reaction_event_keys,
+            vec![contract("pulse").key(), contract("pulse-result").key()],
+        );
+        assert_ne!(accepted.gameplay_owner.state_hash, initial_owner.state_hash);
+        assert_ne!(
+            accepted.gameplay_owner.replay_hash,
+            initial_owner.replay_hash
+        );
+        let accepted_readout = bridge.read_composed_runtime_session().unwrap();
+        assert_eq!(
+            accepted.runtime_session_hash,
+            accepted_readout.runtime_session_hash
+        );
+        assert_eq!(accepted_readout.gameplay.pending_decision_count, 0);
+        assert_eq!(accepted_readout.gameplay.reaction_frame_count, 1);
+
+        let module_view = bridge
+            .read_gameplay_module_view(GameplayModuleViewRequest {
+                view: pulse_state_view_contract(),
+                scope: GameplayModuleViewScope::Session,
+                expected_runtime_session_hash: accepted.runtime_session_hash.clone(),
+            })
+            .unwrap();
+        assert!(serde_json::from_slice::<u64>(&module_view.canonical_payload).unwrap() > 4);
+
+        let before_replay = bridge.read_composed_runtime_session().unwrap();
+        let mut replayed = public_decision_moment("rulebench-combat");
+        replayed.workspace = continuation.workspace;
+        replayed.resume_token = Some(continuation.token);
+        let replayed = bridge.transact_composed_gameplay_owner(replayed).unwrap();
+        assert_eq!(replayed.decision.status, GameplayDecisionStatus::Failed);
+        assert_eq!(
+            bridge.read_composed_runtime_session().unwrap(),
+            before_replay
+        );
+
+        let stale = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("rulebench-stale"))
+            .unwrap();
+        assert_eq!(stale.decision.status, GameplayDecisionStatus::Stale);
+        assert_eq!(
+            bridge.read_composed_runtime_session().unwrap(),
+            before_replay
+        );
+
+        let checkpoint = bridge.checkpoint_composed_runtime_session().unwrap();
+        assert_eq!(
+            checkpoint.gameplay_owner_checkpoint().unwrap().state_hash(),
+            accepted_readout.gameplay_owner.as_ref().unwrap().state_hash,
+        );
+        let mut restored = StaticRuntimeSessionBuilder::restore_project(
+            rulebench_combat_project_input(),
+            &checkpoint,
+        )
+        .unwrap()
+        .with_gameplay_owner(RulebenchCombatOwner::new(false))
+        .unwrap()
+        .build()
+        .unwrap();
+        assert_eq!(
+            restored.read_composed_runtime_session().unwrap(),
+            *checkpoint.readout()
+        );
+
+        let mismatch = StaticRuntimeSessionBuilder::restore_project(
+            rulebench_combat_project_input(),
+            &checkpoint,
+        )
+        .unwrap()
+        .with_gameplay_owner(RulebenchCombatOwner::mismatch_after_restore());
+        assert!(
+            mismatch.is_err(),
+            "replay-mismatched owner restore must fail"
+        );
+    }
+
+    #[test]
+    fn composed_rulebench_owner_rolls_back_owner_module_and_continuation_on_fact_rejection() {
+        let mut bridge =
+            StaticRuntimeSessionBuilder::activate_project(rulebench_combat_project_input())
+                .unwrap()
+                .with_gameplay_owner(RulebenchCombatOwner::new(true))
+                .unwrap()
+                .build()
+                .unwrap();
+        let suspended = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("rulebench-reject"))
+            .unwrap();
+        let continuation = suspended.decision.continuation.unwrap();
+        let before_resume = bridge.read_composed_runtime_session().unwrap();
+        let mut resumed = public_decision_moment("rulebench-reject");
+        resumed.workspace = continuation.workspace;
+        resumed.resume_token = Some(continuation.token);
+        let error = bridge
+            .transact_composed_gameplay_owner(resumed)
+            .expect_err("malformed resolved fact must reject the whole transaction");
+        assert!(error.message.contains("owner facts"), "{error}");
+        assert_eq!(
+            bridge.read_composed_runtime_session().unwrap(),
+            before_resume
+        );
+    }
+
+    #[test]
     fn composed_bridge_restores_and_finishes_interrupted_scheduler_delivery() {
         let mut bridge =
             StaticRuntimeSessionBuilder::activate_project(runtime_host_project_input(4))
@@ -1828,6 +1959,28 @@ mod tests {
         input
     }
 
+    fn rulebench_combat_project_input() -> GameplayRuntimeProjectInput {
+        let mut input = runtime_host_project_input(4);
+        let mut composition = GameplayStaticCompositionBuilder::new();
+        composition.include_standard_owner_events();
+        composition.add_provider(provider(4));
+        composition.add_provider(decision_provider());
+        input.composition = composition.build().expect("Rulebench-shaped composition");
+        input
+            .declared_reads
+            .extend(decision_topology().declared_reads().iter().cloned());
+        input.triggers = Vec::new();
+        input.scheduler = GameplayRuntimeSchedulerDefinition::new(
+            GameplayOwnerRef {
+                owner_id: "authority.fixture-scheduler".to_owned(),
+                provider_id: "provider.fixture-scheduler".to_owned(),
+            },
+            Vec::new(),
+            vec![decision_contract("operation")],
+        );
+        input
+    }
+
     fn public_decision_moment(decision_id: &str) -> GameplayDecisionMoment {
         let payload = serde_json::to_vec(&DecisionWorkspace {
             amount: 4,
@@ -1873,6 +2026,126 @@ mod tests {
     #[derive(Default)]
     struct PublicDecisionOwner {
         commits: Vec<Vec<u8>>,
+    }
+
+    #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+    #[serde(rename_all = "camelCase", deny_unknown_fields)]
+    struct RulebenchCombatState {
+        revision: u64,
+        committed_amounts: Vec<u64>,
+        replay_steps: Vec<String>,
+    }
+
+    struct RulebenchCombatOwner {
+        owner: GameplayOwnerRef,
+        state: RulebenchCombatState,
+        reject_fact_delivery: bool,
+        mismatch_after_restore: bool,
+    }
+
+    impl RulebenchCombatOwner {
+        fn new(reject_fact_delivery: bool) -> Self {
+            Self {
+                owner: decision_owner(),
+                state: RulebenchCombatState::default(),
+                reject_fact_delivery,
+                mismatch_after_restore: false,
+            }
+        }
+
+        fn mismatch_after_restore() -> Self {
+            Self {
+                mismatch_after_restore: true,
+                ..Self::new(false)
+            }
+        }
+
+        fn reaction_fact(
+            &self,
+            operation: &GameplayProposalEnvelope,
+            sequence: u32,
+            phase: &str,
+            amount: u64,
+        ) -> GameplayEventEnvelope {
+            let mut event = root_event(amount);
+            if phase == "resolved" {
+                event.event = contract("pulse-result");
+            }
+            event.event_id = format!("{}/reaction/{phase}", operation.causation.root_id);
+            event.tick = operation.tick;
+            event.root_sequence = operation.root_sequence;
+            event.wave = operation.wave.saturating_add(1);
+            event.event_sequence = sequence;
+            event.emitter = GameplayEmitterRef::Owner {
+                owner_id: self.owner.owner_id.clone(),
+            };
+            event.causation = GameplayCausationRef {
+                root_id: operation.causation.root_id.clone(),
+                parent_event_id: None,
+                decision_id: operation.causation.decision_id.clone(),
+            };
+            event.source = operation.source.clone();
+            event.targets = operation.targets.clone();
+            event.tags = vec![format!("reaction-{phase}")];
+            event
+        }
+    }
+
+    impl ComposedGameplayOwner for RulebenchCombatOwner {
+        fn owner(&self) -> &GameplayOwnerRef {
+            &self.owner
+        }
+
+        fn revision_hash(&self) -> String {
+            format!("revision:{}", self.state.revision)
+        }
+
+        fn checkpoint(&self) -> Result<ComposedGameplayOwnerCheckpoint, String> {
+            let canonical_state =
+                serde_json::to_vec(&self.state).map_err(|error| error.to_string())?;
+            let replay_hash = gameplay_module_payload_hash(
+                &serde_json::to_vec(&self.state.replay_steps).map_err(|error| error.to_string())?,
+            );
+            ComposedGameplayOwnerCheckpoint::new(self.owner.clone(), canonical_state, replay_hash)
+        }
+
+        fn restore(&mut self, checkpoint: &ComposedGameplayOwnerCheckpoint) -> Result<(), String> {
+            if checkpoint.owner() != &self.owner {
+                return Err("combat owner identity mismatch".to_owned());
+            }
+            self.state = serde_json::from_slice(checkpoint.canonical_state())
+                .map_err(|error| error.to_string())?;
+            if self.mismatch_after_restore {
+                self.state.replay_steps.push("restore-mismatch".to_owned());
+            }
+            Ok(())
+        }
+
+        fn route_precommit(
+            &mut self,
+            operation: &GameplayProposalEnvelope,
+        ) -> ComposedGameplayOwnerOutput {
+            let workspace: DecisionWorkspace = serde_json::from_slice(&operation.canonical_payload)
+                .expect("typed combat Workspace");
+            self.state.revision = self.state.revision.saturating_add(1);
+            self.state.committed_amounts.push(workspace.amount);
+            self.state
+                .replay_steps
+                .extend(["reaction-opened".to_owned(), "reaction-resolved".to_owned()]);
+            let mut events = vec![
+                self.reaction_fact(operation, 0, "opened", 1),
+                self.reaction_fact(operation, 1, "resolved", workspace.amount),
+            ];
+            if self.reject_fact_delivery {
+                events[1].canonical_payload.push(0);
+            }
+            ComposedGameplayOwnerOutput {
+                accepted: true,
+                fact_hashes: vec![operation.payload_hash.clone()],
+                diagnostic_codes: Vec::new(),
+                events,
+            }
+        }
     }
 
     impl GameplayRuntimeDecisionOwner for PublicDecisionOwner {

@@ -417,6 +417,15 @@ the stable diagnostic is
 
 ## Rust runtime session composition compatibility log
 
+- 2026-07-14: Added the statically installed `ComposedGameplayOwner` seam for
+  downstream Rust combat authority. The composed cell now owns one typed
+  owner checkpoint/replay identity and runs continuation authorization,
+  transformed pre-commit routing, the owner commit, and its typed post-commit
+  event batch as one rollback boundary. Owner state/replay hashes are part of
+  the schema-v2 composed readout and checkpoint hash. Missing, stale, consumed,
+  rejected, malformed-event, and replay-mismatched paths fail without retaining
+  owner, module-state, frame, decision, continuation, or entity mutations.
+
 - 2026-07-13: Added `asha-runtime-session-composition` as the preferred public
   static builder. It consumes a concrete gameplay ProjectBundle composition and
   returns one EngineBridge authority cell with one EntityStore, in-process
@@ -432,6 +441,13 @@ Status: task #5749 preferred public Rust provider boundary.
 - Consumer shape: one `createRuntimeBridge` factory; no `gameplayHost` property.
 - Static only: no dynamic modules, callbacks, raw EntityStore access, or generic
   RPC.
+- A downstream crate may install one concrete `ComposedGameplayOwner` through
+  `StaticRuntimeSessionBuilder::with_gameplay_owner`. Its typed state codec
+  produces `ComposedGameplayOwnerCheckpoint`; its pre-commit result may emit
+  only registered `GameplayEventEnvelope` facts. Consumers resume through
+  `ComposedGameplayRuntime::transact_composed_gameplay_owner`; no TypeScript event ferry,
+  mutable owner registry, raw Session access, or caller-supplied post-commit
+  evidence is accepted.
 
 ## Rust native runtime provider compatibility log
 

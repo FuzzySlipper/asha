@@ -283,6 +283,13 @@
         "developmentExample": "asha-runtime-session-composition = { path = \"../asha-engine/public-rust/runtime-session-composition\" }"
       },
       "exposes": [
+        "ComposedGameplayOwner",
+        "ComposedGameplayOwnerCheckpoint",
+        "ComposedGameplayOwnerOutput",
+        "ComposedGameplayOwnerReadout",
+        "ComposedGameplayOwnerTransactionReceipt",
+        "ComposedGameplayRuntime",
+        "ComposedGameplayRuntimeBuilder",
         "StaticRuntimeSessionBuilder",
         "StaticRuntimeSessionCompositionError",
         "ComposedRuntimeSessionCheckpoint",
@@ -293,6 +300,10 @@
         "Vec3"
       ],
       "requiredExposes": [
+        "ComposedGameplayOwner",
+        "ComposedGameplayOwnerCheckpoint",
+        "ComposedGameplayOwnerTransactionReceipt",
+        "ComposedGameplayRuntime",
         "StaticRuntimeSessionBuilder",
         "ComposedRuntimeSessionCheckpoint",
         "ComposedRuntimeSessionReadout",

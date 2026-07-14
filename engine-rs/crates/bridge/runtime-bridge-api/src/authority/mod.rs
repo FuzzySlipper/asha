@@ -444,7 +444,10 @@ mod voxel_history;
 mod voxel_palette_limits;
 
 pub use composition::{
-    ComposedRuntimeSessionCheckpoint, ComposedRuntimeSessionReadout, StaticRuntimeSessionBuilder,
+    ComposedGameplayOwner, ComposedGameplayOwnerCheckpoint, ComposedGameplayOwnerOutput,
+    ComposedGameplayOwnerReadout, ComposedGameplayOwnerTransactionReceipt, ComposedGameplayRuntime,
+    ComposedGameplayRuntimeBuilder, ComposedRuntimeSessionCheckpoint,
+    ComposedRuntimeSessionReadout, StaticRuntimeSessionBuilder,
     StaticRuntimeSessionCompositionError,
 };
 

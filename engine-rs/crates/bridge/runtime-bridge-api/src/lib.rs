@@ -207,7 +207,10 @@ mod payloads;
 
 pub use authority::EngineBridge;
 pub use authority::{
-    ComposedRuntimeSessionCheckpoint, ComposedRuntimeSessionReadout, StaticRuntimeSessionBuilder,
+    ComposedGameplayOwner, ComposedGameplayOwnerCheckpoint, ComposedGameplayOwnerOutput,
+    ComposedGameplayOwnerReadout, ComposedGameplayOwnerTransactionReceipt, ComposedGameplayRuntime,
+    ComposedGameplayRuntimeBuilder, ComposedRuntimeSessionCheckpoint,
+    ComposedRuntimeSessionReadout, StaticRuntimeSessionBuilder,
     StaticRuntimeSessionCompositionError,
 };
 pub use bridge::RuntimeBridge;
