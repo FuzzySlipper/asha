@@ -1,14 +1,38 @@
 {
   "schemaVersion": 1,
   "environmentKeys": [
+    "AR",
+    "BINDGEN_EXTRA_CLANG_ARGS",
+    "CC",
+    "CFLAGS",
     "CI",
+    "CPPFLAGS",
+    "CXX",
+    "CXXFLAGS",
+    "LD_LIBRARY_PATH",
+    "LDFLAGS",
+    "LIBRARY_PATH",
+    "NODE_ENV",
     "NODE_OPTIONS",
-    "RUSTFLAGS"
+    "PATH",
+    "PKG_CONFIG_PATH",
+    "RANLIB",
+    "RUSTDOCFLAGS",
+    "RUSTFLAGS",
+    "TMPDIR"
   ],
   "environmentPrefixes": [
+    "AR_",
     "ASHA_",
     "CARGO_",
+    "CC_",
+    "CFLAGS_",
+    "CXX_",
+    "CXXFLAGS_",
+    "NPM_CONFIG_",
+    "PKG_CONFIG_",
     "PNPM_",
+    "RANLIB_",
     "RUST"
   ],
   "commonInputs": [

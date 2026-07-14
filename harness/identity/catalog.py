@@ -172,6 +172,15 @@ def execution_records() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     )
 
 
+def merged_evidence_artifacts(
+    source_artifacts: list[dict[str, Any]],
+    execution_artifacts: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    artifacts = source_artifacts + execution_artifacts
+    indexed(artifacts, "evidenceArtifacts")
+    return sorted(artifacts, key=lambda item: item["id"])
+
+
 def build_catalog() -> dict[str, Any]:
     reachability = load_json(REACHABILITY)
     requirements = consumer_requirement_records()
@@ -229,7 +238,9 @@ def build_catalog() -> dict[str, Any]:
         "assertions": assertions,
         "capabilities": sorted(capabilities, key=lambda item: item["id"]),
         "consumerRequirements": requirements,
-        "evidenceArtifacts": sorted(source_artifacts + execution_artifacts, key=lambda item: item["id"]),
+        "evidenceArtifacts": merged_evidence_artifacts(
+            source_artifacts, execution_artifacts
+        ),
         "executions": executions,
         "operations": operation_records(),
         "probes": probes,

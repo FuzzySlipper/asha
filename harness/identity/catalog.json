@@ -2746,7 +2746,7 @@
         "id": "@asha/game-workspace",
         "kind": "typescript",
         "disposition": "preferred",
-        "sourceHash": "sha256:9d82f4c9262031bdcfea0a5ea84bad32889932918f112b1dcb66e04495111eaf"
+        "sourceHash": "sha256:b7f74e9cf1ba9ef8470b13ab1d9e3b6670b4e439932100522ba3317210034f3f"
       },
       {
         "id": "@asha/native-bridge",
@@ -2998,5 +2998,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc"
+  "catalogHash": "sha256:37f09b9ba2ee8e41ac3943999ae0e203b1746698f069569529ad91c19b8e71b2"
 }

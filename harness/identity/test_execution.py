@@ -46,6 +46,45 @@ class ProofExecutionTests(unittest.TestCase):
         )
         self.assertNotEqual(first, second)
 
+    def test_reviewed_build_environment_changes_fingerprint(self) -> None:
+        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": []}
+        settings = execution.load_json(execution.DEFINITIONS)
+        catalog = {"families": {"providers": []}}
+        baseline_environment = {
+            "CC": "gcc",
+            "CFLAGS": "-O1",
+            "NODE_ENV": "development",
+            "TMPDIR": "/tmp/proof-one",
+        }
+        baseline, inputs = execution.execution_fingerprint(
+            definition,
+            settings,
+            catalog,
+            baseline_environment,
+            {"cargo": "same"},
+            "sha256:inputs",
+        )
+        for key, value in baseline_environment.items():
+            self.assertEqual(inputs["environment"][key], value)
+
+        for key, changed_value in (
+            ("CC", "clang"),
+            ("CFLAGS", "-O2"),
+            ("NODE_ENV", "production"),
+            ("TMPDIR", "/tmp/proof-two"),
+        ):
+            changed_environment = {**baseline_environment, key: changed_value}
+            changed, _ = execution.execution_fingerprint(
+                definition,
+                settings,
+                catalog,
+                changed_environment,
+                {"cargo": "same"},
+                "sha256:inputs",
+            )
+            with self.subTest(key=key):
+                self.assertNotEqual(baseline, changed)
+
     def test_command_input_toolchain_and_provider_changes_invalidate_fingerprint(self) -> None:
         definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": ["provider"]}
         settings = {"environmentKeys": [], "environmentPrefixes": []}
