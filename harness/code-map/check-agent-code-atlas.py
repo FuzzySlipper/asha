@@ -243,15 +243,33 @@ def render_bridge_inventory() -> list[str]:
     return lines
 
 
+def committed_evidence_groups(root_name: str) -> list[tuple[str, int]]:
+    prefix = ("harness", root_name)
+    counts: dict[str, int] = defaultdict(int)
+    for tracked_path in tracked_paths(REPO_ROOT):
+        path = pathlib.PurePosixPath(tracked_path)
+        if path.parts[:2] != prefix or len(path.parts) < 4:
+            continue
+        if classify(tracked_path) == "buildCacheOutput":
+            continue
+        counts[path.parts[2]] += 1
+    return sorted(counts.items())
+
+
 def render_evidence_inventory() -> list[str]:
-    lines = ["## Evidence Entrypoints", ""]
+    lines = [
+        "## Evidence Entrypoints",
+        "",
+        "Counts include committed non-output paths only; ambient worktree files do not alter this inventory.",
+        "",
+    ]
     for root_name in ["fixtures", "goldens"]:
         root = REPO_ROOT / "harness" / root_name
-        child_dirs = sorted(path for path in root.iterdir() if path.is_dir())
-        lines.append(f"### harness/{root_name} ({len(child_dirs)} groups)")
+        groups = committed_evidence_groups(root_name)
+        lines.append(f"### harness/{root_name} ({len(groups)} groups)")
         lines.append("")
-        for child in child_dirs:
-            file_count = len(traversed_files(child))
+        for group_name, file_count in groups:
+            child = root / group_name
             lines.append(
                 f"- [`{child.relative_to(REPO_ROOT).as_posix()}`]({relative_link(GENERATED_INVENTORY, child)}) — {file_count} files"
             )

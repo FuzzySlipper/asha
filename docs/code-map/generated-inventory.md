@@ -183,7 +183,7 @@ Source metadata:
 ## Public Surface Manifest Summary
 
 - [`@asha/app`](../../ts/packages/app/package.json) — internal; roles: none
-- [`@asha/browser-host`](../../ts/packages/browser-host/package.json) — unstable; roles: asha-demo
+- [`@asha/browser-host`](../../ts/packages/browser-host/package.json) — unstable; roles: asha-demo, asha-studio
 - [`@asha/catalog-core`](../../ts/packages/catalog-core/package.json) — unstable; roles: asha-testing, asha-demo, asha-studio
 - [`@asha/catalog-examples`](../../ts/packages/catalog-examples/package.json) — internal; roles: none
 - [`@asha/command-registry`](../../ts/packages/command-registry/package.json) — unstable; roles: asha-studio, asha-demo
@@ -197,7 +197,7 @@ Source metadata:
 - [`@asha/policy-core`](../../ts/packages/policy-core/package.json) — internal; roles: none
 - [`@asha/policy-examples`](../../ts/packages/policy-examples/package.json) — internal; roles: none
 - [`@asha/render-projection`](../../ts/packages/render-projection/package.json) — unstable; roles: asha-testing, asha-demo, asha-studio
-- [`@asha/renderer-host`](../../ts/packages/renderer-host/package.json) — unstable; roles: asha-demo
+- [`@asha/renderer-host`](../../ts/packages/renderer-host/package.json) — unstable; roles: asha-demo, asha-studio
 - [`@asha/renderer-three`](../../ts/packages/renderer-three/package.json) — unstable; roles: asha-testing
 - [`@asha/runtime-bridge`](../../ts/packages/runtime-bridge/package.json) — public; roles: asha-testing, asha-demo, asha-studio
 - [`@asha/runtime-session`](../../ts/packages/runtime-session/package.json) — unstable; roles: asha-testing, asha-demo, asha-studio
@@ -288,7 +288,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Assignment And Dependency Pressure
 
-Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cache/output.
+Committed path classes: 695 source; 26 generated source; 526 other; 0 build/cache/output.
 
 ### Rust actual and allowed edges
 
@@ -394,7 +394,7 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 | Cell | Actual edges / allowed edges | Fan in/out | Cycle risk | Public consumers |
 |---|---|---:|---|---|
 | `@asha/app` (ts-shell) | actual: `@asha/contracts`, `@asha/devtools`, `@asha/editor-tools`, `@asha/renderer-three`, `@asha/runtime-bridge`, `@asha/script-host`, `@asha/ui-dom`<br>allowed: `@asha/contracts`, `@asha/devtools`, `@asha/editor-tools`, `@asha/renderer-three`, `@asha/runtime-bridge`, `@asha/script-host`, `@asha/ui-dom` | 1/7 | none | `@asha/smoke` |
-| `@asha/browser-host` (ts-shell) | actual: `@asha/runtime-bridge`<br>allowed: `@asha/runtime-bridge` | 0/1 | none | `role:asha-demo` |
+| `@asha/browser-host` (ts-shell) | actual: `@asha/runtime-bridge`<br>allowed: `@asha/runtime-bridge` | 0/1 | none | `role:asha-demo`, `role:asha-studio` |
 | `@asha/catalog-core` (ts-catalog) | actual: `@asha/contracts`<br>allowed: `@asha/contracts` | 2/1 | none | `@asha/catalog-examples`, `@asha/smoke`, `role:asha-testing`, `role:asha-demo`, `role:asha-studio` |
 | `@asha/catalog-examples` (ts-catalog) | actual: `@asha/catalog-core`, `@asha/contracts`<br>allowed: `@asha/catalog-core`, `@asha/contracts` | 0/2 | none | none |
 | `@asha/command-registry` (ts-command-registry) | actual: `@asha/contracts`<br>allowed: `@asha/contracts` | 1/1 | none | `@asha/smoke`, `role:asha-studio`, `role:asha-demo` |
@@ -408,7 +408,7 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 | `@asha/policy-core` (ts-policy) | actual: `@asha/contracts`, `@asha/script-sdk`<br>allowed: `@asha/catalog-core`, `@asha/contracts`, `@asha/script-sdk` | 2/2 | none | `@asha/policy-examples`, `@asha/script-host` |
 | `@asha/policy-examples` (ts-policy) | actual: `@asha/contracts`, `@asha/policy-core`, `@asha/script-host`, `@asha/script-sdk`<br>allowed: `@asha/catalog-core`, `@asha/contracts`, `@asha/policy-core`, `@asha/script-host`, `@asha/script-sdk` | 0/4 | none | none |
 | `@asha/render-projection` (ts-shell) | actual: `@asha/contracts`<br>allowed: `@asha/contracts` | 2/1 | none | `@asha/renderer-host`, `@asha/renderer-three`, `role:asha-testing`, `role:asha-demo`, `role:asha-studio` |
-| `@asha/renderer-host` (ts-shell) | actual: `@asha/contracts`, `@asha/render-projection`, `@asha/renderer-three`, `@asha/runtime-bridge`<br>allowed: `@asha/contracts`, `@asha/render-projection`, `@asha/renderer-three`, `@asha/runtime-bridge` | 1/4 | none | `@asha/smoke`, `role:asha-demo` |
+| `@asha/renderer-host` (ts-shell) | actual: `@asha/contracts`, `@asha/render-projection`, `@asha/renderer-three`, `@asha/runtime-bridge`<br>allowed: `@asha/contracts`, `@asha/render-projection`, `@asha/renderer-three`, `@asha/runtime-bridge` | 1/4 | none | `@asha/smoke`, `role:asha-demo`, `role:asha-studio` |
 | `@asha/renderer-three` (ts-shell) | actual: `@asha/contracts`, `@asha/render-projection`, `@asha/runtime-bridge`<br>allowed: `@asha/contracts`, `@asha/render-projection`, `@asha/runtime-bridge` | 3/3 | none | `@asha/app`, `@asha/renderer-host`, `@asha/smoke`, `role:asha-testing` |
 | `@asha/runtime-bridge` (ts-shell) | actual: `@asha/contracts`, `@asha/native-bridge`, `@asha/runtime-session`<br>allowed: `@asha/contracts`, `@asha/native-bridge`, `@asha/runtime-session` | 7/3 | none | `@asha/app`, `@asha/browser-host`, `@asha/devtools`, `@asha/renderer-host`, `@asha/renderer-three`, `@asha/smoke`, `@asha/ui-dom`, `role:asha-testing`, `role:asha-demo`, `role:asha-studio` |
 | `@asha/runtime-session` (ts-shell) | actual: `@asha/contracts`<br>allowed: `@asha/contracts` | 2/1 | none | `@asha/runtime-bridge`, `@asha/smoke`, `role:asha-testing`, `role:asha-demo`, `role:asha-studio` |
@@ -425,8 +425,8 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1621 / 1570 / 1621 | rust-bridge | 2026-10-15 |
 | `engine-rs/crates/protocol/protocol-codegen/src/lib.rs` | 1601 / 1560 / 1601 | contract-steward | 2026-10-15 |
 | `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1600 / 1400 / 1600 | rust-render | global policy |
-| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 2795 / 2600 / 2795 | rust-rule | 2026-09-15 |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/observe.rs` | 1622 / 1580 / 1622 | rust-rule | 2026-10-15 |
+| `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1600 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-voxel-conversion/src/lib.rs` | 2064 / 2000 / 2064 | rust-service | 2026-09-15 |
 | `ts/packages/app/src/index.ts` | 224 / 200 / 224 | ts-shell | 2026-10-15 |
 | `ts/packages/catalog-core/src/index.ts` | 1140 / 1050 / 1140 | ts-catalog | 2026-09-15 |
@@ -435,20 +435,20 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 | `ts/packages/electron-main/src/index.ts` | 102 / 90 / 102 | ts-shell | 2026-10-15 |
 | `ts/packages/policy-core/src/index.ts` | 21 / 15 / 21 | ts-policy | 2026-10-15 |
 | `ts/packages/policy-examples/src/index.ts` | 93 / 80 / 93 | ts-policy | 2026-10-15 |
+| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1728 / 1680 / 1728 | ts-shell | 2026-09-15 |
+| `ts/packages/runtime-bridge/src/native.ts` | 1730 / 1680 / 1730 | ts-shell | 2026-09-15 |
 | `ts/packages/script-host/src/index.ts` | 133 / 115 / 133 | ts-policy | 2026-10-15 |
 | `ts/packages/script-sdk/src/index.ts` | 207 / 180 / 207 | ts-policy | 2026-10-15 |
 | `ts/packages/wasm-replay-bridge/src/index.ts` | 190 / 170 / 190 | ts-shell | 2026-10-15 |
-| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1598 / 1400 / 1600 | ts-shell | global policy |
-| `ts/packages/runtime-bridge/src/native.ts` | 1597 / 1400 / 1600 | ts-shell | global policy |
 | `ts/packages/runtime-bridge/src/mock.ts` | 1610 / 1580 / 1620 | ts-shell | 2026-10-15 |
-| `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1578 / 1400 / 1600 | rust-rule | global policy |
+| `engine-rs/crates/bridge/native-bridge/src/lib.rs` | 1580 / 1400 / 1600 | rust-bridge | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1579 / 1400 / 1600 | rust-bridge | global policy |
+| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 2746 / 2600 / 2795 | rust-rule | 2026-09-15 |
 | `engine-rs/crates/rules/rule-voxel-edit/src/history.rs` | 1571 / 1400 / 1600 | rust-rule | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session.test.ts` | 1568 / 1400 / 1600 | ts-shell | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1567 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/rules/rule-animation-controller/src/lib.rs` | 1565 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/protocol/protocol-render/src/lib.rs` | 1893 / 1880 / 1941 | contract-steward | 2026-10-15 |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1555 / 1400 / 1600 | rust-rule | global policy |
-| `engine-rs/crates/bridge/native-bridge/src/lib.rs` | 1549 / 1400 / 1600 | rust-bridge | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1547 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_assets.rs` | 1531 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1528 / 1400 / 1600 | contract-steward | global policy |
@@ -458,10 +458,12 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs` | 1481 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-pathfinding/src/lib.rs` | 1444 / 1400 / 1600 | rust-service | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs` | 1437 / 1400 / 1600 | rust-bridge | global policy |
+| `ts/packages/renderer-three/src/three-renderer.ts` | 1432 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/tests/observe.rs` | 1431 / 1400 / 1600 | rust-rule | global policy |
-| `ts/packages/renderer-three/src/three-renderer.ts` | 1404 / 1400 / 1600 | ts-shell | global policy |
 
 ## Evidence Entrypoints
+
+Counts include committed non-output paths only; ambient worktree files do not alter this inventory.
 
 ### harness/fixtures (36 groups)
 
@@ -486,7 +488,7 @@ Committed path classes: 686 source; 26 generated source; 520 other; 0 build/cach
 - [`harness/fixtures/policy`](../../harness/fixtures/policy) — 1 files
 - [`harness/fixtures/policy-inputs`](../../harness/fixtures/policy-inputs) — 3 files
 - [`harness/fixtures/policy-outputs`](../../harness/fixtures/policy-outputs) — 3 files
-- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 8 files
+- [`harness/fixtures/project-bundle`](../../harness/fixtures/project-bundle) — 11 files
 - [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 16 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files

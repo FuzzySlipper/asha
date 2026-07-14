@@ -2,6 +2,40 @@
   "maxSourceLines": 1600,
   "warningSourceLines": 1400,
   "fileLineExemptions": {
+    "ts/packages/runtime-bridge/src/native-fail-closed.test.ts": {
+      "maxLines": 1728,
+      "warningLines": 1680,
+      "owner": "ts-shell",
+      "rationale": "The consolidated fail-closed transport suite verifies native operation rejection and nested response corruption while new composed-gameplay cases await a capability-focused test split.",
+      "introducedBy": "#5761",
+      "reviewBy": "2026-09-15",
+      "reviewTrigger": "Review on any native operation, response validator family, corruption fixture, or attempted baseline increase.",
+      "removalCondition": "Remove after composed-gameplay and presentation-wire rejection cases move into focused test modules below the global cap.",
+      "baselineChange": {
+        "changedAt": "2026-07-13",
+        "changeTask": "#5761",
+        "reason": "Wave 1 wire-validation and composed-runtime closeouts exceeded the global cap before the structural follow-up review; the exact current size is recorded without growth headroom.",
+        "previousMaxLines": null,
+        "newMaxLines": 1728
+      }
+    },
+    "ts/packages/runtime-bridge/src/native.ts": {
+      "maxLines": 1730,
+      "warningLines": 1680,
+      "owner": "ts-shell",
+      "rationale": "The native transport facade still colocates operation routing with fail-closed response normalization while composed gameplay and presentation decoding settle into stable capability families.",
+      "introducedBy": "#5761",
+      "reviewBy": "2026-09-15",
+      "reviewTrigger": "Review on any native operation, composed gameplay capability, presentation decoder, or attempted baseline increase.",
+      "removalCondition": "Remove after composed-gameplay routing and presentation normalization move behind focused private modules below the global cap.",
+      "baselineChange": {
+        "changedAt": "2026-07-13",
+        "changeTask": "#5761",
+        "reason": "Wave 1 wire-validation and composed-runtime closeouts exceeded the global cap before the structural follow-up review; the exact current size is recorded without growth headroom.",
+        "previousMaxLines": null,
+        "newMaxLines": 1730
+      }
+    },
     "ts/packages/runtime-bridge/src/mock.ts": {
       "maxLines": 1620,
       "warningLines": 1580,
