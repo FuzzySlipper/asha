@@ -3,6 +3,7 @@ target/
 engine-rs/target/
 public-rust/*/target/
 public-rust/*/Cargo.lock
+!public-rust/gameplay-module-conformance/Cargo.lock
 **/*.rs.bk
 
 # ── Node / TypeScript ──────────────────────────────────────────────────────────
