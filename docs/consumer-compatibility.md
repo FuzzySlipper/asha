@@ -723,8 +723,13 @@ Consumer behavior:
 - Manifest validation rejects private transport hints, ASHA internals, generated paths, and unsupported backend/profile claims.
 - Prefab helpers expose explicit draft create/replace/delete/instantiate
   commands, browser/selection/role/binding/configuration readouts, and canonical
-  source serialization. They do not own runtime authority; Rust still accepts
-  only a validated registry and authoritative placement commands.
+  source serialization. The public
+  `decodeAndValidateAshaPrefabRegistrySourceDocument(unknown, context)` boundary
+  exposes a typed registry only after bounded source decoding and complete
+  consumer-side stored-policy validation; failures carry classified paths and
+  no registry. This is early authoring feedback, not authority: Rust still
+  revalidates ProjectBundle content and accepts only a validated registry plus
+  authoritative placement commands.
 
 ## Catalog Core unstable status
 

@@ -175,7 +175,7 @@
       "package": "@asha/game-workspace",
       "status": "unstable",
       "ownershipKey": "ts/packages/game-workspace",
-      "intendedConsumerRole": "Typed game/workspace manifest validation plus non-authoritative prefab draft commands, browser/selection readouts, placement records, and canonical source serialization for consumer repos.",
+      "intendedConsumerRole": "Typed game/workspace manifest validation plus atomic unknown-to-typed prefab source decoding, non-authoritative prefab draft commands, browser/selection readouts, placement records, and canonical source serialization for consumer repos.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
       "compatibilityMarker": "game-workspace.v0",
       "changelog": "docs/consumer-compatibility.md#game-workspace-compatibility-log"

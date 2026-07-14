@@ -78,6 +78,15 @@ public API, and canonical encoding accepts only a validated registry. Validation
 reports every deterministic classified diagnostic and constructs no accepted
 registry on failure.
 
+Downstream TypeScript authoring uses
+`decodeAndValidateAshaPrefabRegistrySourceDocument` from the public
+`@asha/game-workspace` root. It accepts `unknown`, performs a bounded structural
+decode, applies the same stored prefab policy with the consumer's known asset
+and EntityDefinition identities, and returns `registry: null` on every failure.
+Its success registry is an early authoring diagnostic artifact only. Rust still
+re-decodes and validates the source during ProjectBundle load and remains the
+only runtime authority.
+
 The validator covers:
 
 - registry/definition schema versions and duplicate prefab ids;

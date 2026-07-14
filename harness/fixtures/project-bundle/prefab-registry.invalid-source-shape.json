@@ -1,0 +1,28 @@
+{
+  "definitions": [
+    {
+      "displayName": "Malformed fixture",
+      "id": 7,
+      "partRoles": [
+        { "part": 3, "role": "gameplay-root" }
+      ],
+      "parts": [
+        {
+          "displayName": "Root",
+          "id": 3,
+          "namespace": "root",
+          "parent": null,
+          "source": { "kind": "entityDefinition", "stableId": "fixture.root" },
+          "transform": {
+            "rotation": [0.0, 0.0, 0.0, 1.0],
+            "scale": [1.0, 1.0],
+            "translation": [0.0, 0.0, 0.0]
+          }
+        }
+      ],
+      "schemaVersion": 1,
+      "variant": null
+    }
+  ],
+  "schemaVersion": 1
+}

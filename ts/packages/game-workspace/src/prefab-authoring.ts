@@ -5,7 +5,6 @@ import {
 import type {
   GameplayModuleBindingRegistry,
   PrefabDefinition,
-  PrefabDiagnostic,
   PrefabId,
   PrefabInstanceId,
   PrefabInstanceRecord,
@@ -318,31 +317,6 @@ export function serializeAshaPrefabRegistrySource(registry: PrefabRegistry): str
   return `${JSON.stringify(canonical, null, 2)}\n`;
 }
 
-export function validateAshaPrefabRegistrySourceDocument(registry: PrefabRegistry): readonly PrefabDiagnostic[] {
-  const state: AshaPrefabAuthoringState = {
-    registry,
-    instances: [],
-    selectedPrefab: null,
-    gameplayBindings: null,
-  };
-  const diagnostics: PrefabDiagnostic[] = [];
-  const prefabIds = new Set<PrefabId>();
-  for (const definition of registry.definitions) {
-    if (prefabIds.has(definition.id)) {
-      diagnostics.push({
-        code: 'duplicatePrefabId',
-        path: 'definition.id',
-        message: `prefab ${definition.id} already exists`,
-      });
-    }
-    prefabIds.add(definition.id);
-    for (const item of validateDefinition(state, definition)) {
-      diagnostics.push({ code: authoringDiagnosticToPrefabCode(item.code), path: item.path, message: item.message });
-    }
-  }
-  return diagnostics;
-}
-
 function validateCommand(
   state: AshaPrefabAuthoringState,
   command: AshaPrefabAuthoringCommand,
@@ -455,7 +429,7 @@ function canonicalDefinition(definition: PrefabDefinition): PrefabDefinition {
   return {
     ...definition,
     parts: [...definition.parts].sort((left, right) => left.id - right.id),
-    partRoles: [...definition.partRoles].sort((left, right) => left.role.localeCompare(right.role)),
+    partRoles: [...definition.partRoles].sort((left, right) => compareText(left.role, right.role)),
     variant: definition.variant === null ? null : {
       ...definition.variant,
       removedRoles: [...definition.variant.removedRoles].sort(),
@@ -465,22 +439,16 @@ function canonicalDefinition(definition: PrefabDefinition): PrefabDefinition {
 }
 
 function canonicalOverrides(overrides: readonly PrefabOverride[]): PrefabOverride[] {
-  return [...overrides].sort((left, right) =>
-    `${left.targetRole}.${left.value.field}`.localeCompare(`${right.targetRole}.${right.value.field}`),
-  );
+  return [...overrides].sort((left, right) => compareText(
+    `${left.targetRole}.${left.value.field}`,
+    `${right.targetRole}.${right.value.field}`,
+  ));
 }
 
-function authoringDiagnosticToPrefabCode(
-  code: AshaPrefabAuthoringDiagnosticCode,
-): PrefabDiagnostic['code'] {
-  switch (code) {
-    case 'duplicatePrefab': return 'duplicatePrefabId';
-    case 'duplicatePart': return 'duplicatePartId';
-    case 'duplicateRole': return 'duplicatePartRole';
-    case 'danglingRole': return 'danglingPartRole';
-    case 'unknownOverrideRole': return 'invalidOverrideTarget';
-    default: return 'missingDisplayName';
-  }
+function compareText(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
 }
 
 function diag(

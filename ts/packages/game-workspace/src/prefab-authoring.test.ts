@@ -25,6 +25,10 @@ import {
 const prefab = prefabId(70);
 const bodyPart = prefabPartId(1);
 const sensorPart = prefabPartId(2);
+const sourceValidationContext = {
+  assetIds: [],
+  entityDefinitionIds: ['demo.console.body', 'demo.console.sensor'],
+} as const;
 
 function definition(displayName = 'Interaction console') {
   return buildAshaPrefabDefinition({
@@ -209,9 +213,9 @@ void test('whole-registry draft validation resolves variant bases and rejects du
   assert.deepEqual(validateAshaPrefabRegistrySourceDocument({
     schemaVersion: 1,
     definitions: [variant, base],
-  }), []);
+  }, sourceValidationContext), []);
   assert.equal(validateAshaPrefabRegistrySourceDocument({
     schemaVersion: 1,
     definitions: [base, base],
-  }).some((diagnostic) => diagnostic.code === 'duplicatePrefabId'), true);
+  }, sourceValidationContext).some((diagnostic) => diagnostic.code === 'duplicatePrefabId'), true);
 });
