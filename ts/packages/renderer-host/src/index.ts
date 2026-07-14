@@ -31,6 +31,13 @@ export type {
   AshaRendererEditorViewportSizeReceipt,
   AshaRendererEditorViewportStatus,
 } from './editor-viewport.js';
+export { resolveAshaStoredEditorCamera } from './stored-editor-camera.js';
+export type {
+  AshaStoredEditorCameraDiagnostic,
+  AshaStoredEditorCameraDiagnosticCode,
+  AshaStoredEditorCameraInput,
+  AshaStoredEditorCameraResolution,
+} from './stored-editor-camera.js';
 export { sampleCameraTransition } from './camera-transition.js';
 export {
   ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST,

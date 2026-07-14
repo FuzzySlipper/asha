@@ -11,6 +11,7 @@ import {
   createAshaRendererAnimatedMeshProjection,
   createAshaRendererSurfaceProjection,
   createAshaRendererDefaultSurfaceFrame,
+  resolveAshaStoredEditorCamera,
 } from './index.js';
 
 function animationIntentFrame(clip = 'run'): RenderFrameDiff {
@@ -98,6 +99,17 @@ void test('renderer-host can create the default visible surface frame', () => {
 
   assert.ok(frame.ops.length > 0);
   assert.ok(frame.ops.some((op) => op.op === 'create'));
+});
+
+void test('renderer-host root exports stored editor camera resolution without backend types', () => {
+  const result = resolveAshaStoredEditorCamera({
+    position: [0, 0, 5],
+    target: [0, 0, 0],
+    up: [0, 1, 0],
+    projection: { fovYDegrees: 55, near: 0.05, far: 1000 },
+  });
+
+  assert.equal(result.ok, true);
 });
 
 void test('renderer-host public projection loads the real fixture and advances command-selected run playback', async () => {

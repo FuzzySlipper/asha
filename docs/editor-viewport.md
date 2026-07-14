@@ -57,6 +57,13 @@ callback registry.
 The basis must be finite and orthonormal and the perspective range must be valid.
 The host owns concrete camera realization and viewport resizing.
 
+Stored orbit/target camera policy can use the root-exported
+`resolveAshaStoredEditorCamera` helper. It accepts renderer-neutral position,
+target, up, and perspective values and returns either one complete canonical
+`stored_editor` pose/basis camera or a typed diagnostic. Coordinate conversion,
+yaw/pitch convention, and orthonormal-basis derivation therefore remain in the
+engine-owned host rather than downstream Studio code.
+
 `pick` accepts canvas-relative pixel coordinates plus bounded channel, handle,
 layer, and tag filters. It returns disposable projection evidence containing the
 logical channel and handle, source trace when present, world position, surface

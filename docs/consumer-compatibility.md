@@ -834,6 +834,10 @@ Additive editor viewport in #5741:
   retain its last accepted projection. Studio is now an approved consumer of
   `@asha/renderer-host`, but remains forbidden from `@asha/renderer-three`, its
   backend subpaths, and bare `three` imports. See `docs/editor-viewport.md`.
+- #5792 adds the root-exported `resolveAshaStoredEditorCamera` helper. It owns
+  renderer-neutral look-at to canonical pose/basis conversion for stored editor
+  cameras and rejects non-finite, coincident, collinear, or invalid-projection
+  inputs without returning partial camera state.
 
 ### `renderer-host.v0` - historical mixed interaction host
 
