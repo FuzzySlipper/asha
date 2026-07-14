@@ -251,6 +251,8 @@ void test('browser host gives ASHA Studio pages isolated one-cell lifecycles and
       const secondProvider = secondScope['ashaRuntimeBridge'] as typeof firstProvider;
       assert.equal(firstProvider.browserHostCompatibilityVersion, 'browser-host.v0');
       assert.notEqual(firstProvider.browserHostSessionId, secondProvider.browserHostSessionId);
+      assert.match(firstProvider.browserHostSessionId, /^[A-Za-z0-9_-]{32}$/u);
+      assert.match(secondProvider.browserHostSessionId, /^[A-Za-z0-9_-]{32}$/u);
 
       const firstBridge = firstProvider.createRuntimeBridge() as Record<string, unknown> & {
         readonly browserHostLifecycle: {
@@ -305,6 +307,34 @@ void test('browser host gives ASHA Studio pages isolated one-cell lifecycles and
       });
       assert.deepEqual(await secondReadout.json(), {
         result: { cellId: 2, project: 202, schedulerStateHash: 'scheduler-2' },
+      });
+
+      const forgedSession = forgeBrowserSessionCapability(firstProvider.browserHostSessionId);
+      const forgedHeaders = browserHostHeaders(forgedSession, '0');
+      const forgedInvocation = await invokeBrowserHostBridge(
+        host.url,
+        forgedHeaders,
+        'readComposedRuntimeSession',
+        [],
+      );
+      assert.equal(forgedInvocation.status, 500);
+      assert.match(await forgedInvocation.text(), /was not issued by this host/u);
+
+      const forgedRetirement = await fetch(
+        `${host.url}/asha/browser-host/runtime-bridge/session/${forgedSession}/disconnect`,
+        { method: 'POST', body: '{}' },
+      );
+      assert.equal(forgedRetirement.status, 500);
+      assert.match(await forgedRetirement.text(), /was not issued by this host/u);
+      const firstAfterForgery = await invokeBrowserHostBridge(
+        host.url,
+        firstHeaders,
+        'readComposedRuntimeSession',
+        [],
+      );
+      assert.equal(firstAfterForgery.status, 200);
+      assert.deepEqual(await firstAfterForgery.json(), {
+        result: { cellId: 1, project: 101, schedulerStateHash: 'scheduler-1' },
       });
 
       const switchDisconnect = await fetch(
@@ -592,6 +622,12 @@ function browserHostHeaders(browserSession: string, clientId: string): Record<st
     [ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER]: browserSession,
     [ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER]: clientId,
   };
+}
+
+function forgeBrowserSessionCapability(browserSession: string): string {
+  const finalCharacter = browserSession.at(-1);
+  const replacement = finalCharacter === 'A' ? 'B' : 'A';
+  return `${browserSession.slice(0, -1)}${replacement}`;
 }
 
 function invokeBrowserHostBridge(

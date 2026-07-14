@@ -665,10 +665,11 @@ returned Rust cell.
 
 #5735 approves the same `browser-host.v0` surface for `asha-studio` and adds the
 generic lifecycle needed by editor workflows. Provider-script responses carry a
-host-issued browser Session identity; bridge clients are isolated within it, and
-project switch, explicit disconnect, page close, and host shutdown unload and
-release their composed cells. Stale Session/client identities and structured
-native errors fail closed. The operation inventory remains generated from the
+cryptographically opaque host-issued browser Session capability; bridge clients
+are isolated within it, and project switch, explicit disconnect, page close, and
+host shutdown unload and release their composed cells. Missing, forged, stale,
+or disconnected Session/client capabilities and structured native errors fail
+closed. The operation inventory remains generated from the
 RuntimeBridge manifest, and the provider kind remains
 `asha.runtime_bridge.native_rust_provider.v1`; there is no Studio-specific
 provider, raw addon access, gameplay sidecar, callback registry, or freeform

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
@@ -119,7 +120,6 @@ interface NativeBrowserHostBridgePool {
   readonly retiredBrowserSessions: Set<string>;
   readonly closedBridgeClients: Set<string>;
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
-  nextBrowserSession: number;
 }
 
 export function describeNativeBrowserHostCommand(): NativeBrowserHostCommandShape {
@@ -440,7 +440,6 @@ function createNativeBrowserHostBridgePool(
     issuedBrowserSessions: new Set(),
     retiredBrowserSessions: new Set(),
     closedBridgeClients: new Set(),
-    nextBrowserSession: 0,
     ...(createRuntimeBridge === undefined ? {} : { createRuntimeBridge }),
   };
 }
@@ -520,9 +519,9 @@ function readBridgeSessionId(
   if (header === undefined) {
     return 'server';
   }
-  if (Array.isArray(header) || !/^(?:0|[1-9][0-9]*)$/u.test(header)) {
+  if (Array.isArray(header) || !/^[A-Za-z0-9_-]{32}$/u.test(header)) {
     throw invalidBrowserHostIdentity(
-      'RuntimeBridge browser Session identity must be one issued canonical non-negative integer.',
+      'RuntimeBridge browser Session identity must be one host-issued opaque capability.',
     );
   }
   if (pool.retiredBrowserSessions.has(header)) {
@@ -553,8 +552,10 @@ function issueNativeBrowserHostSession(pool: NativeBrowserHostBridgePool): strin
       { operation: 'browserHost.issueSession', provenance: 'transport_loader' },
     );
   }
-  const session = String(pool.nextBrowserSession);
-  pool.nextBrowserSession += 1;
+  let session = randomBytes(24).toString('base64url');
+  while (pool.issuedBrowserSessions.has(session) || pool.retiredBrowserSessions.has(session)) {
+    session = randomBytes(24).toString('base64url');
+  }
   pool.issuedBrowserSessions.add(session);
   return session;
 }
@@ -593,7 +594,7 @@ async function handleRuntimeBridgeSessionDisconnect(
     return;
   }
   const match = request.url?.match(
-    /^\/asha\/browser-host\/runtime-bridge\/session\/(0|[1-9][0-9]*)\/disconnect$/u,
+    /^\/asha\/browser-host\/runtime-bridge\/session\/([A-Za-z0-9_-]{32})\/disconnect$/u,
   );
   if (match === null || match === undefined) {
     sendJson(response, 404, { error: { message: 'Unknown RuntimeBridge Session lifecycle operation.' } });

@@ -3,11 +3,11 @@
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
   "manifestHash": "sha256:c9e82717acd05fcaa4750165d33c9d10ed9ad2b2ff33d0b567241af19ac1365d",
-  "identityCatalogHash": "sha256:131f9c72a5f3bc08de9dbe8b91b1da6da66eaabe8878a26f585cac5e045c4acc",
+  "identityCatalogHash": "sha256:37f09b9ba2ee8e41ac3943999ae0e203b1746698f069569529ad91c19b8e71b2",
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:466db46feb4c937d487f1aeab6a311d286a7d374139be0249ce9a029e100b7bf"
+      "hash": "sha256:289c031caddd393fe84e214ae1adc414b9109a831328ffcedd38ccecf0f7c1c4"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -15,7 +15,7 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:8f68d2ef477d99e3fc09c6d234ce0e4ec5d5bd43576e5a88758ebba693bd47ce"
+      "hash": "sha256:6854d4635b7808b1459caf9e3db64a3de35da70c8d043c3031b513288eeb7b41"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:bdb22ae4623dc82bdecfa80fce571b1fc4c883d8ef26e08618d6e4105f774e3d"
+      "hash": "sha256:5eabd729caf2853c8217e8f35a7a88bdb88c5fcce92eab8fcca357e57418e0a4"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",

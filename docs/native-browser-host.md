@@ -45,16 +45,17 @@ inside that Rust cell.
 
 ## Session and resource lifecycle
 
-Every provider script response receives a host-issued browser Session identity.
-Every `createRuntimeBridge()` call within that page receives a bounded client
-identity inside the browser Session, so two pages using client `0` cannot share
+Every provider script response receives a cryptographically opaque, host-issued
+browser Session capability. Every `createRuntimeBridge()` call within that page
+receives a bounded client identity inside the browser Session, so another page
+cannot guess a Session capability and use client `0` to share or retire its
 ProjectBundle, scheduler, camera, buffer, voxel, gameplay-module, or replay state.
 
 The returned bridge is structurally a normal `RuntimeBridge` and also exposes the
 typed `browserHostLifecycle` readout from `NativeBrowserHostRuntimeBridge`:
 
 - `compatibilityVersion` is `browser-host.v0`;
-- `sessionId` identifies the host-issued browser Session;
+- `sessionId` carries the opaque host-issued browser Session capability;
 - `status()` reports `active` or `disconnected`;
 - `disconnect()` unloads and retires that client cell.
 
@@ -65,8 +66,9 @@ resource release explicit; the host does not insert semantic unload/reload calls
 into the generated operation stream. Explicit client disconnect, browser
 `pagehide`, and host shutdown unload active ProjectBundle authority and release
 the bridge reference. A request using
-a retired Session or disconnected client fails closed with a structured
-`RuntimeBridgeError`; it never recreates authority under the stale identity.
+a missing, malformed, unissued, retired, or disconnected Session/client
+capability fails closed with a structured `RuntimeBridgeError`; it never
+recreates or reaches authority under a guessed or stale identity.
 
 These lifecycle routes are host implementation details, not an authority port or
 freeform call API. The provider has no gameplay-host property, raw addon handle,
