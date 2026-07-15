@@ -833,6 +833,12 @@ impl EngineBridge {
                 format!("composed gameplay owner checkpoint was invalid: {message}"),
             ));
         }
+        if owner_before.owner() != owner.owner() {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "composed gameplay owner checkpoint identity drifted",
+            ));
+        }
         let gameplay_before = self
             .with_static_gameplay_runtime("checkpoint_composed_gameplay_owner", |host| {
                 Ok(host.checkpoint_transaction_evidence())
@@ -869,11 +875,24 @@ impl EngineBridge {
         };
 
         if decision.status == rule_gameplay_fabric::GameplayDecisionStatus::Suspended {
-            if owner_output.is_some()
-                || owner.checkpoint().map_err(|message| {
-                    RuntimeBridgeError::new(RuntimeBridgeErrorKind::Internal, message)
-                })? != owner_before
-            {
+            let owner_after = match owner.checkpoint() {
+                Ok(checkpoint) => checkpoint,
+                Err(message) => {
+                    self.restore_composed_gameplay_transaction(
+                        owner,
+                        &owner_before,
+                        gameplay_before,
+                        entities_before,
+                    )?;
+                    return Err(RuntimeBridgeError::new(
+                        RuntimeBridgeErrorKind::Internal,
+                        format!(
+                            "composed gameplay owner post-decision checkpoint failed: {message}"
+                        ),
+                    ));
+                }
+            };
+            if owner_output.is_some() || owner_after != owner_before {
                 self.restore_composed_gameplay_transaction(
                     owner,
                     &owner_before,
@@ -1007,6 +1026,18 @@ impl EngineBridge {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::Internal,
                 format!("composed gameplay owner post-commit checkpoint was invalid: {message}"),
+            ));
+        }
+        if owner_after.owner() != owner_before.owner() {
+            self.restore_composed_gameplay_transaction(
+                owner,
+                &owner_before,
+                gameplay_before,
+                entities_before,
+            )?;
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "composed gameplay owner post-commit checkpoint identity drifted",
             ));
         }
         let readout = self.read_composed_runtime_session_with_owner(&owner_after)?;

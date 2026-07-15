@@ -51,3 +51,18 @@ void test('game pull-down and Studio activity projections share runtime records 
   assert.equal(pullDown.runtime.some((entry) => entry.text.includes('Saved scene locally')), false);
   assert.equal(pullDown.droppedRuntimeRecordCount, 2);
 });
+
+void test('a zero runtime-entry cap returns no runtime records in either consumer projection', () => {
+  const manyRecords: DeveloperConsoleSnapshot = {
+    ...snapshot,
+    records: Array.from({ length: 64 }, (_, sequence) => ({
+      ...snapshot.records[1]!,
+      sequence,
+      correlation: `record:${sequence}`,
+    })),
+    nextSequence: 64,
+  };
+
+  assert.deepEqual(projectDeveloperConsolePullDown(manyRecords, [], 0).runtime, []);
+  assert.deepEqual(projectDeveloperConsoleActivity(manyRecords, [], 0).runtime, []);
+});

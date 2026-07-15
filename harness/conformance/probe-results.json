@@ -18,7 +18,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:2f49d834057c375fe69111a287105ac73d93300de5c3750aca09e0bb807ac914"
+      "hash": "sha256:c813d0c68d325e2393c1658677eb8633188c0b5d948db5675df5932646958d25"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -30,7 +30,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:93860d99b68a256d8963162f5216fdfe1bb2133679c08764b4d0e9a46b753401"
+      "hash": "sha256:12a23b55086aad7f41b5dc04e84a3a59d75d8b5470fb4441d78c491c7b045b35"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",

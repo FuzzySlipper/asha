@@ -12,4 +12,3 @@ pub fn gameplay_composition_builder() -> GameplayStaticCompositionBuilder {
 pub fn runtime_session_builder_type_name() -> &'static str {
     core::any::type_name::<StaticRuntimeSessionBuilder>()
 }
-

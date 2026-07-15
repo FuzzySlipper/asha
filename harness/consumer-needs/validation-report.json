@@ -262,8 +262,8 @@
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",
     "valid": true,
     "consumerNeedsManifestHash": "fnv1a64:0695f007e3d82758",
-    "registryDigest": "fnv1a64:34d004c9e5770909",
-    "bindingRegistryHash": "fnv1a64:1676497828303085",
+    "registryDigest": "fnv1a64:03c8f49a60eb8dd7",
+    "bindingRegistryHash": "fnv1a64:e97ce005c6d50b5e",
     "checks": [
       {
         "id": "consumerNeed.pulse.configuration",

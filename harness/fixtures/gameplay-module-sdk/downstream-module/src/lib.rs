@@ -1892,6 +1892,81 @@ mod tests {
     }
 
     #[test]
+    fn composed_owner_restores_when_suspended_post_decision_checkpoint_fails() {
+        let mut bridge =
+            StaticRuntimeSessionBuilder::activate_project(rulebench_combat_project_input())
+                .unwrap()
+                .with_gameplay_owner(AdversarialCheckpointOwner::fail_suspended_checkpoint())
+                .unwrap()
+                .build()
+                .unwrap();
+        let before = bridge.read_composed_runtime_session().unwrap();
+
+        let error = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("checkpoint-failure"))
+            .expect_err("post-decision checkpoint failure must reject atomically");
+        assert!(error.message.contains("checkpoint"), "{error}");
+        assert_eq!(bridge.read_composed_runtime_session().unwrap(), before);
+    }
+
+    #[test]
+    fn composed_owner_rejects_transaction_checkpoint_identity_drift() {
+        let mut bridge =
+            StaticRuntimeSessionBuilder::activate_project(rulebench_combat_project_input())
+                .unwrap()
+                .with_gameplay_owner(AdversarialCheckpointOwner::drift_transaction_checkpoint())
+                .unwrap()
+                .build()
+                .unwrap();
+
+        let suspended = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("identity-drift"))
+            .unwrap();
+        let continuation = suspended.decision.continuation.unwrap();
+        let mut resumed = public_decision_moment("identity-drift");
+        resumed.workspace = continuation.workspace;
+        resumed.resume_token = Some(continuation.token);
+        let error = bridge
+            .transact_composed_gameplay_owner(resumed)
+            .expect_err("transaction checkpoint identity drift must fail closed");
+        assert!(error.message.contains("identity"), "{error}");
+        assert_eq!(
+            bridge
+                .read_composed_runtime_session()
+                .unwrap()
+                .gameplay_owner
+                .unwrap()
+                .owner,
+            decision_owner(),
+        );
+    }
+
+    #[test]
+    fn composed_owner_rejects_identity_mutation_during_commit() {
+        let mut bridge =
+            StaticRuntimeSessionBuilder::activate_project(rulebench_combat_project_input())
+                .unwrap()
+                .with_gameplay_owner(AdversarialCheckpointOwner::mutate_identity_during_commit())
+                .unwrap()
+                .build()
+                .unwrap();
+        let suspended = bridge
+            .transact_composed_gameplay_owner(public_decision_moment("identity-mutation"))
+            .unwrap();
+        let before = bridge.read_composed_runtime_session().unwrap();
+        let continuation = suspended.decision.continuation.unwrap();
+        let mut resumed = public_decision_moment("identity-mutation");
+        resumed.workspace = continuation.workspace;
+        resumed.resume_token = Some(continuation.token);
+
+        let error = bridge
+            .transact_composed_gameplay_owner(resumed)
+            .expect_err("owner identity mutation during commit must fail closed");
+        assert!(error.message.contains("identity"), "{error}");
+        assert_eq!(bridge.read_composed_runtime_session().unwrap(), before);
+    }
+
+    #[test]
     fn composed_bridge_restores_and_finishes_interrupted_scheduler_delivery() {
         let mut bridge =
             StaticRuntimeSessionBuilder::activate_project(runtime_host_project_input(4))
@@ -2144,6 +2219,115 @@ mod tests {
                 fact_hashes: vec![operation.payload_hash.clone()],
                 diagnostic_codes: Vec::new(),
                 events,
+            }
+        }
+    }
+
+    struct AdversarialCheckpointOwner {
+        owner: GameplayOwnerRef,
+        state: std::cell::Cell<u64>,
+        checkpoint_calls: std::cell::Cell<u32>,
+        fail_on_call: Option<u32>,
+        drift_on_call: Option<u32>,
+        mutate_identity_on_route: bool,
+    }
+
+    impl AdversarialCheckpointOwner {
+        fn fail_suspended_checkpoint() -> Self {
+            Self {
+                owner: decision_owner(),
+                state: std::cell::Cell::new(0),
+                checkpoint_calls: std::cell::Cell::new(0),
+                fail_on_call: Some(4),
+                drift_on_call: None,
+                mutate_identity_on_route: false,
+            }
+        }
+
+        fn drift_transaction_checkpoint() -> Self {
+            Self {
+                owner: decision_owner(),
+                state: std::cell::Cell::new(0),
+                checkpoint_calls: std::cell::Cell::new(0),
+                fail_on_call: None,
+                drift_on_call: Some(4),
+                mutate_identity_on_route: false,
+            }
+        }
+
+        fn mutate_identity_during_commit() -> Self {
+            Self {
+                owner: decision_owner(),
+                state: std::cell::Cell::new(0),
+                checkpoint_calls: std::cell::Cell::new(0),
+                fail_on_call: None,
+                drift_on_call: None,
+                mutate_identity_on_route: true,
+            }
+        }
+
+        fn checkpoint_for(
+            &self,
+            owner: GameplayOwnerRef,
+        ) -> Result<ComposedGameplayOwnerCheckpoint, String> {
+            let canonical_state = serde_json::to_vec(&self.state.get()).unwrap();
+            ComposedGameplayOwnerCheckpoint::new(
+                owner,
+                canonical_state,
+                format!("replay:{}", self.state.get()),
+            )
+        }
+    }
+
+    impl ComposedGameplayOwner for AdversarialCheckpointOwner {
+        fn owner(&self) -> &GameplayOwnerRef {
+            &self.owner
+        }
+
+        fn revision_hash(&self) -> String {
+            "revision:0".to_owned()
+        }
+
+        fn checkpoint(&self) -> Result<ComposedGameplayOwnerCheckpoint, String> {
+            let call = self.checkpoint_calls.get().saturating_add(1);
+            self.checkpoint_calls.set(call);
+            if self.fail_on_call == Some(call) {
+                self.state.set(99);
+                return Err("adversarial post-decision checkpoint failure".to_owned());
+            }
+            let owner = if self.drift_on_call == Some(call) {
+                GameplayOwnerRef {
+                    owner_id: "authority.foreign".to_owned(),
+                    provider_id: "provider.foreign".to_owned(),
+                }
+            } else {
+                self.owner.clone()
+            };
+            self.checkpoint_for(owner)
+        }
+
+        fn restore(&mut self, checkpoint: &ComposedGameplayOwnerCheckpoint) -> Result<(), String> {
+            self.owner = checkpoint.owner().clone();
+            self.state.set(
+                serde_json::from_slice(checkpoint.canonical_state())
+                    .map_err(|error| error.to_string())?,
+            );
+            Ok(())
+        }
+
+        fn route_precommit(
+            &mut self,
+            _operation: &GameplayProposalEnvelope,
+        ) -> ComposedGameplayOwnerOutput {
+            if self.mutate_identity_on_route {
+                self.owner = GameplayOwnerRef {
+                    owner_id: "authority.foreign".to_owned(),
+                    provider_id: "provider.foreign".to_owned(),
+                };
+            }
+            ComposedGameplayOwnerOutput {
+                accepted: true,
+                ..ComposedGameplayOwnerOutput::default()
             }
         }
     }

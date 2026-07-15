@@ -9,4 +9,3 @@ asha-gameplay-module-sdk = { git = "__ASHA_GIT_URL__", rev = "__ASHA_GIT_REV__",
 asha-runtime-session-composition = { git = "__ASHA_GIT_URL__", rev = "__ASHA_GIT_REV__", version = "^0.1" }
 
 [workspace]
-

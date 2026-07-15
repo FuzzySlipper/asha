@@ -51,7 +51,8 @@ function projectDeveloperConsole(
   const eligibleRuntime = importantOnly
     ? snapshot.records.filter((record) => record.severity === 'warning' || record.severity === 'error' || record.severity === 'fatal')
     : snapshot.records;
-  const runtime = eligibleRuntime.slice(-boundedMaximum).map((record) => ({
+  const runtimeRecords = boundedMaximum === 0 ? [] : eligibleRuntime.slice(-boundedMaximum);
+  const runtime = runtimeRecords.map((record) => ({
     channel: 'runtime' as const,
     severity: record.severity,
     text: `[${record.category}] ${record.message}`,
