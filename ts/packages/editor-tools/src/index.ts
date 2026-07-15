@@ -12,11 +12,11 @@ import type { VoxelCommand, VoxelCoord, Face, VoxelValue } from '@asha/contracts
 
 // Proposal-only scene authoring controls with Rust validation feedback (#2380).
 export * from './scene-authoring.js';
-
 // Canonical scene-object hierarchy snapshot/proposal helpers over FlatSceneDocument.
 export * from './scene-object-hierarchy.js';
 export * from './resolved-input.js';
 export * from './camera-navigation.js';
+export * from './transform-manipulator.js';
 
 // Proposal-only generic entity authoring controls with Rust validation feedback (#2485).
 export * from './entity-authoring.js';
