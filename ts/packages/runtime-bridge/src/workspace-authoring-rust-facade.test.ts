@@ -162,6 +162,16 @@ void test('native workspace authoring creates, stores, closes, and reopens voxel
   assert.equal(saveReceipt.saved, true, JSON.stringify(saveReceipt.diagnostics));
   assert.equal(authoring.readState().dirty, true, 'save receipt is not host persistence confirmation');
   assert.throws(
+    () => authoring.confirmStored({
+      expectedWorkspaceId: 'workspace.local',
+      expectedGeneration: 1,
+      hostPath: 'assets/voxels/workspace-authoring-test.avxl.json',
+      canonicalJsonHash: 'fnv1a64:not-the-save-candidate',
+    }),
+    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
+    'host confirmation must be bound to the current Rust save candidate',
+  );
+  assert.throws(
     () => authoring.close({ expectedWorkspaceId: 'workspace.local', expectedGeneration: 1 }),
     (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
     'an unpersisted save proposal must not be treated as stored truth',

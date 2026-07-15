@@ -45,6 +45,10 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
   #workingRevision = 0;
   #storedRevision = 0;
   #lastStoredCanonicalJsonHash: string | null = null;
+  #pendingStoredCandidate: {
+    readonly canonicalJsonHash: string;
+    readonly workingRevision: number;
+  } | null = null;
   #authoritySnapshotHash = 'fnv1a64:not-open';
 
   constructor(bridge: RuntimeBridge) {
@@ -101,6 +105,7 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
     this.#workingRevision = 0;
     this.#storedRevision = 0;
     this.#lastStoredCanonicalJsonHash = null;
+    this.#pendingStoredCandidate = null;
     this.#authoritySnapshotHash = this.#bridge.readDeveloperConsole().snapshotHash;
     return this.readState();
   }
@@ -193,12 +198,21 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
 
   saveVoxelVolumeAsset(...args: Parameters<WorkspaceAuthoringFacade['saveVoxelVolumeAsset']>): ReturnType<WorkspaceAuthoringFacade['saveVoxelVolumeAsset']> {
     this.#requireOpen('saveVoxelVolumeAsset');
-    return this.#bridge.saveVoxelVolumeAsset(...args);
+    const receipt = this.#bridge.saveVoxelVolumeAsset(...args);
+    if (receipt.saved && receipt.canonicalJsonHash !== null) {
+      this.#pendingStoredCandidate = {
+        canonicalJsonHash: receipt.canonicalJsonHash,
+        workingRevision: this.#workingRevision,
+      };
+    }
+    return receipt;
   }
 
   updateVoxelVolumeAssetPalette(...args: Parameters<WorkspaceAuthoringFacade['updateVoxelVolumeAssetPalette']>): ReturnType<WorkspaceAuthoringFacade['updateVoxelVolumeAssetPalette']> {
     this.#requireOpen('updateVoxelVolumeAssetPalette');
-    return this.#bridge.updateVoxelVolumeAssetPalette(...args);
+    const receipt = this.#bridge.updateVoxelVolumeAssetPalette(...args);
+    if (receipt.updated) this.#recordWorkingMutation();
+    return receipt;
   }
 
   initializeVoxelVolumeAuthoring(...args: Parameters<WorkspaceAuthoringFacade['initializeVoxelVolumeAuthoring']>): ReturnType<WorkspaceAuthoringFacade['initializeVoxelVolumeAuthoring']> {
@@ -215,6 +229,7 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
       this.#recordWorkingMutation();
       this.#storedRevision = this.#workingRevision;
       this.#lastStoredCanonicalJsonHash = receipt.canonicalJsonHash;
+      this.#pendingStoredCandidate = null;
     }
     return receipt;
   }
@@ -226,7 +241,9 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
 
   loadVoxelAnnotationLayer(...args: Parameters<WorkspaceAuthoringFacade['loadVoxelAnnotationLayer']>): ReturnType<WorkspaceAuthoringFacade['loadVoxelAnnotationLayer']> {
     this.#requireOpen('loadVoxelAnnotationLayer');
-    return this.#bridge.loadVoxelAnnotationLayer(...args);
+    const receipt = this.#bridge.loadVoxelAnnotationLayer(...args);
+    if (receipt.loaded) this.#recordWorkingMutation();
+    return receipt;
   }
 
   readVoxelAnnotationQuery(...args: Parameters<WorkspaceAuthoringFacade['readVoxelAnnotationQuery']>): ReturnType<WorkspaceAuthoringFacade['readVoxelAnnotationQuery']> {
@@ -292,8 +309,19 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
       input.canonicalJsonHash,
       'canonicalJsonHash',
     );
+    if (
+      this.#pendingStoredCandidate === null
+      || this.#pendingStoredCandidate.workingRevision !== this.#workingRevision
+      || this.#pendingStoredCandidate.canonicalJsonHash !== canonicalJsonHash
+    ) {
+      throw new RuntimeBridgeError(
+        'invalid_input',
+        'storage confirmation must match the current Rust save candidate and working revision',
+      );
+    }
     this.#storedRevision = this.#workingRevision;
     this.#lastStoredCanonicalJsonHash = canonicalJsonHash;
+    this.#pendingStoredCandidate = null;
     const receiptWithoutHash = {
       kind: 'workspace_authoring.stored_confirmation.v0' as const,
       accepted: true as const,
@@ -322,6 +350,7 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
     this.#bridge.unloadProjectBundle();
     this.#composition = this.#bridge.getProjectBundleCompositionStatus();
     this.#status = 'closed';
+    this.#pendingStoredCandidate = null;
     const receiptWithoutHash = {
       kind: 'workspace_authoring.close_receipt.v0' as const,
       closed: true as const,
@@ -337,6 +366,7 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
 
   #recordWorkingMutation(): void {
     this.#workingRevision += 1;
+    this.#pendingStoredCandidate = null;
   }
 
   #requireOpen(operation: string): WorkspaceAuthoringIdentity {
