@@ -500,7 +500,12 @@ struct SceneMetadataJson {
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
 enum SceneCommandJson {
     Create {
         record: SceneRecordJson,
@@ -555,7 +560,12 @@ struct SceneTransformJson {
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
 enum SceneKindJson {
     EmptyGroup,
     StaticMesh { asset: SceneAssetDtoJson },
@@ -565,26 +575,115 @@ enum SceneKindJson {
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
 enum SceneLightJson {
-    Ambient { color: [f32; 3], intensity: f32, enabled: bool, shadow_intent: SceneLightShadowJson },
-    Directional { color: [f32; 3], intensity: f32, enabled: bool, shadow_intent: SceneLightShadowJson },
-    Point { color: [f32; 3], intensity: f32, enabled: bool, range: Option<f32>, decay: f32, shadow_intent: SceneLightShadowJson },
-    Spot { color: [f32; 3], intensity: f32, enabled: bool, range: Option<f32>, decay: f32, outer_angle_radians: f32, penumbra: f32, shadow_intent: SceneLightShadowJson },
+    Ambient {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        shadow_intent: SceneLightShadowJson,
+    },
+    Directional {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        shadow_intent: SceneLightShadowJson,
+    },
+    Point {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        range: Option<f32>,
+        decay: f32,
+        shadow_intent: SceneLightShadowJson,
+    },
+    Spot {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        range: Option<f32>,
+        decay: f32,
+        outer_angle_radians: f32,
+        penumbra: f32,
+        shadow_intent: SceneLightShadowJson,
+    },
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-enum SceneLightShadowJson { Disabled, Requested }
+enum SceneLightShadowJson {
+    Disabled,
+    Requested,
+}
 
 impl SceneLightJson {
     fn protocol(self) -> SceneLightDto {
-        let shadow = |value| match value { SceneLightShadowJson::Disabled => SceneLightShadowIntentDto::Disabled, SceneLightShadowJson::Requested => SceneLightShadowIntentDto::Requested };
+        let shadow = |value| match value {
+            SceneLightShadowJson::Disabled => SceneLightShadowIntentDto::Disabled,
+            SceneLightShadowJson::Requested => SceneLightShadowIntentDto::Requested,
+        };
         match self {
-            Self::Ambient { color, intensity, enabled, shadow_intent } => SceneLightDto::Ambient { color, intensity, enabled, shadow_intent: shadow(shadow_intent) },
-            Self::Directional { color, intensity, enabled, shadow_intent } => SceneLightDto::Directional { color, intensity, enabled, shadow_intent: shadow(shadow_intent) },
-            Self::Point { color, intensity, enabled, range, decay, shadow_intent } => SceneLightDto::Point { color, intensity, enabled, range, decay, shadow_intent: shadow(shadow_intent) },
-            Self::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent } => SceneLightDto::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent: shadow(shadow_intent) },
+            Self::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => SceneLightDto::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            Self::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => SceneLightDto::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            Self::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent,
+            } => SceneLightDto::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent: shadow(shadow_intent),
+            },
+            Self::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent,
+            } => SceneLightDto::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent: shadow(shadow_intent),
+            },
         }
     }
 }
@@ -641,7 +740,9 @@ impl SceneRecordJson {
                 SceneKindJson::VoxelVolume { asset } => {
                     SceneNodeKindDto::VoxelVolume(asset.protocol())
                 }
-                SceneKindJson::Light { scene_light } => SceneNodeKindDto::Light(scene_light.protocol()),
+                SceneKindJson::Light { scene_light } => {
+                    SceneNodeKindDto::Light(scene_light.protocol())
+                }
             },
         }
     }
@@ -742,10 +843,44 @@ fn scene_light_json(light: &SceneLightDto) -> Value {
         SceneLightShadowIntentDto::Requested => "requested",
     };
     match light {
-        SceneLightDto::Ambient { color, intensity, enabled, shadow_intent } => json!({ "kind": "ambient", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) }),
-        SceneLightDto::Directional { color, intensity, enabled, shadow_intent } => json!({ "kind": "directional", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) }),
-        SceneLightDto::Point { color, intensity, enabled, range, decay, shadow_intent } => json!({ "kind": "point", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "shadowIntent": shadow(*shadow_intent) }),
-        SceneLightDto::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent } => json!({ "kind": "spot", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "outerAngleRadians": outer_angle_radians, "penumbra": penumbra, "shadowIntent": shadow(*shadow_intent) }),
+        SceneLightDto::Ambient {
+            color,
+            intensity,
+            enabled,
+            shadow_intent,
+        } => {
+            json!({ "kind": "ambient", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) })
+        }
+        SceneLightDto::Directional {
+            color,
+            intensity,
+            enabled,
+            shadow_intent,
+        } => {
+            json!({ "kind": "directional", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) })
+        }
+        SceneLightDto::Point {
+            color,
+            intensity,
+            enabled,
+            range,
+            decay,
+            shadow_intent,
+        } => {
+            json!({ "kind": "point", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "shadowIntent": shadow(*shadow_intent) })
+        }
+        SceneLightDto::Spot {
+            color,
+            intensity,
+            enabled,
+            range,
+            decay,
+            outer_angle_radians,
+            penumbra,
+            shadow_intent,
+        } => {
+            json!({ "kind": "spot", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "outerAngleRadians": outer_angle_radians, "penumbra": penumbra, "shadowIntent": shadow(*shadow_intent) })
+        }
     }
 }
 

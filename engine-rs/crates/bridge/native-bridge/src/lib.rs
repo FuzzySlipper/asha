@@ -1444,6 +1444,30 @@ mod tests {
         assert_eq!(encoded_scene["accepted"], true);
         assert_eq!(encoded_scene["canonicalJson"], canonical_scene);
 
+        let light_scene = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../../harness/fixtures/scenes/lights-v2.json"
+        ));
+        let decoded_light_scene: serde_json::Value = serde_json::from_str(
+            &decode_scene_document(
+                handle,
+                serde_json::json!({ "sourceText": light_scene }).to_string(),
+            )
+            .expect("stored light scene decode reaches Rust authority"),
+        )
+        .expect("stored light scene decode JSON decodes");
+        assert_eq!(decoded_light_scene["accepted"], true);
+        let encoded_light_scene: serde_json::Value = serde_json::from_str(
+            &encode_scene_document(
+                handle,
+                serde_json::json!({ "document": decoded_light_scene["document"] }).to_string(),
+            )
+            .expect("camelCase stored light scene encode reaches Rust authority"),
+        )
+        .expect("stored light scene encode JSON decodes");
+        assert_eq!(encoded_light_scene["accepted"], true);
+        assert_eq!(encoded_light_scene["canonicalJson"], light_scene);
+
         let model_preview: serde_json::Value = serde_json::from_str(
             &read_model_material_preview(handle, scene_preview::model_preview_test_request_json())
                 .expect("model material preview reaches Rust authority"),
