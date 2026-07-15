@@ -160,6 +160,111 @@ fn stored_scene_codec_round_trips_the_canonical_golden_without_runtime_mutation(
 }
 
 #[test]
+fn stored_scene_codec_preserves_v2_lights_and_v1_without_migration() {
+    let bridge = init_bridge();
+    let lights = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../harness/fixtures/scenes/lights-v2.json"
+    ));
+    let decoded = bridge
+        .decode_scene_document(SceneDocumentDecodeRequestDto {
+            source_text: lights.into(),
+        })
+        .unwrap();
+    assert!(decoded.accepted);
+    assert_eq!(decoded.canonical_json.as_deref(), Some(lights));
+    assert!(matches!(
+        decoded.document.as_ref().unwrap().nodes[0].kind,
+        SceneNodeKindDto::Light(SceneLightDto::Ambient { .. })
+    ));
+
+    let v1 = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../../harness/fixtures/scenes/sample-flat.json"
+    ));
+    let legacy = bridge
+        .decode_scene_document(SceneDocumentDecodeRequestDto {
+            source_text: v1.into(),
+        })
+        .unwrap();
+    assert!(legacy.accepted);
+    assert_eq!(legacy.document.unwrap().schema_version, 1);
+    assert_eq!(legacy.canonical_json.as_deref(), Some(v1));
+}
+
+#[test]
+fn blank_runtime_scene_accepts_typed_light_create_and_update_commands() {
+    let mut bridge = init_bridge();
+    let before = bridge.read_scene_object_snapshot().unwrap();
+
+    let light_id = SceneNodeId::new(2);
+    let created = bridge
+        .apply_scene_object_command(SceneObjectCommandRequestDto {
+            expected_document_hash: before.document_hash,
+            command: SceneObjectCommandDto::Create {
+                record: SceneNodeRecordDto {
+                    id: light_id,
+                    parent: Some(SceneNodeId::new(1)),
+                    child_order: 0,
+                    transform: SceneTransformDto {
+                        translation: [0.0, 2.0, 0.0],
+                        rotation: [0.0, 0.0, 0.0, 1.0],
+                        scale: [1.0, 1.0, 1.0],
+                    },
+                    kind: SceneNodeKindDto::Light(SceneLightDto::Point {
+                        color: [1.0, 0.8, 0.6],
+                        intensity: 4.0,
+                        enabled: true,
+                        range: Some(12.0),
+                        decay: 2.0,
+                        shadow_intent: SceneLightShadowIntentDto::Disabled,
+                    }),
+                    label: Some("Key light".to_string()),
+                    tags: Vec::new(),
+                },
+            },
+        })
+        .unwrap();
+    assert!(created.accepted);
+
+    let updated = bridge
+        .apply_scene_object_command(SceneObjectCommandRequestDto {
+            expected_document_hash: created.outcome.as_ref().unwrap().snapshot.document_hash,
+            command: SceneObjectCommandDto::UpdateLight {
+                id: light_id,
+                scene_light: SceneLightDto::Point {
+                    color: [0.5, 0.7, 1.0],
+                    intensity: 7.0,
+                    enabled: true,
+                    range: Some(18.0),
+                    decay: 2.0,
+                    shadow_intent: SceneLightShadowIntentDto::Requested,
+                },
+            },
+        })
+        .unwrap();
+    assert!(updated.accepted);
+
+    let outcome = updated.outcome.unwrap();
+    assert_eq!(outcome.document.schema_version, 2);
+    assert!(matches!(
+        outcome
+            .document
+            .nodes
+            .iter()
+            .find(|node| node.id == light_id)
+            .unwrap()
+            .kind,
+        SceneNodeKindDto::Light(SceneLightDto::Point {
+            intensity: 7.0,
+            range: Some(18.0),
+            shadow_intent: SceneLightShadowIntentDto::Requested,
+            ..
+        })
+    ));
+}
+
+#[test]
 fn stored_scene_codec_classifies_structural_semantic_and_version_rejections() {
     let bridge = init_bridge();
     let before = bridge.read_scene_object_snapshot().unwrap();

@@ -7,6 +7,7 @@ import {
   type AssetReference,
   type FlatSceneDocument,
   type SceneNodeKind,
+  type SceneLight,
   type SceneNodeRecord,
   type SceneTransform,
   type SceneValidationError,
@@ -16,10 +17,12 @@ import {
 import {
   applyProposalToDraft,
   proposeAddGroup,
+  proposeAddLight,
   proposeAddSprite,
   proposeAddStaticMesh,
   proposeReparent,
   proposeSetMetadata,
+  proposeSetLight,
   proposeSetTransform,
   summarizeValidation,
   type SceneEditProposal,
@@ -72,6 +75,18 @@ void test('proposeAddStaticMesh / Sprite / Group build typed addNode proposals',
   const group = proposeAddGroup(sceneNodeId(12), { parent: sceneNodeId(1), childOrder: 3 });
   assert.equal(group.op === 'addNode' && group.node.kind.kind, 'emptyGroup');
   assert.equal(group.op === 'addNode' && (group.node.childOrder as number), 3);
+});
+
+void test('stored light proposals carry typed settings and update draft identity in place', () => {
+  const point: SceneLight = { kind: 'point', color: [1, 0.5, 0.2], intensity: 4, enabled: true, range: 10, decay: 2, shadowIntent: 'disabled' };
+  const added = proposeAddLight(sceneNodeId(20), point, { parent: sceneNodeId(1), label: 'lamp' });
+  let draft = applyProposalToDraft(baseScene(), added);
+  assert.deepEqual(draft.nodes[2]!.kind, { kind: 'light', sceneLight: point });
+
+  const replacement: SceneLight = { ...point, intensity: 7, shadowIntent: 'requested' };
+  draft = applyProposalToDraft(draft, proposeSetLight(sceneNodeId(20), replacement));
+  assert.equal(draft.nodes[2]!.id as number, 20);
+  assert.deepEqual(draft.nodes[2]!.kind, { kind: 'light', sceneLight: replacement });
 });
 
 void test('reparent / setTransform / setMetadata builders are typed proposals', () => {
@@ -146,10 +161,10 @@ function mockAuthorityValidate(doc: FlatSceneDocument): SceneValidationReport {
 
   for (const n of doc.nodes) {
     if (n.parent !== null && !ids.has(n.parent as number)) {
-      errors.push({ code: 'unknown-parent', node: n.id, parent: n.parent, expectedKind: null, actualKind: null, transformReason: null, cyclePath: [] });
+      errors.push({ code: 'unknown-parent', node: n.id, parent: n.parent, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: [] });
     }
     if (n.kind.kind === 'staticMesh' && kindFromAssetId(n.kind.asset.id) !== 'mesh') {
-      errors.push({ code: 'asset-kind-mismatch', node: n.id, parent: null, expectedKind: 'mesh', actualKind: kindFromAssetId(n.kind.asset.id), transformReason: null, cyclePath: [] });
+      errors.push({ code: 'asset-kind-mismatch', node: n.id, parent: null, expectedKind: 'mesh', actualKind: kindFromAssetId(n.kind.asset.id), transformReason: null, lightReason: null, cyclePath: [] });
     }
   }
 
@@ -162,7 +177,7 @@ function mockAuthorityValidate(doc: FlatSceneDocument): SceneValidationReport {
     while (cur !== null && ids.has(cur)) {
       if (seen.has(cur)) {
         const from = path.indexOf(cur);
-        errors.push({ code: 'cycle', node: null, parent: null, expectedKind: null, actualKind: null, transformReason: null, cyclePath: path.slice(from).map((id) => sceneNodeId(id)) });
+        errors.push({ code: 'cycle', node: null, parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: path.slice(from).map((id) => sceneNodeId(id)) });
         break;
       }
       seen.add(cur);
@@ -208,12 +223,14 @@ void test('a reparent under an absent parent is rejected with unknown-parent', (
 void test('summarizeValidation maps every classified code to a readout', () => {
   const report: SceneValidationReport = {
     errors: [
-      { code: 'duplicate-node-id', node: sceneNodeId(2), parent: null, expectedKind: null, actualKind: null, transformReason: null, cyclePath: [] },
-      { code: 'invalid-transform', node: sceneNodeId(3), parent: null, expectedKind: null, actualKind: null, transformReason: 'zero-scale-axis', cyclePath: [] },
+      { code: 'duplicate-node-id', node: sceneNodeId(2), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: [] },
+      { code: 'invalid-transform', node: sceneNodeId(3), parent: null, expectedKind: null, actualKind: null, transformReason: 'zero-scale-axis', lightReason: null, cyclePath: [] },
+      { code: 'invalid-light', node: sceneNodeId(4), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: 'invalid-range', cyclePath: [] },
     ],
   };
   const feedback = summarizeValidation(report);
   assert.equal(feedback.accepted, false);
-  assert.equal(feedback.issues.length, 2);
+  assert.equal(feedback.issues.length, 3);
   assert.match(feedback.issues[1]!.detail, /zero-scale-axis/);
+  assert.match(feedback.issues[2]!.detail, /invalid-range/);
 });

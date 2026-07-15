@@ -268,6 +268,7 @@ const cycleReport: SceneValidationReport = {
       expectedKind: null,
       actualKind: null,
       transformReason: null,
+      lightReason: null,
       cyclePath: [sceneNodeId(1), sceneNodeId(2), sceneNodeId(1)],
     },
   ],

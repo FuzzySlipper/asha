@@ -10,8 +10,9 @@ use std::collections::{HashMap, HashSet};
 use core_assets::AssetKind;
 use core_ids::SceneNodeId;
 
-use crate::document::FlatSceneDocument;
+use crate::document::{FlatSceneDocument, SceneNodeKind};
 use crate::transform::TransformInvalid;
+use crate::SceneLightInvalid;
 
 /// One classified validation failure.
 #[derive(Debug, Clone, PartialEq)]
@@ -36,6 +37,11 @@ pub enum SceneValidationError {
         expected: AssetKind,
         actual: AssetKind,
     },
+    /// A stored light has malformed fields or a scaled pose.
+    InvalidLight {
+        node: SceneNodeId,
+        reason: SceneLightInvalid,
+    },
 }
 
 impl SceneValidationError {
@@ -47,6 +53,7 @@ impl SceneValidationError {
             SceneValidationError::Cycle { .. } => "cycle",
             SceneValidationError::InvalidTransform { .. } => "invalid-transform",
             SceneValidationError::AssetKindMismatch { .. } => "asset-kind-mismatch",
+            SceneValidationError::InvalidLight { .. } => "invalid-light",
         }
     }
 }
@@ -104,6 +111,21 @@ pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
                     node: rec.id,
                     expected,
                     actual: asset.kind(),
+                });
+            }
+        }
+        if let SceneNodeKind::Light(light) = &rec.kind {
+            let result = if doc.schema_version < 2 || doc.metadata.authoring_format_version < 2 {
+                Err(SceneLightInvalid::RequiresSchema2)
+            } else if rec.transform.scale != core_math::Vec3::ONE {
+                Err(SceneLightInvalid::NonUnitScale)
+            } else {
+                light.validate()
+            };
+            if let Err(reason) = result {
+                errors.push(SceneValidationError::InvalidLight {
+                    node: rec.id,
+                    reason,
                 });
             }
         }

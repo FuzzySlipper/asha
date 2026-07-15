@@ -17,6 +17,7 @@ import type {
   FlatSceneDocument,
   SceneNodeId,
   SceneNodeKind,
+  SceneLight,
   SceneNodeRecord,
   SceneTransform,
   SceneValidationCode,
@@ -41,6 +42,7 @@ export type SceneEditProposal =
   | { readonly op: 'addNode'; readonly node: SceneNodeRecord }
   | { readonly op: 'reparent'; readonly node: SceneNodeId; readonly newParent: SceneNodeId | null; readonly childOrder: number }
   | { readonly op: 'setTransform'; readonly node: SceneNodeId; readonly transform: SceneTransform }
+  | { readonly op: 'setLight'; readonly node: SceneNodeId; readonly sceneLight: SceneLight }
   | { readonly op: 'setMetadata'; readonly node: SceneNodeId; readonly label: string | null; readonly tags: readonly string[] };
 
 /** Optional authored fields shared by the add-node builders. */
@@ -77,6 +79,16 @@ export function proposeAddSprite(id: SceneNodeId, asset: AssetReference, authori
 /** Propose adding an empty grouping/transform node. */
 export function proposeAddGroup(id: SceneNodeId, authoring: NodeAuthoring = {}): SceneEditProposal {
   return { op: 'addNode', node: newRecord(id, { kind: 'emptyGroup' }, authoring) };
+}
+
+/** Propose adding a stored renderer-neutral light node. */
+export function proposeAddLight(id: SceneNodeId, sceneLight: SceneLight, authoring: NodeAuthoring = {}): SceneEditProposal {
+  return { op: 'addNode', node: newRecord(id, { kind: 'light', sceneLight }, authoring) };
+}
+
+/** Propose replacing the authored light properties without changing its pose. */
+export function proposeSetLight(node: SceneNodeId, sceneLight: SceneLight): SceneEditProposal {
+  return { op: 'setLight', node, sceneLight };
 }
 
 /** Propose reparenting (or grouping) a node under a new parent at a sibling index. */
@@ -130,6 +142,13 @@ export function applyProposalToDraft(doc: FlatSceneDocument, proposal: SceneEdit
       }
       break;
     }
+    case 'setLight': {
+      const at = indexOf(proposal.node);
+      if (at >= 0 && nodes[at]!.kind.kind === 'light') {
+        nodes[at] = { ...nodes[at]!, kind: { kind: 'light', sceneLight: proposal.sceneLight } };
+      }
+      break;
+    }
     case 'setMetadata': {
       const at = indexOf(proposal.node);
       if (at >= 0) {
@@ -169,6 +188,8 @@ function describeValidationError(error: SceneValidationError): string {
       return `node ${error.node as number} has an invalid transform${error.transformReason ? ` (${error.transformReason})` : ''}`;
     case 'asset-kind-mismatch':
       return `node ${error.node as number} expected ${error.expectedKind}, found ${error.actualKind}`;
+    case 'invalid-light':
+      return `node ${error.node as number} has an invalid light${error.lightReason ? ` (${error.lightReason})` : ''}`;
   }
 }
 

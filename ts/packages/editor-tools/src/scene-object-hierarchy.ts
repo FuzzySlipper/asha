@@ -106,6 +106,7 @@ function fnv1aHash(prefix: string, value: unknown): string {
 function assetForKind(kind: SceneNodeKind): AssetReference | null {
   switch (kind.kind) {
     case 'emptyGroup':
+    case 'light':
       return null;
     case 'staticMesh':
     case 'sprite':

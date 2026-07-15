@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "id": 7,
+  "metadata": { "name": "lights", "authoringFormatVersion": 2 },
+  "dependencies": [],
+  "nodes": [
+    { "id": 1, "parent": null, "childOrder": 1, "label": "light-1", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "light", "sceneLight": { "kind": "ambient", "color": [0.1, 0.2, 0.3], "intensity": 0.4, "enabled": true, "shadowIntent": "disabled" } } },
+    { "id": 2, "parent": null, "childOrder": 2, "label": "light-2", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "light", "sceneLight": { "kind": "directional", "color": [1, 0.9, 0.8], "intensity": 2, "enabled": true, "shadowIntent": "requested" } } },
+    { "id": 3, "parent": null, "childOrder": 3, "label": "light-3", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "light", "sceneLight": { "kind": "point", "color": [1, 0.3, 0.1], "intensity": 5, "enabled": true, "shadowIntent": "disabled", "range": 9, "decay": 2 } } },
+    { "id": 4, "parent": null, "childOrder": 4, "label": "light-4", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "light", "sceneLight": { "kind": "spot", "color": [0.2, 0.4, 1], "intensity": 7, "enabled": false, "shadowIntent": "disabled", "range": null, "decay": 1, "outerAngleRadians": 0.7, "penumbra": 0.25 } } }
+  ]
+}

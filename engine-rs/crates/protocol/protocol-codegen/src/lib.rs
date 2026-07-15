@@ -136,7 +136,6 @@ mod tests {
     use crate::source as model;
     use serde_json::{json, Value};
     use std::collections::{BTreeMap, BTreeSet};
-
     #[path = "camera_controller_tests.rs"]
     mod camera_controller_tests;
     #[path = "entity_authoring_activation_tests.rs"]
@@ -153,6 +152,8 @@ mod tests {
     mod project_bundle_tests;
     #[path = "render_tests.rs"]
     mod render_tests;
+    #[path = "scene_tests.rs"]
+    mod scene_tests;
     #[path = "telemetry_tests.rs"]
     mod telemetry_tests;
     #[path = "time_control_tests.rs"]
@@ -161,7 +162,6 @@ mod tests {
     mod voxel_edit_history_tests;
     #[path = "voxel_projection_tests.rs"]
     mod voxel_projection_tests;
-
     #[test]
     fn generation_is_deterministic() {
         assert_eq!(
@@ -491,10 +491,10 @@ mod tests {
         camera_controller_tests::extend_round_trip_coverage(&mut coverage);
         time_control_tests::extend_round_trip_coverage(&mut coverage);
         render_tests::extend_round_trip_coverage(&mut coverage);
+        scene_tests::extend_round_trip_coverage(&mut coverage);
         voxel_projection_tests::extend_round_trip_coverage(&mut coverage);
         coverage
     }
-
     const LEGACY_GAP_REASON: &str = "pre-ratchet legacy IR entry covered only by existing rendered-file/vocabulary checks; add a direct Rust serde round-trip sample before removing this exemption";
 
     fn exempt_items(
@@ -564,7 +564,6 @@ mod tests {
             ],
             LEGACY_GAP_REASON,
         );
-
         exempt_items(
             &mut exemptions,
             "render",
@@ -616,7 +615,6 @@ mod tests {
             ],
             LEGACY_GAP_REASON,
         );
-
         exempt_items(
             &mut exemptions,
             "replay",
@@ -729,6 +727,7 @@ mod tests {
                 "scene.SceneNodeKind.staticMesh",
                 "scene.SceneNodeKind.sprite",
                 "scene.SceneNodeKind.voxelVolume",
+                "scene.SceneNodeKind.light",
                 "scene.SceneNodeRecord",
                 "scene.SceneMetadata",
                 "scene.FlatSceneDocument",
@@ -744,6 +743,7 @@ mod tests {
                 "scene.SceneObjectCommand.delete",
                 "scene.SceneObjectCommand.rename",
                 "scene.SceneObjectCommand.reparent",
+                "scene.SceneObjectCommand.updateLight",
                 "scene.SceneObjectCommand.translate",
                 "scene.SceneObjectCommand.rotate",
                 "scene.SceneObjectCommand.select",
@@ -1446,47 +1446,6 @@ mod tests {
             err.contains("spatial"),
             "mutation-style shape test should name the missing field, got {err}"
         );
-    }
-
-    /// Focused behavior test for the `scene` family: the node-kind tags and
-    /// validation codes are sourced from `protocol-scene`, the branded scene ids
-    /// are emitted, and the document/validation/trace/bootstrap shapes exist.
-    /// This is the "Rust and generated TS scene contracts agree" guard for #2365.
-    #[test]
-    fn scene_family_emits_tags_codes_and_shapes() {
-        let s = file("scene.ts");
-        for tag in protocol_scene::SCENE_NODE_KIND_TAGS {
-            assert!(
-                s.contains(&format!("'{tag}'")),
-                "missing node-kind tag {tag}"
-            );
-        }
-        for code in protocol_scene::SCENE_VALIDATION_CODES {
-            assert!(
-                s.contains(&format!("'{code}'")),
-                "missing validation code {code}"
-            );
-        }
-        for code in protocol_scene::SCENE_DOCUMENT_CODEC_DIAGNOSTIC_CODES {
-            assert!(
-                s.contains(&format!("'{code}'")),
-                "missing scene-document codec diagnostic code {code}"
-            );
-        }
-        assert!(s.contains("export type ProjectId ="));
-        assert!(s.contains("export type SceneId ="));
-        assert!(s.contains("export type RuntimeSessionId ="));
-        assert!(s.contains("export type SceneNodeId ="));
-        assert!(s.contains("export interface FlatSceneDocument {"));
-        assert!(s.contains("export interface SceneDocumentDecodeRequest {"));
-        assert!(s.contains("export interface SceneDocumentEncodeRequest {"));
-        assert!(s.contains("export interface SceneDocumentCodecResult {"));
-        assert!(s.contains("export interface SceneNodeRecord {"));
-        assert!(s.contains("export interface SceneValidationReport {"));
-        assert!(s.contains("export interface SceneSourceTrace {"));
-        assert!(s.contains("export interface BootstrapRecord {"));
-        // Scene reuses the runtime EntityId brand from ids.ts for source traces.
-        assert!(s.contains("import type { EntityId } from './ids.js';"));
     }
 
     /// Focused behavior test for the `assets` family: kind/validation/lock/uv/

@@ -112,7 +112,7 @@ fn unsupported_schema_version_fails_closed() {
         BootstrapPlan::prepare(&doc, RuntimeSessionId::new(1)),
         Err(BootstrapError::UnsupportedSchemaVersion {
             found: 999,
-            supported: 1,
+            supported: 2,
         })
     );
 }

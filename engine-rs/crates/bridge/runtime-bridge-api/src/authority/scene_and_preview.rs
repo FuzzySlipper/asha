@@ -6,10 +6,10 @@ impl EngineBridge {
     pub(super) fn initial_scene_document() -> core_scene::FlatSceneDocument {
         core_scene::FlatSceneDocument {
             id: SceneId::new(1),
-            schema_version: 1,
+            schema_version: 2,
             metadata: core_scene::SceneMetadata {
                 name: Some("Runtime scene".to_string()),
-                authoring_format_version: 1,
+                authoring_format_version: 2,
             },
             dependencies: Vec::new(),
             nodes: vec![core_scene::SceneNodeRecord {
@@ -228,6 +228,12 @@ impl EngineBridge {
                 parent,
                 child_order,
             },
+            SceneObjectCommandDto::UpdateLight { id, scene_light } => {
+                core_scene::SceneObjectCommand::UpdateLight {
+                    id,
+                    light: Self::scene_light_from_dto(scene_light),
+                }
+            }
             SceneObjectCommandDto::Select { id } => core_scene::SceneObjectCommand::Select { id },
             SceneObjectCommandDto::Translate { id, .. }
             | SceneObjectCommandDto::Rotate { id, .. } => {
@@ -315,6 +321,7 @@ impl EngineBridge {
             "staticMesh" => protocol_scene::SceneNodeKindTag::StaticMesh,
             "sprite" => protocol_scene::SceneNodeKindTag::Sprite,
             "voxelVolume" => protocol_scene::SceneNodeKindTag::VoxelVolume,
+            "light" => protocol_scene::SceneNodeKindTag::Light,
             _ => protocol_scene::SceneNodeKindTag::EmptyGroup,
         }
     }
@@ -363,6 +370,9 @@ impl EngineBridge {
                         core_scene::SceneNodeKind::VoxelVolume(asset) => {
                             SceneNodeKindDto::VoxelVolume(Self::scene_asset_dto(&asset))
                         }
+                        core_scene::SceneNodeKind::Light(light) => {
+                            SceneNodeKindDto::Light(Self::scene_light_dto(light))
+                        }
                     },
                 })
                 .collect(),
@@ -397,22 +407,35 @@ impl EngineBridge {
     fn scene_codec_result(document: core_scene::FlatSceneDocument) -> SceneDocumentCodecResultDto {
         let document = document.canonical();
         let mut diagnostics = Vec::new();
-        if document.schema_version != 1 {
+        if !(1..=2).contains(&document.schema_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedSchema,
                 message: format!(
-                    "scene schema version {} is unsupported; expected 1",
+                    "scene schema version {} is unsupported; expected 1 or 2",
                     document.schema_version
                 ),
             });
         }
-        if document.metadata.authoring_format_version != 1 {
+        if !(1..=2).contains(&document.metadata.authoring_format_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedAuthoringFormat,
                 message: format!(
-                    "scene authoring format version {} is unsupported; expected 1",
+                    "scene authoring format version {} is unsupported; expected 1 or 2",
                     document.metadata.authoring_format_version
                 ),
+            });
+        }
+        let has_lights = document
+            .nodes
+            .iter()
+            .any(|node| matches!(node.kind, core_scene::SceneNodeKind::Light(_)));
+        if has_lights
+            && (document.schema_version < 2 || document.metadata.authoring_format_version < 2)
+        {
+            diagnostics.push(SceneDocumentCodecDiagnosticDto {
+                code: SceneDocumentCodecDiagnosticCode::UnsupportedAuthoringFormat,
+                message: "stored light nodes require scene schema and authoring format version 2"
+                    .to_string(),
             });
         }
         let validation = SceneValidationReportDto {
@@ -472,6 +495,9 @@ impl EngineBridge {
             SceneNodeKindDto::VoxelVolume(asset) => {
                 core_scene::SceneNodeKind::VoxelVolume(Self::scene_asset_from_dto(asset)?)
             }
+            SceneNodeKindDto::Light(light) => {
+                core_scene::SceneNodeKind::Light(Self::scene_light_from_dto(light))
+            }
         };
         Ok(core_scene::SceneNodeRecord {
             id: record.id,
@@ -527,6 +553,136 @@ impl EngineBridge {
                 )
             })?;
         Ok(AssetReference::new(id, version, hash))
+    }
+
+    fn scene_light_dto(light: core_scene::SceneLight) -> SceneLightDto {
+        let shadow = |intent| match intent {
+            core_scene::SceneLightShadowIntent::Disabled => SceneLightShadowIntentDto::Disabled,
+            core_scene::SceneLightShadowIntent::Requested => SceneLightShadowIntentDto::Requested,
+        };
+        match light {
+            core_scene::SceneLight::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => SceneLightDto::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            core_scene::SceneLight::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => SceneLightDto::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            core_scene::SceneLight::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent,
+            } => SceneLightDto::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent: shadow(shadow_intent),
+            },
+            core_scene::SceneLight::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent,
+            } => SceneLightDto::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent: shadow(shadow_intent),
+            },
+        }
+    }
+
+    fn scene_light_from_dto(light: SceneLightDto) -> core_scene::SceneLight {
+        let shadow = |intent| match intent {
+            SceneLightShadowIntentDto::Disabled => core_scene::SceneLightShadowIntent::Disabled,
+            SceneLightShadowIntentDto::Requested => core_scene::SceneLightShadowIntent::Requested,
+        };
+        match light {
+            SceneLightDto::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => core_scene::SceneLight::Ambient {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            SceneLightDto::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent,
+            } => core_scene::SceneLight::Directional {
+                color,
+                intensity,
+                enabled,
+                shadow_intent: shadow(shadow_intent),
+            },
+            SceneLightDto::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent,
+            } => core_scene::SceneLight::Point {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                shadow_intent: shadow(shadow_intent),
+            },
+            SceneLightDto::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent,
+            } => core_scene::SceneLight::Spot {
+                color,
+                intensity,
+                enabled,
+                range,
+                decay,
+                outer_angle_radians,
+                penumbra,
+                shadow_intent: shadow(shadow_intent),
+            },
+        }
     }
 
     fn scene_asset_dto(asset: &AssetReference) -> AssetReferenceDto {
@@ -623,6 +779,11 @@ impl EngineBridge {
                 dto.node = Some(node);
                 dto.expected_kind = Some(expected.prefix().to_string());
                 dto.actual_kind = Some(actual.prefix().to_string());
+            }
+            core_scene::SceneValidationError::InvalidLight { node, reason } => {
+                dto.code = SceneValidationCode::InvalidLight;
+                dto.node = Some(node);
+                dto.light_reason = Some(reason.label().to_string());
             }
         }
         dto

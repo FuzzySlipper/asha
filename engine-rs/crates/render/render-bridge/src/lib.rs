@@ -35,7 +35,9 @@
 #![forbid(unsafe_code)]
 
 pub mod json;
+mod mesh_payload;
 pub mod presentation;
+mod scene_lighting;
 pub mod voxel;
 
 pub use presentation::{

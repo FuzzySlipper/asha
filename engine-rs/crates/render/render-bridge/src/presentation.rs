@@ -13,20 +13,11 @@
 //! [`RenderDiff::CreateStaticMeshInstance`]; sprite nodes project to
 //! [`RenderDiff::CreateSprite`] / [`RenderDiff::UpdateSprite`].
 //!
-//! # Boundary rules
-//!
-//! - It **reads** authority and **never** writes it: a render handle is derived,
-//!   never durable save truth (boundary 12). The [`RenderRegistry`] keeps the
-//!   `handle ⇄ source` read-model so picking/diagnostics can answer
-//!   `render handle → scene node / entity / asset`, but nothing here is persisted.
-//! - Geometry **import** (glTF, voxel meshing) is out of scope: a static-mesh
-//!   asset projects a deterministic placeholder unit quad keyed by its asset id,
-//!   so two instances share one uploaded geometry. Real geometry import lands with
-//!   the asset pipeline; the *projection contract* (define-once / instance-many /
-//!   stable handles / source trace) is the stable part proven here.
-//! - Material slots carry catalog material **ids** only; the renderer maps an id
-//!   to a `RenderMaterial` (material-wiring super, epic #2353). An unresolved id
-//!   is reported as a [`RenderProjectionDiagnostic`], never silently dropped.
+//! It reads authority and never writes it: handles and the `handle ⇄ source`
+//! registry are derived, never save truth. Geometry import remains out of scope;
+//! static meshes use shared placeholder geometry while preserving define-once,
+//! instance-many lifecycle. Material slots carry catalog ids, with unresolved
+//! ids reported as [`RenderProjectionDiagnostic`] rather than silently dropped.
 //!
 //! # Determinism
 //!
@@ -44,13 +35,16 @@ use core_ids::{EntityId, SceneNodeId};
 use core_scene::transform::SceneTransform;
 use core_scene::{FlatSceneDocument, SceneNodeKind, SceneNodeRecord, SpatialSessionState};
 use protocol_render::{
-    BillboardMode, MaterialUvStrategy, MeshAttribute, MeshAttributeKind, MeshAttributeName,
-    MeshBoundsDescriptor, MeshBufferLayout, MeshCollisionPolicy, MeshGroupDescriptor,
-    MeshIndexWidth, MeshMaterialSlot, MeshPayloadDescriptor, MeshPayloadSource, MeshProvenance,
+    BillboardMode, LightDescriptor, MaterialUvStrategy, MeshCollisionPolicy, MeshMaterialSlot,
     RenderDiff, RenderFrameDiff, RenderHandle, RenderMaterialDescriptor, RenderMetadata,
     SpriteAtlasDescriptor, SpriteAttachment, SpriteDepthPolicy, SpriteInstanceDescriptor,
     SpriteShading, SpriteSizeMode, StaticMeshAsset, StaticMeshInstanceDescriptor,
     TextureDescriptor, Transform,
+};
+
+use crate::{
+    mesh_payload::placeholder_quad_payload,
+    scene_lighting::{authored_world_transform, light_kind, project_scene_light},
 };
 
 /// An authority/catalog-owned sprite atlas + its texture, registered into the
@@ -71,6 +65,7 @@ pub struct SpriteAtlasSource {
 pub enum RenderSourceKind {
     StaticMesh,
     Sprite,
+    Light,
 }
 
 /// The authority identity a render handle was projected from — the read-model that
@@ -348,6 +343,7 @@ enum Projected {
         metadata: RenderMetadata,
     },
     Sprite(SpriteInstanceDescriptor),
+    Light(LightDescriptor),
 }
 
 impl Projected {
@@ -355,6 +351,7 @@ impl Projected {
         match self {
             Projected::StaticMesh { .. } => RenderSourceKind::StaticMesh,
             Projected::Sprite(_) => RenderSourceKind::Sprite,
+            Projected::Light(_) => RenderSourceKind::Light,
         }
     }
 
@@ -362,6 +359,7 @@ impl Projected {
         match self {
             Projected::StaticMesh { asset, .. } => asset,
             Projected::Sprite(s) => &s.asset,
+            Projected::Light(_) => "scene-light",
         }
     }
 }
@@ -490,10 +488,15 @@ impl ScenePresentationProjector {
     ) -> Option<Projected> {
         // Non-renderable kinds carry no geometry (empty groups; voxel volumes
         // upload via the mesh-payload path) — no transform/authority is required.
+        if let SceneNodeKind::Light(light) = &record.kind {
+            let transform = self.resolve_light_transform(record, input)?;
+            return Some(Projected::Light(project_scene_light(light, transform)));
+        }
         let asset = match &record.kind {
             SceneNodeKind::StaticMesh(a) => a.id().as_str().to_string(),
             SceneNodeKind::Sprite(a) => a.id().as_str().to_string(),
             SceneNodeKind::EmptyGroup | SceneNodeKind::VoxelVolume(_) => return None,
+            SceneNodeKind::Light(_) => unreachable!("lights return above"),
         };
         let entity = input.world.entity_for_node(record.id);
         // In runtime-authority mode this returns `None` (and classifies) when the
@@ -548,6 +551,21 @@ impl ScenePresentationProjector {
             // Empty groups carry no geometry; voxel volumes upload through the
             // ADR-0007 mesh-payload path, not this scene projection.
             SceneNodeKind::EmptyGroup | SceneNodeKind::VoxelVolume(_) => None,
+            SceneNodeKind::Light(_) => unreachable!("lights return above"),
+        }
+    }
+
+    fn resolve_light_transform(
+        &mut self,
+        record: &SceneNodeRecord,
+        input: &ScenePresentation<'_>,
+    ) -> Option<SceneTransform> {
+        match self.mode {
+            ProjectionMode::ScenePreview => authored_world_transform(input.scene, record.id),
+            ProjectionMode::RuntimeAuthority => {
+                let entity = input.world.entity_for_node(record.id)?;
+                input.world.transform(entity)
+            }
         }
     }
 
@@ -655,6 +673,13 @@ impl ScenePresentationProjector {
                     sprite: sprite.clone(),
                 });
             }
+            Projected::Light(light) => {
+                frame.push(RenderDiff::CreateLight {
+                    handle,
+                    parent: None,
+                    light: light.clone(),
+                });
+            }
         }
     }
 
@@ -743,6 +768,21 @@ impl ScenePresentationProjector {
                         tint: tint_changed.then_some(cs.tint),
                         render_order: order_changed.then_some(cs.render_order),
                         visible: None,
+                    });
+                }
+            }
+            (Projected::Light(previous), Projected::Light(current)) => {
+                if light_kind(previous) == light_kind(current) {
+                    frame.push(RenderDiff::UpdateLight {
+                        handle,
+                        light: current.clone(),
+                    });
+                } else {
+                    frame.push(RenderDiff::Destroy { handle });
+                    frame.push(RenderDiff::CreateLight {
+                        handle,
+                        parent: None,
+                        light: current.clone(),
                     });
                 }
             }
@@ -1013,46 +1053,6 @@ fn to_render_transform(t: SceneTransform) -> Transform {
         translation: [t.translation.x, t.translation.y, t.translation.z],
         rotation: [t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w],
         scale: [t.scale.x, t.scale.y, t.scale.z],
-    }
-}
-
-/// A deterministic unit-quad placeholder payload (4 verts, 6 indices, one group
-/// over slot 0). Shared by every instance of a static-mesh asset until real
-/// geometry import lands.
-fn placeholder_quad_payload() -> MeshPayloadDescriptor {
-    MeshPayloadDescriptor {
-        layout: MeshBufferLayout {
-            vertex_count: 4,
-            index_count: 6,
-            index_width: MeshIndexWidth::U32,
-            attributes: vec![
-                MeshAttribute {
-                    name: MeshAttributeName::Position,
-                    components: 3,
-                    kind: MeshAttributeKind::F32,
-                },
-                MeshAttribute {
-                    name: MeshAttributeName::Normal,
-                    components: 3,
-                    kind: MeshAttributeKind::F32,
-                },
-            ],
-        },
-        groups: vec![MeshGroupDescriptor {
-            material_slot: 0,
-            start: 0,
-            count: 6,
-        }],
-        bounds: MeshBoundsDescriptor {
-            min: [0.0, 0.0, 0.0],
-            max: [1.0, 1.0, 0.0],
-        },
-        source: MeshPayloadSource::Inline {
-            positions: vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0],
-            normals: vec![0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
-            indices: vec![0, 1, 2, 0, 2, 3],
-        },
-        provenance: MeshProvenance::StaticAsset,
     }
 }
 

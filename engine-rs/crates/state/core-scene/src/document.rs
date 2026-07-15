@@ -8,15 +8,14 @@
 use core_assets::{AssetKind, AssetReference};
 use core_ids::{SceneId, SceneNodeId};
 
-use crate::transform::SceneTransform;
+use crate::{transform::SceneTransform, SceneLight};
 
 /// What a scene node *is*. Asset-backed variants carry a kind-erased
 /// [`AssetReference`]; [`crate::validate`] checks the reference's kind matches
 /// the variant, which is how a wrong-kind asset reference is rejected.
 ///
-/// Kept intentionally small. Further variants (spawn templates, lights, …) are
-/// gated on their own capability docs and validation plans (scene-capability-01,
-/// recommendation 7) rather than being added ad hoc to satisfy a local task.
+/// Kept intentionally small. Further variants are gated on explicit capability
+/// and validation plans rather than renderer-specific property bags.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SceneNodeKind {
     /// A pure grouping/transform node with no asset.
@@ -27,6 +26,8 @@ pub enum SceneNodeKind {
     Sprite(AssetReference),
     /// References an authored voxel volume asset.
     VoxelVolume(AssetReference),
+    /// Renderer-neutral authored light; pose comes from the node transform.
+    Light(SceneLight),
 }
 
 impl SceneNodeKind {
@@ -37,13 +38,14 @@ impl SceneNodeKind {
             SceneNodeKind::StaticMesh(_) => Some(AssetKind::StaticMesh),
             SceneNodeKind::Sprite(_) => Some(AssetKind::Sprite),
             SceneNodeKind::VoxelVolume(_) => Some(AssetKind::VoxelVolume),
+            SceneNodeKind::Light(_) => None,
         }
     }
 
     /// The asset reference carried by this node, if any.
     pub fn asset(&self) -> Option<&AssetReference> {
         match self {
-            SceneNodeKind::EmptyGroup => None,
+            SceneNodeKind::EmptyGroup | SceneNodeKind::Light(_) => None,
             SceneNodeKind::StaticMesh(a)
             | SceneNodeKind::Sprite(a)
             | SceneNodeKind::VoxelVolume(a) => Some(a),
@@ -57,6 +59,7 @@ impl SceneNodeKind {
             SceneNodeKind::StaticMesh(_) => "staticMesh",
             SceneNodeKind::Sprite(_) => "sprite",
             SceneNodeKind::VoxelVolume(_) => "voxelVolume",
+            SceneNodeKind::Light(_) => "light",
         }
     }
 }

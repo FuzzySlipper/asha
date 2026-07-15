@@ -25,10 +25,10 @@ export type SceneNodeId = number & { readonly __brand: 'SceneNodeId' };
 export const sceneNodeId = (raw: number): SceneNodeId => raw as SceneNodeId;
 
 // The scene-node kind tag as a closed enum with a stable string form.
-export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume';
+export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume' | 'light';
 
 // Stable classified scene-validation codes. Mirrors `core_scene::SceneValidationError::label`; the string form is a contract.
-export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch';
+export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch' | 'invalid-light';
 
 // Stable scene-object command rejection codes. Mirrors `core_scene::SceneObjectCommandRejection::label`; the string form is a contract.
 export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label' | 'invalid-scene-object-transform' | 'readonly-scene-object-transform';
@@ -56,12 +56,23 @@ export interface SceneTransform {
   readonly scale: readonly [number, number, number];
 }
 
+// Stored shadow intent. Render backends may expose a classified degradation, but the authored request remains durable scene data.
+export type SceneLightShadowIntent = 'disabled' | 'requested';
+
+// Renderer-neutral authored light. Pose is intentionally absent: translation and orientation come from the containing scene node transform.
+export type SceneLight =
+  | { readonly kind: 'ambient'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly shadowIntent: SceneLightShadowIntent }
+  | { readonly kind: 'directional'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly shadowIntent: SceneLightShadowIntent }
+  | { readonly kind: 'point'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly range: number | null; readonly decay: number; readonly shadowIntent: SceneLightShadowIntent }
+  | { readonly kind: 'spot'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly range: number | null; readonly decay: number; readonly outerAngleRadians: number; readonly penumbra: number; readonly shadowIntent: SceneLightShadowIntent };
+
 // Border form of a scene node's kind. Only asset-backed kinds carry an asset, mirroring the generated TypeScript discriminated union (so an "empty group with an asset" is unrepresentable rather than merely discouraged).
 export type SceneNodeKind =
   | { readonly kind: 'emptyGroup' }
   | { readonly kind: 'staticMesh'; readonly asset: AssetReference }
   | { readonly kind: 'sprite'; readonly asset: AssetReference }
-  | { readonly kind: 'voxelVolume'; readonly asset: AssetReference };
+  | { readonly kind: 'voxelVolume'; readonly asset: AssetReference }
+  | { readonly kind: 'light'; readonly sceneLight: SceneLight };
 
 // Border form of one canonical flat scene-node record.
 export interface SceneNodeRecord {
@@ -123,6 +134,7 @@ export interface SceneValidationError {
   readonly expectedKind: string | null;
   readonly actualKind: string | null;
   readonly transformReason: string | null;
+  readonly lightReason: string | null;
   readonly cyclePath: readonly SceneNodeId[];
 }
 
@@ -153,6 +165,7 @@ export type SceneObjectCommand =
   | { readonly kind: 'delete'; readonly id: SceneNodeId }
   | { readonly kind: 'rename'; readonly id: SceneNodeId; readonly label: string | null }
   | { readonly kind: 'reparent'; readonly id: SceneNodeId; readonly parent: SceneNodeId | null; readonly childOrder: number }
+  | { readonly kind: 'updateLight'; readonly id: SceneNodeId; readonly sceneLight: SceneLight }
   | { readonly kind: 'translate'; readonly id: SceneNodeId; readonly delta: readonly [number, number, number] }
   | { readonly kind: 'rotate'; readonly id: SceneNodeId; readonly rotation: readonly [number, number, number, number] }
   | { readonly kind: 'select'; readonly id: SceneNodeId | null };

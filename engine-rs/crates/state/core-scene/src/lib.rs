@@ -46,6 +46,7 @@
 pub mod bootstrap;
 pub mod document;
 pub mod json;
+pub mod light;
 pub mod scene_object;
 pub mod spatial_session;
 pub mod transform;
@@ -59,6 +60,7 @@ pub use document::{
     SceneTree,
 };
 pub use json::{decode, encode, SceneDecodeError};
+pub use light::{SceneLight, SceneLightInvalid, SceneLightShadowIntent};
 pub use scene_object::{
     apply_scene_object_command, scene_object_snapshot, SceneObjectCommand,
     SceneObjectCommandOutcome, SceneObjectCommandRejection, SceneObjectRecord, SceneObjectSnapshot,

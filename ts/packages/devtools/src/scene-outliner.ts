@@ -251,7 +251,7 @@ export interface NodeAssetRefs {
 }
 
 function assetOf(kind: SceneNodeKind): AssetReference | null {
-  return kind.kind === 'emptyGroup' ? null : kind.asset;
+  return kind.kind === 'emptyGroup' || kind.kind === 'light' ? null : kind.asset;
 }
 
 /** The inspector read model for one authored scene node. */

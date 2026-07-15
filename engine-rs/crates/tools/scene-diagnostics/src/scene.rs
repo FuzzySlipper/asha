@@ -137,6 +137,20 @@ fn map_scene_error(error: &SceneValidationError) -> DiagnosticReport {
             RemedyAction::FixReference,
             "reference an asset of the kind the node variant requires",
         )),
+        SceneValidationError::InvalidLight { node, reason } => DiagnosticReport::new(
+            DiagnosticCode::InvalidSceneTransform,
+            format!("node:{}", node.raw()),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!(
+                "scene node {} has an invalid stored light: {}",
+                node.raw(),
+                reason.label()
+            ),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::Inspect,
+            "fix the typed light fields or use scene schema/authoring format version 2",
+        )),
     }
 }
 

@@ -30,6 +30,31 @@ Editor viewport channels no longer inject private Three.js work lights. Stored
 scene lights and Studio-local work lights must enter through the same generic
 diff vocabulary, keeping downstream rendering aligned with upstream behavior.
 
+## Stored SceneDocument lights
+
+Scene schema/authoring format version 2 adds `SceneNodeKind.light` with a typed
+`SceneLight` payload. Ambient, directional, point, and spot settings are stored
+without a renderer object or a second pose. The containing node transform owns
+position; its local `-Z` axis owns directional/spot orientation. Parent
+translation, rotation, and scale compose into the projected world pose.
+Light-node scale itself must remain `[1, 1, 1]` because scaling a light has no
+portable meaning.
+
+Rust canonical decode rejects unknown fields and validates colors, intensity,
+range, decay, cone, penumbra, shadow intent, transform, and hierarchy. A typed
+`updateLight` scene-object command changes light properties under the guarded
+document hash. Transform or property changes retain the same render handle and
+emit `UpdateLight`; removal emits `Destroy`.
+
+Version-1 documents remain accepted and encode byte-for-byte at version 1. They
+are not silently rewritten. A document containing a light must explicitly use
+schema and authoring format version 2. The inspectable canonical fixture is
+`harness/fixtures/scenes/lights-v2.json`.
+
+An authored scene light is durable project content. A Studio work light is an
+editor preference and must not be inserted into the saved SceneDocument unless
+the user deliberately creates a light node.
+
 ## Uploaded voxel meshes
 
 `ReplaceMeshPayload` now realizes uploaded groups with lighting-aware standard

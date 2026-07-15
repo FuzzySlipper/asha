@@ -40,7 +40,8 @@ use core_ids::{EntityId, RuntimeSessionId, SceneId, SceneNodeId};
 /// Stable tag for each scene-node kind, identical in Rust and generated
 /// TypeScript. The string form is a contract: tags are *added*, never renamed.
 /// Mirrors `core_scene::SceneNodeKind::tag`.
-pub const SCENE_NODE_KIND_TAGS: &[&str] = &["emptyGroup", "staticMesh", "sprite", "voxelVolume"];
+pub const SCENE_NODE_KIND_TAGS: &[&str] =
+    &["emptyGroup", "staticMesh", "sprite", "voxelVolume", "light"];
 
 /// Stable classified scene-validation codes. Mirrors
 /// `core_scene::SceneValidationError::label`; the string form is a contract.
@@ -50,6 +51,7 @@ pub const SCENE_VALIDATION_CODES: &[&str] = &[
     "cycle",
     "invalid-transform",
     "asset-kind-mismatch",
+    "invalid-light",
 ];
 
 /// Stable scene-object command rejection codes. Mirrors
@@ -88,6 +90,7 @@ pub enum SceneNodeKindTag {
     StaticMesh,
     Sprite,
     VoxelVolume,
+    Light,
 }
 
 impl SceneNodeKindTag {
@@ -98,12 +101,16 @@ impl SceneNodeKindTag {
             SceneNodeKindTag::StaticMesh => "staticMesh",
             SceneNodeKindTag::Sprite => "sprite",
             SceneNodeKindTag::VoxelVolume => "voxelVolume",
+            SceneNodeKindTag::Light => "light",
         }
     }
 
     /// Whether this kind must carry an asset reference.
     pub fn requires_asset(self) -> bool {
-        !matches!(self, SceneNodeKindTag::EmptyGroup)
+        matches!(
+            self,
+            SceneNodeKindTag::StaticMesh | SceneNodeKindTag::Sprite | SceneNodeKindTag::VoxelVolume
+        )
     }
 }
 
@@ -113,6 +120,7 @@ pub const ALL_SCENE_NODE_KIND_TAGS: &[SceneNodeKindTag] = &[
     SceneNodeKindTag::StaticMesh,
     SceneNodeKindTag::Sprite,
     SceneNodeKindTag::VoxelVolume,
+    SceneNodeKindTag::Light,
 ];
 
 /// A classified scene-validation code as a closed enum with a stable string form.
@@ -123,6 +131,7 @@ pub enum SceneValidationCode {
     Cycle,
     InvalidTransform,
     AssetKindMismatch,
+    InvalidLight,
 }
 
 impl SceneValidationCode {
@@ -134,6 +143,7 @@ impl SceneValidationCode {
             SceneValidationCode::Cycle => "cycle",
             SceneValidationCode::InvalidTransform => "invalid-transform",
             SceneValidationCode::AssetKindMismatch => "asset-kind-mismatch",
+            SceneValidationCode::InvalidLight => "invalid-light",
         }
     }
 }
@@ -145,6 +155,7 @@ pub const ALL_SCENE_VALIDATION_CODES: &[SceneValidationCode] = &[
     SceneValidationCode::Cycle,
     SceneValidationCode::InvalidTransform,
     SceneValidationCode::AssetKindMismatch,
+    SceneValidationCode::InvalidLight,
 ];
 
 /// A classified scene-object command rejection code as a closed enum with a
@@ -282,6 +293,51 @@ pub struct SceneTransformDto {
     pub scale: [f32; 3],
 }
 
+/// Stored shadow intent. Render backends may expose a classified degradation,
+/// but the authored request remains durable scene data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SceneLightShadowIntentDto {
+    #[default]
+    Disabled,
+    Requested,
+}
+
+/// Renderer-neutral authored light. Pose is intentionally absent: translation
+/// and orientation come from the containing scene node transform.
+#[derive(Debug, Clone, PartialEq)]
+pub enum SceneLightDto {
+    Ambient {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        shadow_intent: SceneLightShadowIntentDto,
+    },
+    Directional {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        shadow_intent: SceneLightShadowIntentDto,
+    },
+    Point {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        range: Option<f32>,
+        decay: f32,
+        shadow_intent: SceneLightShadowIntentDto,
+    },
+    Spot {
+        color: [f32; 3],
+        intensity: f32,
+        enabled: bool,
+        range: Option<f32>,
+        decay: f32,
+        outer_angle_radians: f32,
+        penumbra: f32,
+        shadow_intent: SceneLightShadowIntentDto,
+    },
+}
+
 /// Border form of a scene node's kind. Only asset-backed kinds carry an asset,
 /// mirroring the generated TypeScript discriminated union (so an "empty group
 /// with an asset" is unrepresentable rather than merely discouraged).
@@ -291,6 +347,7 @@ pub enum SceneNodeKindDto {
     StaticMesh(AssetReferenceDto),
     Sprite(AssetReferenceDto),
     VoxelVolume(AssetReferenceDto),
+    Light(SceneLightDto),
 }
 
 impl SceneNodeKindDto {
@@ -301,13 +358,14 @@ impl SceneNodeKindDto {
             SceneNodeKindDto::StaticMesh(_) => SceneNodeKindTag::StaticMesh,
             SceneNodeKindDto::Sprite(_) => SceneNodeKindTag::Sprite,
             SceneNodeKindDto::VoxelVolume(_) => SceneNodeKindTag::VoxelVolume,
+            SceneNodeKindDto::Light(_) => SceneNodeKindTag::Light,
         }
     }
 
     /// The asset reference this kind carries, if any.
     pub fn asset(&self) -> Option<&AssetReferenceDto> {
         match self {
-            SceneNodeKindDto::EmptyGroup => None,
+            SceneNodeKindDto::EmptyGroup | SceneNodeKindDto::Light(_) => None,
             SceneNodeKindDto::StaticMesh(a)
             | SceneNodeKindDto::Sprite(a)
             | SceneNodeKindDto::VoxelVolume(a) => Some(a),
@@ -398,6 +456,8 @@ pub struct SceneValidationErrorDto {
     pub actual_kind: Option<String>,
     /// A stable reason string, for `invalid-transform`.
     pub transform_reason: Option<String>,
+    /// A stable reason string, for `invalid-light`.
+    pub light_reason: Option<String>,
     /// The ids forming the cycle in order, for `cycle`.
     pub cycle_path: Vec<SceneNodeId>,
 }
@@ -412,6 +472,7 @@ impl SceneValidationErrorDto {
             expected_kind: None,
             actual_kind: None,
             transform_reason: None,
+            light_reason: None,
             cycle_path: Vec::new(),
         }
     }
@@ -469,6 +530,10 @@ pub enum SceneObjectCommandDto {
         id: SceneNodeId,
         parent: Option<SceneNodeId>,
         child_order: u32,
+    },
+    UpdateLight {
+        id: SceneNodeId,
+        scene_light: SceneLightDto,
     },
     Translate {
         id: SceneNodeId,
@@ -573,10 +638,18 @@ mod tests {
     }
 
     #[test]
-    fn only_empty_group_lacks_asset() {
+    fn only_asset_backed_node_kinds_require_assets() {
         for tag in ALL_SCENE_NODE_KIND_TAGS {
             let requires = tag.requires_asset();
-            assert_eq!(requires, *tag != SceneNodeKindTag::EmptyGroup);
+            assert_eq!(
+                requires,
+                matches!(
+                    tag,
+                    SceneNodeKindTag::StaticMesh
+                        | SceneNodeKindTag::Sprite
+                        | SceneNodeKindTag::VoxelVolume
+                )
+            );
         }
     }
 

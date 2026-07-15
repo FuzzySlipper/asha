@@ -25,7 +25,7 @@ use crate::validate::{validate, SceneValidationReport};
 /// The scene schema version this bootstrap understands. A real migration policy
 /// (scene-capability-01, "Decisions to make") is future work; for now an
 /// unsupported version fails closed rather than guessing.
-pub const SUPPORTED_SCHEMA_VERSION: u32 = 1;
+pub const SUPPORTED_SCHEMA_VERSION: u32 = 2;
 
 /// The default first entity id allocated to scene-sourced entities.
 pub const DEFAULT_BASE_ENTITY_ID: EntityId = EntityId::new(1);
@@ -80,7 +80,7 @@ impl BootstrapPlan {
         runtime_session_id: RuntimeSessionId,
         base_entity: EntityId,
     ) -> Result<BootstrapPlan, BootstrapError> {
-        if doc.schema_version != SUPPORTED_SCHEMA_VERSION {
+        if !(1..=SUPPORTED_SCHEMA_VERSION).contains(&doc.schema_version) {
             return Err(BootstrapError::UnsupportedSchemaVersion {
                 found: doc.schema_version,
                 supported: SUPPORTED_SCHEMA_VERSION,

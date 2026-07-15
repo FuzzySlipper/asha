@@ -11,9 +11,10 @@ use protocol_render::{
 };
 use protocol_scene::{
     AssetReferenceDto, AssetVersionReqDto, FlatSceneDocumentDto, SceneDocumentCodecResultDto,
-    SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneMetadataDto,
-    SceneNodeKindDto, SceneNodeRecordDto, SceneObjectCommandDto, SceneObjectCommandRequestDto,
-    SceneObjectCommandResultDto, SceneTransformDto, SceneValidationErrorDto,
+    SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneLightDto,
+    SceneLightShadowIntentDto, SceneMetadataDto, SceneNodeKindDto, SceneNodeRecordDto,
+    SceneObjectCommandDto, SceneObjectCommandRequestDto, SceneObjectCommandResultDto,
+    SceneTransformDto, SceneValidationErrorDto,
 };
 use runtime_bridge_api::{RuntimeBridge, RuntimeBridgeError, RuntimeBridgeErrorKind};
 use serde::{Deserialize, Serialize};
@@ -516,6 +517,10 @@ enum SceneCommandJson {
         parent: Option<u64>,
         child_order: u32,
     },
+    UpdateLight {
+        id: u64,
+        scene_light: SceneLightJson,
+    },
     Translate {
         id: u64,
         delta: [f32; 3],
@@ -556,6 +561,32 @@ enum SceneKindJson {
     StaticMesh { asset: SceneAssetDtoJson },
     Sprite { asset: SceneAssetDtoJson },
     VoxelVolume { asset: SceneAssetDtoJson },
+    Light { scene_light: SceneLightJson },
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
+enum SceneLightJson {
+    Ambient { color: [f32; 3], intensity: f32, enabled: bool, shadow_intent: SceneLightShadowJson },
+    Directional { color: [f32; 3], intensity: f32, enabled: bool, shadow_intent: SceneLightShadowJson },
+    Point { color: [f32; 3], intensity: f32, enabled: bool, range: Option<f32>, decay: f32, shadow_intent: SceneLightShadowJson },
+    Spot { color: [f32; 3], intensity: f32, enabled: bool, range: Option<f32>, decay: f32, outer_angle_radians: f32, penumbra: f32, shadow_intent: SceneLightShadowJson },
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum SceneLightShadowJson { Disabled, Requested }
+
+impl SceneLightJson {
+    fn protocol(self) -> SceneLightDto {
+        let shadow = |value| match value { SceneLightShadowJson::Disabled => SceneLightShadowIntentDto::Disabled, SceneLightShadowJson::Requested => SceneLightShadowIntentDto::Requested };
+        match self {
+            Self::Ambient { color, intensity, enabled, shadow_intent } => SceneLightDto::Ambient { color, intensity, enabled, shadow_intent: shadow(shadow_intent) },
+            Self::Directional { color, intensity, enabled, shadow_intent } => SceneLightDto::Directional { color, intensity, enabled, shadow_intent: shadow(shadow_intent) },
+            Self::Point { color, intensity, enabled, range, decay, shadow_intent } => SceneLightDto::Point { color, intensity, enabled, range, decay, shadow_intent: shadow(shadow_intent) },
+            Self::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent } => SceneLightDto::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent: shadow(shadow_intent) },
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -610,6 +641,7 @@ impl SceneRecordJson {
                 SceneKindJson::VoxelVolume { asset } => {
                     SceneNodeKindDto::VoxelVolume(asset.protocol())
                 }
+                SceneKindJson::Light { scene_light } => SceneNodeKindDto::Light(scene_light.protocol()),
             },
         }
     }
@@ -660,6 +692,12 @@ impl SceneCommandJson {
                 parent: parent.map(SceneNodeId::new),
                 child_order,
             },
+            SceneCommandJson::UpdateLight { id, scene_light } => {
+                SceneObjectCommandDto::UpdateLight {
+                    id: SceneNodeId::new(id),
+                    scene_light: scene_light.protocol(),
+                }
+            }
             SceneCommandJson::Translate { id, delta } => SceneObjectCommandDto::Translate {
                 id: SceneNodeId::new(id),
                 delta,
@@ -698,6 +736,19 @@ fn scene_asset_json(asset: &AssetReferenceDto) -> Value {
     json!({ "id": asset.id, "version": version, "hash": asset.hash })
 }
 
+fn scene_light_json(light: &SceneLightDto) -> Value {
+    let shadow = |value| match value {
+        SceneLightShadowIntentDto::Disabled => "disabled",
+        SceneLightShadowIntentDto::Requested => "requested",
+    };
+    match light {
+        SceneLightDto::Ambient { color, intensity, enabled, shadow_intent } => json!({ "kind": "ambient", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) }),
+        SceneLightDto::Directional { color, intensity, enabled, shadow_intent } => json!({ "kind": "directional", "color": color, "intensity": intensity, "enabled": enabled, "shadowIntent": shadow(*shadow_intent) }),
+        SceneLightDto::Point { color, intensity, enabled, range, decay, shadow_intent } => json!({ "kind": "point", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "shadowIntent": shadow(*shadow_intent) }),
+        SceneLightDto::Spot { color, intensity, enabled, range, decay, outer_angle_radians, penumbra, shadow_intent } => json!({ "kind": "spot", "color": color, "intensity": intensity, "enabled": enabled, "range": range, "decay": decay, "outerAngleRadians": outer_angle_radians, "penumbra": penumbra, "shadowIntent": shadow(*shadow_intent) }),
+    }
+}
+
 fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value {
     json!({
         "schemaVersion": document.schema_version,
@@ -713,6 +764,7 @@ fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value
                 SceneNodeKindDto::StaticMesh(asset) => json!({ "kind": "staticMesh", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::Sprite(asset) => json!({ "kind": "sprite", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::VoxelVolume(asset) => json!({ "kind": "voxelVolume", "asset": scene_asset_json(asset) }),
+                SceneNodeKindDto::Light(light) => json!({ "kind": "light", "sceneLight": scene_light_json(light) }),
             };
             json!({
                 "id": record.id.raw(),
@@ -739,6 +791,7 @@ fn scene_validation_error_json(error: &SceneValidationErrorDto) -> Value {
         "expectedKind": error.expected_kind,
         "actualKind": error.actual_kind,
         "transformReason": error.transform_reason,
+        "lightReason": error.light_reason,
         "cyclePath": error.cycle_path.iter().map(|value| value.raw()).collect::<Vec<_>>(),
     })
 }

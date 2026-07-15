@@ -9,9 +9,10 @@ use std::collections::BTreeSet;
 
 use core_ids::SceneNodeId;
 
-use crate::document::{FlatSceneDocument, SceneNodeRecord};
+use crate::document::{FlatSceneDocument, SceneNodeKind, SceneNodeRecord};
 use crate::json::encode;
 use crate::validate::{validate, SceneValidationError};
+use crate::SceneLight;
 
 /// Stable fingerprint for a canonical scene document snapshot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -54,6 +55,10 @@ pub enum SceneObjectCommand {
         id: SceneNodeId,
         parent: Option<SceneNodeId>,
         child_order: u32,
+    },
+    UpdateLight {
+        id: SceneNodeId,
+        light: SceneLight,
     },
     Select {
         id: Option<SceneNodeId>,
@@ -209,6 +214,15 @@ pub fn apply_scene_object_command(
                 .ok_or(SceneObjectCommandRejection::MissingObject { id })?;
             node.parent = parent;
             node.child_order = child_order;
+            Some(id)
+        }
+        SceneObjectCommand::UpdateLight { id, light } => {
+            let node = find_node_mut(&mut next, id)
+                .ok_or(SceneObjectCommandRejection::MissingObject { id })?;
+            if !matches!(node.kind, SceneNodeKind::Light(_)) {
+                return Err(SceneObjectCommandRejection::MissingObject { id });
+            }
+            node.kind = SceneNodeKind::Light(light);
             Some(id)
         }
         SceneObjectCommand::Select { id } => {
