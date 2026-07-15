@@ -88,6 +88,34 @@ void test('editor viewport isolates equal handles across deterministic runtime a
   assert.equal(overlaySceneCreate.diagnostics[0]?.code, 'overlay_requires_debug_layer');
 });
 
+void test('editor viewport readout exposes retained generic lights and voxel material style', () => {
+  const backend = new FakeEditorViewportBackend();
+  const viewport = createAshaRendererEditorViewportWithBackend(backend, { autoStart: false });
+  const frame = primitiveFrame(7, 'voxel-preview', 'scene');
+  const node = frame.ops[0];
+  assert.equal(node?.op, 'create');
+  const styledFrame: RenderFrameDiff = {
+    ops: [
+      ...(node?.op === 'create' ? [{
+        ...node,
+        node: { ...node.node, material: { color: [1, 1, 1, 0.75] as const, wireframe: true } },
+      }] : []),
+      {
+        op: 'createLight', handle: renderHandle(8), parent: null,
+        light: {
+          kind: 'directional', color: [1, 0.9, 0.8], intensity: 2, enabled: true,
+          direction: [-1, -2, -1], shadowIntent: 'disabled',
+        },
+      },
+    ],
+  };
+  assert.equal(viewport.channels.authored.replace(styledFrame).applied, true);
+  const projection = viewport.readout().channels.find((channel) => channel.channel === 'authored')?.projection;
+  assert.equal(projection?.lights[0]?.light.kind, 'directional');
+  assert.equal(projection?.nodes[0]?.material?.wireframe, true);
+  assert.equal(projection?.nodes[0]?.material?.color[3], 0.75);
+});
+
 void test('editor viewport owns bounded lifecycle resize clear and channel disposal', () => {
   const backend = new FakeEditorViewportBackend();
   const viewport = createAshaRendererEditorViewportWithBackend(backend, {

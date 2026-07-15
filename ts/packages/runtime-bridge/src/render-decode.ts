@@ -18,6 +18,7 @@ import {
   type RenderNode,
   type Geometry,
   type Material,
+  type LightDescriptor,
   type Transform,
   type RenderMetadata,
   type RenderLayer,
@@ -106,12 +107,22 @@ interface RenderPayloadRecord {
   readonly label?: unknown;
   readonly layer?: unknown;
   readonly layout?: unknown;
+  readonly light?: unknown;
   readonly loop?: unknown;
   readonly material?: unknown;
   readonly materialOverrides?: unknown;
   readonly materialSlot?: unknown;
   readonly materialSlots?: unknown;
   readonly max?: unknown;
+  readonly intensity?: unknown;
+  readonly enabled?: unknown;
+  readonly direction?: unknown;
+  readonly position?: unknown;
+  readonly range?: unknown;
+  readonly decay?: unknown;
+  readonly outerAngleRadians?: unknown;
+  readonly penumbra?: unknown;
+  readonly shadowIntent?: unknown;
   readonly metadata?: unknown;
   readonly min?: unknown;
   readonly name?: unknown;
@@ -838,6 +849,69 @@ export function decodeSpriteInstance(v: unknown, path = '$'): SpriteInstanceDesc
   };
 }
 
+function decodeLightDescriptor(v: unknown, path: string): LightDescriptor {
+  const o = asObject(v, path);
+  const color = unitTuple3(o.color, `${path}.color`);
+  const intensity = nonNegativeNumber(o.intensity, `${path}.intensity`);
+  const enabled = asBoolean(o.enabled, `${path}.enabled`);
+  const shadowIntent = lightShadowIntent(o.shadowIntent, `${path}.shadowIntent`);
+  switch (o.kind) {
+    case 'ambient':
+      return { kind: 'ambient', color, intensity, enabled, shadowIntent };
+    case 'directional':
+      return {
+        kind: 'directional', color, intensity, enabled,
+        direction: nonZeroDirection(o.direction, `${path}.direction`), shadowIntent,
+      };
+    case 'point':
+      return {
+        kind: 'point', color, intensity, enabled,
+        position: tuple3(o.position, `${path}.position`),
+        range: nullable(o.range, (range) => positiveNumber(range, `${path}.range`)),
+        decay: nonNegativeNumber(o.decay, `${path}.decay`), shadowIntent,
+      };
+    case 'spot': {
+      const outerAngleRadians = positiveNumber(o.outerAngleRadians, `${path}.outerAngleRadians`);
+      if (outerAngleRadians > Math.PI / 2) {
+        throw new RenderDecodeError('expected a spot angle in (0, pi/2]', `${path}.outerAngleRadians`);
+      }
+      return {
+        kind: 'spot', color, intensity, enabled,
+        position: tuple3(o.position, `${path}.position`),
+        direction: nonZeroDirection(o.direction, `${path}.direction`),
+        range: nullable(o.range, (range) => positiveNumber(range, `${path}.range`)),
+        decay: nonNegativeNumber(o.decay, `${path}.decay`), outerAngleRadians,
+        penumbra: unitNumber(o.penumbra, `${path}.penumbra`), shadowIntent,
+      };
+    }
+    default:
+      throw new RenderDecodeError(`unknown light kind ${JSON.stringify(o.kind)}`, `${path}.kind`);
+  }
+}
+
+function positiveNumber(value: unknown, path: string): number {
+  const decoded = asNumber(value, path);
+  if (decoded <= 0) {
+    throw new RenderDecodeError('expected a positive number', path);
+  }
+  return decoded;
+}
+
+function nonZeroDirection(value: unknown, path: string): [number, number, number] {
+  const decoded = tuple3(value, path);
+  if (decoded.reduce((sum, component) => sum + component * component, 0) <= Number.EPSILON) {
+    throw new RenderDecodeError('expected a non-zero direction', path);
+  }
+  return decoded;
+}
+
+function lightShadowIntent(value: unknown, path: string): 'disabled' | 'requested' {
+  if (value !== 'disabled' && value !== 'requested') {
+    throw new RenderDecodeError('expected disabled or requested', path);
+  }
+  return value;
+}
+
 // ── Diff validators ───────────────────────────────────────────────────────────
 
 /** Decode a single render diff (`create` / `update` / `destroy` / `replaceMeshPayload`). */
@@ -870,6 +944,19 @@ export function decodeRenderDiff(v: unknown, path = '$'): RenderDiff {
         op: 'replaceMeshPayload',
         handle: decodeHandle(o.handle, `${path}.handle`),
         payload: decodeMeshPayloadDescriptor(o.payload, `${path}.payload`),
+      };
+    case 'createLight':
+      return {
+        op: 'createLight',
+        handle: decodeHandle(o.handle, `${path}.handle`),
+        parent: nullable(o.parent, (parent) => decodeHandle(parent, `${path}.parent`)),
+        light: decodeLightDescriptor(o.light, `${path}.light`),
+      };
+    case 'updateLight':
+      return {
+        op: 'updateLight',
+        handle: decodeHandle(o.handle, `${path}.handle`),
+        light: decodeLightDescriptor(o.light, `${path}.light`),
       };
     case 'defineMaterial':
       return {

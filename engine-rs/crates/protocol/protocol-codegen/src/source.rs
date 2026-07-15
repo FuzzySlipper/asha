@@ -979,7 +979,7 @@ const MODULE_PLANS: &[ModulePlan] = &[
             ("./ids.js", "EntityId TagId"),
             ("./assets.js", "CatalogEntry MaterialProjection"),
         ],
-        declarations: "brand:RenderHandle type:Transform type:Geometry:Geometry:shape type:Material type:RenderLayer type:RenderMetadata type:RenderNode type:MeshAttributeKind type:MeshAttributeName type:MeshAttribute type:MeshIndexWidth type:MeshBufferLayout type:MeshGroupDescriptor type:MeshBoundsDescriptor type:MeshProvenance type:MeshPayloadSource:MeshPayloadSource:kind type:MeshPayloadDescriptor type:MeshMaterialSlot type:MeshCollisionPolicy:MeshCollisionPolicy:kind type:StaticMeshAsset type:StaticMeshInstanceDescriptor type:AnimatedMeshRuntimeFormat type:AnimationLoopMode type:AnimationClipDescriptor type:AnimatedMeshAsset type:AnimatedMeshPlaybackCommand:AnimatedMeshPlaybackCommand:action type:AnimatedMeshInstanceDescriptor type:SpriteSizeMode type:BillboardMode type:SpriteDepthPolicy type:SpriteShading type:SpriteAttachment type:SpriteInstanceDescriptor type:SpritePickHit type:MeshPickHit type:TextureFilter type:TextureWrap type:TextureDescriptor type:SpriteFrameRect type:SpriteAtlasDescriptor type:MaterialUvStrategy type:RenderMaterialDescriptor type:MaterialInstanceParameters type:RenderDiff:RenderDiff:op type:ModelMaterialPreviewRequest type:ModelMaterialPreviewSnapshot type:RenderFrameDiff",
+        declarations: "brand:RenderHandle type:Transform type:Geometry:Geometry:shape type:Material type:LightShadowIntent type:LightDescriptor:LightDescriptor:kind type:RenderLayer type:RenderMetadata type:RenderNode type:MeshAttributeKind type:MeshAttributeName type:MeshAttribute type:MeshIndexWidth type:MeshBufferLayout type:MeshGroupDescriptor type:MeshBoundsDescriptor type:MeshProvenance type:MeshPayloadSource:MeshPayloadSource:kind type:MeshPayloadDescriptor type:MeshMaterialSlot type:MeshCollisionPolicy:MeshCollisionPolicy:kind type:StaticMeshAsset type:StaticMeshInstanceDescriptor type:AnimatedMeshRuntimeFormat type:AnimationLoopMode type:AnimationClipDescriptor type:AnimatedMeshAsset type:AnimatedMeshPlaybackCommand:AnimatedMeshPlaybackCommand:action type:AnimatedMeshInstanceDescriptor type:SpriteSizeMode type:BillboardMode type:SpriteDepthPolicy type:SpriteShading type:SpriteAttachment type:SpriteInstanceDescriptor type:SpritePickHit type:MeshPickHit type:TextureFilter type:TextureWrap type:TextureDescriptor type:SpriteFrameRect type:SpriteAtlasDescriptor type:MaterialUvStrategy type:RenderMaterialDescriptor type:MaterialInstanceParameters type:RenderDiff:RenderDiff:op type:ModelMaterialPreviewRequest type:ModelMaterialPreviewSnapshot type:RenderFrameDiff",
     },
     ModulePlan {
         name: "presentation",
@@ -1400,6 +1400,10 @@ mod tests {
             ("IdRepr", "protocol-ids codegen descriptor, not a wire DTO"),
             (
                 "MeshDescriptorError",
+                "Rust validation error, not a wire DTO",
+            ),
+            (
+                "LightDescriptorError",
                 "Rust validation error, not a wire DTO",
             ),
             (

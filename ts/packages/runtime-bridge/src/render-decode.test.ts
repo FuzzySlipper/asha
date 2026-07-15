@@ -77,6 +77,33 @@ void test('rejects an unknown diff op', () => {
   );
 });
 
+void test('decodes every renderer-neutral light kind and rejects malformed numeric values', () => {
+  const lights = [
+    { kind: 'ambient', color: [0.2, 0.3, 0.4], intensity: 0.5, enabled: true, shadowIntent: 'disabled' },
+    { kind: 'directional', color: [1, 1, 1], intensity: 2, enabled: true, direction: [-1, -2, -1], shadowIntent: 'requested' },
+    { kind: 'point', color: [1, 0, 0], intensity: 4, enabled: true, position: [1, 2, 3], range: 9, decay: 2, shadowIntent: 'disabled' },
+    { kind: 'spot', color: [0, 0, 1], intensity: 6, enabled: true, position: [0, 5, 0], direction: [0, -1, 0], range: null, decay: 2, outerAngleRadians: 0.7, penumbra: 0.25, shadowIntent: 'requested' },
+  ] as const;
+  for (const [index, light] of lights.entries()) {
+    const decoded = decodeRenderDiff({
+      op: 'createLight', handle: index + 1, parent: null, light,
+    });
+    assert.equal(decoded.op, 'createLight');
+    if (decoded.op === 'createLight') {
+      assert.equal(decoded.light.kind, light.kind);
+    }
+  }
+  assert.throws(() => decodeRenderDiff({
+    op: 'createLight', handle: 9, parent: null,
+    light: {
+      kind: 'spot', color: [1, 1, 1], intensity: 1, enabled: true,
+      position: [0, 0, 0], direction: [0, 0, 0], range: -1, decay: 2,
+      outerAngleRadians: Math.PI, penumbra: 2, shadowIntent: 'disabled',
+    },
+  }), (error: unknown) => error instanceof RenderDecodeError
+    && (error.path.includes('direction') || error.path.includes('outerAngleRadians')));
+});
+
 void test('rejects an unknown geometry shape', () => {
   assert.throws(
     () =>

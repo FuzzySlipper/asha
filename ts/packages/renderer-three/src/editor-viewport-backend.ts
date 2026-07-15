@@ -243,7 +243,7 @@ export function mountAshaRendererEditorBackend(
 }
 
 function createChannelRenderer(options: AshaRendererEditorBackendOptions): ThreeRenderer {
-  const renderer = new ThreeRenderer({
+  return new ThreeRenderer({
     ...(options.animatedMeshSource === undefined
       ? {}
       : { animatedMeshSource: options.animatedMeshSource }),
@@ -251,11 +251,6 @@ function createChannelRenderer(options: AshaRendererEditorBackendOptions): Three
       ? {}
       : { meshBufferSource: options.meshBufferSource }),
   });
-  const ambientLight = new THREE.HemisphereLight(0xffffff, 0x263238, 2.4);
-  const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-  keyLight.position.set(5, 8, 6);
-  renderer.scene.add(ambientLight, keyLight);
-  return renderer;
 }
 
 function pickAcrossChannels(

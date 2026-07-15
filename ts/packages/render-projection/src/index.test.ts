@@ -24,6 +24,59 @@ import {
 
 const repoRoot = resolve(import.meta.dirname, '../../../..');
 
+void test('neutral projection retains validated lights and removes them with their parent', () => {
+  const projection = new RenderProjection();
+  projection.applyFrame({ ops: [
+    { op: 'create', handle: renderHandle(1), parent: null, node: cubeNode() },
+    {
+      op: 'createLight', handle: renderHandle(2), parent: renderHandle(1),
+      light: {
+        kind: 'spot', color: [1, 0.8, 0.6], intensity: 3, enabled: true,
+        position: [0, 5, 0], direction: [0, -1, 0], range: 12, decay: 2,
+        outerAngleRadians: 0.7, penumbra: 0.2, shadowIntent: 'requested',
+      },
+    },
+  ] });
+  assert.equal(projection.snapshot().lights[0]?.parent, renderHandle(1));
+  projection.applyDiff({
+    op: 'updateLight', handle: renderHandle(2),
+    light: {
+      kind: 'spot', color: [0.2, 0.4, 1], intensity: 1, enabled: false,
+      position: [1, 4, 2], direction: [0, -1, 0], range: 8, decay: 1,
+      outerAngleRadians: 0.5, penumbra: 0.5, shadowIntent: 'disabled',
+    },
+  });
+  assert.equal(projection.light(renderHandle(2))?.light.enabled, false);
+  projection.applyDiff({ op: 'destroy', handle: renderHandle(1) });
+  assert.deepEqual(projection.snapshot().lights, []);
+  assert.equal(projection.has(renderHandle(2)), false);
+});
+
+void test('neutral projection rejects malformed lights and kind-changing updates', () => {
+  const projection = new RenderProjection();
+  assert.throws(() => projection.applyDiff({
+    op: 'createLight', handle: renderHandle(1), parent: null,
+    light: {
+      kind: 'directional', color: [1, 1, 1], intensity: 1, enabled: true,
+      direction: [0, 0, 0], shadowIntent: 'disabled',
+    },
+  }), RenderProjectionError);
+  projection.applyDiff({
+    op: 'createLight', handle: renderHandle(1), parent: null,
+    light: {
+      kind: 'ambient', color: [1, 1, 1], intensity: 1, enabled: true,
+      shadowIntent: 'disabled',
+    },
+  });
+  assert.throws(() => projection.applyDiff({
+    op: 'updateLight', handle: renderHandle(1),
+    light: {
+      kind: 'point', color: [1, 1, 1], intensity: 1, enabled: true,
+      position: [0, 0, 0], range: null, decay: 2, shadowIntent: 'disabled',
+    },
+  }), /cannot change kind/);
+});
+
 function fixturePath(name: string): string {
   return resolve(repoRoot, 'harness/fixtures/render-projection', name);
 }

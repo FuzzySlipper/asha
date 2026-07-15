@@ -9,6 +9,7 @@ import {
 } from '@asha/runtime-bridge';
 import type {
   Geometry,
+  LightDescriptor,
   Material,
   MaterialInstanceParameters,
   MeshCollisionPolicy,
@@ -37,6 +38,24 @@ import {
   type AnimatedMeshControllerClip,
   type AnimatedMeshPlaybackReadout,
 } from './animated-mesh.js';
+import {
+  applyLightDescriptor,
+  buildLight,
+  disposeLight,
+  lightShadowStatus,
+  projectionParentHandle,
+  validateLightDescriptor,
+  type RendererLightReadout,
+} from './lighting.js';
+export type {
+  RendererLightReadout,
+  RendererLightShadowStatus,
+} from './lighting.js';
+import {
+  MaterialFallback,
+  meshMaterials,
+  type RendererMeshPresentationReadout,
+} from './mesh-presentation.js';
 
 /** Raised when a diff cannot be applied (duplicate, unknown, or stale handle). */
 export class RenderApplyError extends Error {
@@ -63,7 +82,7 @@ export interface MeshBufferSource {
   releaseBuffer(handle: RuntimeBufferHandle): void;
 }
 
-type NodeKind = 'primitive' | 'staticMesh' | 'animatedMesh' | 'sprite';
+type NodeKind = 'primitive' | 'staticMesh' | 'animatedMesh' | 'sprite' | 'light';
 
 interface NodeEntry {
   readonly object: THREE.Object3D;
@@ -82,6 +101,12 @@ interface NodeEntry {
    * authority source (#2437). Absent until a payload is uploaded.
    */
   meshProvenance?: MeshProvenance;
+  /** Retained projection style applied to primitive and uploaded voxel meshes. */
+  viewMaterial?: Material;
+  /** Material slot corresponding to each uploaded mesh material. */
+  meshMaterialSlots?: number[];
+  /** Complete generic descriptor for `kind === 'light'`. */
+  light?: LightDescriptor;
   /**
    * Catalog material id behind each entry of a static-mesh instance's material
    * array (parallel to `mesh.material`), so a live `defineMaterial` redefine can
@@ -145,10 +170,16 @@ export class ThreeRenderer {
    */
   readonly #meshBufferSource: MeshBufferSource | undefined;
   readonly #animatedMeshes: AnimatedMeshRegistry;
+  readonly #shadowsEnabled: boolean;
 
-  constructor(options: { meshBufferSource?: MeshBufferSource; animatedMeshSource?: AnimatedMeshAssetSource } = {}) {
+  constructor(options: {
+    meshBufferSource?: MeshBufferSource;
+    animatedMeshSource?: AnimatedMeshAssetSource;
+    shadowsEnabled?: boolean;
+  } = {}) {
     this.#meshBufferSource = options.meshBufferSource;
     this.#animatedMeshes = new AnimatedMeshRegistry(options.animatedMeshSource);
+    this.#shadowsEnabled = options.shadowsEnabled ?? false;
     this.#sceneGroup.name = 'scene';
     this.#debugGroup.name = 'debug';
     this.scene.add(this.#sceneGroup, this.#debugGroup);
@@ -160,8 +191,16 @@ export class ThreeRenderer {
 
   /** Apply a whole frame of diffs in order. */
   applyFrame(frame: RenderFrameDiff): void {
+    const recursivelyDestroyed = new Set<RenderHandle>();
     for (const op of frame.ops) {
-      this.applyDiff(op);
+      if (op.op === 'destroy') {
+        if (!this.#handles.has(op.handle) && recursivelyDestroyed.has(op.handle)) {
+          continue;
+        }
+        this.#destroy(op, recursivelyDestroyed);
+      } else {
+        this.applyDiff(op);
+      }
     }
   }
 
@@ -184,6 +223,12 @@ export class ThreeRenderer {
         break;
       case 'replaceMeshPayload':
         this.#replaceMeshPayload(diff);
+        break;
+      case 'createLight':
+        this.#createLight(diff);
+        break;
+      case 'updateLight':
+        this.#updateLight(diff);
         break;
       case 'defineMaterial':
         this.#defineMaterial(diff.material);
@@ -249,6 +294,34 @@ export class ThreeRenderer {
   /** Number of live scene handles. */
   get handleCount(): number {
     return this.#handles.size;
+  }
+
+  /** Renderer-local diagnostics/readback; never authority. */
+  lightReadout(): readonly RendererLightReadout[] {
+    return [...this.#handles.entries()]
+      .filter((entry): entry is [RenderHandle, NodeEntry & { light: LightDescriptor }] =>
+        entry[1].kind === 'light' && entry[1].light !== undefined)
+      .sort(([left], [right]) => left - right)
+      .map(([handle, entry]) => ({
+        descriptor: structuredClone(entry.light),
+        handle,
+        parent: projectionParentHandle(entry.object.parent, this.#handles),
+        shadowStatus: lightShadowStatus(entry.light, this.#shadowsEnabled),
+      }));
+  }
+
+  /** Lit/wireframe state for uploaded mesh payloads, for Studio diagnostics. */
+  meshPresentationReadout(): readonly RendererMeshPresentationReadout[] {
+    return [...this.#handles.entries()]
+      .filter(([, entry]) => entry.meshProvenance !== undefined)
+      .sort(([left], [right]) => left - right)
+      .map(([handle, entry]) => ({
+        handle,
+        lit: meshMaterials(entry.object).every((material) => material instanceof THREE.MeshStandardMaterial),
+        materialSlots: [...(entry.meshMaterialSlots ?? [])],
+        opacity: entry.viewMaterial?.color[3] ?? 1,
+        wireframe: entry.viewMaterial?.wireframe ?? false,
+      }));
   }
 
   /** Release every retained renderer object and GPU-owned resource. */
@@ -379,6 +452,7 @@ export class ThreeRenderer {
       kind: 'primitive',
       shape: diff.node.geometry.shape,
       ownsGeometry: true,
+      viewMaterial: diff.node.material,
     });
   }
 
@@ -388,7 +462,12 @@ export class ThreeRenderer {
       applyTransform(entry.object, diff.transform);
     }
     if (diff.material) {
-      applyMaterial(entry, diff.material);
+      if (entry.meshProvenance !== undefined) {
+        this.#applyUploadedMeshMaterial(entry, diff.material);
+      } else {
+        applyMaterial(entry, diff.material);
+      }
+      entry.viewMaterial = diff.material;
     }
     if (diff.visible !== null) {
       entry.object.visible = diff.visible;
@@ -398,8 +477,18 @@ export class ThreeRenderer {
     }
   }
 
-  #destroy(diff: Extract<RenderDiff, { op: 'destroy' }>): void {
+  #destroy(
+    diff: Extract<RenderDiff, { op: 'destroy' }>,
+    recursivelyDestroyed?: Set<RenderHandle>,
+  ): void {
     const entry = this.#require(diff.handle, 'destroy');
+    const childHandles = [...this.#handles.entries()]
+      .filter(([, candidate]) => candidate.object.parent === entry.object)
+      .map(([handle]) => handle)
+      .sort((left, right) => left - right);
+    for (const child of childHandles) {
+      this.#destroy({ op: 'destroy', handle: child }, recursivelyDestroyed);
+    }
     entry.object.parent?.remove(entry.object);
     if (entry.kind === 'staticMesh' && entry.asset !== undefined) {
       // Shared geometry: dispose only this instance's override materials, then
@@ -410,10 +499,13 @@ export class ThreeRenderer {
     } else if (entry.kind === 'animatedMesh') {
       this.#animatedMeshes.release(diff.handle);
       disposeObjectRecursive(entry.object);
+    } else if (entry.kind === 'light') {
+      disposeLight(entry.object);
     } else {
       disposeObject(entry.object);
     }
     this.#handles.delete(diff.handle);
+    recursivelyDestroyed?.add(diff.handle);
   }
 
   // ── Static mesh assets + instances (render-asset-04) ────────────────────────
@@ -888,10 +980,9 @@ export class ThreeRenderer {
       throw new RenderApplyError(`replaceMeshPayload: handle ${diff.handle} is not a mesh`);
     }
     const geometry = buildMeshGeometry(diff.payload, this.#meshBufferSource, 'replaceMeshPayload');
-    const materials = diff.payload.groups.map((g) => {
-      const m = new THREE.MeshBasicMaterial({ color: this.#slotColor(g.materialSlot) });
-      return m;
-    });
+    const viewMaterial = entry.viewMaterial ?? MaterialFallback;
+    const materials = diff.payload.groups.map((group) =>
+      this.#uploadedMeshMaterial(group.materialSlot, viewMaterial));
 
     const oldGeometry = object.geometry as THREE.BufferGeometry;
     const oldMaterial = object.material as THREE.Material | THREE.Material[];
@@ -908,6 +999,66 @@ export class ThreeRenderer {
     // Remember the authority source that produced this mesh so a pick can trace the
     // handle back to it (#2437). The renderer holds the provenance, never the coords.
     entry.meshProvenance = diff.payload.provenance;
+    entry.meshMaterialSlots = diff.payload.groups.map((group) => group.materialSlot);
+    entry.viewMaterial = viewMaterial;
+  }
+
+  #uploadedMeshMaterial(slot: number, view: Material): THREE.MeshStandardMaterial {
+    const slotColor = this.#slotColor(slot);
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color(
+        slotColor.r * view.color[0],
+        slotColor.g * view.color[1],
+        slotColor.b * view.color[2],
+      ),
+      opacity: view.color[3],
+      transparent: view.color[3] < 1,
+      wireframe: view.wireframe,
+      roughness: 1,
+      metalness: 0,
+    });
+  }
+
+  #applyUploadedMeshMaterial(entry: NodeEntry, view: Material): void {
+    const mesh = entry.object as THREE.Mesh;
+    const previous = meshMaterials(mesh);
+    const next = (entry.meshMaterialSlots ?? []).map((slot) => this.#uploadedMeshMaterial(slot, view));
+    mesh.material = next.length === 1 ? next[0]! : next;
+    previous.forEach((material) => material.dispose());
+  }
+
+  #createLight(diff: Extract<RenderDiff, { op: 'createLight' }>): void {
+    if (this.#handles.has(diff.handle)) {
+      throw new RenderApplyError(`createLight: handle ${diff.handle} already exists`);
+    }
+    validateLightDescriptor(diff.light, 'createLight.light', (message) => new RenderApplyError(message));
+    const object = buildLight(diff.light, this.#shadowsEnabled);
+    const parent = diff.parent === null
+      ? this.#sceneGroup
+      : this.#require(diff.parent, 'createLight.parent').object;
+    parent.add(object);
+    this.#handles.set(diff.handle, {
+      object,
+      kind: 'light',
+      shape: 'point',
+      ownsGeometry: false,
+      light: structuredClone(diff.light),
+    });
+  }
+
+  #updateLight(diff: Extract<RenderDiff, { op: 'updateLight' }>): void {
+    const entry = this.#require(diff.handle, 'updateLight');
+    if (entry.kind !== 'light' || entry.light === undefined) {
+      throw new RenderApplyError(`updateLight: handle ${diff.handle} is not a light`);
+    }
+    validateLightDescriptor(diff.light, 'updateLight.light', (message) => new RenderApplyError(message));
+    if (entry.light.kind !== diff.light.kind) {
+      throw new RenderApplyError(
+        `updateLight: handle ${diff.handle} cannot change kind from ${entry.light.kind} to ${diff.light.kind}`,
+      );
+    }
+    applyLightDescriptor(entry.object, diff.light, this.#shadowsEnabled);
+    entry.light = structuredClone(diff.light);
   }
 
   /**
@@ -948,6 +1099,16 @@ function isDescendantOf(object: THREE.Object3D, ancestor: THREE.Object3D): boole
 function snapshotLine(handle: number, entry: NodeEntry): string {
   const o = entry.object;
   const head = `handle ${handle}  layer ${o.parent?.name ?? '?'}`;
+  if (entry.kind === 'light' && entry.light !== undefined) {
+    return [
+      head,
+      `kind light/${entry.light.kind}`,
+      `enabled ${entry.light.enabled}`,
+      `intensity ${fmtNum(entry.light.intensity)}`,
+      `color ${entry.light.color.map(fmtNum).join(',')}`,
+      `shadow ${entry.light.shadowIntent}`,
+    ].join('  ');
+  }
   if (entry.kind === 'staticMesh') {
     return [
       head,

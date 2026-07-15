@@ -9,6 +9,7 @@ import type {
   AnimatedMeshAsset,
   AnimatedMeshInstanceDescriptor,
   AnimatedMeshPlaybackCommand,
+  LightDescriptor,
   Material,
   MaterialInstanceParameters,
   MeshPayloadDescriptor,
@@ -95,11 +96,20 @@ export type RenderProjectionInstruction =
   | { readonly op: 'defineSpriteAtlas'; readonly atlas: SpriteAtlasDescriptor }
   | { readonly op: 'defineStaticMesh'; readonly asset: StaticMeshAsset }
   | { readonly op: 'defineAnimatedMesh'; readonly asset: AnimatedMeshAsset }
+  | { readonly op: 'upsertLight'; readonly light: RenderProjectionLight }
   | { readonly op: 'upsertNode'; readonly node: RenderProjectionNode }
+  | { readonly op: 'removeLight'; readonly handle: RenderHandle }
   | { readonly op: 'removeNode'; readonly handle: RenderHandle };
+
+export interface RenderProjectionLight {
+  readonly handle: RenderHandle;
+  readonly parent: RenderHandle | null;
+  readonly light: LightDescriptor;
+}
 
 export interface RenderProjectionSnapshot {
   readonly nodes: readonly RenderProjectionNode[];
+  readonly lights: readonly RenderProjectionLight[];
   readonly materials: readonly RenderMaterialDescriptor[];
   readonly textures: readonly TextureDescriptor[];
   readonly spriteAtlases: readonly SpriteAtlasDescriptor[];
@@ -158,9 +168,16 @@ interface AnimatedMeshRecord {
   refCount: number;
 }
 
+interface MutableLight {
+  handle: RenderHandle;
+  parent: RenderHandle | null;
+  light: LightDescriptor;
+}
+
 /** A retained renderer-neutral projection driven only by render diffs. */
 export class RenderProjection {
   readonly #nodes = new Map<RenderHandle, NodeRecord>();
+  readonly #lights = new Map<RenderHandle, MutableLight>();
   readonly #materials = new Map<string, RenderMaterialDescriptor>();
   readonly #textures = new Map<string, TextureDescriptor>();
   readonly #spriteAtlases = new Map<string, SpriteAtlasDescriptor>();
@@ -187,6 +204,10 @@ export class RenderProjection {
         return this.#destroy(diff.handle);
       case 'replaceMeshPayload':
         return [this.#replaceMeshPayload(diff)];
+      case 'createLight':
+        return [this.#createLight(diff)];
+      case 'updateLight':
+        return [this.#updateLight(diff)];
       case 'defineMaterial':
         return [this.#defineMaterial(diff.material)];
       case 'setMaterialInstanceParameters':
@@ -217,16 +238,21 @@ export class RenderProjection {
   }
 
   has(handle: RenderHandle): boolean {
-    return this.#nodes.has(handle);
+    return this.#nodes.has(handle) || this.#lights.has(handle);
   }
 
   get handleCount(): number {
-    return this.#nodes.size;
+    return this.#nodes.size + this.#lights.size;
   }
 
   node(handle: RenderHandle): RenderProjectionNode | undefined {
     const record = this.#nodes.get(handle);
     return record === undefined ? undefined : snapshotNode(record);
+  }
+
+  light(handle: RenderHandle): RenderProjectionLight | undefined {
+    const record = this.#lights.get(handle);
+    return record === undefined ? undefined : snapshotLight(record);
   }
 
   materialDescriptor(id: string): RenderMaterialDescriptor | undefined {
@@ -260,6 +286,7 @@ export class RenderProjection {
   snapshot(): RenderProjectionSnapshot {
     return {
       nodes: sortedHandles(this.#nodes).map((handle) => snapshotNode(this.#require(handle, 'snapshot'))),
+      lights: sortedHandles(this.#lights).map((handle) => snapshotLight(this.#requireLight(handle, 'snapshot'))),
       materials: sortedValues(this.#materials),
       textures: sortedValues(this.#textures),
       spriteAtlases: sortedValues(this.#spriteAtlases),
@@ -358,6 +385,14 @@ export class RenderProjection {
   }
 
   #destroy(handle: RenderHandle): readonly RenderProjectionInstruction[] {
+    const light = this.#lights.get(handle);
+    if (light !== undefined) {
+      this.#lights.delete(handle);
+      if (light.parent !== null) {
+        this.#require(light.parent, 'destroyLight.parent').children.delete(handle);
+      }
+      return [{ op: 'removeLight', handle }];
+    }
     const record = this.#require(handle, 'destroy');
     const instructions: RenderProjectionInstruction[] = [];
     for (const child of [...record.children].sort(numberCompare)) {
@@ -392,6 +427,34 @@ export class RenderProjection {
     validateMeshPayload(diff.payload, 'replaceMeshPayload.payload');
     record.meshPayload = clone(diff.payload);
     return { op: 'upsertNode', node: snapshotNode(record) };
+  }
+
+  #createLight(diff: Extract<RenderDiff, { op: 'createLight' }>): RenderProjectionInstruction {
+    this.#ensureFree(diff.handle, 'createLight');
+    const parent = this.#parentHandle(diff.parent, 'createLight.parent');
+    validateLight(diff.light, 'createLight.light');
+    const record: MutableLight = {
+      handle: diff.handle,
+      parent,
+      light: clone(diff.light),
+    };
+    this.#lights.set(diff.handle, record);
+    if (parent !== null) {
+      this.#require(parent, 'createLight.parent').children.add(diff.handle);
+    }
+    return { op: 'upsertLight', light: snapshotLight(record) };
+  }
+
+  #updateLight(diff: Extract<RenderDiff, { op: 'updateLight' }>): RenderProjectionInstruction {
+    const record = this.#requireLight(diff.handle, 'updateLight');
+    validateLight(diff.light, 'updateLight.light');
+    if (record.light.kind !== diff.light.kind) {
+      throw new RenderProjectionError(
+        `updateLight: handle ${diff.handle} cannot change kind from ${record.light.kind} to ${diff.light.kind}`,
+      );
+    }
+    record.light = clone(diff.light);
+    return { op: 'upsertLight', light: snapshotLight(record) };
   }
 
   #defineMaterial(material: RenderMaterialDescriptor): RenderProjectionInstruction {
@@ -602,7 +665,7 @@ export class RenderProjection {
   }
 
   #ensureFree(handle: RenderHandle, ctx: string): void {
-    if (this.#nodes.has(handle)) {
+    if (this.#nodes.has(handle) || this.#lights.has(handle)) {
       throw new RenderProjectionError(`${ctx}: handle ${handle} already exists`);
     }
   }
@@ -621,6 +684,18 @@ export class RenderProjection {
     }
     return record;
   }
+
+  #requireLight(handle: RenderHandle, ctx: string): MutableLight {
+    const record = this.#lights.get(handle);
+    if (record === undefined) {
+      throw new RenderProjectionError(`${ctx}: unknown light handle ${handle}`);
+    }
+    return record;
+  }
+}
+
+function snapshotLight(record: MutableLight): RenderProjectionLight {
+  return { handle: record.handle, parent: record.parent, light: clone(record.light) };
 }
 
 function snapshotNode(record: NodeRecord): RenderProjectionNode {
@@ -714,6 +789,60 @@ function validatePlaybackCommand(
   }
   if (command.weight < 0 || command.weight > 1) {
     throw new RenderProjectionError(`${ctx}.weight must be in 0..=1`);
+  }
+}
+
+function validateLight(light: LightDescriptor, ctx: string): void {
+  requireColor(light.color, `${ctx}.color`);
+  requireFiniteNonNegative(light.intensity, `${ctx}.intensity`);
+  if (light.kind === 'directional') {
+    requireDirection(light.direction, `${ctx}.direction`);
+    return;
+  }
+  if (light.kind === 'point' || light.kind === 'spot') {
+    light.position.forEach((value, index) => requireFinite(value, `${ctx}.position[${index}]`));
+    if (light.range !== null && (!Number.isFinite(light.range) || light.range <= 0)) {
+      throw new RenderProjectionError(`${ctx}.range must be null or finite and positive`);
+    }
+    requireFiniteNonNegative(light.decay, `${ctx}.decay`);
+  }
+  if (light.kind === 'spot') {
+    requireDirection(light.direction, `${ctx}.direction`);
+    if (!Number.isFinite(light.outerAngleRadians)
+      || light.outerAngleRadians <= 0
+      || light.outerAngleRadians > Math.PI / 2) {
+      throw new RenderProjectionError(`${ctx}.outerAngleRadians must be in (0, pi/2]`);
+    }
+    if (!Number.isFinite(light.penumbra) || light.penumbra < 0 || light.penumbra > 1) {
+      throw new RenderProjectionError(`${ctx}.penumbra must be in 0..=1`);
+    }
+  }
+}
+
+function requireColor(color: readonly number[], ctx: string): void {
+  color.forEach((value, index) => {
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new RenderProjectionError(`${ctx}[${index}] must be finite and in 0..=1`);
+    }
+  });
+}
+
+function requireDirection(direction: readonly number[], ctx: string): void {
+  direction.forEach((value, index) => requireFinite(value, `${ctx}[${index}]`));
+  if (direction.reduce((sum, value) => sum + value * value, 0) <= Number.EPSILON) {
+    throw new RenderProjectionError(`${ctx} must be non-zero`);
+  }
+}
+
+function requireFinite(value: number, ctx: string): void {
+  if (!Number.isFinite(value)) {
+    throw new RenderProjectionError(`${ctx} must be finite`);
+  }
+}
+
+function requireFiniteNonNegative(value: number, ctx: string): void {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RenderProjectionError(`${ctx} must be finite and non-negative`);
   }
 }
 

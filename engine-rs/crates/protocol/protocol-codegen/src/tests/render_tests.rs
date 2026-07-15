@@ -4,7 +4,80 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
     coverage.extend([
         interface_coverage_key("render", "MaterialInstanceParameters"),
         variant_coverage_key("render", "RenderDiff", "setMaterialInstanceParameters"),
+        interface_coverage_key("render", "LightShadowIntent"),
+        variant_coverage_key("render", "LightDescriptor", "ambient"),
+        variant_coverage_key("render", "LightDescriptor", "directional"),
+        variant_coverage_key("render", "LightDescriptor", "point"),
+        variant_coverage_key("render", "LightDescriptor", "spot"),
+        variant_coverage_key("render", "RenderDiff", "createLight"),
+        variant_coverage_key("render", "RenderDiff", "updateLight"),
     ]);
+}
+
+#[test]
+fn renderer_neutral_light_samples_match_render_ir_shape() {
+    let render = module("render");
+    assert_eq!(
+        string_enum_values(&render, "LightShadowIntent"),
+        BTreeSet::from(["disabled".to_owned(), "requested".to_owned()])
+    );
+    let samples = [
+        (
+            "ambient",
+            json!({
+                "kind": "ambient", "color": [0.2, 0.3, 0.4],
+                "intensity": 0.5, "enabled": true, "shadowIntent": "disabled"
+            }),
+        ),
+        (
+            "directional",
+            json!({
+                "kind": "directional", "color": [1.0, 0.9, 0.8],
+                "intensity": 2.0, "enabled": true, "direction": [-1.0, -2.0, -1.0],
+                "shadowIntent": "requested"
+            }),
+        ),
+        (
+            "point",
+            json!({
+                "kind": "point", "color": [1.0, 0.4, 0.2],
+                "intensity": 4.0, "enabled": true, "position": [2.0, 3.0, 4.0],
+                "range": 12.0, "decay": 2.0, "shadowIntent": "disabled"
+            }),
+        ),
+        (
+            "spot",
+            json!({
+                "kind": "spot", "color": [0.4, 0.6, 1.0],
+                "intensity": 6.0, "enabled": true, "position": [0.0, 8.0, 0.0],
+                "direction": [0.0, -1.0, 0.0], "range": 20.0, "decay": 2.0,
+                "outerAngleRadians": 0.7, "penumbra": 0.25,
+                "shadowIntent": "requested"
+            }),
+        ),
+    ];
+    for (kind, sample) in &samples {
+        compare_object_to_variant(&render, "LightDescriptor", kind, sample).unwrap();
+    }
+    compare_object_to_variant(
+        &render,
+        "RenderDiff",
+        "createLight",
+        &json!({
+            "op": "createLight", "handle": 90, "parent": null,
+            "light": samples[0].1
+        }),
+    )
+    .unwrap();
+    compare_object_to_variant(
+        &render,
+        "RenderDiff",
+        "updateLight",
+        &json!({
+            "op": "updateLight", "handle": 90, "light": samples[1].1
+        }),
+    )
+    .unwrap();
 }
 
 #[test]

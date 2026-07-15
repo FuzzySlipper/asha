@@ -10,10 +10,10 @@
 
 use protocol_render::{
     AnimatedMeshAsset, AnimatedMeshInstanceDescriptor, AnimatedMeshPlaybackCommand, BillboardMode,
-    Geometry, Material, MeshAttributeName, MeshCollisionPolicy, MeshMaterialSlot,
-    MeshPayloadDescriptor, MeshPayloadSource, RenderDiff, RenderFrameDiff, RenderMetadata,
-    RenderNode, SpriteAttachment, SpriteDepthPolicy, SpriteInstanceDescriptor, SpriteShading,
-    SpriteSizeMode, StaticMeshAsset, StaticMeshInstanceDescriptor, Transform,
+    Geometry, LightDescriptor, LightShadowIntent, Material, MeshAttributeName, MeshCollisionPolicy,
+    MeshMaterialSlot, MeshPayloadDescriptor, MeshPayloadSource, RenderDiff, RenderFrameDiff,
+    RenderMetadata, RenderNode, SpriteAttachment, SpriteDepthPolicy, SpriteInstanceDescriptor,
+    SpriteShading, SpriteSizeMode, StaticMeshAsset, StaticMeshInstanceDescriptor, Transform,
 };
 
 /// Encode a single frame as a pretty `{ "ops": [ … ] }` object — the shape the
@@ -109,6 +109,31 @@ fn encode_diff(out: &mut String, diff: &RenderDiff) {
                 handle.raw()
             ));
             encode_mesh_payload(out, payload);
+            out.push_str(" }");
+        }
+        RenderDiff::CreateLight {
+            handle,
+            parent,
+            light,
+        } => {
+            out.push_str(&format!(
+                "{{ \"op\": \"createLight\", \"handle\": {}, \"parent\": ",
+                handle.raw()
+            ));
+            match parent {
+                Some(parent) => out.push_str(&parent.raw().to_string()),
+                None => out.push_str("null"),
+            }
+            out.push_str(", \"light\": ");
+            encode_light(out, light);
+            out.push_str(" }");
+        }
+        RenderDiff::UpdateLight { handle, light } => {
+            out.push_str(&format!(
+                "{{ \"op\": \"updateLight\", \"handle\": {}, \"light\": ",
+                handle.raw()
+            ));
+            encode_light(out, light);
             out.push_str(" }");
         }
         RenderDiff::DefineMaterial { material } => {
@@ -242,6 +267,101 @@ fn encode_diff(out: &mut String, diff: &RenderDiff) {
             }
             out.push_str(" }");
         }
+    }
+}
+
+fn encode_light(out: &mut String, light: &LightDescriptor) {
+    let shadow = |intent: &LightShadowIntent| match intent {
+        LightShadowIntent::Disabled => "disabled",
+        LightShadowIntent::Requested => "requested",
+    };
+    match light {
+        LightDescriptor::Ambient {
+            color,
+            intensity,
+            enabled,
+            shadow_intent,
+        } => {
+            out.push_str("{ \"kind\": \"ambient\", \"color\": ");
+            encode_f32_array(out, color);
+            out.push_str(&format!(
+                ", \"intensity\": {intensity}, \"enabled\": {enabled}, \"shadowIntent\": \"{}\" }}",
+                shadow(shadow_intent)
+            ));
+        }
+        LightDescriptor::Directional {
+            color,
+            intensity,
+            enabled,
+            direction,
+            shadow_intent,
+        } => {
+            out.push_str("{ \"kind\": \"directional\", \"color\": ");
+            encode_f32_array(out, color);
+            out.push_str(&format!(
+                ", \"intensity\": {intensity}, \"enabled\": {enabled}, \"direction\": "
+            ));
+            encode_f32_array(out, direction);
+            out.push_str(&format!(
+                ", \"shadowIntent\": \"{}\" }}",
+                shadow(shadow_intent)
+            ));
+        }
+        LightDescriptor::Point {
+            color,
+            intensity,
+            enabled,
+            position,
+            range,
+            decay,
+            shadow_intent,
+        } => {
+            out.push_str("{ \"kind\": \"point\", \"color\": ");
+            encode_f32_array(out, color);
+            out.push_str(&format!(
+                ", \"intensity\": {intensity}, \"enabled\": {enabled}, \"position\": "
+            ));
+            encode_f32_array(out, position);
+            encode_optional_f32(out, "range", *range);
+            out.push_str(&format!(
+                ", \"decay\": {decay}, \"shadowIntent\": \"{}\" }}",
+                shadow(shadow_intent)
+            ));
+        }
+        LightDescriptor::Spot {
+            color,
+            intensity,
+            enabled,
+            position,
+            direction,
+            range,
+            decay,
+            outer_angle_radians,
+            penumbra,
+            shadow_intent,
+        } => {
+            out.push_str("{ \"kind\": \"spot\", \"color\": ");
+            encode_f32_array(out, color);
+            out.push_str(&format!(
+                ", \"intensity\": {intensity}, \"enabled\": {enabled}, \"position\": "
+            ));
+            encode_f32_array(out, position);
+            out.push_str(", \"direction\": ");
+            encode_f32_array(out, direction);
+            encode_optional_f32(out, "range", *range);
+            out.push_str(&format!(
+                ", \"decay\": {decay}, \"outerAngleRadians\": {outer_angle_radians}, \"penumbra\": {penumbra}, \"shadowIntent\": \"{}\" }}",
+                shadow(shadow_intent)
+            ));
+        }
+    }
+}
+
+fn encode_optional_f32(out: &mut String, name: &str, value: Option<f32>) {
+    out.push_str(&format!(", \"{name}\": "));
+    match value {
+        Some(value) => out.push_str(&value.to_string()),
+        None => out.push_str("null"),
     }
 }
 

@@ -24,8 +24,9 @@
 //! [`Geometry`] primitive (cube, sphere, quad, point, line) with a placeholder
 //! [`Material`], a [`Transform`], a visibility flag, a [`RenderLayer`]
 //! (scene vs. debug overlay), and [`RenderMetadata`] (source entity, tags,
-//! label). [`Material`] is deliberately a placeholder (flat colour + wireframe);
-//! there is no texture/shader system here, and no product-domain geometry.
+//! label). Ordinary scene lighting is represented by renderer-neutral retained
+//! [`LightDescriptor`] values. [`Material`] remains a compact colour/opacity and
+//! wireframe view style; catalog materials use their separate typed descriptors.
 //!
 //! # Forbidden convenience logic
 //!
@@ -39,8 +40,10 @@ use core_ids::{EntityId, TagId};
 use protocol_assets::{CatalogEntry, MaterialProjection};
 use serde::{Deserialize, Serialize};
 
+mod lighting;
 mod material_feedback;
 mod pick;
+pub use lighting::{LightDescriptor, LightDescriptorError, LightShadowIntent};
 pub use material_feedback::{
     MaterialInstanceParameters, MaterialUvStrategy, RenderMaterialDescriptor,
 };
@@ -235,6 +238,17 @@ pub enum RenderDiff {
     ReplaceMeshPayload {
         handle: RenderHandle,
         payload: MeshPayloadDescriptor,
+    },
+    /// Retain one renderer-neutral light under an optional projection parent.
+    CreateLight {
+        handle: RenderHandle,
+        parent: Option<RenderHandle>,
+        light: LightDescriptor,
+    },
+    /// Replace the complete descriptor for an existing light of the same kind.
+    UpdateLight {
+        handle: RenderHandle,
+        light: LightDescriptor,
     },
     /// Define (or redefine) a catalog material descriptor under its asset id, so a
     /// static-mesh slot or sprite ref resolves to a real visual material instead of

@@ -75,6 +75,120 @@ void test('destroy removes the node and frees the handle', () => {
   assert.ok(!r.has(renderHandle(1)));
 });
 
+void test('renderer-neutral lights retain parent, update, disable, degrade shadows, and destroy', () => {
+  const renderer = new ThreeRenderer();
+  renderer.applyDiff(createDiff(1, cubeNode('light-parent')));
+  renderer.applyDiff({
+    op: 'createLight',
+    handle: renderHandle(2),
+    parent: renderHandle(1),
+    light: {
+      kind: 'directional',
+      color: [1, 0.8, 0.6],
+      intensity: 2,
+      enabled: true,
+      direction: [-1, -2, -1],
+      shadowIntent: 'requested',
+    },
+  });
+
+  const directional = renderer.objectFor(renderHandle(2));
+  assert.ok(directional instanceof THREE.DirectionalLight);
+  assert.equal(directional.parent, renderer.objectFor(renderHandle(1)));
+  assert.equal(directional.visible, true);
+  assert.deepEqual(renderer.lightReadout(), [{
+    descriptor: {
+      kind: 'directional',
+      color: [1, 0.8, 0.6],
+      intensity: 2,
+      enabled: true,
+      direction: [-1, -2, -1],
+      shadowIntent: 'requested',
+    },
+    handle: renderHandle(2),
+    parent: renderHandle(1),
+    shadowStatus: 'requested_unsupported',
+  }]);
+
+  renderer.applyDiff({
+    op: 'updateLight',
+    handle: renderHandle(2),
+    light: {
+      kind: 'directional',
+      color: [0.2, 0.4, 1],
+      intensity: 0.5,
+      enabled: false,
+      direction: [0, -1, 0],
+      shadowIntent: 'disabled',
+    },
+  });
+  assert.equal(directional.visible, false);
+  assert.equal(directional.intensity, 0.5);
+  assert.equal(renderer.lightReadout()[0]?.shadowStatus, 'disabled');
+  renderer.applyDiff({ op: 'destroy', handle: renderHandle(1) });
+  assert.equal(renderer.lightReadout().length, 0);
+  assert.equal(renderer.handleCount, 0);
+});
+
+void test('point and spot adapters preserve range, decay, cone, and direction', () => {
+  const renderer = new ThreeRenderer({ shadowsEnabled: true });
+  renderer.applyFrame({ ops: [
+    {
+      op: 'createLight', handle: renderHandle(20), parent: null,
+      light: {
+        kind: 'point', color: [1, 0.2, 0.1], intensity: 5, enabled: true,
+        position: [2, 3, 4], range: 9, decay: 2, shadowIntent: 'requested',
+      },
+    },
+    {
+      op: 'createLight', handle: renderHandle(21), parent: null,
+      light: {
+        kind: 'spot', color: [0.1, 0.2, 1], intensity: 7, enabled: true,
+        position: [0, 8, 0], direction: [0, -2, 0], range: 15, decay: 1,
+        outerAngleRadians: 0.6, penumbra: 0.35, shadowIntent: 'requested',
+      },
+    },
+  ] });
+  const point = renderer.objectFor(renderHandle(20));
+  const spot = renderer.objectFor(renderHandle(21));
+  assert.ok(point instanceof THREE.PointLight);
+  assert.equal(point.distance, 9);
+  assert.equal(point.decay, 2);
+  assert.equal(point.castShadow, true);
+  assert.ok(spot instanceof THREE.SpotLight);
+  assert.equal(spot.distance, 15);
+  assert.equal(spot.angle, 0.6);
+  assert.equal(spot.penumbra, 0.35);
+  assert.equal(spot.target.position.y, -1);
+  assert.deepEqual(renderer.lightReadout().map((light) => light.shadowStatus), ['active', 'active']);
+});
+
+void test('malformed and kind-changing lights fail closed', () => {
+  const renderer = new ThreeRenderer();
+  assert.throws(() => renderer.applyDiff({
+    op: 'createLight', handle: renderHandle(30), parent: null,
+    light: {
+      kind: 'spot', color: [1, 1, 1], intensity: 1, enabled: true,
+      position: [0, 0, 0], direction: [0, 0, 0], range: null, decay: 2,
+      outerAngleRadians: 0.5, penumbra: 0, shadowIntent: 'disabled',
+    },
+  }), /direction must be non-zero/);
+  renderer.applyDiff({
+    op: 'createLight', handle: renderHandle(30), parent: null,
+    light: {
+      kind: 'ambient', color: [1, 1, 1], intensity: 1, enabled: true,
+      shadowIntent: 'disabled',
+    },
+  });
+  assert.throws(() => renderer.applyDiff({
+    op: 'updateLight', handle: renderHandle(30),
+    light: {
+      kind: 'point', color: [1, 1, 1], intensity: 1, enabled: true,
+      position: [0, 0, 0], range: null, decay: 2, shadowIntent: 'disabled',
+    },
+  }), /cannot change kind/);
+});
+
 void test('renderer disposal releases nested retained resources and all handles', () => {
   const renderer = new ThreeRenderer();
   renderer.applyDiff(createDiff(1, cubeNode('parent')));
@@ -290,6 +404,43 @@ void test('replaceMeshPayload disposes the previous geometry and material', () =
   firstUpload.addEventListener('dispose', () => { secondDisposed = true; });
   r.applyDiff({ op: 'replaceMeshPayload', handle: h, payload: quadPayload() });
   assert.ok(secondDisposed);
+});
+
+void test('uploaded voxel meshes stay lit and preserve wireframe/opacity across updates and remeshes', () => {
+  const renderer = new ThreeRenderer();
+  renderer.registerSlotColor(1, 1, 0.5, 0.25);
+  const handle = renderHandle(8);
+  const node: RenderNode = {
+    ...meshNode(),
+    material: { color: [0.5, 1, 0.8, 0.6], wireframe: true },
+  };
+  renderer.applyDiff({ op: 'create', handle, parent: null, node });
+  renderer.applyDiff({ op: 'replaceMeshPayload', handle, payload: quadPayload() });
+
+  const mesh = renderer.objectFor(handle) as THREE.Mesh;
+  let materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  assert.ok(materials.every((material) => material instanceof THREE.MeshStandardMaterial));
+  assert.equal((materials[0] as THREE.MeshStandardMaterial).wireframe, true);
+  assert.equal((materials[0] as THREE.MeshStandardMaterial).opacity, 0.6);
+  assert.equal((materials[0] as THREE.MeshStandardMaterial).transparent, true);
+  assert.equal((materials[0] as THREE.MeshStandardMaterial).color.r, 0.5);
+
+  renderer.applyDiff({
+    op: 'update', handle, transform: null,
+    material: { color: [1, 1, 1, 1], wireframe: false },
+    visible: null, metadata: null,
+  });
+  renderer.applyDiff({ op: 'replaceMeshPayload', handle, payload: quadPayload() });
+  materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  assert.ok(materials.every((material) => material instanceof THREE.MeshStandardMaterial));
+  assert.ok(materials.every((material) => !(material as THREE.MeshStandardMaterial).wireframe));
+  assert.deepEqual(renderer.meshPresentationReadout(), [{
+    handle,
+    lit: true,
+    materialSlots: [1, 2],
+    opacity: 1,
+    wireframe: false,
+  }]);
 });
 
 void test('replaceMeshPayload on an unknown handle throws', () => {

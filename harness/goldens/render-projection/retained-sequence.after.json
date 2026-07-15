@@ -70,6 +70,7 @@
       "renderOrder": 3
     }
   ],
+  "lights": [],
   "materials": [
     {
       "id": "material/wood",

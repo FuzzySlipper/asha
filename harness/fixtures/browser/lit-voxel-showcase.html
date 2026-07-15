@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASHA renderer-neutral light showcase</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111923; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #caption {
+      position: fixed; left: 20px; top: 18px; padding: 12px 15px;
+      z-index: 2;
+      color: #eaf2f8; background: rgba(7, 12, 18, 0.84); border: 1px solid #536779;
+      font: 14px/1.45 system-ui, sans-serif; letter-spacing: 0.01em;
+    }
+    #caption strong { color: #ffd28a; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/ts/packages/renderer-three/node_modules/three/build/three.module.js",
+      "three/": "/ts/packages/renderer-three/node_modules/three/",
+      "@asha/runtime-bridge": "/harness/fixtures/browser/runtime-bridge-shim.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="view" width="1000" height="600"></canvas>
+  <div id="caption">
+    <strong>ASHA generic light projection</strong><br>
+    Ambient + directional face shading · red point range · blue spot cone<br>
+    Uploaded meshes use normals and retained material view style
+  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { ThreeRenderer } from '/ts/packages/renderer-three/dist/three-renderer.js';
+
+    const canvas = document.querySelector('#view');
+    const webgl = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+    webgl.setPixelRatio(1);
+    webgl.setSize(1000, 600, false);
+    webgl.setClearColor(0x111923, 1);
+    webgl.outputColorSpace = THREE.SRGBColorSpace;
+    webgl.toneMapping = THREE.ACESFilmicToneMapping;
+    webgl.toneMappingExposure = 1.15;
+
+    const renderer = new ThreeRenderer();
+    renderer.registerSlotColor(1, 0.72, 0.62, 0.43);
+
+    const source = new THREE.BoxGeometry(3.5, 3.5, 3.5);
+    const positions = [...source.getAttribute('position').array];
+    const normals = [...source.getAttribute('normal').array];
+    const indices = [...source.index.array];
+    const payload = {
+      layout: {
+        vertexCount: source.getAttribute('position').count,
+        indexCount: source.index.count,
+        indexWidth: 'u32',
+        attributes: [
+          { name: 'position', components: 3, kind: 'f32' },
+          { name: 'normal', components: 3, kind: 'f32' }
+        ]
+      },
+      groups: [{ materialSlot: 1, start: 0, count: source.index.count }],
+      bounds: { min: [-1.75, -1.75, -1.75], max: [1.75, 1.75, 1.75] },
+      source: { kind: 'inline', positions, normals, indices },
+      provenance: 'voxelChunk'
+    };
+    source.dispose();
+
+    const node = (translation, label) => ({
+      geometry: { shape: 'cube' },
+      material: { color: [1, 1, 1, 1], wireframe: false },
+      transform: { translation, rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      visible: true,
+      layer: 'scene',
+      metadata: { source: null, tags: [], label }
+    });
+
+    renderer.applyFrame({ ops: [
+      { op: 'create', handle: 1, parent: null, node: node([0, 0, 0], 'directional-lit voxel') },
+      { op: 'replaceMeshPayload', handle: 1, payload },
+      { op: 'create', handle: 2, parent: null, node: node([-4.5, 0, 0], 'point-lit voxel') },
+      { op: 'replaceMeshPayload', handle: 2, payload },
+      { op: 'create', handle: 3, parent: null, node: node([4.5, 0, 0], 'spot-lit voxel') },
+      { op: 'replaceMeshPayload', handle: 3, payload },
+      {
+        op: 'createLight', handle: 100, parent: null,
+        light: { kind: 'ambient', color: [0.38, 0.44, 0.55], intensity: 0.35, enabled: true, shadowIntent: 'disabled' }
+      },
+      {
+        op: 'createLight', handle: 101, parent: null,
+        light: { kind: 'directional', color: [1, 0.86, 0.66], intensity: 1.25, enabled: true, direction: [-1, -2, -1], shadowIntent: 'disabled' }
+      },
+      {
+        op: 'createLight', handle: 102, parent: null,
+        light: { kind: 'point', color: [1, 0.03, 0.01], intensity: 80, enabled: true, position: [-4.5, 1.5, 2.4], range: 5.2, decay: 2, shadowIntent: 'disabled' }
+      },
+      {
+        op: 'createLight', handle: 103, parent: null,
+        light: { kind: 'spot', color: [0.01, 0.08, 1], intensity: 110, enabled: true, position: [4.5, 4.5, 3.2], direction: [0, -1, -0.75], range: 8, decay: 2, outerAngleRadians: 0.55, penumbra: 0.12, shadowIntent: 'disabled' }
+      }
+    ] });
+
+    const camera = new THREE.PerspectiveCamera(48, 1000 / 600, 0.1, 100);
+    camera.position.set(11, 8, 15);
+    camera.lookAt(0, 0, 0);
+    webgl.render(renderer.scene, camera);
+    document.body.dataset.ready = 'true';
+  </script>
+</body>
+</html>

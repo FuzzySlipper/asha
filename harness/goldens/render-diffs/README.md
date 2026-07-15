@@ -27,10 +27,10 @@ structural output changes intentionally:
 cd ts && pnpm --filter @asha/renderer-three test
 ```
 
-## Deferred: pixel/screenshot goldens
+## Browser captures are evidence, not pixel gates
 
 These structural snapshots are the **current** render gate. True pixel/screenshot
-goldens (a real WebGL/offscreen render) are deferred — `harness/goldens/screenshots/`
-is an intentional placeholder (see its README). Structural snapshots are chosen
-because they are deterministic and GL-free in CI; a renderer correctness change is
-caught here without flaky image diffs.
+goldens (a real WebGL/offscreen render) remain deferred as a CI gate. Explicit
+human-visible captures may live in `harness/goldens/screenshots/`; see its README
+for their source and reproduction command. Structural snapshots remain the
+deterministic GL-free regression gate.

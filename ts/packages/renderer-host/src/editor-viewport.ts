@@ -588,7 +588,8 @@ function createdLayer(op: RenderDiff): RenderLayer | null {
   }
   if (op.op === 'createStaticMeshInstance'
     || op.op === 'createAnimatedMeshInstance'
-    || op.op === 'createSprite') {
+    || op.op === 'createSprite'
+    || op.op === 'createLight') {
     return 'scene';
   }
   return null;
@@ -611,6 +612,7 @@ function namespaceDiff(channel: AshaRendererEditorViewportChannel, op: RenderDif
     case 'createStaticMeshInstance':
     case 'createAnimatedMeshInstance':
     case 'createSprite':
+    case 'createLight':
       return { ...op, handle: handle(op.handle), parent: parent(op.parent) };
     case 'update':
     case 'destroy':
@@ -618,6 +620,7 @@ function namespaceDiff(channel: AshaRendererEditorViewportChannel, op: RenderDif
     case 'setMaterialInstanceParameters':
     case 'setAnimatedMeshPlayback':
     case 'updateSprite':
+    case 'updateLight':
       return { ...op, handle: handle(op.handle) };
     case 'defineMaterial':
     case 'defineTexture':

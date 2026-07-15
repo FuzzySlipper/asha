@@ -34,6 +34,16 @@ export interface Material {
   readonly wireframe: boolean;
 }
 
+// Renderer-neutral shadow request. A backend may degrade `Requested` to disabled when its surface has no shadow-map support, but it must expose that degradation in projection diagnostics rather than silently changing intent.
+export type LightShadowIntent = 'disabled' | 'requested';
+
+// Ordinary scene lights expressed without renderer objects or property bags.  Colours are linear RGB in `0.0..=1.0`; intensity is non-negative. Direction vectors point from the light toward the illuminated scene and are normalized by the renderer adapter. Point/spot range is in scene units (`None` means no explicit cutoff), decay is a non-negative distance exponent, spot angles are radians, and penumbra is `0.0..=1.0`.
+export type LightDescriptor =
+  | { readonly kind: 'ambient'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly shadowIntent: LightShadowIntent }
+  | { readonly kind: 'directional'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly direction: readonly [number, number, number]; readonly shadowIntent: LightShadowIntent }
+  | { readonly kind: 'point'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly position: readonly [number, number, number]; readonly range: number | null; readonly decay: number; readonly shadowIntent: LightShadowIntent }
+  | { readonly kind: 'spot'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly position: readonly [number, number, number]; readonly direction: readonly [number, number, number]; readonly range: number | null; readonly decay: number; readonly outerAngleRadians: number; readonly penumbra: number; readonly shadowIntent: LightShadowIntent };
+
 // Which retained layer a node belongs to.
 export type RenderLayer = 'scene' | 'debug';
 
@@ -287,6 +297,8 @@ export type RenderDiff =
   | { readonly op: 'update'; readonly handle: RenderHandle; readonly transform: Transform | null; readonly material: Material | null; readonly visible: boolean | null; readonly metadata: RenderMetadata | null }
   | { readonly op: 'destroy'; readonly handle: RenderHandle }
   | { readonly op: 'replaceMeshPayload'; readonly handle: RenderHandle; readonly payload: MeshPayloadDescriptor }
+  | { readonly op: 'createLight'; readonly handle: RenderHandle; readonly parent: RenderHandle | null; readonly light: LightDescriptor }
+  | { readonly op: 'updateLight'; readonly handle: RenderHandle; readonly light: LightDescriptor }
   | { readonly op: 'defineMaterial'; readonly material: RenderMaterialDescriptor }
   | { readonly op: 'setMaterialInstanceParameters'; readonly handle: RenderHandle; readonly slot: number; readonly parameters: MaterialInstanceParameters | null }
   | { readonly op: 'defineTexture'; readonly texture: TextureDescriptor }
