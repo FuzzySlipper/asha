@@ -23,10 +23,30 @@ to one governed probe and one exact assertion executed by that probe's suite:
 - configured ProjectBundle bootstrap and atomic rejection;
 - public RuntimeSession projection/readout consumption.
 
-The resulting `probe-results.json` is a deterministic, machine-readable artifact.
-Downstream composition and conformance tooling can consume its operation and
-semantic-probe records directly; humans can inspect the same gaps and temporary
-exemptions without reconstructing the gate from CI logs.
+The resulting committed `probe-results.json` is a deterministic structural
+artifact. It says whether declarations, public paths, named assertions, and
+operation coverage are structurally valid. It deliberately records execution as
+`not_run`; source tokens and catalog joins cannot turn that committed file into
+fresh execution or product-delivery evidence.
+
+`harness/conformance/run.py` writes the environment-specific execution claim
+report under ignored `harness/smoke-out/proof-execution/`. That report joins—but
+does not merge—the structural result with shared execution receipts. Every suite
+has one execution state:
+
+- `passed`: a current command/input/toolchain/provider/repository-SHA fingerprint
+  executed successfully and attributed the suite;
+- `failed`: the current execution ran and failed, or omitted its suite attribution;
+- `not_run`: no current execution receipt was supplied;
+- `unavailable`: the owning consumer checkout is absent;
+- `stale`: a receipt exists but its fingerprint or exact repository revision no
+  longer matches.
+
+Reports also separate `structuralDeclaration`,
+`providerIntegrationExecution`, and `consumerProductAcceptance` verdicts. An
+engine-only checkout may pass its structural/provider work while downstream
+product acceptance is unavailable. Unavailable and not-run product work never
+contributes to pass counts.
 
 ## Stable-operation rule
 
@@ -96,11 +116,22 @@ Run only catalog/report validation:
 python3 harness/conformance/validate.py
 ```
 
-Run validation and every real suite:
+Run validation and every currently available real suite:
 
 ```bash
 ./harness/ci/check-conformance.sh
 ```
 
+To verify the engine-only topology without moving local sibling checkouts, run
+the execution reporter with an empty workspace parent:
+
+```bash
+python3 harness/conformance/run.py --workspace-parent /path/to/empty-parent
+```
+
+This changes only optional-consumer availability classification; engine-owned
+provider commands and their normal input paths still execute unchanged.
+
 The full repository gate runs conformance after reachability so a missing public
-path is reported before its execution proof is attempted.
+path is reported before execution. Missing sibling consumer repositories are
+reported as unavailable rather than silently omitted or treated as passed.

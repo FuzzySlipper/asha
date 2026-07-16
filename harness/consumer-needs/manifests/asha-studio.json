@@ -16,12 +16,12 @@
         "launchNativeBrowserHost",
         "readNativeBrowserHostProviderStatus"
       ],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/browser-host/src/host.ts"],
         "provider": ["ts/packages/runtime-bridge/src/native-runtime-provider.ts"],
         "selector": ["ts/packages/browser-host/src/host.ts"],
-        "delivery": ["ts/packages/browser-host/src/index.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -35,12 +35,12 @@
         "compatibilityVersion",
         "status"
       ],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/browser-host/src/host.ts"],
         "provider": ["ts/packages/browser-host/src/host.ts"],
         "selector": ["ts/packages/browser-host/src/host.ts"],
-        "delivery": ["ts/packages/browser-host/src/index.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -53,12 +53,12 @@
         "AshaRendererEditorViewport",
         "mountAshaRendererEditorViewport"
       ],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/renderer-host/src/editor-viewport.ts"],
         "provider": ["ts/packages/renderer-three/src/editor-viewport-backend.ts"],
         "selector": ["ts/packages/renderer-host/src/editor-viewport.ts"],
-        "delivery": ["ts/packages/renderer-host/src/editor-viewport.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -79,12 +79,12 @@
         "position",
         "sourceTrace"
       ],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/contracts/src/generated/render.ts"],
         "provider": ["ts/packages/renderer-host/src/editor-viewport.ts"],
         "selector": ["ts/packages/renderer-host/src/editor-viewport.ts"],
-        "delivery": ["ts/packages/renderer-host/src/editor-viewport.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -93,12 +93,12 @@
       "identity": "decodeSceneDocument",
       "provider": "@asha/runtime-session",
       "fields": ["accepted", "canonicalJson", "contentHash", "diagnostics", "document", "validation"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/contracts/src/generated/scene.ts"],
         "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/scene_and_preview.rs"],
         "selector": ["ts/packages/runtime-session/src/facade.ts"],
-        "delivery": ["engine-rs/crates/bridge/native-bridge/src/lib.rs", "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs"]
+        "delivery": []
       }
     },
     {
@@ -107,12 +107,12 @@
       "identity": "encodeSceneDocument",
       "provider": "@asha/runtime-session",
       "fields": ["accepted", "canonicalJson", "contentHash", "diagnostics", "document", "validation"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["ts/packages/contracts/src/generated/scene.ts"],
         "provider": ["engine-rs/crates/bridge/runtime-bridge-api/src/authority/scene_and_preview.rs"],
         "selector": ["ts/packages/runtime-session/src/facade.ts"],
-        "delivery": ["engine-rs/crates/bridge/native-bridge/src/lib.rs", "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs"]
+        "delivery": []
       }
     }
   ]

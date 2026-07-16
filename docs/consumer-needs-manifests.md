@@ -18,12 +18,14 @@ evidence lists:
 2. `provider` — a named provider advertises that it can supply the need.
 3. `selector` — requested fields, selectors, quotas, ordering, or target roles
    are supported by that provider.
-4. `delivery` — a real invocation or consumer proof delivered the need.
+4. `delivery` — the owning consumer executed the real user/product path and
+   delivered the need.
 
 Higher levels require evidence for every earlier level. A generated type alone
-therefore cannot satisfy a provider or delivery claim. #5652 will join these
-requirements to all engine capability registries; #5653 will require real probe
-coverage for stable delivered surfaces.
+therefore cannot satisfy a provider or delivery claim. Engine-local provider
+tests may satisfy provider/selector behavior, but they cannot satisfy Studio or
+Game Project delivery. Missing consumer execution is `not_run` or `unavailable`,
+never passed.
 
 ## Guardrails
 
@@ -39,6 +41,10 @@ coverage for stable delivered surfaces.
   public builder compilation, and ProjectBundle activation/save/reload proof.
 - Lists and requirements are sorted so equivalent manifests are byte-stable and
   validation reports are deterministic.
+- Requirements formerly labelled as delivery from only engine-local smoke or
+  provider tests are downgraded to their honest provider/selector level. The
+  obsolete `asha-demo.conformance` self-proof requirement was removed rather
+  than preserved as report ceremony.
 
 Run `./harness/ci/check-consumer-needs.sh`. The committed machine-readable result
 is `harness/consumer-needs/validation-report.json`.

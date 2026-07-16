@@ -572,16 +572,6 @@
         "sourceHash": "sha256:a373b35750a846ac79b9a3d991d28ecf898b36bd510b2814b6264605729e4994"
       },
       {
-        "id": "asha-demo.conformance",
-        "consumerId": "asha-demo.current-browser-game",
-        "identity": "asha-demo.public-consumer-proof",
-        "kind": "conformanceEntrypoint",
-        "providerId": "@asha/smoke",
-        "requiredLevel": "delivery",
-        "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:5dded0400e6ad77ac277bf07b6cd017ca1a3f55b522561b50916100316b1c276"
-      },
-      {
         "id": "asha-demo.game-workspace-prefab-authoring",
         "consumerId": "asha-demo.current-browser-game",
         "identity": "@asha/game-workspace",
@@ -657,9 +647,9 @@
         "identity": "readRuntimeSessionPlayableEncounterTick",
         "kind": "runtimeReadout",
         "providerId": "@asha/runtime-bridge",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:b02a888a1bfa46f40a90c9bf23b060aaf477b01e88e609335b0c06680706a6a6"
+        "sourceHash": "sha256:d5537367219a2088b11c5f049e1dbc6e2f42a3989c777af5cc8fbb13a348ce47"
       },
       {
         "id": "asha-demo.prefab-part",
@@ -697,9 +687,9 @@
         "identity": "asha.render.frame",
         "kind": "projectionChannel",
         "providerId": "@asha/renderer-host",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:794290f0569f26bf5d081921bf0a8a7625de1f33ebea78702e71c110786164d0"
+        "sourceHash": "sha256:c881f495f0597d4d6a5cfd1374f33cd99c3be5bbab23d860a51405c2776b1e19"
       },
       {
         "id": "asha-demo.runtime-bridge",
@@ -717,9 +707,9 @@
         "identity": "RuntimeSessionFacade.loadEcrpProject",
         "kind": "runtimeOperation",
         "providerId": "@asha/runtime-bridge",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:20a72218396b9ae8ea6ed34b0eff5e375c93d1b15dcc201f8226e3bede55eba3"
+        "sourceHash": "sha256:78d445f577b7078ee18f37c84722eae2713d7d500ee14c76b12f0da2f0658197"
       },
       {
         "id": "asha-demo.runtime-session-fixture",
@@ -777,9 +767,9 @@
         "identity": "@asha/ui-dom",
         "kind": "typescriptPackage",
         "providerId": null,
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-demo.json",
-        "sourceHash": "sha256:f7fd72231ff20eac61a04ec6e9f9a22b35b27a3a6aa97097e8ec9a0c9a1d3c04"
+        "sourceHash": "sha256:7018ae056aadbbe40b06e1cf60a629c7e4ca753a199b561a8fefaedb772a015d"
       },
       {
         "id": "asha-studio.browser-host",
@@ -787,9 +777,9 @@
         "identity": "@asha/browser-host",
         "kind": "typescriptPackage",
         "providerId": null,
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:b65a7aa8632e0b2b4277dd74d5c497bed129f618f78f14d4fb641ae88b63e7f5"
+        "sourceHash": "sha256:bf81284a657bca32761269098fa813f5b1b56e73438be74709328c60be732e15"
       },
       {
         "id": "asha-studio.browser-host-lifecycle",
@@ -797,9 +787,9 @@
         "identity": "browserHostLifecycle",
         "kind": "runtimeOperation",
         "providerId": "@asha/browser-host",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:1ce96010968aa0a2a27aee9adfc999d7066b50a14120a0ee1c42ffab92022d90"
+        "sourceHash": "sha256:0c435efd51b697c6dbcb7f5377dde8a557de76cca734175890b6addf69439908"
       },
       {
         "id": "asha-studio.editor-viewport",
@@ -807,9 +797,9 @@
         "identity": "renderer.editor-viewport",
         "kind": "projectionChannel",
         "providerId": "@asha/renderer-host",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:545936f44cca49825504147573f99e4b560a449e0936f04b2cb1316f6a4a65f0"
+        "sourceHash": "sha256:1068325d32d3371986f0443cec5476bd80223243868e9dedae76deeb6e4c1b27"
       },
       {
         "id": "asha-studio.renderer-host",
@@ -817,9 +807,9 @@
         "identity": "@asha/renderer-host",
         "kind": "typescriptPackage",
         "providerId": null,
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:e04bb66f1160bd72125647152abda1264e8ffc6dace7f099dd81f6dbf60e0ce0"
+        "sourceHash": "sha256:a2bb8fd35924a17cfa05436c7b6bdc7e89c1a82ff0cee5ec2825648f086ef63a"
       },
       {
         "id": "asha-studio.scene-document-decode",
@@ -827,9 +817,9 @@
         "identity": "decodeSceneDocument",
         "kind": "runtimeOperation",
         "providerId": "@asha/runtime-session",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:faf663aad989d02a56744cc3d8b8d8ff59e3337bc66442fb83ae23ab736f0c6e"
+        "sourceHash": "sha256:7c1ceaea27c29177421c56d8ffd779f5584a19da48ad02182e64c2411dfa591e"
       },
       {
         "id": "asha-studio.scene-document-encode",
@@ -837,9 +827,9 @@
         "identity": "encodeSceneDocument",
         "kind": "runtimeOperation",
         "providerId": "@asha/runtime-session",
-        "requiredLevel": "delivery",
+        "requiredLevel": "selector",
         "source": "harness/consumer-needs/manifests/asha-studio.json",
-        "sourceHash": "sha256:72de40107ae1c9497553308bcdcce7d5ea301dbb7cc1dad46593dc8c30db3ffe"
+        "sourceHash": "sha256:2806998facff1f208a02fe4fc1430ec25d8f902c2cfac7dd1e37f057cea9455e"
       },
       {
         "id": "pulse.configuration",
@@ -2179,7 +2169,7 @@
       {
         "id": "public.browser-host",
         "suiteId": "public.browser-host",
-        "sourceHash": "sha256:315faca3705f69766e9167acd8cc438444ac35e62b9cdf58929e30995d2b9f5d"
+        "sourceHash": "sha256:8c79293e22d34e38ef5ab9d9e2bb89365500f0f907700d5f871712145ef13fd5"
       },
       {
         "id": "public.camera-controller",
@@ -2189,12 +2179,12 @@
       {
         "id": "public.editor-viewport",
         "suiteId": "public.editor-viewport",
-        "sourceHash": "sha256:ac6ddf263414647fbf6427eb508a9ba656ce78581e71ccbfa83b44276521c5af"
+        "sourceHash": "sha256:c67f0da25934b12127f24cb38c9ba4271b3550420ca4fa55e6441dfc004935b4"
       },
       {
         "id": "public.editor-viewport-backend",
         "suiteId": "public.editor-viewport-backend",
-        "sourceHash": "sha256:cc59eb84338d2742cb74e120a119dbc2e477955330ded786504f7255ad43efdf"
+        "sourceHash": "sha256:e55f6f67a4487da5eff24494238db78ba01619dc97bc50783443d3fd703f384d"
       },
       {
         "id": "public.input-pause-demo",
@@ -2224,12 +2214,12 @@
       {
         "id": "public.runtime-session.projection",
         "suiteId": "public.consumer",
-        "sourceHash": "sha256:eb202a26891e676e9c5aebf997d055f30521cd1175873c96431f17369bd2e2b1"
+        "sourceHash": "sha256:9291cdb0cef6fecccd1bb43256680f12208ab88b1cac551200108b034f2a0613"
       },
       {
         "id": "public.scene-document-codec",
         "suiteId": "bridge.rust-authority",
-        "sourceHash": "sha256:f763372fc6f347b98de6042ec5e1b7e852f2c74a220a0d669e9756f648f1d43b"
+        "sourceHash": "sha256:3c44ffe052bd13c040b28ee5fdd3dc303d775a7e9af1bac1333c8ea878a18a66"
       },
       {
         "id": "public.session-input-replay",
@@ -2618,13 +2608,10 @@
         "id": "@asha/smoke",
         "references": [
           {
-            "consumerRequirementId": "asha-demo.conformance"
-          },
-          {
             "publicSurfaceId": "@asha/smoke"
           }
         ],
-        "sourceHash": "sha256:53dba9f6a9c322ec063e0a6e1e8e474b7272907557bc1f45cff2a547d829bd1c"
+        "sourceHash": "sha256:02c41546a36ba8cea2dd747d13edcf045952e5979feb08c295a391e74bc998cc"
       },
       {
         "id": "@asha/ui-dom",
@@ -3119,5 +3106,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:0a0270f140afd32d849c209900233e1ee4d4b2193e6af1af951d90d0b70e2977"
+  "catalogHash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3"
 }

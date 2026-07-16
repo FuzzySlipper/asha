@@ -15,7 +15,7 @@ python3 harness/identity/catalog.py --write
 
 when an owning identity changes, then review the generated catalog diff. Normal gates run `catalog.py` without `--write` and reject a stale catalog. Bridge operation records are generated from `bridge-manifest.toml`; the catalog therefore follows the current 71-operation inventory (68 stable and 3 quarantined) rather than a hard-coded historical count.
 
-`executions.json` owns normalized command arrays and their relevant input/provider sets. `execution.py` hashes the command, selected environment, recursive input contents, generated contracts, provider records, and toolchain versions. Successful receipts and stdout/stderr logs live under ignored `harness/smoke-out/proof-execution/`. Suites with the same fingerprint share one process while every suite, probe, assertion, and evidence artifact remains visible in the receipt and execution report.
+`executions.json` owns normalized command arrays and their relevant input/provider sets. `execution.py` hashes the command, selected environment, recursive input contents, generated contracts, provider records, toolchain versions, and the exact HEAD revision of every contributing repository. Successful receipts and stdout/stderr logs live under ignored `harness/smoke-out/proof-execution/`. Suites with the same fingerprint share one process while every suite, probe, assertion, and evidence artifact remains visible in the receipt and execution report. A changed command, input, toolchain, provider, or repository revision makes an older receipt stale rather than successful evidence for the current run.
 
 Run the identity and negative gates with:
 

@@ -77,12 +77,12 @@
       "identity": "asha.render.frame",
       "provider": "@asha/renderer-host",
       "symbols": ["createAshaRendererGeneratedTunnelRoomSurfaceFrame", "mountAshaRendererAnimatedMeshSurface"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["../asha-demo/src/bootstrap/boot-game.ts"],
         "provider": ["harness/public-surface/ts-packages.json"],
         "selector": ["../asha-demo/src/bootstrap/boot-game.ts"],
-        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -211,12 +211,12 @@
       "identity": "RuntimeSessionFacade.loadEcrpProject",
       "provider": "@asha/runtime-bridge",
       "fields": ["entityDefinitions", "gameRuleModules", "projectBundle", "sceneDocument"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
         "provider": ["ts/packages/runtime-bridge/src/index.ts"],
         "selector": ["../asha-demo/project/project-bundle.json"],
-        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -326,12 +326,12 @@
       "identity": "readRuntimeSessionPlayableEncounterTick",
       "provider": "@asha/runtime-bridge",
       "fields": ["combat", "interaction", "lifecycle", "movement"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
         "provider": ["ts/packages/runtime-bridge/src/index.ts"],
         "selector": ["../asha-demo/src/runtime/demo-runtime-gateway.ts"],
-        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+        "delivery": []
       }
     },
     {
@@ -365,25 +365,12 @@
       "kind": "typescriptPackage",
       "identity": "@asha/ui-dom",
       "symbols": ["GameHudProjection", "GameHudProjectionInput", "HudMenuIntent", "buildGameHudProjection", "hudControlToIntent"],
-      "requiredLevel": "delivery",
+      "requiredLevel": "selector",
       "evidence": {
         "type": ["../asha-demo/src/projection/hud-view.ts"],
         "provider": ["harness/public-surface/ts-packages.json"],
         "selector": ["../asha-demo/src/projection/hud-view.ts"],
-        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
-      }
-    },
-    {
-      "id": "asha-demo.conformance",
-      "kind": "conformanceEntrypoint",
-      "identity": "asha-demo.public-consumer-proof",
-      "provider": "@asha/smoke",
-      "requiredLevel": "delivery",
-      "evidence": {
-        "type": ["ts/packages/smoke/src/public-consumer-compat.test.ts"],
-        "provider": ["ts/packages/smoke/package.json"],
-        "selector": ["harness/public-surface/ts-packages.json"],
-        "delivery": ["ts/packages/smoke/src/public-consumer-compat.test.ts"]
+        "delivery": []
       }
     }
   ]

@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
-  "manifestHash": "sha256:1189bc7f6bcf056d2b9cef3f550f3fb9517e7139e42697dbc360c0efc1857ce0",
-  "identityCatalogHash": "sha256:0a0270f140afd32d849c209900233e1ee4d4b2193e6af1af951d90d0b70e2977",
+  "manifestHash": "sha256:eda46a7c45552e5f2bc139d44350d76c0ee8a08ec65b40907139780dcdd83e6c",
+  "identityCatalogHash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3",
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:3c052592f1e5ed5795fc1122431a644b6014dd08d3b2b2bc892f7b6e8cbc221c"
+      "hash": "sha256:6d3dd86c375a11473e93ed74dd8bdc4606a8212eada00f2b3f41b0c55ec5bb5e"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -23,7 +23,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:00bfbbc1dc0b1b120cd264e21a6ec26509c24b3e6f3a0e3479d1efa0df0c26df"
+      "hash": "sha256:eb9d0925dc7bc8b5905fe9abe9055eb327c8c2da8a74fb3293cb0a22ab4871db"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",
@@ -44,7 +44,7 @@
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
       "valid": true,
-      "actualCount": 46
+      "actualCount": 45
     },
     {
       "id": "catalog.generated-contracts",

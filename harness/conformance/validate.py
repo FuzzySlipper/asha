@@ -380,10 +380,12 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
             "id": identity,
             "suite": probe.get("suite"),
             "executionId": suite.get("executionId") if suite is not None else None,
+            "claimClass": "structuralDeclaration",
             "assertionIds": sorted(
                 item.get("assertionId") for item in evidence if isinstance(item, dict)
             ),
-            "passed": len(gaps) == before,
+            "structuralState": "passed" if len(gaps) == before else "failed",
+            "executionState": "not_run",
         })
 
     required_capabilities = reachability_capabilities()
@@ -455,8 +457,12 @@ def validate(manifest_path: pathlib.Path) -> dict[str, Any]:
         ROOT / "ts/packages/runtime-bridge/src/native.ts",
     ]
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "valid": not gaps,
+        "claimVerdict": {
+            "claimClass": "structuralDeclaration",
+            "state": "passed" if not gaps else "failed",
+        },
         "inventory": relative(manifest_path),
         "inventoryHash": digest(manifest_path),
         "identityCatalog": {

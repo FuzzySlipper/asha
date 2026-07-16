@@ -82,6 +82,39 @@ def input_digest(paths: Iterable[str]) -> str:
     return stable_hash(entries)
 
 
+def repository_revisions(paths: Iterable[str]) -> dict[str, str]:
+    """Return exact HEAD revisions for repositories contributing execution inputs."""
+    roots: dict[str, pathlib.Path] = {}
+    for source in sorted(set(paths)):
+        path = (ROOT / source).resolve()
+        current = path if path.is_dir() else path.parent
+        for candidate in (current, *current.parents):
+            if (candidate / ".git").exists():
+                try:
+                    label = candidate.relative_to(ROOT).as_posix() or "."
+                except ValueError:
+                    label = pathlib.PurePath(
+                        os.path.relpath(candidate, ROOT)
+                    ).as_posix()
+                roots[label] = candidate
+                break
+
+    revisions: dict[str, str] = {}
+    for label, root in sorted(roots.items()):
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            cwd=ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        revision = completed.stdout.strip()
+        if completed.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise ExecutionError(f"cannot resolve exact repository revision for {root}")
+        revisions[label] = revision
+    return revisions
+
+
 def selected_environment(
     settings: dict[str, Any], environment: dict[str, str] | None = None
 ) -> dict[str, str]:
@@ -384,6 +417,7 @@ def execution_fingerprint(
     environment: dict[str, str],
     toolchain: dict[str, str],
     inputs_hash: str,
+    revisions: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     command = definition.get("command")
     if not isinstance(command, list) or not command or not all(isinstance(item, str) and item for item in command):
@@ -393,6 +427,7 @@ def execution_fingerprint(
         "environment": selected_environment(settings, environment),
         "inputDigest": inputs_hash,
         "providerDigest": provider_digest(catalog, definition.get("providerIds", [])),
+        "repositoryRevisions": {} if revisions is None else revisions,
         "toolchain": toolchain,
     }
     return stable_hash(payload), payload
@@ -449,6 +484,7 @@ def make_plan(
             effective_environment,
             toolchain,
             input_digest(common_inputs + definition.get("inputs", [])),
+            repository_revisions(common_inputs + definition.get("inputs", [])),
         )
         attribution = list(attributions.get(identity, []))
         attribution.extend(

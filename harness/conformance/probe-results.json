@@ -1,16 +1,20 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "valid": true,
+  "claimVerdict": {
+    "claimClass": "structuralDeclaration",
+    "state": "passed"
+  },
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:e61c6d77be8f8c0264449fe5cd7e76ca229404a5b6df58073497236728a69a9e",
+  "inventoryHash": "sha256:80a227dcfb34b98088f3c01910a8326d48800f62a9790e771fbecb50507f5ed8",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:0a0270f140afd32d849c209900233e1ee4d4b2193e6af1af951d90d0b70e2977"
+    "hash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:3c052592f1e5ed5795fc1122431a644b6014dd08d3b2b2bc892f7b6e8cbc221c"
+      "hash": "sha256:6d3dd86c375a11473e93ed74dd8bdc4606a8212eada00f2b3f41b0c55ec5bb5e"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -18,7 +22,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:00bfbbc1dc0b1b120cd264e21a6ec26509c24b3e6f3a0e3479d1efa0df0c26df"
+      "hash": "sha256:eb9d0925dc7bc8b5905fe9abe9055eb327c8c2da8a74fb3293cb0a22ab4871db"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -30,7 +34,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:e563e899e12cec450fd7b0fc3a119e62120e8e00da20a41ca2514eefaaa32c1d"
+      "hash": "sha256:96cbe0420ff39bccb19b3700d8a6716977acb7a57c6e4e469b67fc3cc0ebbcd6"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
@@ -43,8 +47,8 @@
     "temporaryOperationExemptionCount": 0,
     "quarantinedOperationCount": 3,
     "semanticProbeCount": 27,
-    "deliveryRequirementCount": 40,
-    "publicSurfaceCount": 13
+    "deliveryRequirementCount": 29,
+    "publicSurfaceCount": 11
   },
   "operations": [
     {
@@ -2576,157 +2580,188 @@
       "id": "gameplay.binding.bootstrap",
       "suite": "gameplay.binding",
       "executionId": "rust.project-bundle.gameplay-bindings",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
         "assertion.gameplay.binding.bootstrap.stale-contracts-foreign-modules-bad-roles-reads-outputs-and-overrides-reject"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.downstream.invocation",
       "suite": "gameplay.downstream-module",
       "executionId": "rust.downstream-gameplay-module",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.downstream.invocation.public-facade-executes-real-downstream-code-and-hashes-behavior"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.native-runtime-provider",
       "suite": "gameplay.native-provider",
       "executionId": "gate.composed-native-provider",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.native-runtime-provider.composed-addon-retains-generated-exports-and-runs-primary-fire-transform"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.read.event-bound",
       "suite": "gameplay.reads",
       "executionId": "rust.gameplay-fabric.reads",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.read.event-bound.coordinator-delivers-declared-reads-and-binds-them-into-delivery-evidence",
         "assertion.gameplay.read.event-bound.downstream-read-plan-is-typed-bounded-frozen-and-stable"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.read.module-state",
       "suite": "gameplay.static-composition",
       "executionId": "rust.gameplay-module-sdk.static-composition",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.read.module-state.provider-state-adapters-initialize-and-apply-recorded-local-facts"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.read.zz-module-conformance",
       "suite": "gameplay.downstream-module",
       "executionId": "rust.downstream-gameplay-module",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.read.zz-module-conformance.one-command-conformance-covers-bootstrap-invocation-state-and-replay",
         "assertion.gameplay.read.zz-module-conformance.provider-drift-and-bad-config-fail-before-partial-bootstrap"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.runtime-host.decision",
       "suite": "gameplay.runtime-host",
       "executionId": "gate.gameplay-runtime-host",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.runtime-host.decision.approved-public-decision-host-resumes-exactly-once-with-declared-reads",
         "assertion.gameplay.runtime-host.decision.public-decision-host-delivers-reads-persists-continuations-and-consumes-tokens"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.runtime-host.product-loop",
       "suite": "gameplay.runtime-host",
       "executionId": "gate.gameplay-runtime-host",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.runtime-host.product-loop.approved-public-runtime-host-links-real-downstream-behavior"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.runtime-session-composition",
       "suite": "gameplay.runtime-host",
       "executionId": "gate.gameplay-runtime-host",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.runtime-session-composition.public-static-builder-composes-one-bridge-cell-and-restores-it"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "gameplay.trigger.lifecycle",
       "suite": "gameplay.triggers",
       "executionId": "gate.trigger-volumes",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.trigger.lifecycle.current-trigger-overlaps-flow-through-declared-owner-query-boundary",
         "assertion.gameplay.trigger.lifecycle.downstream-trigger-observer-proposes-visible-follow-up-without-collision-access",
         "assertion.gameplay.trigger.lifecycle.enter-continue-exit-are-exactly-once-and-stably-hashed",
         "assertion.gameplay.trigger.lifecycle.runtime-session-reconciles-persists-and-restores-trigger-overlap-authority"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.animation-projection",
       "suite": "public.animation",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.animation-projection.accepted-gameplay-fact-is-retained-in-transition-state-and-verification-replay",
         "assertion.public.animation-projection.animationsampledcueevidence",
         "assertion.public.animation-projection.g1-controller-sequence-drives-deterministic-renderer-local-blend-and-smooth-sampling"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.audio-projection",
       "suite": "public.audio",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.audio-projection.audioprojectionevidence",
         "assertion.public.audio-projection.web-audio-host-emits-catalog-hash-bound-3d-cues-and-caches-decoded-clips"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.billboard-projection",
       "suite": "public.billboard",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.billboard-projection.billboard-host-creates-updates-localizes-lays-out-and-destroys-multiple-entity-cues",
         "assertion.public.billboard-projection.billboardprojectionevidence"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.browser-host",
       "suite": "public.browser-host",
       "executionId": "ts.browser-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.browser-host.generated-runtimebridge-operation-inventory",
         "assertion.public.browser-host.missing-spoofed-and-stale-providers-fail-closed",
         "assertion.public.browser-host.studio-pages-receive-isolated-one-cell-lifecycles"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.camera-controller",
       "suite": "public.camera-flow",
       "executionId": "ts.app.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
         "assertion.public.camera-controller.editor-selection-drives-the-public-orbit-pan-zoom-and-fps-return-flow",
         "assertion.public.camera-controller.one-resolved-input-path-switches-fps-orbit-and-top-down-without-simultaneous-controllers",
         "assertion.public.camera-controller.pivot-camera-distance-is-clamped-by-runtime-terrain-and-can-fail-closed"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.editor-viewport",
       "suite": "public.editor-viewport",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
         "assertion.public.editor-viewport.editor-viewport-isolates-equal-handles-across-deterministic-runtime-authored-and-overlay-channels",
@@ -2734,34 +2769,40 @@
         "assertion.public.editor-viewport.one-degraded-resource-channel-leaves-healthy-runtime-and-overlay-projections-intact",
         "assertion.public.editor-viewport.renderer-host-declarations-do-not-expose-concrete-threejs-backend-types"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.editor-viewport-backend",
       "suite": "public.editor-viewport-backend",
       "executionId": "ts.renderer-three.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
         "assertion.public.editor-viewport-backend.real-projection-channel-replacement-is-atomic-and-does-not-disturb-sibling-channels",
         "assertion.public.editor-viewport-backend.real-projection-channels-isolate-equal-handles-in-fixed-runtime-authored-and-overlay-cells"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.input-pause-demo",
       "suite": "public.input-pause-demo",
       "executionId": "gate.asha-demo-input-live",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.input-pause-demo.browser-host-isolates-runtimebridge-factory-clients-and-bounds-their-identities",
         "assertion.public.input-pause-demo.duplicaterejected",
         "assertion.public.input-pause-demo.resolved-input-owns-pause-consumption-resume-and-semantic-replay"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.integrated-feedback-projection",
       "suite": "public.animation",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.integrated-feedback-projection.exercisepresentationdegradation",
         "assertion.public.integrated-feedback-projection.font-and-icon-resources-are-sha-256-validated-cached-and-fail-with-typed-diagnostics",
@@ -2770,89 +2811,106 @@
         "assertion.public.integrated-feedback-projection.missing-particle-resources-fail-locally-without-consuming-the-burst",
         "assertion.public.integrated-feedback-projection.primary-fire-audio-retains-the-accepted-origin"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.particle-projection",
       "suite": "public.particle",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.particle-projection.burst-and-retained-lifecycle-are-catalog-validated-and-budgeted",
         "assertion.public.particle-projection.particle-host-realizes-deterministic-bursts-and-expires-disposable-billboards",
         "assertion.public.particle-projection.particleprojectionevidence"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.prefab-authoring-and-placement",
       "suite": "public.prefab-authoring",
       "executionId": "ts.game-workspace.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.prefab-authoring-and-placement.prefabauthoringreadout",
         "assertion.public.prefab-authoring-and-placement.public-prefab-authoring-creates-edits-places-and-inspects-a-multi-part-definition",
         "assertion.public.prefab-authoring-and-placement.public-prefab-bootstrap-places-resolves-and-restores-multiple-instances"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.projection-pick",
       "suite": "public.projection-pick",
       "executionId": "ts.renderer-three.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.projection-pick.projection-pick-filters-are-descriptive-only-and-invalid-rays-fail-closed",
         "assertion.public.projection-pick.projection-pick-returns-typed-source-evidence-without-changing-projection-or-authority-shaped-state"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.runtime-session.projection",
       "suite": "public.consumer",
       "executionId": "ts.smoke.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.runtime-session.projection.asha-demo-public-roots-cover-runtimesession-readouts-and-hud-menu-projection"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.scene-document-codec",
       "suite": "bridge.rust-authority",
       "executionId": "rust.runtime-bridge-api.lib",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.scene-document-codec.canonical-round-trip-does-not-mutate-runtime-authority",
         "assertion.public.scene-document-codec.structural-semantic-and-version-rejections-are-classified"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.session-input-replay",
       "suite": "bridge.rust-authority",
       "executionId": "rust.runtime-bridge-api.lib",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.session-input-replay.resolved-pause-context-records-and-replays-without-browser-events-or-double-delivery",
         "assertion.public.session-input-replay.runtime-bridge-replays-authority-issued-actions-exactly-once-without-raw-input"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.session-time-control",
       "suite": "bridge.rust-authority",
       "executionId": "rust.runtime-bridge-api.lib",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.session-time-control.exact-steps-advance-the-requested-count-and-remain-paused",
         "assertion.public.session-time-control.headless-runtimesession-pause-and-exact-stepping-use-validated-authority-commands"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     },
     {
       "id": "public.telemetry-snapshot-overlay",
       "suite": "public.telemetry",
       "executionId": "ts.renderer-host.tests",
+      "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.telemetry-snapshot-overlay.headless-live-telemetry-omits-unavailable-counters-and-preserves-bounded-history",
         "assertion.public.telemetry-snapshot-overlay.livetelemetrysnapshot",
         "assertion.public.telemetry-snapshot-overlay.retained-overlay-lifecycle-is-typed-atomic-and-bounded"
       ],
-      "passed": true
+      "structuralState": "passed",
+      "executionState": "not_run"
     }
   ],
   "publicSurfaceCoverage": [
@@ -2921,20 +2979,6 @@
         "public.scene-document-codec",
         "public.session-input-replay",
         "public.session-time-control"
-      ]
-    },
-    {
-      "identity": "@asha/smoke",
-      "disposition": "preferred",
-      "probes": [
-        "public.runtime-session.projection"
-      ]
-    },
-    {
-      "identity": "@asha/ui-dom",
-      "disposition": "preferred",
-      "probes": [
-        "public.runtime-session.projection"
       ]
     },
     {

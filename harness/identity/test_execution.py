@@ -234,6 +234,31 @@ class ProofExecutionTests(unittest.TestCase):
             )
             self.assertNotEqual(baseline, fingerprint)
 
+    def test_repository_revision_changes_invalidate_fingerprint(self) -> None:
+        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": []}
+        settings = {"environmentKeys": [], "environmentPrefixes": []}
+        catalog = {"families": {"providers": []}}
+        baseline, inputs = execution.execution_fingerprint(
+            definition,
+            settings,
+            catalog,
+            {},
+            {"cargo": "same"},
+            "sha256:inputs",
+            {".": "a" * 40},
+        )
+        changed, _ = execution.execution_fingerprint(
+            definition,
+            settings,
+            catalog,
+            {},
+            {"cargo": "same"},
+            "sha256:inputs",
+            {".": "b" * 40},
+        )
+        self.assertEqual(inputs["repositoryRevisions"], {".": "a" * 40})
+        self.assertNotEqual(baseline, changed)
+
     def test_shared_execution_retains_every_attribution(self) -> None:
         shared = {
             "fingerprint": "sha256:same",

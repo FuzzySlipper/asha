@@ -11,7 +11,7 @@
     {
       "id": "catalog.consumer-needs",
       "kind": "consumerNeeds",
-      "expectedCount": 46,
+      "expectedCount": 45,
       "proof": { "path": "harness/consumer-needs/validate.py", "token": "validate_manifest" }
     },
     {

@@ -577,10 +577,7 @@
       "capabilities": [
         "bridge.browser-host-studio-session-lifecycle"
       ],
-      "consumerNeeds": [
-        "asha-studio.browser-host",
-        "asha-studio.browser-host-lifecycle"
-      ],
+      "consumerNeeds": [],
       "publicSurfaces": [
         "@asha/browser-host",
         "@asha/runtime-bridge"
@@ -666,10 +663,7 @@
       "capabilities": [
         "renderer.editor-viewport"
       ],
-      "consumerNeeds": [
-        "asha-studio.editor-viewport",
-        "asha-studio.renderer-host"
-      ],
+      "consumerNeeds": [],
       "publicSurfaces": [
         "@asha/contracts",
         "@asha/renderer-host"
@@ -705,10 +699,7 @@
       "capabilities": [
         "renderer.editor-viewport"
       ],
-      "consumerNeeds": [
-        "asha-studio.editor-viewport",
-        "asha-studio.renderer-host"
-      ],
+      "consumerNeeds": [],
       "publicSurfaces": [
         "@asha/renderer-host"
       ],
@@ -941,19 +932,11 @@
       "capabilities": [
         "bridge.project-bundle.load"
       ],
-      "consumerNeeds": [
-        "asha-demo.conformance",
-        "asha-demo.playable-encounter-readout",
-        "asha-demo.renderer-host",
-        "asha-demo.runtime-load",
-        "asha-demo.ui-dom"
-      ],
+      "consumerNeeds": [],
       "publicSurfaces": [
         "@asha/renderer-host",
         "@asha/runtime-bridge",
-        "@asha/runtime-session",
-        "@asha/smoke",
-        "@asha/ui-dom"
+        "@asha/runtime-session"
       ],
       "claims": [
         "publicProjectionReadout"
@@ -977,10 +960,7 @@
         }
       ],
       "capabilities": [],
-      "consumerNeeds": [
-        "asha-studio.scene-document-decode",
-        "asha-studio.scene-document-encode"
-      ],
+      "consumerNeeds": [],
       "publicSurfaces": [
         "@asha/contracts",
         "@asha/runtime-bridge",
