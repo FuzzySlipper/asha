@@ -251,6 +251,11 @@ interface NativeFpsEncounterTransitionResult extends NativeFpsEncounterDirectorS
  */
 interface NativeAddonBindings {
   initializeEngine(seed: number): number;
+  openWorkspaceAuthoring(existingHandle: number, requestJson: string): number;
+  readWorkspaceAuthoringState(handle: number): string;
+  readWorkspaceAuthoringProjection(handle: number, requestJson: string): string;
+  confirmWorkspaceAuthoringStored(handle: number, requestJson: string): string;
+  closeWorkspaceAuthoring(handle: number, requestJson: string): string;
   loadProjectBundle(
     handle: number,
     bundleSchemaVersion: number,

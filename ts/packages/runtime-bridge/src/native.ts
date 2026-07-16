@@ -112,6 +112,7 @@ import { loadNativeAddon, NativeAddonUnavailable, type NativeAddon } from '@asha
 import { MANIFEST_OPERATIONS } from './generated/operations.js';
 import {
   RuntimeBridgeError,
+  frameCursor,
   nonNegativeSafeInteger,
   u32,
   type CompositionStatus,
@@ -156,6 +157,14 @@ import {
   type VoxelMeshEvidenceRequest,
   type ProjectBundleLoadRequest,
   type ProjectBundleSaveSummary,
+  type WorkspaceAuthoringCloseInput,
+  type WorkspaceAuthoringCloseReceipt,
+  type WorkspaceAuthoringOpenInput,
+  type WorkspaceAuthoringProjectionRequest,
+  type WorkspaceAuthoringProjectionSummary,
+  type WorkspaceAuthoringStateSummary,
+  type WorkspaceAuthoringStoredConfirmationInput,
+  type WorkspaceAuthoringStoredConfirmationReceipt,
 } from './bridge.js';
 import {
   callNative,
@@ -165,6 +174,7 @@ import {
   type NativeFacadeValue,
 } from './native-operation-boundary.js';
 import { decodeRenderFrameDiff } from './render-decode.js';
+import { parseGeneratedOperationOutput } from './wire-validation.js';
 
 export { classifyNativeAddonError } from './native-operation-boundary.js';
 
@@ -192,6 +202,11 @@ interface NativeProjectBundleCompositionStatus {
   readonly fatalCount: number;
   readonly totalCount: number;
   readonly blocksLoad: boolean;
+}
+
+interface NativeWorkspaceAuthoringProjectionReceipt
+  extends Omit<WorkspaceAuthoringProjectionSummary, 'frame'> {
+  readonly frameJson: string;
 }
 
 function projectBundleCompositionStatusFromNative(
@@ -876,6 +891,90 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     this.#engineHandle = handle;
     this.#initialized = true;
     return handle;
+  }
+
+  openWorkspaceAuthoring(input: WorkspaceAuthoringOpenInput): WorkspaceAuthoringStateSummary {
+    const existingHandle = this.#engineHandle ?? -1;
+    const handle = callNative(() =>
+      this.#addon.openWorkspaceAuthoring(existingHandle, JSON.stringify(input)),
+    );
+    this.#engineHandle = nonNegativeSafeInteger(handle, 'workspace authoring handle') as EngineHandle;
+    this.#seed = input.seed;
+    this.#initialized = true;
+    const statePayload = callNative(() =>
+      this.#addon.readWorkspaceAuthoringState(this.#engineHandle as EngineHandle),
+    );
+    return parseNativeJson<WorkspaceAuthoringStateSummary>(
+      statePayload,
+      'workspace authoring open state',
+    );
+  }
+
+  readWorkspaceAuthoringState(): WorkspaceAuthoringStateSummary {
+    const handle = this.#requireHandle('readWorkspaceAuthoringState');
+    const payload = callNative(() => this.#addon.readWorkspaceAuthoringState(handle));
+    return parseNativeJson<WorkspaceAuthoringStateSummary>(
+      payload,
+      'workspace authoring state',
+    );
+  }
+
+  readWorkspaceAuthoringProjection(
+    request: WorkspaceAuthoringProjectionRequest,
+  ): WorkspaceAuthoringProjectionSummary {
+    const handle = this.#requireHandle('readWorkspaceAuthoringProjection');
+    const payload = callNative(() =>
+      this.#addon.readWorkspaceAuthoringProjection(handle, JSON.stringify(request)),
+    );
+    const receipt = parseGeneratedOperationOutput<NativeWorkspaceAuthoringProjectionReceipt>(
+      'read_workspace_authoring_projection',
+      'projectBundle.WorkspaceAuthoringProjectionReceipt',
+      payload,
+    );
+    const { frameJson, ...summary } = receipt;
+    const framePayload = parseGeneratedOperationOutput<Record<string, unknown>>(
+      'read_workspace_authoring_projection',
+      'render.RenderFrameDiff',
+      frameJson,
+    );
+    return {
+      ...summary,
+      cursor: frameCursor(nonNegativeSafeInteger(summary.cursor as number, 'projection cursor')),
+      nextCursor: frameCursor(
+        nonNegativeSafeInteger(summary.nextCursor as number, 'projection next cursor'),
+      ),
+      frame: decodeRenderFrameDiff(framePayload),
+    };
+  }
+
+  confirmWorkspaceAuthoringStored(
+    input: WorkspaceAuthoringStoredConfirmationInput,
+  ): WorkspaceAuthoringStoredConfirmationReceipt {
+    const handle = this.#requireHandle('confirmWorkspaceAuthoringStored');
+    const payload = callNative(() =>
+      this.#addon.confirmWorkspaceAuthoringStored(handle, JSON.stringify(input)),
+    );
+    return parseNativeJson<WorkspaceAuthoringStoredConfirmationReceipt>(
+      payload,
+      'workspace authoring stored confirmation',
+    );
+  }
+
+  closeWorkspaceAuthoring(input: WorkspaceAuthoringCloseInput): WorkspaceAuthoringCloseReceipt {
+    const handle = this.#requireHandle('closeWorkspaceAuthoring');
+    const payload = callNative(() =>
+      this.#addon.closeWorkspaceAuthoring(
+        handle,
+        JSON.stringify({
+          ...input,
+          discardUnsavedWorkingState: input.discardUnsavedWorkingState ?? false,
+        }),
+      ),
+    );
+    return parseNativeJson<WorkspaceAuthoringCloseReceipt>(
+      payload,
+      'workspace authoring close receipt',
+    );
   }
 
   #requireHandle(operation: string): EngineHandle {

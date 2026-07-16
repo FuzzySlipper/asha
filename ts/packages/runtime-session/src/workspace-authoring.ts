@@ -64,10 +64,18 @@ export interface WorkspaceAuthoringProjectionSummary {
   readonly generation: number;
   readonly workingRevision: number;
   readonly cursor: FrameCursor;
+  readonly nextCursor: FrameCursor;
   readonly delivery: 'replace' | 'apply';
   readonly frame: RenderFrameDiff;
   readonly renderDiffCount: number;
   readonly projectionHash: string;
+}
+
+export interface WorkspaceAuthoringProjectionRequest {
+  readonly expectedWorkspaceId: string;
+  readonly expectedGeneration: number;
+  readonly expectedWorkingRevision: number;
+  readonly cursor: FrameCursor;
 }
 
 export interface WorkspaceAuthoringStoredConfirmationReceipt {

@@ -100,6 +100,14 @@ export interface RuntimeProjectionPort {
   readDeveloperConsole(): Contracts.DeveloperConsoleSnapshot;
 }
 
+export interface RuntimeWorkspaceAuthoringPort {
+  openWorkspaceAuthoring(input: Contracts.WorkspaceAuthoringOpenRequest): Contracts.WorkspaceAuthoringStateSummary;
+  readWorkspaceAuthoringState(): Contracts.WorkspaceAuthoringStateSummary;
+  readWorkspaceAuthoringProjection(input: Contracts.WorkspaceAuthoringProjectionRequest): Bridge.WorkspaceAuthoringProjectionSummary;
+  confirmWorkspaceAuthoringStored(input: Contracts.WorkspaceAuthoringStoredConfirmationRequest): Contracts.WorkspaceAuthoringStoredConfirmationReceipt;
+  closeWorkspaceAuthoring(input: Contracts.WorkspaceAuthoringCloseRequest): Contracts.WorkspaceAuthoringCloseReceipt;
+}
+
 export interface RuntimeBundleLifecyclePort {
   initializeEngine(input: Bridge.EngineConfig): Session.EngineHandle;
   loadProjectBundle(input: Bridge.ProjectBundleLoadRequest): Bridge.CompositionStatus;
@@ -123,6 +131,7 @@ export interface RuntimeBridge
     RuntimeCameraPort,
     RuntimeGameplayPort,
     RuntimeProjectionPort,
+    RuntimeWorkspaceAuthoringPort,
     RuntimeBundleLifecyclePort,
     RuntimeReplayEvidencePort {}
 
@@ -134,6 +143,7 @@ export interface RuntimeBridgePorts {
   readonly camera: RuntimeCameraPort;
   readonly gameplay: RuntimeGameplayPort;
   readonly projection: RuntimeProjectionPort;
+  readonly workspaceAuthoring: RuntimeWorkspaceAuthoringPort;
   readonly bundleLifecycle: RuntimeBundleLifecyclePort;
   readonly replayEvidence: RuntimeReplayEvidencePort;
 }
@@ -151,6 +161,7 @@ export interface RuntimeBridgePortContract {
     | 'cameraProjection'
     | 'gameplaySessionAndReplay'
     | 'projectionFrame'
+    | 'workspaceAuthoringAuthority'
     | 'compositionStatus'
     | 'replayEvidence';
   readonly resourceLifetime: 'session' | 'frame' | 'mixedExplicitAndSession';
@@ -201,6 +212,12 @@ export const RUNTIME_BRIDGE_PORT_CONTRACTS: Readonly<
     resourceLifetime: 'frame',
     snapshotHash: 'projectionFrame',
   },
+  workspaceAuthoring: {
+    initialization: 'createsEngine',
+    projectBundle: 'ownsLoadUnload',
+    resourceLifetime: 'session',
+    snapshotHash: 'workspaceAuthoringAuthority',
+  },
   bundleLifecycle: {
     initialization: 'createsEngine',
     projectBundle: 'ownsLoadUnload',
@@ -224,6 +241,7 @@ export function runtimeBridgePorts(bridge: RuntimeBridge): RuntimeBridgePorts {
     camera: bridge,
     gameplay: bridge,
     projection: bridge,
+    workspaceAuthoring: bridge,
     bundleLifecycle: bridge,
     replayEvidence: bridge,
   };

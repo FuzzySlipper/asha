@@ -19,6 +19,7 @@ void test('fixed port views bind one root without capability lookup', () => {
     'camera',
     'gameplay',
     'projection',
+    'workspaceAuthoring',
     'bundleLifecycle',
     'replayEvidence',
   ]);
@@ -57,6 +58,7 @@ void test('every fixed port records lifecycle hash and resource rules', () => {
       'camera',
       'gameplay',
       'projection',
+      'workspaceAuthoring',
       'bundleLifecycle',
       'replayEvidence',
     ],

@@ -72,6 +72,30 @@ export function createNativeOperationInvocations(
 ): ReadonlyMap<string, NativeOperationInvocation> {
   return composeNativeOperationInvocations([
     ['initializeEngine', (bridge) => bridge.initializeEngine({ seed: 7 })],
+    ['openWorkspaceAuthoring', (bridge) => bridge.openWorkspaceAuthoring({
+      authoringId: 'workspace-authoring.native-fixture',
+      seed: 7,
+      project: { gameId: 'native-fixture', workspaceId: 'workspace/native-fixture' },
+      projectBundle: { bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 1 },
+    })],
+    ['readWorkspaceAuthoringState', (bridge) => bridge.readWorkspaceAuthoringState()],
+    ['readWorkspaceAuthoringProjection', (bridge) => bridge.readWorkspaceAuthoringProjection({
+      expectedWorkspaceId: 'workspace/native-fixture',
+      expectedGeneration: 1,
+      expectedWorkingRevision: 0,
+      cursor: frameCursor(0),
+    })],
+    ['confirmWorkspaceAuthoringStored', (bridge) => bridge.confirmWorkspaceAuthoringStored({
+      expectedWorkspaceId: 'workspace/native-fixture',
+      expectedGeneration: 1,
+      hostPath: 'assets/voxels/native-fixture.avxl.json',
+      canonicalJsonHash: input.hashA,
+    })],
+    ['closeWorkspaceAuthoring', (bridge) => bridge.closeWorkspaceAuthoring({
+      expectedWorkspaceId: 'workspace/native-fixture',
+      expectedGeneration: 1,
+      discardUnsavedWorkingState: true,
+    })],
     ['configureInputSession', (bridge) => bridge.configureInputSession(input.inputConfigure)],
     ['applyInputContextCommand', (bridge) => bridge.applyInputContextCommand(input.inputContextCommand)],
     ['submitRawInput', (bridge) => bridge.submitRawInput(input.rawInput)],

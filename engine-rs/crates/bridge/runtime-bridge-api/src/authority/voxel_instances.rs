@@ -5,7 +5,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelProjectionBindingRequest,
     ) -> BridgeResult<VoxelProjectionBindingReceipt> {
-        self.require_initialized("configure_voxel_projection_instances")?;
+        self.require_runtime_or_workspace_authoring("configure_voxel_projection_instances")?;
         if request.workspace_id.trim().is_empty() || request.registry_digest.trim().is_empty() {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
@@ -79,7 +79,7 @@ impl EngineBridge {
         &self,
         request: VoxelInstancePickRequest,
     ) -> BridgeResult<VoxelInstancePickResult> {
-        self.require_initialized("pick_voxel_instance")?;
+        self.require_runtime_or_workspace_authoring("pick_voxel_instance")?;
         let Some(binding) = &self.projection.voxel_instance_binding else {
             return Ok(Self::voxel_instance_pick_rejected(
                 request,

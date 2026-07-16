@@ -54,6 +54,14 @@ export type {
   GameplayPrefabPartInteractionRequest,
   ProjectBundleLoadRequest,
   StepResult,
+  WorkspaceAuthoringCloseInput,
+  WorkspaceAuthoringCloseReceipt,
+  WorkspaceAuthoringOpenInput,
+  WorkspaceAuthoringProjectionRequest,
+  WorkspaceAuthoringProjectionSummary,
+  WorkspaceAuthoringStateSummary,
+  WorkspaceAuthoringStoredConfirmationInput,
+  WorkspaceAuthoringStoredConfirmationReceipt,
 } from '@asha/runtime-session';
 
 // ── Opaque handle types ───────────────────────────────────────────────────────

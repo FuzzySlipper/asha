@@ -22,6 +22,139 @@
 
 #![forbid(unsafe_code)]
 
+// ── Workspace authoring lifecycle ───────────────────────────────────────────
+
+/// Stable project identity for one non-gameplay workspace-authoring cell.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringProjectIdentity {
+    pub game_id: String,
+    pub workspace_id: String,
+}
+
+/// Bounded ProjectBundle identity used to seed authoring without loading a
+/// gameplay RuntimeSession.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringProjectBundleRef {
+    pub bundle_schema_version: u32,
+    pub protocol_version: u32,
+    pub scene_id: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringCompositionStatus {
+    pub loaded_project_bundle: Option<u64>,
+    pub fatal_count: u32,
+    pub total_count: u32,
+    pub blocks_load: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringOpenRequest {
+    pub authoring_id: String,
+    pub seed: u64,
+    pub project: WorkspaceAuthoringProjectIdentity,
+    pub project_bundle: WorkspaceAuthoringProjectBundleRef,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringIdentity {
+    pub kind: String,
+    pub authoring_id: String,
+    pub mode: String,
+    pub generation: u64,
+    pub seed: u64,
+    pub project: WorkspaceAuthoringProjectIdentity,
+    pub project_bundle: WorkspaceAuthoringProjectBundleRef,
+    pub non_claims: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringStateSummary {
+    pub kind: String,
+    pub status: String,
+    pub identity: WorkspaceAuthoringIdentity,
+    pub composition: WorkspaceAuthoringCompositionStatus,
+    pub working_revision: u64,
+    pub stored_revision: u64,
+    pub dirty: bool,
+    pub last_stored_canonical_json_hash: Option<String>,
+    pub authority_snapshot_hash: String,
+    pub lifecycle_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringProjectionRequest {
+    pub expected_workspace_id: String,
+    pub expected_generation: u64,
+    pub expected_working_revision: u64,
+    pub cursor: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringProjectionReceipt {
+    pub kind: String,
+    pub workspace_id: String,
+    pub generation: u64,
+    pub working_revision: u64,
+    pub cursor: u64,
+    pub next_cursor: u64,
+    pub delivery: String,
+    /// Canonical render-bridge JSON decoded by the public transport facade.
+    pub frame_json: String,
+    pub render_diff_count: u64,
+    pub projection_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringStoredConfirmationRequest {
+    pub expected_workspace_id: String,
+    pub expected_generation: u64,
+    pub host_path: String,
+    pub canonical_json_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringStoredConfirmationReceipt {
+    pub kind: String,
+    pub accepted: bool,
+    pub workspace_id: String,
+    pub generation: u64,
+    pub host_path: String,
+    pub canonical_json_hash: String,
+    pub stored_revision: u64,
+    pub lifecycle_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringCloseRequest {
+    pub expected_workspace_id: String,
+    pub expected_generation: u64,
+    #[serde(default)]
+    pub discard_unsaved_working_state: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkspaceAuthoringCloseReceipt {
+    pub kind: String,
+    pub closed: bool,
+    pub workspace_id: String,
+    pub generation: u64,
+    pub discarded_unsaved_working_state: bool,
+    pub lifecycle_hash: String,
+}
+
 // ── Artifact classification ───────────────────────────────────────────────────
 
 /// Stable on-disk discriminant for each artifact class. Mirrors

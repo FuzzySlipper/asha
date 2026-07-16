@@ -33,6 +33,110 @@ export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGen
 // What to do about an edit whose generated context changed under a new generator.
 export type SuggestedAction = 'keepEdit' | 'reviewConflict';
 
+// Stable project identity for one non-gameplay workspace-authoring cell.
+export interface WorkspaceAuthoringProjectIdentity {
+  readonly gameId: string;
+  readonly workspaceId: string;
+}
+
+// Bounded ProjectBundle identity used to seed authoring without loading a gameplay RuntimeSession.
+export interface WorkspaceAuthoringProjectBundleRef {
+  readonly bundleSchemaVersion: number;
+  readonly protocolVersion: number;
+  readonly sceneId: number;
+}
+
+export interface WorkspaceAuthoringCompositionStatus {
+  readonly loadedProjectBundle: number | null;
+  readonly fatalCount: number;
+  readonly totalCount: number;
+  readonly blocksLoad: boolean;
+}
+
+export interface WorkspaceAuthoringOpenRequest {
+  readonly authoringId: string;
+  readonly seed: number;
+  readonly project: WorkspaceAuthoringProjectIdentity;
+  readonly projectBundle: WorkspaceAuthoringProjectBundleRef;
+}
+
+export interface WorkspaceAuthoringIdentity {
+  readonly kind: string;
+  readonly authoringId: string;
+  readonly mode: string;
+  readonly generation: number;
+  readonly seed: number;
+  readonly project: WorkspaceAuthoringProjectIdentity;
+  readonly projectBundle: WorkspaceAuthoringProjectBundleRef;
+  readonly nonClaims: readonly string[];
+}
+
+export interface WorkspaceAuthoringStateSummary {
+  readonly kind: string;
+  readonly status: string;
+  readonly identity: WorkspaceAuthoringIdentity;
+  readonly composition: WorkspaceAuthoringCompositionStatus;
+  readonly workingRevision: number;
+  readonly storedRevision: number;
+  readonly dirty: boolean;
+  readonly lastStoredCanonicalJsonHash: string | null;
+  readonly authoritySnapshotHash: string;
+  readonly lifecycleHash: string;
+}
+
+export interface WorkspaceAuthoringProjectionRequest {
+  readonly expectedWorkspaceId: string;
+  readonly expectedGeneration: number;
+  readonly expectedWorkingRevision: number;
+  readonly cursor: number;
+}
+
+export interface WorkspaceAuthoringProjectionReceipt {
+  readonly kind: string;
+  readonly workspaceId: string;
+  readonly generation: number;
+  readonly workingRevision: number;
+  readonly cursor: number;
+  readonly nextCursor: number;
+  readonly delivery: string;
+  readonly frameJson: string;
+  readonly renderDiffCount: number;
+  readonly projectionHash: string;
+}
+
+export interface WorkspaceAuthoringStoredConfirmationRequest {
+  readonly expectedWorkspaceId: string;
+  readonly expectedGeneration: number;
+  readonly hostPath: string;
+  readonly canonicalJsonHash: string;
+}
+
+export interface WorkspaceAuthoringStoredConfirmationReceipt {
+  readonly kind: string;
+  readonly accepted: boolean;
+  readonly workspaceId: string;
+  readonly generation: number;
+  readonly hostPath: string;
+  readonly canonicalJsonHash: string;
+  readonly storedRevision: number;
+  readonly lifecycleHash: string;
+}
+
+export interface WorkspaceAuthoringCloseRequest {
+  readonly expectedWorkspaceId: string;
+  readonly expectedGeneration: number;
+  readonly discardUnsavedWorkingState: boolean;
+}
+
+export interface WorkspaceAuthoringCloseReceipt {
+  readonly kind: string;
+  readonly closed: boolean;
+  readonly workspaceId: string;
+  readonly generation: number;
+  readonly discardedUnsavedWorkingState: boolean;
+  readonly lifecycleHash: string;
+}
+
 // One row of the manifest artifact table.
 export interface ArtifactEntry {
   readonly path: string;

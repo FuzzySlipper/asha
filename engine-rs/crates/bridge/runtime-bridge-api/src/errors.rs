@@ -19,6 +19,9 @@ pub enum RuntimeBridgeErrorKind {
     NotInitialized,
     /// The input violated an invariant the bridge can check cheaply.
     InvalidInput,
+    /// An identity, generation, revision, cursor, or save candidate no longer
+    /// names the current Rust authority state.
+    StaleAuthoritySnapshot,
     /// A handle (engine/buffer/replay) is unknown or already released.
     UnknownHandle,
     /// A borrowed buffer view was used after it was released/superseded.
@@ -56,6 +59,7 @@ impl RuntimeBridgeError {
     pub fn category(&self) -> ErrorCategory {
         match self.kind {
             RuntimeBridgeErrorKind::InvalidInput => ErrorCategory::Invalid,
+            RuntimeBridgeErrorKind::StaleAuthoritySnapshot => ErrorCategory::Conflict,
             RuntimeBridgeErrorKind::UnknownHandle => ErrorCategory::NotFound,
             RuntimeBridgeErrorKind::BufferExpired => ErrorCategory::Conflict,
             RuntimeBridgeErrorKind::NotInitialized | RuntimeBridgeErrorKind::NativeUnavailable => {
@@ -71,6 +75,7 @@ impl RuntimeBridgeErrorKind {
         match self {
             Self::NotInitialized => "not_initialized",
             Self::InvalidInput => "invalid_input",
+            Self::StaleAuthoritySnapshot => "stale_authority_snapshot",
             Self::UnknownHandle => "unknown_handle",
             Self::BufferExpired => "buffer_expired",
             Self::NativeUnavailable => "native_unavailable",

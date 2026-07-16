@@ -1,6 +1,7 @@
 import {
   validateGeneratedWireValue,
   type GeneratedWireValidationResult,
+  type GeneratedWireTypeName,
   type GeneratedWireValue,
 } from '@asha/contracts';
 import { RuntimeBridgeError, type RuntimeBridgeErrorKind } from './bridge.js';
@@ -400,6 +401,29 @@ export function parseOperationOutput<T extends WireCandidate>(operation: string,
   const contract = operationContract(operation);
   const parsed = parseJson(operation, 'output', payload, contract.maxOutputBytes);
   validateReference(operation, 'output', contract.outputWire, parsed);
+  return parsed as T;
+}
+
+/** Decode one transport-only generated DTO used to adapt the native wire
+ * receipt into a different public facade output within the same operation. */
+export function parseGeneratedOperationOutput<T extends WireCandidate>(
+  operation: string,
+  generatedType: GeneratedWireTypeName,
+  payload: string,
+): T {
+  const contract = operationContract(operation);
+  const parsed = parseJson(operation, 'output', payload, contract.maxOutputBytes);
+  const result = validateGeneratedWireValue(generatedType, parsed);
+  if (!result.valid) {
+    throw wireError(
+      operation,
+      'output',
+      'internal',
+      result.issue.path,
+      result.issue.message,
+      result.issue.code,
+    );
+  }
   return parsed as T;
 }
 

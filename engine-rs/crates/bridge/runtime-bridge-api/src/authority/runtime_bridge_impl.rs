@@ -5,6 +5,38 @@ impl RuntimeBridge for EngineBridge {
         initialization::initialize(self, config)
     }
 
+    fn open_workspace_authoring(
+        &mut self,
+        request: WorkspaceAuthoringOpenRequest,
+    ) -> BridgeResult<WorkspaceAuthoringStateSummary> {
+        self.open_workspace_authoring_authority(request)
+    }
+
+    fn read_workspace_authoring_state(&self) -> BridgeResult<WorkspaceAuthoringStateSummary> {
+        self.read_workspace_authoring_state_authority()
+    }
+
+    fn read_workspace_authoring_projection(
+        &mut self,
+        request: WorkspaceAuthoringProjectionRequest,
+    ) -> BridgeResult<WorkspaceAuthoringProjectionReceipt> {
+        self.read_workspace_authoring_projection_authority(request)
+    }
+
+    fn confirm_workspace_authoring_stored(
+        &mut self,
+        request: WorkspaceAuthoringStoredConfirmationRequest,
+    ) -> BridgeResult<WorkspaceAuthoringStoredConfirmationReceipt> {
+        self.confirm_workspace_authoring_stored_authority(request)
+    }
+
+    fn close_workspace_authoring(
+        &mut self,
+        request: WorkspaceAuthoringCloseRequest,
+    ) -> BridgeResult<WorkspaceAuthoringCloseReceipt> {
+        self.close_workspace_authoring_authority(request)
+    }
+
     fn configure_input_session(
         &mut self,
         request: InputSessionConfigureRequest,
@@ -47,6 +79,9 @@ impl RuntimeBridge for EngineBridge {
 
     fn submit_commands(&mut self, batch: CommandBatch) -> BridgeResult<CommandResult> {
         let result = self.submit_commands_with_voxel_history(batch)?;
+        if result.accepted > 0 {
+            self.record_workspace_authoring_mutation();
+        }
         if result.rejected > 0 {
             self.record_developer_console(DeveloperConsoleEmission {
                 severity: DiagnosticSeverity::Warning,
@@ -394,7 +429,7 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelConversionPlanRequest,
     ) -> BridgeResult<VoxelConversionPlan> {
-        self.require_initialized("plan_voxel_conversion")?;
+        self.require_runtime_or_workspace_authoring("plan_voxel_conversion")?;
         let source = self.source_for_voxel_conversion(&request);
         let planned = svc_voxel_conversion::plan_conversion(&request, &source);
         let plan = planned.plan.clone();
@@ -408,7 +443,7 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelConversionSourceRegistrationRequest,
     ) -> BridgeResult<VoxelConversionSourceRegistration> {
-        self.require_initialized("register_voxel_conversion_source")?;
+        self.require_runtime_or_workspace_authoring("register_voxel_conversion_source")?;
         let source = match Self::static_mesh_source_from_registration(&request) {
             Ok(source) => source,
             Err(message) => {
@@ -462,7 +497,7 @@ impl RuntimeBridge for EngineBridge {
         &self,
         request: VoxelConversionSourceMetadataRequest,
     ) -> BridgeResult<VoxelConversionSourceMetadataReadout> {
-        self.require_initialized("read_voxel_conversion_source_metadata")?;
+        self.require_runtime_or_workspace_authoring("read_voxel_conversion_source_metadata")?;
         let Some(metadata) = self
             .voxel
             .voxel_conversion_source_metadata
@@ -506,7 +541,7 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelConversionPreviewRequest,
     ) -> BridgeResult<VoxelConversionPreview> {
-        self.require_initialized("preview_voxel_conversion")?;
+        self.require_runtime_or_workspace_authoring("preview_voxel_conversion")?;
         let planned = self.voxel.voxel_conversion_plan.as_ref().ok_or_else(|| {
             RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
@@ -522,7 +557,7 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelConversionApplyRequest,
     ) -> BridgeResult<VoxelConversionReceipt> {
-        self.require_initialized("apply_voxel_conversion")?;
+        self.require_runtime_or_workspace_authoring("apply_voxel_conversion")?;
         let planned = self.voxel.voxel_conversion_plan.clone().ok_or_else(|| {
             RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
@@ -589,6 +624,9 @@ impl RuntimeBridge for EngineBridge {
             self.remember_voxel_model_info(&target, &planned, &receipt, &prior_world);
         }
         self.remember_voxel_conversion_evidence(receipt.evidence.clone());
+        if receipt.applied {
+            self.record_workspace_authoring_mutation();
+        }
         Ok(receipt)
     }
 
@@ -596,7 +634,7 @@ impl RuntimeBridge for EngineBridge {
         &self,
         evidence: Vec<VoxelConversionEvidenceRef>,
     ) -> BridgeResult<Vec<VoxelConversionEvidenceRef>> {
-        self.require_initialized("export_voxel_conversion_evidence")?;
+        self.require_runtime_or_workspace_authoring("export_voxel_conversion_evidence")?;
         for requested in &evidence {
             if !self.evidence.voxel_conversion_evidence.contains(requested) {
                 return Err(RuntimeBridgeError::new(
@@ -615,7 +653,7 @@ impl RuntimeBridge for EngineBridge {
         &self,
         request: VoxelModelInfoRequest,
     ) -> BridgeResult<VoxelModelInfoReadout> {
-        self.require_initialized("read_voxel_model_info")?;
+        self.require_runtime_or_workspace_authoring("read_voxel_model_info")?;
         let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
         if !self.voxel.voxel_conversion_targets.contains_key(&key) {
             return Ok(Self::voxel_model_missing_readout(
@@ -656,7 +694,7 @@ impl RuntimeBridge for EngineBridge {
         &self,
         request: VoxelModelWindowRequest,
     ) -> BridgeResult<VoxelModelWindowReadout> {
-        self.require_initialized("read_voxel_model_window")?;
+        self.require_runtime_or_workspace_authoring("read_voxel_model_window")?;
         let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
         if !self.voxel.voxel_conversion_targets.contains_key(&key) {
             return Ok(Self::voxel_model_window_missing_readout(
@@ -735,7 +773,7 @@ impl RuntimeBridge for EngineBridge {
         &self,
         request: VoxelVolumeAssetExportRequest,
     ) -> BridgeResult<VoxelVolumeAssetExportReceipt> {
-        self.require_initialized("export_voxel_volume_asset")?;
+        self.require_runtime_or_workspace_authoring("export_voxel_volume_asset")?;
         let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
         let Some(info) = self.voxel.voxel_model_infos.get(&key) else {
             return Ok(Self::rejected_voxel_volume_asset_export(
@@ -875,10 +913,10 @@ impl RuntimeBridge for EngineBridge {
     }
 
     fn save_voxel_volume_asset(
-        &self,
+        &mut self,
         request: VoxelVolumeAssetSaveRequest,
     ) -> BridgeResult<VoxelVolumeAssetSaveReceipt> {
-        self.require_initialized("save_voxel_volume_asset")?;
+        self.require_runtime_or_workspace_authoring("save_voxel_volume_asset")?;
         let diagnostics = Self::voxel_asset_save_request_diagnostics(&request);
         if !diagnostics.is_empty() {
             return Ok(Self::rejected_voxel_volume_asset_save(request, diagnostics));
@@ -976,37 +1014,48 @@ impl RuntimeBridge for EngineBridge {
             provenance_count: asset.provenance.len() as u64,
             runtime_session_hash: info.session_hash.clone(),
         };
-        Ok(VoxelVolumeAssetSaveReceipt {
+        let receipt = VoxelVolumeAssetSaveReceipt {
             request,
             saved: true,
             diff: Some(diff),
             asset: Some(asset),
             canonical_json: Some(canonical_json),
-            canonical_json_hash: Some(canonical_json_hash),
+            canonical_json_hash: Some(canonical_json_hash.clone()),
             voxel_data_hash: Some(voxel_data_hash),
             diagnostics: Vec::new(),
-        })
+        };
+        self.remember_workspace_authoring_save_candidate(canonical_json_hash);
+        Ok(receipt)
     }
 
     fn update_voxel_volume_asset_palette(
-        &self,
+        &mut self,
         request: VoxelVolumeAssetPaletteUpdateRequest,
     ) -> BridgeResult<VoxelVolumeAssetPaletteUpdateReceipt> {
-        self.update_voxel_volume_asset_palette_authority(request)
+        let receipt = self.update_voxel_volume_asset_palette_authority(request)?;
+        if receipt.updated {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn initialize_voxel_volume_authoring(
         &mut self,
         request: VoxelVolumeAuthoringInitializeRequest,
     ) -> BridgeResult<VoxelVolumeAuthoringInitializeReceipt> {
-        self.initialize_voxel_volume_authoring_authority(request)
+        let receipt = self.initialize_voxel_volume_authoring_authority(request)?;
+        if receipt.initialized {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn load_voxel_volume_asset(
         &mut self,
         request: VoxelVolumeAssetLoadRequest,
     ) -> BridgeResult<VoxelVolumeAssetLoadReceipt> {
-        self.require_initialized("load_voxel_volume_asset")?;
+        self.require_runtime_or_workspace_authoring("load_voxel_volume_asset")?;
+        let loaded_canonical_json_hash = request.asset.content_hashes.canonical_json.clone();
         let asset = &request.asset;
         let report = svc_voxel_asset::validate_asset(asset);
         if !report.is_valid() {
@@ -1061,6 +1110,9 @@ impl RuntimeBridge for EngineBridge {
         );
         self.voxel.voxel_model_infos.insert(key.clone(), info);
         self.voxel.active_voxel_model = Some(key);
+        if receipt.loaded {
+            self.record_workspace_authoring_loaded_asset(loaded_canonical_json_hash);
+        }
         Ok(receipt)
     }
 
@@ -1068,7 +1120,11 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelVolumeAssetUnloadRequest,
     ) -> BridgeResult<VoxelVolumeAssetUnloadReceipt> {
-        self.unload_voxel_volume_asset_authority(request)
+        let receipt = self.unload_voxel_volume_asset_authority(request)?;
+        if receipt.unloaded {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn validate_voxel_annotation_layer(
@@ -1082,7 +1138,11 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelAnnotationLayerLoadRequest,
     ) -> BridgeResult<VoxelAnnotationLayerLoadReceipt> {
-        self.load_voxel_annotation_layer_authority(request)
+        let receipt = self.load_voxel_annotation_layer_authority(request)?;
+        if receipt.loaded {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn read_voxel_annotation_query(
@@ -1096,7 +1156,11 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelAnnotationEditRequest,
     ) -> BridgeResult<VoxelAnnotationEditReceipt> {
-        self.apply_voxel_annotation_edit_authority(request)
+        let receipt = self.apply_voxel_annotation_edit_authority(request)?;
+        if receipt.edited {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn export_voxel_annotation_layer(
@@ -1124,21 +1188,33 @@ impl RuntimeBridge for EngineBridge {
         &mut self,
         request: VoxelEditHistoryRevertRequest,
     ) -> BridgeResult<VoxelEditHistoryRevertReceipt> {
-        self.apply_voxel_edit_revert_authority(request)
+        let receipt = self.apply_voxel_edit_revert_authority(request)?;
+        if receipt.applied {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn undo_voxel_edit(
         &mut self,
         request: VoxelEditHistoryUndoRequest,
     ) -> BridgeResult<VoxelEditHistoryUndoReceipt> {
-        self.undo_voxel_edit_authority(request)
+        let receipt = self.undo_voxel_edit_authority(request)?;
+        if receipt.receipt.applied {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn redo_voxel_edit(
         &mut self,
         request: VoxelEditHistoryRedoRequest,
     ) -> BridgeResult<VoxelEditHistoryRedoReceipt> {
-        self.redo_voxel_edit_authority(request)
+        let receipt = self.redo_voxel_edit_authority(request)?;
+        if receipt.receipt.applied {
+            self.record_workspace_authoring_mutation();
+        }
+        Ok(receipt)
     }
 
     fn read_model_material_preview(
@@ -1269,7 +1345,7 @@ impl RuntimeBridge for EngineBridge {
     }
 
     fn read_developer_console(&self) -> BridgeResult<DeveloperConsoleSnapshot> {
-        self.require_initialized("read_developer_console")?;
+        self.require_runtime_or_workspace_authoring("read_developer_console")?;
         Ok(self.developer_console_snapshot())
     }
 

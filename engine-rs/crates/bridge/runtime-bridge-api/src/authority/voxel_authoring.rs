@@ -5,7 +5,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelVolumeAuthoringInitializeRequest,
     ) -> BridgeResult<VoxelVolumeAuthoringInitializeReceipt> {
-        self.require_initialized("initialize_voxel_volume_authoring")?;
+        self.require_runtime_or_workspace_authoring("initialize_voxel_volume_authoring")?;
         let diagnostics = self.voxel_volume_authoring_initialize_diagnostics(&request);
         if !diagnostics.is_empty() {
             return Ok(Self::rejected_voxel_volume_authoring_initialize(

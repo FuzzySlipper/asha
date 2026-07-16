@@ -141,6 +141,14 @@ import {
   type VoxelMeshEvidenceSnapshot,
   type ProjectBundleLoadRequest,
   type ProjectBundleSaveSummary,
+  type WorkspaceAuthoringCloseInput,
+  type WorkspaceAuthoringCloseReceipt,
+  type WorkspaceAuthoringOpenInput,
+  type WorkspaceAuthoringProjectionRequest,
+  type WorkspaceAuthoringProjectionSummary,
+  type WorkspaceAuthoringStateSummary,
+  type WorkspaceAuthoringStoredConfirmationInput,
+  type WorkspaceAuthoringStoredConfirmationReceipt,
 } from './bridge.js';
 import { collisionCameraAttemptedPose } from './camera-collision-movement.js';
 import { mockCameraProjectionSnapshot } from './mock-camera-projection.js';
@@ -346,6 +354,9 @@ export class MockRuntimeBridge implements RuntimeBridge {
   #gameRules = new MockGameRuleRuntime();
   #inputSession = new MockInputSession();
   #timeController = new MockTimeController();
+  #workspaceAuthoringGeneration = 0;
+  #workspaceAuthoringState: WorkspaceAuthoringStateSummary | null = null;
+  #workspaceAuthoringCursor = 0;
 
   #unsupportedAfterInit(method: string, message: string): never {
     if (this.#engine === null) {
@@ -373,6 +384,129 @@ export class MockRuntimeBridge implements RuntimeBridge {
     this.#inputSession.initialize();
     this.#timeController.initialize();
     return handle;
+  }
+
+  openWorkspaceAuthoring(input: WorkspaceAuthoringOpenInput): WorkspaceAuthoringStateSummary {
+    if (this.#workspaceAuthoringState?.status === 'open') {
+      throw new RuntimeBridgeError('invalid_input', 'workspace authoring is already open');
+    }
+    this.#workspaceAuthoringGeneration += 1;
+    this.#workspaceAuthoringCursor = 0;
+    this.#workspaceAuthoringState = {
+      kind: 'workspace_authoring.state.v0',
+      status: 'open',
+      identity: {
+        kind: 'workspace_authoring.identity.v0',
+        authoringId: input.authoringId,
+        mode: 'rust',
+        generation: this.#workspaceAuthoringGeneration,
+        seed: input.seed,
+        project: input.project,
+        projectBundle: input.projectBundle,
+        nonClaims: [
+          'not_gameplay_runtime_session',
+          'not_simulation_loop',
+          'not_stored_truth',
+          'not_renderer_authority',
+        ],
+      },
+      composition: {
+        loadedProjectBundle: input.projectBundle.sceneId,
+        fatalCount: 0,
+        totalCount: 0,
+        blocksLoad: false,
+      },
+      workingRevision: 0,
+      storedRevision: 0,
+      dirty: false,
+      lastStoredCanonicalJsonHash: null,
+      authoritySnapshotHash: 'fnv1a64:mock-authoring-0',
+      lifecycleHash: 'fnv1a64:mock-authoring-lifecycle-0',
+    };
+    return this.#workspaceAuthoringState;
+  }
+
+  readWorkspaceAuthoringState(): WorkspaceAuthoringStateSummary {
+    if (this.#workspaceAuthoringState === null) {
+      throw new RuntimeBridgeError('not_initialized', 'workspace authoring state before open');
+    }
+    return this.#workspaceAuthoringState;
+  }
+
+  readWorkspaceAuthoringProjection(
+    request: WorkspaceAuthoringProjectionRequest,
+  ): WorkspaceAuthoringProjectionSummary {
+    const state = this.#requireMockWorkspaceAuthoring('readWorkspaceAuthoringProjection');
+    this.#validateMockWorkspaceBinding(request.expectedWorkspaceId, request.expectedGeneration);
+    if (request.expectedWorkingRevision !== state.workingRevision || request.cursor !== this.#workspaceAuthoringCursor) {
+      throw new RuntimeBridgeError('stale_authority_snapshot', 'stale mock projection request');
+    }
+    const cursor = request.cursor;
+    this.#workspaceAuthoringCursor += 1;
+    return {
+      kind: 'workspace_authoring.projection.v0',
+      workspaceId: state.identity.project.workspaceId,
+      generation: state.identity.generation,
+      workingRevision: state.workingRevision,
+      cursor,
+      nextCursor: this.#workspaceAuthoringCursor as FrameCursor,
+      delivery: cursor === 0 ? 'replace' : 'apply',
+      frame: { ops: [] },
+      renderDiffCount: 0,
+      projectionHash: `fnv1a64:mock-projection-${cursor}`,
+    };
+  }
+
+  confirmWorkspaceAuthoringStored(
+    input: WorkspaceAuthoringStoredConfirmationInput,
+  ): WorkspaceAuthoringStoredConfirmationReceipt {
+    this.#validateMockWorkspaceBinding(input.expectedWorkspaceId, input.expectedGeneration);
+    throw new RuntimeBridgeError('invalid_input', 'mock bridge has no current Rust save candidate');
+  }
+
+  closeWorkspaceAuthoring(input: WorkspaceAuthoringCloseInput): WorkspaceAuthoringCloseReceipt {
+    const state = this.#requireMockWorkspaceAuthoring('closeWorkspaceAuthoring');
+    this.#validateMockWorkspaceBinding(input.expectedWorkspaceId, input.expectedGeneration);
+    if (state.dirty && input.discardUnsavedWorkingState !== true) {
+      throw new RuntimeBridgeError('invalid_input', 'workspace authoring has unsaved work');
+    }
+    this.#workspaceAuthoringState = { ...state, status: 'closed' };
+    return {
+      kind: 'workspace_authoring.close_receipt.v0',
+      closed: true,
+      workspaceId: state.identity.project.workspaceId,
+      generation: state.identity.generation,
+      discardedUnsavedWorkingState: state.dirty,
+      lifecycleHash: `fnv1a64:mock-close-${state.identity.generation}`,
+    };
+  }
+
+  #requireMockWorkspaceAuthoring(operation: string): WorkspaceAuthoringStateSummary {
+    const state = this.#workspaceAuthoringState;
+    if (state === null || state.status !== 'open') {
+      throw new RuntimeBridgeError('not_initialized', `${operation} requires workspace authoring`);
+    }
+    return state;
+  }
+
+  #validateMockWorkspaceBinding(workspaceId: string, generation: number): void {
+    const state = this.#requireMockWorkspaceAuthoring('workspace binding');
+    if (state.identity.project.workspaceId !== workspaceId || state.identity.generation !== generation) {
+      throw new RuntimeBridgeError('stale_authority_snapshot', 'foreign mock workspace binding');
+    }
+  }
+
+  #recordMockWorkspaceMutation(): void {
+    const state = this.#workspaceAuthoringState;
+    if (state?.status !== 'open') return;
+    const workingRevision = state.workingRevision + 1;
+    this.#workspaceAuthoringState = {
+      ...state,
+      workingRevision,
+      dirty: workingRevision !== state.storedRevision,
+      authoritySnapshotHash: `fnv1a64:mock-authoring-${workingRevision}`,
+      lifecycleHash: `fnv1a64:mock-authoring-lifecycle-${workingRevision}`,
+    };
   }
 
   configureInputSession(request: InputSessionConfigureRequest): InputSessionSnapshot { return this.#inputSession.configure(request); }
@@ -776,7 +910,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
   }
 
   submitCommands(batch: CommandBatch): CommandResult {
-    if (this.#engine === null) {
+    if (this.#engine === null && this.#workspaceAuthoringState?.status !== 'open') {
       throw new RuntimeBridgeError('not_initialized', 'submitCommands before initializeEngine');
     }
     const rejections: Array<CommandResult['rejections'][number]> = [];
@@ -786,11 +920,13 @@ export class MockRuntimeBridge implements RuntimeBridge {
         rejections.push({ reason: 'unknownMaterial', material: value.material });
       }
     }
-    return {
+    const result = {
       accepted: batch.commands.length - rejections.length,
       rejected: rejections.length,
       rejections,
     };
+    if (result.accepted > 0) this.#recordMockWorkspaceMutation();
+    return result;
   }
 
   pickVoxel(ray: PickRay): PickResult {

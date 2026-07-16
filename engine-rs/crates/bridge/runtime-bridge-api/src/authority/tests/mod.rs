@@ -195,7 +195,7 @@ fn project_mesh_asset_plan_request(
     request
 }
 
-fn hand_authored_voxel_volume_asset() -> VoxelVolumeAsset {
+pub(super) fn hand_authored_voxel_volume_asset() -> VoxelVolumeAsset {
     let asset = VoxelVolumeAsset {
         asset_id: "voxel-volume/hand-authored-room".to_string(),
         schema_version: protocol_voxel_asset::VOXEL_ASSET_SCHEMA_VERSION,

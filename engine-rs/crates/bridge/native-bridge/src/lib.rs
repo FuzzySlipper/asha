@@ -32,6 +32,8 @@ use runtime_bridge_api::{
     VoxelVolumeAssetExportRequest, VoxelVolumeAssetLoadRequest,
     VoxelVolumeAssetPaletteUpdateRequest, VoxelVolumeAssetSaveRequest,
     VoxelVolumeAssetUnloadRequest, VoxelVolumeAuthoringInitializeRequest, WeaponEffectHookRequest,
+    WorkspaceAuthoringCloseRequest, WorkspaceAuthoringOpenRequest,
+    WorkspaceAuthoringProjectionRequest, WorkspaceAuthoringStoredConfirmationRequest,
     VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES, VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES,
 };
 use serde::Serialize;
@@ -686,6 +688,10 @@ pub fn initialize_engine(seed: i64) -> napi::Result<i64> {
         .initialize_engine(EngineConfig { seed: seed as u64 })
         .map_err(to_napi)?;
 
+    insert_native_bridge(bridge)
+}
+
+fn insert_native_bridge(bridge: EngineBridge) -> napi::Result<i64> {
     let mut sessions = lock_sessions()?;
     let handle = sessions.next_handle;
     sessions.next_handle = sessions.next_handle.checked_add(1).ok_or_else(|| {
@@ -696,6 +702,92 @@ pub fn initialize_engine(seed: i64) -> napi::Result<i64> {
     })?;
     sessions.bridges.insert(handle, bridge);
     Ok(handle as i64)
+}
+
+fn workspace_authoring_json<T: Serialize>(value: &T) -> napi::Result<String> {
+    serde_json::to_string(value).map_err(|error| {
+        to_napi(RuntimeBridgeError::new(
+            RuntimeBridgeErrorKind::Internal,
+            format!("failed to serialize workspace-authoring receipt: {error}"),
+        ))
+    })
+}
+
+/// Construct the authoring-only authority cell and return its independent
+/// native handle plus Rust-authored lifecycle state.
+#[napi]
+pub fn open_workspace_authoring(existing_handle: i64, request_json: String) -> napi::Result<i64> {
+    let request = wire::parse_wire_json::<WorkspaceAuthoringOpenRequest>(
+        "open_workspace_authoring",
+        &request_json,
+    )?;
+    if existing_handle >= 0 {
+        return with_bridge(existing_handle, |bridge| {
+            bridge.open_workspace_authoring(request).map_err(to_napi)?;
+            Ok(existing_handle)
+        });
+    }
+    let mut bridge = create_engine_bridge().map_err(to_napi)?;
+    bridge.open_workspace_authoring(request).map_err(to_napi)?;
+    insert_native_bridge(bridge)
+}
+
+#[napi]
+pub fn read_workspace_authoring_state(handle: i64) -> napi::Result<String> {
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_workspace_authoring_state()
+            .map_err(to_napi)
+            .and_then(|state| workspace_authoring_json(&state))
+    })
+}
+
+#[napi]
+pub fn read_workspace_authoring_projection(
+    handle: i64,
+    request_json: String,
+) -> napi::Result<String> {
+    let request = wire::parse_wire_json::<WorkspaceAuthoringProjectionRequest>(
+        "read_workspace_authoring_projection",
+        &request_json,
+    )?;
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_workspace_authoring_projection(request)
+            .map_err(to_napi)
+            .and_then(|receipt| workspace_authoring_json(&receipt))
+    })
+}
+
+#[napi]
+pub fn confirm_workspace_authoring_stored(
+    handle: i64,
+    request_json: String,
+) -> napi::Result<String> {
+    let request = wire::parse_wire_json::<WorkspaceAuthoringStoredConfirmationRequest>(
+        "confirm_workspace_authoring_stored",
+        &request_json,
+    )?;
+    with_bridge(handle, |bridge| {
+        bridge
+            .confirm_workspace_authoring_stored(request)
+            .map_err(to_napi)
+            .and_then(|receipt| workspace_authoring_json(&receipt))
+    })
+}
+
+#[napi]
+pub fn close_workspace_authoring(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = wire::parse_wire_json::<WorkspaceAuthoringCloseRequest>(
+        "close_workspace_authoring",
+        &request_json,
+    )?;
+    with_bridge(handle, |bridge| {
+        bridge
+            .close_workspace_authoring(request)
+            .map_err(to_napi)
+            .and_then(|receipt| workspace_authoring_json(&receipt))
+    })
 }
 
 #[napi]

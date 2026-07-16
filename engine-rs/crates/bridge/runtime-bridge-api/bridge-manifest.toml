@@ -114,6 +114,16 @@ resource_lifetime = "frame"
 operations = ["read_render_diffs", "read_projection_frame", "read_developer_console"]
 
 [[capability]]
+id = "workspace_authoring"
+interface = "RuntimeWorkspaceAuthoringPort"
+property = "workspaceAuthoring"
+initialization = "createsEngine"
+project_bundle = "ownsLoadUnload"
+snapshot_hash = "workspaceAuthoringAuthority"
+resource_lifetime = "session"
+operations = ["open_workspace_authoring", "read_workspace_authoring_state", "read_workspace_authoring_projection", "confirm_workspace_authoring_stored", "close_workspace_authoring"]
+
+[[capability]]
 id = "bundle_lifecycle"
 interface = "RuntimeBundleLifecyclePort"
 property = "bundleLifecycle"
@@ -144,6 +154,55 @@ output = "EngineHandle"
 errors = "RuntimeBridgeError"
 summary = "Construct an engine/session. Returns an opaque handle, never a StateStore."
 facade_input = "bridge::EngineConfig"
+
+[[operation]]
+name = "open_workspace_authoring"
+surface = "stable"
+input = "protocol_project_bundle::WorkspaceAuthoringOpenRequest"
+output = "protocol_project_bundle::WorkspaceAuthoringStateSummary"
+errors = "RuntimeBridgeError"
+summary = "Construct a mechanically distinct Rust-owned workspace-authoring cell without gameplay runtime, simulation, or camera lifecycle initialization."
+facade_input = "contracts::WorkspaceAuthoringOpenRequest"
+facade_output = "contracts::WorkspaceAuthoringStateSummary"
+
+[[operation]]
+name = "read_workspace_authoring_state"
+surface = "stable"
+input = "Unit"
+output = "protocol_project_bundle::WorkspaceAuthoringStateSummary"
+errors = "RuntimeBridgeError"
+summary = "Read the complete Rust-owned workspace identity, generation, revisions, dirty status, and lifecycle hashes."
+facade_output = "contracts::WorkspaceAuthoringStateSummary"
+
+[[operation]]
+name = "read_workspace_authoring_projection"
+surface = "stable"
+input = "protocol_project_bundle::WorkspaceAuthoringProjectionRequest"
+output = "protocol_project_bundle::WorkspaceAuthoringProjectionReceipt"
+errors = "RuntimeBridgeError"
+summary = "Read one Rust-authorized workspace projection receipt bound to workspace, generation, working revision, and cursor."
+facade_input = "contracts::WorkspaceAuthoringProjectionRequest"
+facade_output = "bridge::WorkspaceAuthoringProjectionSummary"
+
+[[operation]]
+name = "confirm_workspace_authoring_stored"
+surface = "stable"
+input = "protocol_project_bundle::WorkspaceAuthoringStoredConfirmationRequest"
+output = "protocol_project_bundle::WorkspaceAuthoringStoredConfirmationReceipt"
+errors = "RuntimeBridgeError"
+summary = "Confirm a staged host write only when it matches the current Rust save candidate and workspace generation."
+facade_input = "contracts::WorkspaceAuthoringStoredConfirmationRequest"
+facade_output = "contracts::WorkspaceAuthoringStoredConfirmationReceipt"
+
+[[operation]]
+name = "close_workspace_authoring"
+surface = "stable"
+input = "protocol_project_bundle::WorkspaceAuthoringCloseRequest"
+output = "protocol_project_bundle::WorkspaceAuthoringCloseReceipt"
+errors = "RuntimeBridgeError"
+summary = "Close one bound workspace-authoring generation, rejecting unsaved work unless discard is explicit."
+facade_input = "contracts::WorkspaceAuthoringCloseRequest"
+facade_output = "contracts::WorkspaceAuthoringCloseReceipt"
 
 [[operation]]
 name = "step_simulation"

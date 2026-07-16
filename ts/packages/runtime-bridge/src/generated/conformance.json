@@ -168,6 +168,22 @@
       ]
     },
     {
+      "id": "workspace_authoring",
+      "interface": "RuntimeWorkspaceAuthoringPort",
+      "property": "workspaceAuthoring",
+      "initialization": "createsEngine",
+      "project_bundle": "ownsLoadUnload",
+      "snapshot_hash": "workspaceAuthoringAuthority",
+      "resource_lifetime": "session",
+      "operations": [
+        "open_workspace_authoring",
+        "read_workspace_authoring_state",
+        "read_workspace_authoring_projection",
+        "confirm_workspace_authoring_stored",
+        "close_workspace_authoring"
+      ]
+    },
+    {
       "id": "bundle_lifecycle",
       "interface": "RuntimeBundleLifecyclePort",
       "property": "bundleLifecycle",
@@ -219,6 +235,126 @@
       "outputWire": {
         "owner": "handle",
         "name": "EngineHandle",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "open_workspace_authoring",
+      "facadeMethod": "openWorkspaceAuthoring",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_bundle::WorkspaceAuthoringOpenRequest",
+      "output": "protocol_project_bundle::WorkspaceAuthoringStateSummary",
+      "facadeInput": "contracts::WorkspaceAuthoringOpenRequest",
+      "facadeOutput": "contracts::WorkspaceAuthoringStateSummary",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringOpenRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringStateSummary",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_workspace_authoring_state",
+      "facadeMethod": "readWorkspaceAuthoringState",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "Unit",
+      "output": "protocol_project_bundle::WorkspaceAuthoringStateSummary",
+      "facadeInput": null,
+      "facadeOutput": "contracts::WorkspaceAuthoringStateSummary",
+      "inputWire": {
+        "owner": "unit",
+        "name": "Unit",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringStateSummary",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_workspace_authoring_projection",
+      "facadeMethod": "readWorkspaceAuthoringProjection",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_bundle::WorkspaceAuthoringProjectionRequest",
+      "output": "protocol_project_bundle::WorkspaceAuthoringProjectionReceipt",
+      "facadeInput": "contracts::WorkspaceAuthoringProjectionRequest",
+      "facadeOutput": "bridge::WorkspaceAuthoringProjectionSummary",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringProjectionRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "custom",
+        "name": "WorkspaceAuthoringProjectionSummary",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "confirm_workspace_authoring_stored",
+      "facadeMethod": "confirmWorkspaceAuthoringStored",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_bundle::WorkspaceAuthoringStoredConfirmationRequest",
+      "output": "protocol_project_bundle::WorkspaceAuthoringStoredConfirmationReceipt",
+      "facadeInput": "contracts::WorkspaceAuthoringStoredConfirmationRequest",
+      "facadeOutput": "contracts::WorkspaceAuthoringStoredConfirmationReceipt",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringStoredConfirmationRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringStoredConfirmationReceipt",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "close_workspace_authoring",
+      "facadeMethod": "closeWorkspaceAuthoring",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_bundle::WorkspaceAuthoringCloseRequest",
+      "output": "protocol_project_bundle::WorkspaceAuthoringCloseReceipt",
+      "facadeInput": "contracts::WorkspaceAuthoringCloseRequest",
+      "facadeOutput": "contracts::WorkspaceAuthoringCloseReceipt",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringCloseRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectBundle.WorkspaceAuthoringCloseReceipt",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

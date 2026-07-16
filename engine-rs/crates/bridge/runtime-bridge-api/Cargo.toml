@@ -24,6 +24,7 @@ core-assets = { path = "../../foundation/core-assets" }
 core-catalog = { path = "../../state/core-catalog" }
 core-scene = { path = "../../state/core-scene" }
 protocol-scene = { path = "../../protocol/protocol-scene" }
+protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
 protocol-view = { path = "../../protocol/protocol-view" }
 protocol-assets = { path = "../../protocol/protocol-assets" }
 protocol-render = { path = "../../protocol/protocol-render" }

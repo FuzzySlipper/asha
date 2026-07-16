@@ -163,6 +163,18 @@ const FPS_ENCOUNTER_STATE = object({
 });
 
 export const CUSTOM_WIRE_SCHEMAS: Readonly<Record<string, CustomWireSchema>> = {
+  WorkspaceAuthoringProjectionSummary: object({
+    kind: enumeration('workspace_authoring.projection.v0'),
+    workspaceId: STRING,
+    generation: NON_NEGATIVE_INTEGER,
+    workingRevision: NON_NEGATIVE_INTEGER,
+    cursor: NON_NEGATIVE_INTEGER,
+    nextCursor: NON_NEGATIVE_INTEGER,
+    delivery: enumeration('replace', 'apply'),
+    frame: generated('render.RenderFrameDiff'),
+    renderDiffCount: NON_NEGATIVE_INTEGER,
+    projectionHash: STRING,
+  }),
   EngineConfig: object({ seed: NON_NEGATIVE_INTEGER }),
   StepInputEnvelope: object({ tick: NON_NEGATIVE_INTEGER }),
   StepResult: object({ tick: NON_NEGATIVE_INTEGER, diffCount: NON_NEGATIVE_INTEGER }),

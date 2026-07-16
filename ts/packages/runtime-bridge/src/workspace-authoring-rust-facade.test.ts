@@ -334,7 +334,8 @@ void test('native workspace authoring creates, stores, closes, and reopens voxel
       hostPath: 'assets/voxels/workspace-authoring-test.avxl.json',
       canonicalJsonHash: 'fnv1a64:not-the-save-candidate',
     }),
-    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
+    (error: unknown) => error instanceof RuntimeBridgeError
+      && error.kind === 'stale_authority_snapshot',
     'host confirmation must be bound to the current Rust save candidate',
   );
   assert.throws(

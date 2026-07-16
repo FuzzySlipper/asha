@@ -1,5 +1,10 @@
 export const REQUIRED_NATIVE_CONFORMANCE_OPS = [
   'initialize_engine',
+  'open_workspace_authoring',
+  'read_workspace_authoring_state',
+  'read_workspace_authoring_projection',
+  'confirm_workspace_authoring_stored',
+  'close_workspace_authoring',
   'load_project_bundle',
   'submit_commands',
   'configure_voxel_projection_instances',

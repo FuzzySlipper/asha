@@ -407,11 +407,99 @@ function voxelHistoryRevertFixture(request: VoxelEditHistoryRevertRequest, appli
 
 // A fake addon with sentinel return values distinct from MockRuntimeBridge, so a
 // silent mock fallback would be observable in the wired-op assertions below.
+function workspaceAuthoringStateFixture(
+  input: Parameters<RuntimeBridge['openWorkspaceAuthoring']>[0],
+  status: 'open' | 'closed' = 'open',
+) {
+  return {
+    kind: 'workspace_authoring.state.v0' as const,
+    status,
+    identity: {
+      kind: 'workspace_authoring.identity.v0' as const,
+      authoringId: input.authoringId,
+      mode: 'rust' as const,
+      generation: 1,
+      seed: input.seed,
+      project: input.project,
+      projectBundle: input.projectBundle,
+      nonClaims: [
+        'not_gameplay_runtime_session',
+        'not_simulation_loop',
+        'not_stored_truth',
+        'not_renderer_authority',
+      ] as const,
+    },
+    composition: {
+      loadedProjectBundle: input.projectBundle.sceneId,
+      fatalCount: 0,
+      totalCount: 0,
+      blocksLoad: false,
+    },
+    workingRevision: 0,
+    storedRevision: 0,
+    dirty: false,
+    lastStoredCanonicalJsonHash: null,
+    authoritySnapshotHash: HASH_A,
+    lifecycleHash: HASH_B,
+  };
+}
+
 function fakeAddon(calls: string[] = []): NativeAddon {
   return {
     initializeEngine: (seed: number) => {
       calls.push(`initialize:${seed}`);
       return seed + 100;
+    },
+    openWorkspaceAuthoring: (existingHandle: number, requestJson: string) => {
+      calls.push(`workspaceAuthoringOpen:${requestJson}`);
+      const request = parseJsonFixture<Parameters<RuntimeBridge['openWorkspaceAuthoring']>[0]>(requestJson);
+      void workspaceAuthoringStateFixture(request);
+      return existingHandle >= 0 ? existingHandle : 107;
+    },
+    readWorkspaceAuthoringState: (_handle: number) => JSON.stringify(workspaceAuthoringStateFixture({
+      authoringId: 'workspace-authoring.native-fixture',
+      seed: 7,
+      project: { gameId: 'native-fixture', workspaceId: 'workspace/native-fixture' },
+      projectBundle: { bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 1 },
+    })),
+    readWorkspaceAuthoringProjection: (_handle: number, requestJson: string) => {
+      const request = parseJsonFixture<Parameters<RuntimeBridge['readWorkspaceAuthoringProjection']>[0]>(requestJson);
+      return JSON.stringify({
+        kind: 'workspace_authoring.projection.v0',
+        workspaceId: request.expectedWorkspaceId,
+        generation: request.expectedGeneration,
+        workingRevision: request.expectedWorkingRevision,
+        cursor: request.cursor,
+        nextCursor: request.cursor + 1,
+        delivery: request.cursor === 0 ? 'replace' : 'apply',
+        frameJson: '{"ops":[]}',
+        renderDiffCount: 0,
+        projectionHash: HASH_C,
+      });
+    },
+    confirmWorkspaceAuthoringStored: (_handle: number, requestJson: string) => {
+      const request = parseJsonFixture<Parameters<RuntimeBridge['confirmWorkspaceAuthoringStored']>[0]>(requestJson);
+      return JSON.stringify({
+        kind: 'workspace_authoring.stored_confirmation.v0',
+        accepted: true,
+        workspaceId: request.expectedWorkspaceId,
+        generation: request.expectedGeneration,
+        hostPath: request.hostPath,
+        canonicalJsonHash: request.canonicalJsonHash,
+        storedRevision: 0,
+        lifecycleHash: HASH_B,
+      });
+    },
+    closeWorkspaceAuthoring: (_handle: number, requestJson: string) => {
+      const request = parseJsonFixture<Parameters<RuntimeBridge['closeWorkspaceAuthoring']>[0]>(requestJson);
+      return JSON.stringify({
+        kind: 'workspace_authoring.close_receipt.v0',
+        closed: true,
+        workspaceId: request.expectedWorkspaceId,
+        generation: request.expectedGeneration,
+        discardedUnsavedWorkingState: request.discardUnsavedWorkingState ?? false,
+        lifecycleHash: HASH_B,
+      });
     },
     loadProjectBundle: (_handle: number, bundleSchemaVersion: number, protocolVersion: number, sceneId: number) => {
       calls.push(`load:${bundleSchemaVersion}:${protocolVersion}:${sceneId}`);

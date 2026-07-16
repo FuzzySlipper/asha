@@ -101,7 +101,8 @@ impl EnemyDirectNavMovementError {
 
 /// A bounded request to load a ProjectBundle. Identifies the bundle and its
 /// versions; the runtime resolves artifacts itself (never a raw path or JSON).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ProjectBundleLoadRequest {
     pub bundle_schema_version: u32,
     pub protocol_version: u32,
@@ -110,7 +111,8 @@ pub struct ProjectBundleLoadRequest {
 }
 
 /// A bounded composition status / diagnostics summary (load + save).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CompositionStatus {
     /// The currently-loaded ProjectBundle scene identity, or `None` if empty.
     pub loaded_project_bundle: Option<u64>,
@@ -121,6 +123,15 @@ pub struct CompositionStatus {
     /// Whether the diagnostics block a load.
     pub blocks_load: bool,
 }
+
+pub use protocol_project_bundle::{
+    WorkspaceAuthoringCloseReceipt, WorkspaceAuthoringCloseRequest,
+    WorkspaceAuthoringCompositionStatus, WorkspaceAuthoringIdentity, WorkspaceAuthoringOpenRequest,
+    WorkspaceAuthoringProjectBundleRef, WorkspaceAuthoringProjectIdentity,
+    WorkspaceAuthoringProjectionReceipt, WorkspaceAuthoringProjectionRequest,
+    WorkspaceAuthoringStateSummary, WorkspaceAuthoringStoredConfirmationReceipt,
+    WorkspaceAuthoringStoredConfirmationRequest,
+};
 
 impl CompositionStatus {
     /// An empty, clean status (no ProjectBundle loaded, no diagnostics).

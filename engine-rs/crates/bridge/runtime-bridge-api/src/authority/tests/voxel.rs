@@ -895,7 +895,7 @@ fn stored_voxel_palette_update_is_hash_guarded_validated_and_round_trips() {
     request.material_palette[0].material_asset_id = "material/polished-concrete".to_string();
     request.material_palette[0].material_catalog_binding_id =
         Some("catalog-binding/polished-concrete".to_string());
-    let bridge = init_bridge();
+    let mut bridge = init_bridge();
     assert!(bridge.voxel.voxel_model_infos.is_empty());
     let receipt = bridge
         .update_voxel_volume_asset_palette(request.clone())
@@ -972,7 +972,7 @@ fn stored_voxel_palette_update_is_hash_guarded_validated_and_round_trips() {
 
 #[test]
 fn stored_voxel_palette_update_rejects_source_shape_quotas_before_validation() {
-    let bridge = init_bridge();
+    let mut bridge = init_bridge();
 
     let mut represented = stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
     represented.asset.representation.sparse_runs[0].length =
@@ -1002,7 +1002,7 @@ fn stored_voxel_palette_update_rejects_source_shape_quotas_before_validation() {
 
 #[test]
 fn stored_voxel_palette_update_rejects_palette_and_string_quotas() {
-    let bridge = init_bridge();
+    let mut bridge = init_bridge();
     let binding = hand_authored_voxel_volume_asset().material_palette[0].clone();
 
     let mut source_palette =
@@ -1048,7 +1048,7 @@ fn stored_voxel_palette_update_rejects_palette_and_string_quotas() {
 
 #[test]
 fn stored_voxel_palette_update_rejects_aggregate_serialized_size() {
-    let bridge = init_bridge();
+    let mut bridge = init_bridge();
     let mut request = stored_voxel_palette_update_request(hand_authored_voxel_volume_asset());
     request.max_material_bindings = VOXEL_PALETTE_UPDATE_MAX_MATERIAL_BINDINGS;
     let long_value = "x".repeat(VOXEL_PALETTE_UPDATE_MAX_STRING_BYTES as usize / 2);

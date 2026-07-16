@@ -41,6 +41,7 @@ PROTOCOL_WIRE_MODULES = {
     "protocol_game_rules": "gameRules",
     "protocol_input": "input",
     "protocol_presentation": "presentation",
+    "protocol_project_bundle": "projectBundle",
     "protocol_render": "render",
     "protocol_scene": "scene",
     "protocol_time_control": "timeControl",
@@ -51,7 +52,16 @@ PROTOCOL_WIRE_MODULES = {
     "protocol_voxel_conversion": "voxelConversion",
     "protocol_voxel_edit_history": "voxelEditHistory",
 }
-CONTRACT_WIRE_MODULES = {"RenderFrameDiff": "render"}
+CONTRACT_WIRE_MODULES = {
+    "RenderFrameDiff": "render",
+    "WorkspaceAuthoringOpenRequest": "projectBundle",
+    "WorkspaceAuthoringStateSummary": "projectBundle",
+    "WorkspaceAuthoringProjectionRequest": "projectBundle",
+    "WorkspaceAuthoringStoredConfirmationRequest": "projectBundle",
+    "WorkspaceAuthoringStoredConfirmationReceipt": "projectBundle",
+    "WorkspaceAuthoringCloseRequest": "projectBundle",
+    "WorkspaceAuthoringCloseReceipt": "projectBundle",
+}
 
 
 def snake_to_camel(name: str) -> str:

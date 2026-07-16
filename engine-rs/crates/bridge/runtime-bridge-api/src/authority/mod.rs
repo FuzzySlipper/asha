@@ -8,6 +8,7 @@ mod scene_and_preview;
 mod time_control;
 mod voxel_instances;
 mod voxel_projection;
+mod workspace_authoring;
 
 // Product authority coordinator behind native transport marshaling.
 //
@@ -74,6 +75,13 @@ pub(crate) const ENGINE_BRIDGE_CAPABILITY_PORTS: &[BridgeCapabilityPortContract]
         project_bundle: "retainedAcrossLoadUnload",
         snapshot_hash: "projectionFrame",
         resource_lifetime: "frame",
+    },
+    BridgeCapabilityPortContract {
+        id: "workspaceAuthoring",
+        initialization: "createsEngine",
+        project_bundle: "ownsLoadUnload",
+        snapshot_hash: "workspaceAuthoringAuthority",
+        resource_lifetime: "session",
     },
     BridgeCapabilityPortContract {
         id: "bundleLifecycle",
@@ -192,6 +200,26 @@ struct BridgeDeveloperConsoleState {
     admitted_count: usize,
 }
 
+#[derive(Debug, Clone)]
+struct WorkspaceAuthoringSaveCandidate {
+    canonical_json_hash: String,
+    working_revision: u64,
+}
+
+#[derive(Debug, Clone)]
+struct WorkspaceAuthoringAuthority {
+    identity: WorkspaceAuthoringIdentity,
+    composition: WorkspaceAuthoringCompositionStatus,
+    open: bool,
+    working_revision: u64,
+    stored_revision: u64,
+    last_stored_canonical_json_hash: Option<String>,
+    pending_save_candidate: Option<WorkspaceAuthoringSaveCandidate>,
+    next_projection_cursor: u64,
+    projection_initialized: bool,
+    last_projection_receipt: Option<WorkspaceAuthoringProjectionReceipt>,
+}
+
 pub(crate) struct DeveloperConsoleEmission {
     pub severity: DiagnosticSeverity,
     pub category: DeveloperConsoleCategory,
@@ -217,6 +245,8 @@ pub struct EngineBridge {
     projection: BridgeProjectionState,
     evidence: BridgeReplayEvidenceState,
     developer_console: RefCell<BridgeDeveloperConsoleState>,
+    workspace_authoring: Option<WorkspaceAuthoringAuthority>,
+    workspace_authoring_epoch: u64,
 }
 
 /// The bundle schema and protocol versions this engine bridge understands.
@@ -581,3 +611,5 @@ mod game_extension_tests;
 pub(super) mod tests;
 #[cfg(test)]
 mod voxel_history_tests;
+#[cfg(test)]
+mod workspace_authoring_tests;

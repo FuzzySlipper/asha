@@ -2,10 +2,10 @@ use super::*;
 
 impl EngineBridge {
     pub(super) fn update_voxel_volume_asset_palette_authority(
-        &self,
+        &mut self,
         request: VoxelVolumeAssetPaletteUpdateRequest,
     ) -> BridgeResult<VoxelVolumeAssetPaletteUpdateReceipt> {
-        self.require_initialized("update_voxel_volume_asset_palette")?;
+        self.require_runtime_or_workspace_authoring("update_voxel_volume_asset_palette")?;
         let mut diagnostics = Self::voxel_asset_palette_update_request_diagnostics(&request);
         if !diagnostics.is_empty() {
             return Ok(Self::rejected_voxel_volume_asset_palette_update(
@@ -1359,7 +1359,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelVolumeAssetUnloadRequest,
     ) -> BridgeResult<VoxelVolumeAssetUnloadReceipt> {
-        self.require_initialized("unload_voxel_volume_asset")?;
+        self.require_runtime_or_workspace_authoring("unload_voxel_volume_asset")?;
         let key = Self::voxel_model_key(request.grid, &request.volume_asset_id);
         let Some(info) = self.voxel.voxel_model_infos.get(&key).cloned() else {
             return Ok(Self::rejected_voxel_volume_asset_unload(

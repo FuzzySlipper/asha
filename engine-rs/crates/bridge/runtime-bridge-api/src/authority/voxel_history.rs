@@ -41,7 +41,7 @@ impl EngineBridge {
         &mut self,
         batch: CommandBatch,
     ) -> BridgeResult<CommandResult> {
-        self.require_initialized("submit_commands")?;
+        self.require_runtime_or_workspace_authoring("submit_commands")?;
         let current_grid = self
             .voxel
             .voxel
@@ -159,7 +159,7 @@ impl EngineBridge {
         &self,
         request: VoxelEditHistoryReadRequest,
     ) -> BridgeResult<VoxelEditHistorySummary> {
-        self.require_initialized("read_voxel_edit_history")?;
+        self.require_runtime_or_workspace_authoring("read_voxel_edit_history")?;
         Self::validate_history_id(&request.history_id)?;
         if request.max_entries == 0 || request.max_entries > MAX_HISTORY_READ_ENTRIES {
             return Err(RuntimeBridgeError::new(
@@ -217,7 +217,7 @@ impl EngineBridge {
         &self,
         request: VoxelEditHistoryRevertRequest,
     ) -> BridgeResult<VoxelEditHistoryRevertReceipt> {
-        self.require_initialized("preview_voxel_edit_revert")?;
+        self.require_runtime_or_workspace_authoring("preview_voxel_edit_revert")?;
         if request.mode != protocol::VoxelEditHistoryRevertMode::PreviewRevert {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
@@ -240,7 +240,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelEditHistoryRevertRequest,
     ) -> BridgeResult<VoxelEditHistoryRevertReceipt> {
-        self.require_initialized("apply_voxel_edit_revert")?;
+        self.require_runtime_or_workspace_authoring("apply_voxel_edit_revert")?;
         if request.mode != protocol::VoxelEditHistoryRevertMode::ApplyRevert {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,
@@ -266,7 +266,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelEditHistoryUndoRequest,
     ) -> BridgeResult<VoxelEditHistoryUndoReceipt> {
-        self.require_initialized("undo_voxel_edit")?;
+        self.require_runtime_or_workspace_authoring("undo_voxel_edit")?;
         let mut history = self.voxel_edit_history()?.clone();
         Self::validate_history_id(&request.history_id)?;
         Self::validate_current_history_hashes(
@@ -304,7 +304,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelEditHistoryRedoRequest,
     ) -> BridgeResult<VoxelEditHistoryRedoReceipt> {
-        self.require_initialized("redo_voxel_edit")?;
+        self.require_runtime_or_workspace_authoring("redo_voxel_edit")?;
         let mut history = self.voxel_edit_history()?.clone();
         Self::validate_history_id(&request.history_id)?;
         Self::validate_current_history_hashes(

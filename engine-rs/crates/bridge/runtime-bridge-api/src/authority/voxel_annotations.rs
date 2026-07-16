@@ -5,7 +5,7 @@ impl EngineBridge {
         &self,
         request: VoxelAnnotationLayerValidationRequest,
     ) -> BridgeResult<VoxelAnnotationLayerValidationReport> {
-        self.require_initialized("validate_voxel_annotation_layer")?;
+        self.require_runtime_or_workspace_authoring("validate_voxel_annotation_layer")?;
         Ok(svc_voxel_annotation::validate_layer(&request))
     }
 
@@ -13,7 +13,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelAnnotationLayerLoadRequest,
     ) -> BridgeResult<VoxelAnnotationLayerLoadReceipt> {
-        self.require_initialized("load_voxel_annotation_layer")?;
+        self.require_runtime_or_workspace_authoring("load_voxel_annotation_layer")?;
         let key = (
             request.target_grid,
             Some(request.layer.target_voxel_volume_asset_id.clone()),
@@ -102,7 +102,7 @@ impl EngineBridge {
         &self,
         request: VoxelAnnotationQueryRequest,
     ) -> BridgeResult<VoxelAnnotationQueryReadout> {
-        self.require_initialized("read_voxel_annotation_query")?;
+        self.require_runtime_or_workspace_authoring("read_voxel_annotation_query")?;
         let Some(layer) = self.voxel_annotation_layer(&request.runtime_layer_id, &request.layer_id)
         else {
             return Ok(VoxelAnnotationQueryReadout {
@@ -125,7 +125,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelAnnotationEditRequest,
     ) -> BridgeResult<VoxelAnnotationEditReceipt> {
-        self.require_initialized("apply_voxel_annotation_edit")?;
+        self.require_runtime_or_workspace_authoring("apply_voxel_annotation_edit")?;
         let Some(runtime_layer_id) =
             self.voxel_annotation_layer_key(&request.runtime_layer_id, &request.layer_id)
         else {
@@ -221,7 +221,7 @@ impl EngineBridge {
         &self,
         request: VoxelAnnotationLayerExportRequest,
     ) -> BridgeResult<VoxelAnnotationLayerExportReceipt> {
-        self.require_initialized("export_voxel_annotation_layer")?;
+        self.require_runtime_or_workspace_authoring("export_voxel_annotation_layer")?;
         let Some(layer) = self.voxel_annotation_layer(&request.runtime_layer_id, &request.layer_id)
         else {
             return Ok(Self::rejected_voxel_annotation_export(

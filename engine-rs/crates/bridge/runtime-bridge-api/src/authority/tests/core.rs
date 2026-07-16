@@ -16,6 +16,7 @@ fn engine_bridge_has_one_fixed_capability_cell_contract() {
             "camera",
             "gameplay",
             "projection",
+            "workspaceAuthoring",
             "bundleLifecycle",
             "replayEvidence",
         ]
@@ -31,6 +32,17 @@ fn engine_bridge_has_one_fixed_capability_cell_contract() {
     assert_eq!(lifecycle.project_bundle, "ownsLoadUnload");
     assert_eq!(lifecycle.snapshot_hash, "compositionStatus");
     assert_eq!(lifecycle.resource_lifetime, "session");
+
+    let workspace_authoring = ENGINE_BRIDGE_CAPABILITY_PORTS
+        .iter()
+        .find(|contract| contract.id == "workspaceAuthoring")
+        .unwrap();
+    assert_eq!(workspace_authoring.initialization, "createsEngine");
+    assert_eq!(workspace_authoring.project_bundle, "ownsLoadUnload");
+    assert_eq!(
+        workspace_authoring.snapshot_hash,
+        "workspaceAuthoringAuthority"
+    );
 
     let buffers = ENGINE_BRIDGE_CAPABILITY_PORTS
         .iter()

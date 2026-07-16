@@ -5,6 +5,36 @@
 
 pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
     ("initialize_engine", "initializeEngine", 8388608, 8388608),
+    (
+        "open_workspace_authoring",
+        "openWorkspaceAuthoring",
+        8388608,
+        8388608,
+    ),
+    (
+        "read_workspace_authoring_state",
+        "readWorkspaceAuthoringState",
+        8388608,
+        8388608,
+    ),
+    (
+        "read_workspace_authoring_projection",
+        "readWorkspaceAuthoringProjection",
+        8388608,
+        8388608,
+    ),
+    (
+        "confirm_workspace_authoring_stored",
+        "confirmWorkspaceAuthoringStored",
+        8388608,
+        8388608,
+    ),
+    (
+        "close_workspace_authoring",
+        "closeWorkspaceAuthoring",
+        8388608,
+        8388608,
+    ),
     ("step_simulation", "stepSimulation", 8388608, 8388608),
     (
         "apply_time_control_command",

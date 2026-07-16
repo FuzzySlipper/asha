@@ -6,6 +6,25 @@ use crate::*;
 /// `call(method, json)` — adding a verb here is a reviewed boundary change.
 pub trait RuntimeBridge {
     fn initialize_engine(&mut self, config: EngineConfig) -> BridgeResult<EngineHandle>;
+    /// Construct a Rust-owned workspace authoring cell without gameplay,
+    /// simulation, camera, or runtime ProjectBundle initialization.
+    fn open_workspace_authoring(
+        &mut self,
+        request: WorkspaceAuthoringOpenRequest,
+    ) -> BridgeResult<WorkspaceAuthoringStateSummary>;
+    fn read_workspace_authoring_state(&self) -> BridgeResult<WorkspaceAuthoringStateSummary>;
+    fn read_workspace_authoring_projection(
+        &mut self,
+        request: WorkspaceAuthoringProjectionRequest,
+    ) -> BridgeResult<WorkspaceAuthoringProjectionReceipt>;
+    fn confirm_workspace_authoring_stored(
+        &mut self,
+        request: WorkspaceAuthoringStoredConfirmationRequest,
+    ) -> BridgeResult<WorkspaceAuthoringStoredConfirmationReceipt>;
+    fn close_workspace_authoring(
+        &mut self,
+        request: WorkspaceAuthoringCloseRequest,
+    ) -> BridgeResult<WorkspaceAuthoringCloseReceipt>;
     /// Validate and activate the named-input catalog and initial Session context stack.
     fn configure_input_session(
         &mut self,
@@ -152,13 +171,13 @@ pub trait RuntimeBridge {
     /// transaction. The bridge returns the stored diff and canonical payload; host
     /// code owns the actual file write after accepting the receipt.
     fn save_voxel_volume_asset(
-        &self,
+        &mut self,
         request: VoxelVolumeAssetSaveRequest,
     ) -> BridgeResult<VoxelVolumeAssetSaveReceipt>;
     /// Validate and package a bounded stored-only material palette replacement.
     /// This operation returns a ProjectBundle diff and never mutates runtime state.
     fn update_voxel_volume_asset_palette(
-        &self,
+        &mut self,
         request: VoxelVolumeAssetPaletteUpdateRequest,
     ) -> BridgeResult<VoxelVolumeAssetPaletteUpdateReceipt>;
     /// Initialize one empty runtime voxel model with a bounded material palette

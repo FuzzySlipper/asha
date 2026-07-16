@@ -78,7 +78,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelConversionMeshAssetRegistrationRequest,
     ) -> BridgeResult<VoxelConversionSourceRegistration> {
-        self.require_initialized("register_voxel_conversion_mesh_asset")?;
+        self.require_runtime_or_workspace_authoring("register_voxel_conversion_mesh_asset")?;
         let source = match Self::static_mesh_source_from_project_mesh_asset(&request) {
             Ok(source) => source,
             Err(message) => {
@@ -118,7 +118,7 @@ impl EngineBridge {
         &mut self,
         request: VoxelConversionMeshSourceImportRequest,
     ) -> BridgeResult<VoxelConversionMeshSourceImportReceipt> {
-        self.require_initialized("import_voxel_conversion_mesh_source")?;
+        self.require_runtime_or_workspace_authoring("import_voxel_conversion_mesh_source")?;
         let source_byte_count = request.source_bytes.len() as u64;
         let preflight_error = svc_mesh_import::preflight_import_request(&request).err();
         let source_hash = if preflight_error.is_none() {
