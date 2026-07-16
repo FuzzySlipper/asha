@@ -417,7 +417,7 @@ may_not_depend_on = ["core-state", "core-entity", "protocol-render", "render-bri
 
 [crate."engine-rs/crates/rules/gameplay-runtime-host"]
 lane = "rust-rule"
-may_depend_on = ["core-entity", "core-ids", "core-math", "core-scene", "gameplay-module-sdk", "protocol-entity-authoring", "protocol-game-extension", "protocol-project-bundle", "rule-gameplay-fabric", "rule-project-bundle", "rule-scheduler", "rule-trigger-volume", "serde", "serde_json", "svc-entity-authoring", "svc-gameplay-fabric", "svc-serialization"]
+may_depend_on = ["core-entity", "core-ids", "core-math", "core-scene", "gameplay-module-sdk", "protocol-diagnostics", "protocol-entity-authoring", "protocol-game-extension", "protocol-project-bundle", "rule-gameplay-fabric", "rule-project-bundle", "rule-scheduler", "rule-trigger-volume", "serde", "serde_json", "svc-entity-authoring", "svc-gameplay-fabric", "svc-serialization"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]
@@ -456,7 +456,7 @@ may_not_depend_on = ["render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-project-bundle"]
 lane = "rust-rule"
-may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "svc-voxel-annotation", "svc-gameplay-fabric", "protocol-voxel-annotation", "protocol-game-extension", "rule-voxel-edit", "rule-gameplay-fabric", "rule-trigger-volume", "gameplay-module-sdk"]
+may_depend_on = ["core-ids", "core-assets", "core-math", "core-space", "core-voxel", "core-events", "core-entity", "core-scene", "svc-volume", "svc-spatial", "svc-serialization", "svc-voxel-annotation", "svc-gameplay-fabric", "protocol-diagnostics", "protocol-voxel-annotation", "protocol-game-extension", "rule-voxel-edit", "rule-gameplay-fabric", "rule-trigger-volume", "gameplay-module-sdk"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
 
 # ─── Rust: Render ────────────────────────────────────────────────────────────
@@ -816,5 +816,5 @@ may_not_depend_on = ["napi", "wasm-bindgen"]
 
 [crate."engine-rs/crates/bridge/native-bridge"]
 lane = "rust-bridge"
-may_depend_on = ["runtime-bridge-api", "core-ids", "core-math", "core-space", "core-voxel", "protocol-assets", "protocol-render", "protocol-scene", "protocol-view", "protocol-script", "protocol-replay", "sim-runner", "render-bridge", "napi", "napi-derive"]
+may_depend_on = ["runtime-bridge-api", "core-ids", "core-math", "core-space", "core-voxel", "protocol-assets", "protocol-diagnostics", "protocol-game-extension", "protocol-render", "protocol-scene", "protocol-view", "protocol-script", "protocol-replay", "sim-runner", "render-bridge", "napi", "napi-derive"]
 may_not_depend_on = ["wasm-bindgen", "core-state"]
