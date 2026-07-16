@@ -1555,7 +1555,7 @@
       {
         "id": "rust.native-bridge.lib",
         "artifactId": "evidence.execution.native-bridge-lib",
-        "sourceHash": "sha256:d85f16229e2549636b4bb59c475c17e73ab5ef1c5762fa36f136e62d27a9b8ec"
+        "sourceHash": "sha256:244374dec56e29488809cc5a98065916c48c53e2f4fa6be8376bd2d77a610d6a"
       },
       {
         "id": "rust.project-bundle.gameplay-bindings",
@@ -3089,5 +3089,5 @@
       }
     ]
   },
-  "catalogHash": "sha256:dcbb6406beecb0d31eeaeaeac6f9ce880a03a2c94d250c1707c3ac8c240eb7d0"
+  "catalogHash": "sha256:691e624190701b6fae26c82588c918e60e1216bbeb1690da83b022ad3f92d983"
 }

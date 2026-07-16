@@ -137,7 +137,7 @@
     {
       "id": "rust.native-bridge.lib",
       "artifactId": "evidence.execution.native-bridge-lib",
-      "command": ["cargo", "test", "--locked", "--offline", "--manifest-path", "engine-rs/crates/bridge/native-bridge/Cargo.toml", "--lib"],
+      "command": ["cargo", "test", "--locked", "--manifest-path", "engine-rs/crates/bridge/native-bridge/Cargo.toml", "--lib"],
       "inputs": ["engine-rs/crates/bridge", "engine-rs/crates/protocol", "engine-rs/crates/state"],
       "providerIds": ["@asha/native-bridge"]
     },
