@@ -2,13 +2,13 @@
 
 Status: V1 navigation and governance layer for agents. Current task planning
 still lives in Den; this atlas describes committed repo surfaces and routes
-agents to the right owner lane, public boundary, and proof gate.
+agents to the right owner lane, public boundary, and acceptance gate.
 
 ## How To Use This Atlas
 
 1. Read live Den guidance first for current work state.
 2. Use this atlas to choose the owning lane before opening files.
-3. Follow links to code, docs, manifests, and proof gates.
+3. Follow links to code, docs, manifests, and acceptance gates.
 4. Treat [generated inventory](code-map/generated-inventory.md) as volatile
    repo inventory, not as architecture prose.
 5. If this atlas disagrees with code/tests, fix the atlas or create a task; do

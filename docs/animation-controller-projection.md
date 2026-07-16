@@ -69,9 +69,9 @@ used by the new controller projector or `AshaAnimationHost`.
 
 The compatibility path may be deleted when all three conditions hold:
 
-1. downstream gameplay proofs use authority controller changes and G1 animation
+1. downstream gameplay behavior uses authority controller changes and G1 animation
    operations rather than direct playback;
-2. downstream consumer-needs/conformance evidence names the controller path
+2. provider regressions and visible consumer acceptance use the controller path
    rather than direct playback;
 3. no supported engine or downstream caller requires command-selected playback
    for gameplay-driven animation.

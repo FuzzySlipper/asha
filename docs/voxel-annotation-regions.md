@@ -204,8 +204,8 @@ Both must remain quota guarded and Rust-owned.
 3. Integrate annotation layer artifacts into ProjectBundle load/save metadata.
    **Done.**
 4. Add runtime bridge verbs and RuntimeSession facade wrappers. **Done.**
-5. Add package-root consumer proof and compatibility docs. **Done.** The proof is
-   `pnpm --filter @asha/smoke test:voxel-annotation-proof`; when the native Rust
+5. Add a package-root provider regression and compatibility docs. **Done.** The regression is
+   `pnpm --filter @asha/smoke test:voxel-annotation-provider`; when the native Rust
    bridge is built, it validates, loads, queries, edits, and exports annotations
    through `@asha/contracts` and `@asha/runtime-bridge` roots only.
 6. Let Studio build UI only after the engine DTOs and receipts exist.

@@ -137,9 +137,21 @@ Current consumer-facing RuntimeSession/ECRP docs include:
 ## Design Principles
 
 - **Boring architecture**: Libraries you call > frameworks that call you.
-- **Infrastructure first**: Prove machinery before adding product content.
-- **Replay is audit bureaucracy**: Every state change must be replayable or intentionally documented as outside replay scope.
+- **Infrastructure first**: Enable expressive gameplay through stable public machinery, then validate it through real behavior.
+- **Replay is operational memory**: Every state change must be replayable or intentionally documented as outside replay scope.
 - **Desired failure mode**: The agent cannot compile the wrong thing.
+
+## Test and Acceptance Posture
+
+- A **local guardrail** prevents an invalid dependency, authority leak, generated-border drift, unsafe wire shape, or data-loss path.
+- A **provider regression** executes an engine-owned public/generated seam and asserts accepted/rejected behavior, readback, call count, or deterministic replay.
+- A **synthetic conformance check** exercises the engine as an external consumer and belongs in `asha-testing` when it has a distinct public contract.
+- **Consumer acceptance** observes usable Demo gameplay or Studio authoring and belongs in the owning downstream repository.
+
+Engine CI may block on the first two. It must not infer downstream delivery from
+source tokens, manifests, evidence catalogs, or an engine-only report. Computed
+run results belong in ignored CI/task artifacts unless they are intentional
+protocol, replay, render, or serialization goldens reviewed as product inputs.
 
 ## TypeScript House Style
 

@@ -1,4 +1,4 @@
-//! Downstream-shaped proof that a consumer can link concrete gameplay modules
+//! Provider regression that links concrete gameplay modules
 //! into ASHA's generated N-API transport without copying its operation table.
 
 #![forbid(unsafe_code)]

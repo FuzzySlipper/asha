@@ -85,9 +85,8 @@ real Session save/reload without creating a parallel EntityStore.
 - Material override metadata does not render directly.
 - Gameplay-module binding/configuration is owned by the generated ProjectBundle
   registry and the public static gameplay host.
-- Public consumer-needs and operation reachability name the real
+- Public-surface manifests and provider regressions cover the real
   `@asha/game-workspace`, `@asha/runtime-session`, and
-  `asha-gameplay-runtime-host` surfaces; consumers do not need private registry
-  access.
+  `asha-gameplay-runtime-host` surfaces; consumers do not need private registry access.
 - Nested prefabs and propagation of definition edits into already accepted
   instances remain unsupported.

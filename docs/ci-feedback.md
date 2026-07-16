@@ -14,25 +14,25 @@ Campaign or release closure uses:
 
 The fast selector keeps authority/dependency, no-Den-coupling, and vocabulary
 rails on every change. It adds affected Rust, TypeScript, generated-border,
-bridge, identity/conformance, replay, render, or native gates. Unknown and
+bridge, execution-identity, replay, render, or native gates. Unknown and
 cross-cutting paths expand to the full inventory. The full inventory includes
 the native addon and browser-host gate.
 
-These tiers schedule existing checks; they do not define a second proof system.
+These tiers schedule existing checks; they do not define a proof or delivery system.
 The selector is a small path classifier in `harness/ci/ci.py`, and its unit tests
 cover representative classes, safe expansion, and injected failures.
 
 ## Reports
 
 Each run writes a computed report under the ignored
-`harness/smoke-out/ci/` directory. GitHub uploads that directory and the proof
+`harness/smoke-out/ci/` directory. GitHub uploads that directory and the shared
 execution receipts as run artifacts. The report records:
 
 - the changed files and selected change classes;
 - each gate's normalized command fingerprint and semantic claim consumers;
 - per-gate and total wall time;
 - unique and repeated gate commands; and
-- proof-execution requests, actual executions, receipt reuses, and any duplicate
+- shared-execution requests, actual executions, receipt reuses, and any duplicate
   actual fingerprint.
 
 A run is invalid if one normalized command/input/toolchain fingerprint executes
@@ -60,13 +60,11 @@ were unchanged for these sampled gates.
 | Dependency/authority rails | 3.916 | `sha256:a02b875284b2c916753ee3448b9161b043b8b6dab5a2a7f59134d23f644294b7` | lanes, edges, source shape, committed paths |
 | No Den coupling | 0.022 | `sha256:d39b0bba572a72dc8e8bb09aabd4cc1b92226bd27453955537048631f4cace12` | engine independence from Den runtime code |
 | Vocabulary | 2.654 | `sha256:d31adccb18c335ff03ce94a5534c5aec46c998160fa6386c511ce4c9b7d9ddb4` | ECRP vocabulary and Rust authority naming |
-| Harness identities | 1.618 | `sha256:8c6fb2bfb4baf863cd160eb95b3f90fef887e11c2fa9c8b9d205a16f46248f19` | stable public/provider/execution/evidence IDs |
-| Consumer needs | 0.202 | `sha256:3469772132d9fbd1c53622bd2e9da7cdd586b61ec26231e1cdb4f9c908d384fc` | declared requirements and semantic delivery |
-| Reachability | 0.273 | `sha256:b3ed96af15be212c647020ac3c28a3defa76bada8500399f216c14c6a9e37848` | joined public capability reachability |
+| Execution identities | 1.618 | `sha256:8c6fb2bfb4baf863cd160eb95b3f90fef887e11c2fa9c8b9d205a16f46248f19` | shared command fingerprints, receipts, and collision rejection |
 
-The old conformance pass was stopped after 76 seconds while waiting on broad
-live/product execution, so it is not presented as a successful timing. The old
-workflow supplied no trustworthy unique-versus-total command count.
+The retired consumer-needs, reachability, and repository-wide conformance layers
+are intentionally absent from the current inventory. They maintained delivery
+declarations without owning downstream acceptance.
 
 ## Warm changed-surface measurements
 
@@ -92,7 +90,7 @@ iteration:
 - affected Rust and TypeScript compilation/tests run;
 - protocol edits add generated-contract and strict bridge checks;
 - native, replay, and render edits add their owning semantic gates;
-- identity/conformance self-tests run when harness-policy surfaces change; and
+- execution-identity self-tests run when harness-policy surfaces change; and
 - an unclassified path expands to the comprehensive inventory.
 
 Broad harness negative fixtures are skipped for unrelated product edits, while
@@ -104,27 +102,36 @@ engine change.
 
 The Rust workspace, TypeScript workspace, native-bridge library, and downstream
 gameplay fixture now have one execution identity each instead of package-level
-duplicates. Conformance and dedicated public gates consume the same receipts
-while retaining separate claim attribution. Redundant direct reruns were
-deleted from the gameplay conformance gate rather than cached behind another
-layer.
+duplicates. Dedicated provider gates consume the same receipts while retaining
+separate claim attribution. Redundant direct reruns are deleted instead of
+cached behind another layer.
 
 The installed-addon runtime-bridge and browser-host suites have their own native
 execution identities and reusable logs/receipts. Their post-install executions
 remain separate from the earlier TypeScript workspace pass because installing
 the compiled addon changes test semantics: native parity runs instead of being
 absent or skipped. The composed provider release build also remains isolated
-because it proves a downstream-shaped release artifact, not the workspace test
-binary.
+because it validates a composed provider release artifact, not the workspace
+test binary.
 
-The final same-host warm comprehensive run selected all 16 gates, including
+The pre-retirement same-host warm comprehensive run selected all 16 gates, including
 native acceptance, and completed in 99.618 seconds (1.660 runner minutes). Its
-gate layer contained 16 unique commands and zero repeats. The proof scheduler
+gate layer contained 16 unique commands and zero repeats. The shared execution scheduler
 observed 14 requests for 11 unique fingerprints: 10 actual executions and four
 receipt reuses, with three repeated requests and zero duplicate actual
 fingerprints. The native gate accounted for 4.360 seconds and its Rust library
 test reused the conformance receipt; the two post-addon TypeScript suites each
 produced one reusable native-semantic receipt.
+
+The first post-retirement same-host comprehensive run selected all 13 retained
+gates and completed in 118.955 seconds (1.983 runner minutes), including a
+20.36-second native release rebuild. Its gate layer contained 13 unique commands
+and zero repeats. The shared execution scheduler observed five requests for four
+unique fingerprints: four actual executions and one receipt reuse, with one
+repeated request and zero duplicate actual fingerprints. This is the current
+inventory measurement; it remains below the three-minute warm optimization
+budget, but it is not presented as a speedup over the differently warmed
+pre-retirement sample.
 
 The first cold GitHub comparison used implementation run `29496495981` at
 commit `6af53b04635ebeb977b1699b83648568568d2b53`. Because the change modified
@@ -132,7 +139,7 @@ the selector and execution harness themselves, the fast job correctly expanded
 to all 16 gates. The measured command inventory took 769.986 seconds (12.833
 runner minutes); the complete GitHub job, including checkout/toolchain/cache
 setup and teardown, took 857 seconds (14.283 runner minutes). It recorded 16
-unique gate commands, zero gate repeats, 13 proof requests for 10 unique
+unique gate commands, zero gate repeats, 13 shared execution requests for 10 unique
 fingerprints, four receipt reuses, and zero duplicate actual fingerprints.
 
 The equivalent pre-change all-gates job took 826 seconds (13.767 runner

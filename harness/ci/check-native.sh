@@ -435,13 +435,13 @@ python3 "$REPO_ROOT/harness/identity/execution.py" \
   --execution ts.native-runtime-bridge.tests \
   --attribution gate.native-browser-host
 
-echo "==> native browser-host sustained lifecycle proof"
+echo "==> native browser-host sustained lifecycle regression"
 python3 "$REPO_ROOT/harness/identity/execution.py" \
   --execution ts.native-browser-host.tests \
   --attribution gate.native-browser-host
 
-echo "==> public RuntimeSession non-default-grid voxel annotation proof"
-( cd "$REPO_ROOT/ts" && pnpm --filter @asha/smoke test:voxel-annotation-proof )
+echo "==> public RuntimeSession non-default-grid voxel annotation provider regression"
+( cd "$REPO_ROOT/ts" && pnpm --filter @asha/smoke test:voxel-annotation-provider )
 
-echo "==> public RuntimeSession exhaustive voxel command proof"
-( cd "$REPO_ROOT/ts" && pnpm --filter @asha/smoke test:voxel-command-proof )
+echo "==> public RuntimeSession exhaustive voxel command provider regression"
+( cd "$REPO_ROOT/ts" && pnpm --filter @asha/smoke test:voxel-command-provider )

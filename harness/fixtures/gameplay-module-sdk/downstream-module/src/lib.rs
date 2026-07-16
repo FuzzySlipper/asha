@@ -1,4 +1,4 @@
-//! Downstream-shaped proof: this crate imports only the approved public facade.
+//! Public-facade provider regression: this crate imports only approved surfaces.
 
 use asha_gameplay_module_sdk::*;
 use asha_runtime_session_composition::{
@@ -646,7 +646,7 @@ pub fn primary_fire_runtime_host_project_input() -> GameplayRuntimeProjectInput 
 }
 
 /// Public downstream fixture that composes a decision Transform with a
-/// stateful observer. It is used by the native provider proof to demonstrate
+/// stateful observer. It is used by the native provider regression to demonstrate
 /// that one generated RuntimeBridge reaches both authority and module-owned
 /// projection without a sidecar host.
 pub fn composed_runtime_host_project_input(multiplier: u64) -> GameplayRuntimeProjectInput {
@@ -718,8 +718,8 @@ pub fn pulse_state_view_contract() -> GameplayContractRef {
     contract("pulse-state-view")
 }
 
-pub fn conformance_needs_manifest_json() -> String {
-    include_str!("../../../../consumer-needs/manifests/gameplay-module-fixture.json").to_owned()
+pub fn provider_requirements_json() -> String {
+    include_str!("../project/provider-requirements.json").to_owned()
 }
 
 pub fn conformance_reachable_surfaces(
@@ -1077,7 +1077,7 @@ mod tests {
     }
 
     fn conformance_needs_manifest() -> GameplayModuleConformanceNeedsManifest {
-        serde_json::from_str(&conformance_needs_manifest_json()).unwrap()
+        serde_json::from_str(&provider_requirements_json()).unwrap()
     }
 
     fn run_project(

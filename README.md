@@ -209,10 +209,10 @@ Focused evidence lanes split reference fixtures from product/live authority:
 
 ```sh
 cd ts
-pnpm --filter @asha/runtime-bridge test:evidence:reference
-pnpm --filter @asha/runtime-bridge test:evidence:rust
-pnpm --filter @asha/smoke test:evidence:reference
-pnpm --filter @asha/smoke test:evidence:authority
+pnpm --filter @asha/runtime-bridge test:reference-provider
+pnpm --filter @asha/runtime-bridge test:rust-provider
+pnpm --filter @asha/smoke test:reference-provider
+pnpm --filter @asha/smoke test:authority-provider
 ```
 
 ### App shell launch
@@ -243,7 +243,8 @@ Check the relevant package scripts before adding new commands; this workspace in
 
 | Document | Purpose |
 |---|---|
-| `docs/agent-code-atlas.md` | Agent navigation atlas: lane maps, public/private boundaries, proof gates, and generated inventory checks |
+| `docs/agent-code-atlas.md` | Agent navigation atlas: lane maps, public/private boundaries, behavioral gates, and generated inventory checks |
+| `docs/proof-artifact-disposition.md` | Current boundary between engine guardrails/provider regressions, synthetic testing, and downstream product acceptance |
 | `docs/launchable-voxel.md` | **Launchable voxel loop hub**: fixture, launch/smoke commands, regeneration, known limitations |
 | `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
 | `docs/design.md` | Canonical repository architecture, layer model, dependency direction, and design principles |

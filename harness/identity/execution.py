@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run equivalent proof commands once and retain every consuming attribution."""
+"""Run equivalent gate commands once and retain every consuming attribution."""
 
 from __future__ import annotations
 
@@ -18,10 +18,8 @@ import tomllib
 from typing import Any, Iterable
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-CACHE_ROOT = ROOT / "harness/smoke-out/proof-execution"
+CACHE_ROOT = ROOT / "harness/smoke-out/execution-receipts"
 DEFINITIONS = ROOT / "harness/identity/executions.json"
-CATALOG = ROOT / "harness/identity/catalog.json"
-CONFORMANCE = ROOT / "harness/conformance/probe-inventory.json"
 IGNORED_PARTS = {".git", "node_modules", "target", "smoke-out", "__pycache__"}
 
 class ExecutionError(ValueError):
@@ -39,12 +37,19 @@ def stable_hash(value: Any) -> str:
 
 def definition_index(definitions: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
+    artifact_ids: set[str] = set()
     for definition in definitions:
         identity = definition.get("id")
         if not isinstance(identity, str) or not identity:
             raise ExecutionError("execution definition has a missing id")
         if identity in result:
             raise ExecutionError(f"execution identity collision: {identity}")
+        artifact_id = definition.get("artifactId")
+        if not isinstance(artifact_id, str) or not artifact_id:
+            raise ExecutionError(f"execution {identity} has a missing artifact id")
+        if artifact_id in artifact_ids:
+            raise ExecutionError(f"execution artifact identity collision: {artifact_id}")
+        artifact_ids.add(artifact_id)
         result[identity] = definition
     return result
 
@@ -395,20 +400,15 @@ def toolchain_digest(
     return result
 
 
-def provider_digest(catalog: dict[str, Any], provider_ids: list[str]) -> str:
-    providers = {
-        item["id"]: item for item in catalog["families"]["providers"]
-    }
-    missing = sorted(set(provider_ids) - set(providers))
-    if missing:
-        raise ExecutionError(f"execution references missing provider identities: {missing}")
-    return stable_hash([providers[identity] for identity in sorted(provider_ids)])
+def provider_digest(provider_ids: list[str]) -> str:
+    if not all(isinstance(identity, str) and identity for identity in provider_ids):
+        raise ExecutionError("execution provider identities must be non-empty strings")
+    return stable_hash(sorted(set(provider_ids)))
 
 
 def execution_fingerprint(
     definition: dict[str, Any],
     settings: dict[str, Any],
-    catalog: dict[str, Any],
     environment: dict[str, str],
     toolchain: dict[str, str],
     inputs_hash: str,
@@ -421,30 +421,11 @@ def execution_fingerprint(
         "normalizedCommand": command,
         "environment": selected_environment(settings, environment),
         "inputDigest": inputs_hash,
-        "providerDigest": provider_digest(catalog, definition.get("providerIds", [])),
+        "providerDigest": provider_digest(definition.get("providerIds", [])),
         "repositoryRevisions": {} if revisions is None else revisions,
         "toolchain": toolchain,
     }
     return stable_hash(payload), payload
-
-
-def suite_attributions(document: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
-    probes_by_suite: dict[str, list[dict[str, Any]]] = {}
-    for probe in document["semanticProbes"]:
-        probes_by_suite.setdefault(probe["suite"], []).append(probe)
-    result: dict[str, list[dict[str, Any]]] = {}
-    for suite in document["suites"]:
-        assertions = sorted(
-            evidence["assertionId"]
-            for probe in probes_by_suite.get(suite["id"], [])
-            for evidence in probe["evidence"]
-        )
-        result.setdefault(suite["executionId"], []).append({
-            "suiteId": suite["id"],
-            "probeIds": sorted(probe["id"] for probe in probes_by_suite.get(suite["id"], [])),
-            "assertionIds": assertions,
-        })
-    return result
 
 
 def make_plan(
@@ -454,9 +435,6 @@ def make_plan(
 ) -> list[dict[str, Any]]:
     settings = load_json(DEFINITIONS)
     definitions = definition_index(settings["executions"])
-    catalog = load_json(CATALOG)
-    conformance = load_json(CONFORMANCE)
-    attributions = suite_attributions(conformance)
     selected_ids = sorted(definitions) if execution_ids is None else execution_ids
     unknown = sorted(set(selected_ids) - set(definitions))
     if unknown:
@@ -475,13 +453,15 @@ def make_plan(
         fingerprint, inputs = execution_fingerprint(
             definition,
             settings,
-            catalog,
             effective_environment,
             toolchain,
             input_digest(common_inputs + definition.get("inputs", [])),
             repository_revisions(common_inputs + definition.get("inputs", [])),
         )
-        attribution = list(attributions.get(identity, []))
+        attribution = [
+            {"suiteId": item, "probeIds": [], "assertionIds": []}
+            for item in definition.get("claimIds", [])
+        ]
         attribution.extend(
             {"suiteId": item, "probeIds": [], "assertionIds": []}
             for item in (extra_attributions or [])
@@ -573,7 +553,7 @@ def run_plan(
             exit_code = 0
         else:
             print(
-                f"==> proof execution {', '.join(item['executionIds'])}: "
+                f"==> shared execution {', '.join(item['executionIds'])}: "
                 f"{' '.join(item['command'])}",
                 flush=True,
             )
@@ -614,7 +594,7 @@ def run_plan(
 
 
 def record_job_event(report: dict[str, Any]) -> None:
-    event_log = os.environ.get("ASHA_PROOF_EXECUTION_EVENT_LOG")
+    event_log = os.environ.get("ASHA_EXECUTION_EVENT_LOG")
     if not event_log:
         return
     path = pathlib.Path(event_log)
@@ -662,7 +642,7 @@ def main() -> int:
             return 0
         exit_code, report = run_plan(plan)
     except ExecutionError as error:
-        print(f"proof execution: {error}", file=sys.stderr)
+        print(f"shared execution: {error}", file=sys.stderr)
         return 1
     CACHE_ROOT.mkdir(parents=True, exist_ok=True)
     report_path = CACHE_ROOT / "latest-report.json"
@@ -670,7 +650,7 @@ def main() -> int:
     if exit_code == 0:
         summary = report["summary"]
         print(
-            f"Real proof execution: OK ({summary['uniqueExecutionCount']} unique, "
+            f"Shared execution: OK ({summary['uniqueExecutionCount']} unique, "
             f"{summary['repeatedExecutionCount']} grouped repeats, "
             f"{summary['receiptReuseCount']} receipt reuses, "
             f"report {report_path.relative_to(ROOT)})"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Negative and attribution tests for proof identity scheduling."""
+"""Negative and attribution tests for shared gate execution."""
 
 from __future__ import annotations
 
@@ -13,10 +13,20 @@ import unittest
 import execution
 
 
-class ProofExecutionTests(unittest.TestCase):
+class SharedExecutionTests(unittest.TestCase):
     def test_execution_identity_collision_is_rejected(self) -> None:
         with self.assertRaisesRegex(execution.ExecutionError, "identity collision"):
-            execution.definition_index([{"id": "same"}, {"id": "same"}])
+            execution.definition_index([
+                {"id": "same", "artifactId": "receipt.one"},
+                {"id": "same", "artifactId": "receipt.two"},
+            ])
+
+    def test_execution_artifact_identity_collision_is_rejected(self) -> None:
+        with self.assertRaisesRegex(execution.ExecutionError, "artifact identity collision"):
+            execution.definition_index([
+                {"id": "one", "artifactId": "receipt.same"},
+                {"id": "two", "artifactId": "receipt.same"},
+            ])
 
     def test_stale_cache_receipt_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -31,27 +41,24 @@ class ProofExecutionTests(unittest.TestCase):
             )
             self.assertFalse(execution.cache_valid(paths, "sha256:current"))
 
-    def test_missing_provider_is_rejected(self) -> None:
-        catalog = {"families": {"providers": [{"id": "known"}]}}
-        with self.assertRaisesRegex(execution.ExecutionError, "missing provider"):
-            execution.provider_digest(catalog, ["unknown"])
+    def test_invalid_provider_identity_is_rejected(self) -> None:
+        with self.assertRaisesRegex(execution.ExecutionError, "provider identities"):
+            execution.provider_digest([""])
 
     def test_divergent_environment_changes_fingerprint(self) -> None:
-        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": []}
+        definition = {"id": "execution", "command": ["cargo", "test"], "providerIds": []}
         settings = {"environmentKeys": ["CI"], "environmentPrefixes": []}
-        catalog = {"families": {"providers": []}}
         first, _ = execution.execution_fingerprint(
-            definition, settings, catalog, {"CI": "first"}, {"cargo": "same"}, "sha256:inputs"
+            definition, settings, {"CI": "first"}, {"cargo": "same"}, "sha256:inputs"
         )
         second, _ = execution.execution_fingerprint(
-            definition, settings, catalog, {"CI": "second"}, {"cargo": "same"}, "sha256:inputs"
+            definition, settings, {"CI": "second"}, {"cargo": "same"}, "sha256:inputs"
         )
         self.assertNotEqual(first, second)
 
     def test_reviewed_build_environment_changes_fingerprint(self) -> None:
-        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": []}
+        definition = {"id": "execution", "command": ["cargo", "test"], "providerIds": []}
         settings = execution.load_json(execution.DEFINITIONS)
-        catalog = {"families": {"providers": []}}
         baseline_environment = {
             "CC": "gcc",
             "CFLAGS": "-O1",
@@ -66,7 +73,6 @@ class ProofExecutionTests(unittest.TestCase):
         baseline, inputs = execution.execution_fingerprint(
             definition,
             settings,
-            catalog,
             baseline_environment,
             {"cargo": "same"},
             "sha256:inputs",
@@ -89,7 +95,6 @@ class ProofExecutionTests(unittest.TestCase):
             changed, _ = execution.execution_fingerprint(
                 definition,
                 settings,
-                catalog,
                 changed_environment,
                 {"cargo": "same"},
                 "sha256:inputs",
@@ -211,24 +216,22 @@ class ProofExecutionTests(unittest.TestCase):
             second = execution.toolchain_digest(command, environment)
             self.assertNotEqual(first["npm-configuration"], second["npm-configuration"])
 
-    def test_command_input_toolchain_and_provider_changes_invalidate_fingerprint(self) -> None:
-        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": ["provider"]}
+    def test_command_input_toolchain_and_provider_identity_changes_invalidate_fingerprint(self) -> None:
+        definition = {"id": "execution", "command": ["cargo", "test"], "providerIds": ["provider"]}
         settings = {"environmentKeys": [], "environmentPrefixes": []}
-        catalog = {"families": {"providers": [{"id": "provider", "sourceHash": "sha256:first"}]}}
         baseline, _ = execution.execution_fingerprint(
-            definition, settings, catalog, {}, {"cargo": "first"}, "sha256:fixture-and-generated-contract"
+            definition, settings, {}, {"cargo": "first"}, "sha256:fixture-and-generated-contract"
         )
         mutations = [
-            ({**definition, "command": ["cargo", "test", "--lib"]}, catalog, {"cargo": "first"}, "sha256:fixture-and-generated-contract"),
-            (definition, catalog, {"cargo": "first"}, "sha256:changed-fixture-or-generated-contract"),
-            (definition, catalog, {"cargo": "second"}, "sha256:fixture-and-generated-contract"),
-            (definition, {"families": {"providers": [{"id": "provider", "sourceHash": "sha256:second"}]}}, {"cargo": "first"}, "sha256:fixture-and-generated-contract"),
+            ({**definition, "command": ["cargo", "test", "--lib"]}, {"cargo": "first"}, "sha256:fixture-and-generated-contract"),
+            (definition, {"cargo": "first"}, "sha256:changed-fixture-or-generated-contract"),
+            (definition, {"cargo": "second"}, "sha256:fixture-and-generated-contract"),
+            ({**definition, "providerIds": ["provider.changed"]}, {"cargo": "first"}, "sha256:fixture-and-generated-contract"),
         ]
-        for changed_definition, changed_catalog, changed_toolchain, changed_inputs in mutations:
+        for changed_definition, changed_toolchain, changed_inputs in mutations:
             fingerprint, _ = execution.execution_fingerprint(
                 changed_definition,
                 settings,
-                changed_catalog,
                 {},
                 changed_toolchain,
                 changed_inputs,
@@ -236,13 +239,11 @@ class ProofExecutionTests(unittest.TestCase):
             self.assertNotEqual(baseline, fingerprint)
 
     def test_repository_revision_changes_invalidate_fingerprint(self) -> None:
-        definition = {"id": "proof", "command": ["cargo", "test"], "providerIds": []}
+        definition = {"id": "execution", "command": ["cargo", "test"], "providerIds": []}
         settings = {"environmentKeys": [], "environmentPrefixes": []}
-        catalog = {"families": {"providers": []}}
         baseline, inputs = execution.execution_fingerprint(
             definition,
             settings,
-            catalog,
             {},
             {"cargo": "same"},
             "sha256:inputs",
@@ -251,7 +252,6 @@ class ProofExecutionTests(unittest.TestCase):
         changed, _ = execution.execution_fingerprint(
             definition,
             settings,
-            catalog,
             {},
             {"cargo": "same"},
             "sha256:inputs",
@@ -265,19 +265,19 @@ class ProofExecutionTests(unittest.TestCase):
             "fingerprint": "sha256:same",
             "fingerprintInputs": {"normalizedCommand": ["cargo", "test"]},
             "command": ["cargo", "test"],
-            "executionIds": ["proof.one"],
+            "executionIds": ["execution.one"],
             "artifactIds": ["evidence.one"],
             "attributions": [{"suiteId": "suite.one", "probeIds": ["probe.one"], "assertionIds": ["assertion.one"]}],
         }
         other = {
             **shared,
-            "executionIds": ["proof.two"],
+            "executionIds": ["execution.two"],
             "artifactIds": ["evidence.two"],
             "attributions": [{"suiteId": "suite.two", "probeIds": ["probe.two"], "assertionIds": ["assertion.two"]}],
         }
         grouped = execution.group_equivalent([shared, other])
         self.assertEqual(len(grouped), 1)
-        self.assertEqual(grouped[0]["executionIds"], ["proof.one", "proof.two"])
+        self.assertEqual(grouped[0]["executionIds"], ["execution.one", "execution.two"])
         self.assertEqual(
             [item["suiteId"] for item in grouped[0]["attributions"]],
             ["suite.one", "suite.two"],
@@ -285,8 +285,8 @@ class ProofExecutionTests(unittest.TestCase):
 
     def test_execution_report_counts_grouping_and_receipt_reuse(self) -> None:
         plan = [
-            {"executionIds": ["proof.one", "proof.two"]},
-            {"executionIds": ["proof.three"]},
+            {"executionIds": ["execution.one", "execution.two"]},
+            {"executionIds": ["execution.three"]},
         ]
         results = [
             {"cacheHit": False, "durationMs": 25},
@@ -311,13 +311,13 @@ class ProofExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=smoke_root) as temporary:
             root = pathlib.Path(temporary)
             event_log = root / "events.jsonl"
-            previous = os.environ.get("ASHA_PROOF_EXECUTION_EVENT_LOG")
-            os.environ["ASHA_PROOF_EXECUTION_EVENT_LOG"] = str(event_log)
+            previous = os.environ.get("ASHA_EXECUTION_EVENT_LOG")
+            os.environ["ASHA_EXECUTION_EVENT_LOG"] = str(event_log)
             plan = [{
                 "fingerprint": "sha256:shared-command",
                 "fingerprintInputs": {"normalizedCommand": ["bash", "-c", "exit 0"]},
                 "command": ["bash", "-c", "exit 0"],
-                "executionIds": ["proof.shared"],
+                "executionIds": ["execution.shared"],
                 "artifactIds": ["evidence.shared"],
                 "attributions": [{
                     "suiteId": "suite.first",
@@ -335,9 +335,9 @@ class ProofExecutionTests(unittest.TestCase):
                 second_code, second = execution.run_plan(plan, root / "cache")
             finally:
                 if previous is None:
-                    os.environ.pop("ASHA_PROOF_EXECUTION_EVENT_LOG", None)
+                    os.environ.pop("ASHA_EXECUTION_EVENT_LOG", None)
                 else:
-                    os.environ["ASHA_PROOF_EXECUTION_EVENT_LOG"] = previous
+                    os.environ["ASHA_EXECUTION_EVENT_LOG"] = previous
             self.assertEqual((first_code, second_code), (0, 0))
             self.assertFalse(first["executions"][0]["cacheHit"])
             self.assertTrue(second["executions"][0]["cacheHit"])

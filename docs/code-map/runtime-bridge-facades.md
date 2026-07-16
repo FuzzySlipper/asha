@@ -78,7 +78,7 @@ campaign.
 - Do not add generic method-name RPC or arbitrary JSON dispatch to make a
   feature reachable.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-bridge.sh](../../harness/ci/check-bridge.sh)
 - [check-wasm-replay.sh](../../harness/ci/check-wasm-replay.sh)

@@ -10,7 +10,7 @@ moving downstream planning truth into this engine repository.
 - Engine-side public package policy for downstream roles.
 - Repo-family orientation and compatibility expectations.
 - The distinction between human-facing demo, editor/product tooling, and
-  synthetic conformance consumer.
+  synthetic public-contract consumer.
 
 ## Does Not Own
 
@@ -33,8 +33,8 @@ moving downstream planning truth into this engine repository.
   engine render/runtime facades.
 - `asha-studio`: editor/product tooling; uses approved package roots for
   authoring and live inspection.
-- `asha-testing`: synthetic proof/conformance consumer; may consume testing
-  surfaces approved by the public-surface manifest.
+- `asha-testing`: focused synthetic public-surface regressions; may consume
+  testing surfaces approved by the public-surface manifest.
 - Public package tarballs and their generated manifest are emitted under
   `ts/artifacts/public-packages/`; that directory is a generated local output,
   not a checked-in Atlas link target.
@@ -53,7 +53,7 @@ moving downstream planning truth into this engine repository.
 - `asha-demo` must not own upstream engine machinery such as collision,
   pathfinding, RuntimeSession internals, or renderer backend internals.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [harness/public-surface/check-public-boundary.py](../../harness/public-surface/check-public-boundary.py)
 - [harness/fixtures/smoke](../../harness/fixtures/smoke)
@@ -64,7 +64,7 @@ is local output and is intentionally not a checked-in Atlas link target.
 
 ## Common Agent Mistakes
 
-- Treating `asha-testing` proof harness work as demo product work.
+- Treating `asha-testing` synthetic checks as Demo or Studio product acceptance.
 - Solving a missing public engine API by importing private engine files.
 - Updating engine docs as if they were current downstream task state.
 

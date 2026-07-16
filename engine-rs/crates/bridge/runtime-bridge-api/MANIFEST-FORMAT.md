@@ -151,15 +151,16 @@ To add one operation without creating parallel inventories:
 3. Run `python3 harness/codegen/bridge-emit.py --write`; inspect and commit every generated diff.
 4. Implement the handwritten Rust semantic body and `#[napi]` export, its exact
    `NativeAddonBindings` signature, and the runtime adapter. Do not edit generated files.
-5. Add a real named conformance probe that calls the export and asserts authority-visible
-   behavior. Stable operations cannot stop at generated-only or mock-only evidence.
-6. Run `bash harness/ci/check-bridge.sh` and
-   `python3 harness/conformance/validate.py --write-report`, then the focused Rust and TypeScript
+5. Add a named provider regression that calls the export and asserts
+   authority-visible accepted/rejected behavior or readback. Stable operations
+   cannot stop at generated-only or shape-only coverage.
+6. Run `bash harness/ci/check-bridge.sh`, then the focused Rust and TypeScript
    tests for the owning capability.
 
 The checks reject a forgotten capability assignment, duplicate operation, stale generated file,
-signature mismatch, absent native export, or stable operation without a real probe before it can
-be advertised downstream.
+signature mismatch, absent native export, or missing generated-border coverage
+before it can be advertised downstream. Behavioral regressions remain owned by
+the provider implementation rather than a repository-wide delivery catalog.
 
 ## 7. Mechanical guardrails
 

@@ -48,10 +48,11 @@ that semantic surface. It retains concrete adapter construction, native/referenc
 transport selection, launchers, render decode, reference helpers, and generated
 bridge operation conformance.
 
-The cross-surface consumer proof for #4053 lives in
-`ts/packages/smoke/src/public-consumer-compat.test.ts`. It intentionally imports
-only package roots and is the current evidence that `asha-demo` can consume the
-RuntimeSession readout/HUD surfaces without private ASHA paths.
+The package-root boundary regression originating in #4053 lives in
+`ts/packages/smoke/src/public-package-boundary.test.ts`. It imports only package
+roots and checks that the RuntimeSession readout/HUD surfaces compose without
+private ASHA paths. It is an engine boundary guardrail, not Demo delivery
+acceptance.
 
 ## Current API
 
@@ -167,10 +168,10 @@ The current reference helper is `createMockRuntimeSession`, a facade over the ex
 
 Evidence lanes:
 
-- `pnpm --filter @asha/runtime-bridge test:evidence:reference` proves the reference RuntimeSession fixture lane remains explicitly non-product authority.
-- `pnpm --filter @asha/runtime-bridge test:evidence:rust` proves the public Rust-backed facade reports backend provenance for collision, combat, lifecycle, encounter, and restart.
-- `pnpm --filter @asha/smoke test:evidence:reference` and `pnpm --filter @asha/smoke test:evidence:authority` split smoke evidence into reference and authority lanes.
-- `pnpm --filter @asha/smoke test:voxel-annotation-proof` proves root-only consumer use of voxel annotation DTOs and RuntimeSession facade verbs when the native Rust bridge is built; without native bridge support it skips with an explicit native-unavailable reason.
+- `pnpm --filter @asha/runtime-bridge test:reference-provider` keeps the reference RuntimeSession fixture lane explicitly non-product authority.
+- `pnpm --filter @asha/runtime-bridge test:rust-provider` checks backend provenance for collision, combat, lifecycle, encounter, and restart through the public Rust-backed facade.
+- `pnpm --filter @asha/smoke test:reference-provider` and `pnpm --filter @asha/smoke test:authority-provider` keep reference and authority provider regressions distinct.
+- `pnpm --filter @asha/smoke test:voxel-annotation-provider` checks root-only voxel annotation DTOs and RuntimeSession verbs when the native Rust bridge is built; without native bridge support it skips with an explicit native-unavailable reason.
 
 ## Runtime Vocabulary
 

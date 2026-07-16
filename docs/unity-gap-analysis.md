@@ -548,7 +548,7 @@ ownership: every new game meaning would still require an engine edit.
   and verification replay;
 - public static SDK, conformance kit, runtime host, browser transport, and
   bounded reaction/decision evidence;
-- real consumer proofs in `asha-demo` and `asha-rulebench`.
+- real consumer behavior in `asha-demo` and `asha-rulebench`.
 
 This supports the gameplay problems the old section identified without
 polling or a central enum. A machine-completion owner can publish a namespaced

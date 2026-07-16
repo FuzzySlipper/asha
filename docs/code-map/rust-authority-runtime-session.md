@@ -47,7 +47,7 @@ projections.
 - RuntimeSession must not expose raw stores, ad hoc JSON tunnels, or native
   transport handles as consumer API.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-rust.sh](../../harness/ci/check-rust.sh)
 - [check-bridge.sh](../../harness/ci/check-bridge.sh)

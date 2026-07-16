@@ -99,7 +99,7 @@ Missing anchors, font/icon loads, byte-hash drift, unavailable hosts, and local
 host failures become billboard-domain diagnostics. Scene and audio application
 continue independently after the shared frame itself passes validation.
 
-## Public consumer proof
+## Downstream visible acceptance
 
 `asha-demo` imports only `@asha/renderer-host` and other public roots. Its live
 Chromium test fires one accepted game-rule action, observes two native
@@ -108,9 +108,9 @@ enemy health text is the current authority value, and confirms restart removes
 the disposable elements. The bounded readout reports active/cull/resource
 counts and typed diagnostics.
 
-The consumer need is `asha-demo.billboard-projection`; joined reachability ties
-it to the generated G1 border, `read_projection_frame`, the public host, and the
-real downstream delivery.
+Demo owns this visible acceptance. Engine regressions cover the generated G1
+border, `read_projection_frame`, and the public host without treating those
+checks as a product-delivery verdict.
 
 ## Wave 1 limits
 
@@ -119,4 +119,3 @@ burst helpers, automatic batching/instancing, a localization catalog service,
 and engine-owned occlusion queries are deferred. Consumers may inject their
 renderer-owned world projection/occlusion adapter, but may not use billboard
 events as an authority path.
-

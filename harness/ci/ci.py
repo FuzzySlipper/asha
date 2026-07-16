@@ -43,19 +43,7 @@ GATES: dict[str, dict[str, Any]] = {
     },
     "identities": {
         "command": ["harness/ci/check-harness-identities.sh"],
-        "claims": ["stable public, provider, execution, and evidence identities"],
-    },
-    "consumer-needs": {
-        "command": ["harness/ci/check-consumer-needs.sh"],
-        "claims": ["consumer requirement declarations and semantic delivery"],
-    },
-    "reachability": {
-        "command": ["harness/ci/check-reachability.sh"],
-        "claims": ["public capability reachability"],
-    },
-    "conformance": {
-        "command": ["harness/ci/check-conformance.sh"],
-        "claims": ["structural and real-execution conformance attribution"],
+        "claims": ["shared execution fingerprints, receipts, and artifact identity"],
     },
     "bridge": {
         "command": ["harness/ci/check-bridge.sh"],
@@ -63,7 +51,7 @@ GATES: dict[str, dict[str, Any]] = {
     },
     "gameplay-conformance": {
         "command": ["harness/ci/check-gameplay-module-conformance.sh"],
-        "claims": ["public downstream gameplay conformance"],
+        "claims": ["engine-owned gameplay provider behavior through public Rust seams"],
     },
     "gameplay-sdk": {
         "command": ["harness/ci/check-gameplay-module-sdk.sh"],
@@ -91,9 +79,6 @@ FULL_ORDER = [
     "no-den-coupling",
     "vocabulary",
     "identities",
-    "consumer-needs",
-    "reachability",
-    "conformance",
     "bridge",
     "gameplay-conformance",
     "gameplay-sdk",
@@ -110,9 +95,6 @@ FAST_ORDER = [
     "rust",
     "typescript",
     "identities",
-    "consumer-needs",
-    "reachability",
-    "conformance",
     "bridge",
     "gameplay-conformance",
     "gameplay-sdk",
@@ -144,9 +126,6 @@ def classify_path(path: str) -> set[str]:
         categories.add("harness-policy")
     if normalized.startswith((
         "harness/identity/",
-        "harness/conformance/",
-        "harness/consumer-needs/",
-        "harness/reachability/",
         "harness/public-surface/",
     )):
         categories.add("harness-contract")
@@ -187,9 +166,9 @@ def select_fast(changed_files: list[str]) -> tuple[list[str], set[str], bool]:
     if "contract" in categories:
         selected.update(("contracts", "rust", "typescript", "bridge"))
     if "harness-policy" in categories:
-        selected.update(("identities", "consumer-needs", "reachability", "conformance"))
+        selected.add("identities")
     if "harness-contract" in categories:
-        selected.update(("identities", "consumer-needs", "reachability", "conformance"))
+        selected.add("identities")
     if "bridge" in categories:
         selected.add("bridge")
     if "native" in categories:
@@ -272,10 +251,10 @@ def plan_document(tier: str, changed_files: list[str]) -> dict[str, Any]:
 
 def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | None) -> int:
     run_started = time.monotonic()
-    proof_event_log = REPORT_ROOT / "proof-execution-events.jsonl"
-    proof_event_log.parent.mkdir(parents=True, exist_ok=True)
-    proof_event_log.unlink(missing_ok=True)
-    os.environ["ASHA_PROOF_EXECUTION_EVENT_LOG"] = str(proof_event_log)
+    execution_event_log = REPORT_ROOT / "execution-events.jsonl"
+    execution_event_log.parent.mkdir(parents=True, exist_ok=True)
+    execution_event_log.unlink(missing_ok=True)
+    os.environ["ASHA_EXECUTION_EVENT_LOG"] = str(execution_event_log)
     results = []
     for gate in plan["gates"]:
         command = gate["normalizedCommand"]
@@ -292,34 +271,34 @@ def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | N
         if completed.returncode != 0:
             break
     fingerprints = [item["commandFingerprint"] for item in results]
-    proof_events = []
-    if proof_event_log.is_file():
-        proof_events = [
+    execution_events = []
+    if execution_event_log.is_file():
+        execution_events = [
             json.loads(line)
-            for line in proof_event_log.read_text(encoding="utf-8").splitlines()
+            for line in execution_event_log.read_text(encoding="utf-8").splitlines()
             if line
         ]
-    observed_proof_executions = [
+    observed_shared_executions = [
         execution
-        for event in proof_events
+        for event in execution_events
         for execution in event.get("executions", [])
     ]
     actual_by_fingerprint: dict[str, int] = {}
-    for execution in observed_proof_executions:
+    for execution in observed_shared_executions:
         if not execution.get("cacheHit"):
             fingerprint = execution["fingerprint"]
             actual_by_fingerprint[fingerprint] = actual_by_fingerprint.get(fingerprint, 0) + 1
     duplicate_actual_fingerprints = sorted(
         fingerprint for fingerprint, count in actual_by_fingerprint.items() if count > 1
     )
-    proof_fingerprints = [item["fingerprint"] for item in observed_proof_executions]
-    proof_summary = {
-        "schedulerCallCount": len(proof_events),
-        "observedFingerprintCount": len(proof_fingerprints),
-        "uniqueFingerprintCount": len(set(proof_fingerprints)),
-        "repeatedFingerprintRequestCount": len(proof_fingerprints) - len(set(proof_fingerprints)),
-        "actualExecutionCount": sum(not item.get("cacheHit") for item in observed_proof_executions),
-        "receiptReuseCount": sum(bool(item.get("cacheHit")) for item in observed_proof_executions),
+    execution_fingerprints = [item["fingerprint"] for item in observed_shared_executions]
+    execution_summary = {
+        "schedulerCallCount": len(execution_events),
+        "observedFingerprintCount": len(execution_fingerprints),
+        "uniqueFingerprintCount": len(set(execution_fingerprints)),
+        "repeatedFingerprintRequestCount": len(execution_fingerprints) - len(set(execution_fingerprints)),
+        "actualExecutionCount": sum(not item.get("cacheHit") for item in observed_shared_executions),
+        "receiptReuseCount": sum(bool(item.get("cacheHit")) for item in observed_shared_executions),
         "duplicateActualFingerprints": duplicate_actual_fingerprints,
     }
     wall_time_ms = round((time.monotonic() - run_started) * 1000)
@@ -337,7 +316,7 @@ def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | N
             "repeatedCommandCount": len(fingerprints) - len(set(fingerprints)),
             "runnerWallTimeMs": wall_time_ms,
             "runnerMinutes": round(wall_time_ms / 60_000, 3),
-            "proofExecutions": proof_summary,
+            "sharedExecutions": execution_summary,
         },
         "results": results,
     }

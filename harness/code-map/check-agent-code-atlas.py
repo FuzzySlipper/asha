@@ -36,7 +36,7 @@ REQUIRED_PAGE_SECTIONS = [
     "Primary Paths",
     "Public Downstream Surfaces",
     "Private Or Forbidden Paths",
-    "Proof Gates And Goldens",
+    "Acceptance Gates And Goldens",
     "Common Agent Mistakes",
     "Follow-up Routing",
 ]

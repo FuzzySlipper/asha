@@ -90,14 +90,14 @@ border; this task does not force wholesale package migration.
 may compare the authority outcome and projector diagnostics, but it does not
 record or restore every particle position.
 
-## Public consumer proof
+## Downstream visible acceptance
 
 `asha-demo` visibly triggers twelve sparks from an accepted primary-fire
 interaction. The live Chromium check observes the native particle operation,
 its gameplay-event origin, the aggregate host readout, and a visible downstream
-particle element. Joined consumer-needs, reachability, and semantic-conformance
-metadata bind that proof to `read_projection_frame`, the generated contract,
-and the public renderer-host root.
+particle element. Demo owns that visible result. Engine regressions cover
+`read_projection_frame`, the generated contract, and the public renderer-host
+root without duplicating the product verdict.
 
 ## Wave 1 limits
 

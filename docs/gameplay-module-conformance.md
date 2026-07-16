@@ -1,9 +1,9 @@
 # Gameplay-module conformance
 
-The public conformance kit lets a downstream agent prove its statically linked
-Rust gameplay module without requesting a new engine-only test harness. It is a
-support surface for real gameplay proofs, not a replacement for a playable
-consumer slice.
+The public conformance kit lets a downstream agent validate its statically
+linked Rust gameplay module without requesting a new engine-only harness. It is
+a provider-development surface, not a replacement for playable consumer
+acceptance.
 
 ## Public shape
 
@@ -19,8 +19,8 @@ The caller supplies:
 
 - committed ProjectBundle-shaped JSON containing Session identity, selected
   consumer-need ids, and the generated `GameplayModuleBindingRegistry`;
-- the real role-scoped consumer-needs manifest and compile-time reachable public
-  surface markers for the linked SDK/conformance crates;
+- fixture-local provider requirements and compile-time reachable public surface
+  markers for the linked SDK/conformance crates;
 - a function that builds the real `GameplayStaticComposition`; and
 - one or more typed root event envelopes.
 
@@ -28,7 +28,7 @@ The runner does not load code dynamically. The downstream provider, behavior,
 codecs, state/view adapters, and configuration metadata are ordinary compiled
 Rust values.
 
-## What one run proves
+## What one run validates
 
 `run_gameplay_module_conformance` performs the following sequence:
 
@@ -59,9 +59,9 @@ reaction frames, checks, stable gap codes, and a compact human trace.
 
 ## Fail-closed behavior
 
-The committed external fixture proves that provider drift and malformed
+The committed engine provider fixture demonstrates that provider drift and malformed
 configuration reject before any initial or final state hash exists. It also
-proves a declared module that receives no real invocation cannot pass. The
+ensures a declared module that receives no real invocation cannot pass. The
 broader gameplay-fabric suites retain stable-code negatives for missing codecs,
 providers and owners, foreign namespaces, cycles, undeclared events/reads/
 queries/proposals, stale revisions, and budget exhaustion.
@@ -72,8 +72,7 @@ typed gap such as `consumerNeedMissingEvent`, `consumerNeedMissingField`,
 `consumerNeedMissingSelector`, `consumerNeedMissingProposal`,
 `consumerNeedMissingBinding`, `consumerNeedUnreachableSurface`, or
 `consumerNeedUndelivered`. Changing a field, selector, quota, provider, binding
-shape, or delivery requirement therefore fails the real conformance run as well
-as the repository inventory gate.
+shape, or delivery requirement therefore fails the provider validation run.
 
 ## Commands
 
@@ -91,7 +90,7 @@ For the full public kit, including negative fixtures:
 ./harness/ci/check-gameplay-module-conformance.sh
 ```
 
-The existing `harness/conformance/probe-results.json` is the repository-wide
-machine-readable inventory. Per-module runners can serialize their returned
-`GameplayModuleConformanceReport` with `to_pretty_json()` into artifacts owned by
-`asha-testing`, `asha-demo`, or another approved consumer.
+This gate is an engine-owned provider regression. Per-module runners may
+serialize `GameplayModuleConformanceReport` as a local diagnostic, but that
+report does not certify Demo or Studio delivery. Synthetic cross-repository
+claims belong in `asha-testing`; visible gameplay remains owned by Demo.

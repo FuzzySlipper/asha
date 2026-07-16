@@ -47,7 +47,7 @@ renderer packages display those projections without owning authority.
   damage, command, or accepted-state receipt.
 - Rust render crates must not render directly or own UI/product decisions.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-render-goldens.sh](../../harness/ci/check-render-goldens.sh)
 - [harness/fixtures/render-diffs](../../harness/fixtures/render-diffs)

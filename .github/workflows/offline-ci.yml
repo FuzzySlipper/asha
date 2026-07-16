@@ -71,7 +71,7 @@ jobs:
           name: asha-fast-ci-report
           path: |
             harness/smoke-out/ci/
-            harness/smoke-out/proof-execution/
+            harness/smoke-out/execution-receipts/
           if-no-files-found: ignore
 
   full-safeguards:
@@ -121,6 +121,6 @@ jobs:
           name: asha-full-ci-report
           path: |
             harness/smoke-out/ci/
-            harness/smoke-out/proof-execution/
+            harness/smoke-out/execution-receipts/
             harness/smoke-out/gameplay-runtime-host/
           if-no-files-found: ignore

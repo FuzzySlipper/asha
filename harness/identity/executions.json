@@ -80,80 +80,83 @@
   "commonInputs": [
     "engine-rs/Cargo.lock",
     "engine-rs/Cargo.toml",
-    "harness/identity/catalog.json",
+    "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
+    "harness/public-surface",
     "ts/packages/contracts/src/generated",
     "ts/pnpm-lock.yaml"
   ],
   "executions": [
     {
-      "id": "gate.asha-demo-input-live",
-      "artifactId": "evidence.execution.asha-demo-input-live",
-      "command": ["harness/ci/check-asha-demo-input-live.sh"],
-      "inputs": ["harness/ci/check-asha-demo-input-live.sh", "../asha-demo/tests/live-ui.spec.mjs"],
-      "providerIds": ["@asha/runtime-session"]
-    },
-    {
       "id": "gate.composed-native-provider",
       "artifactId": "evidence.execution.composed-native-provider",
       "command": ["harness/ci/check-composed-native-provider.sh"],
       "inputs": ["engine-rs/crates/bridge", "harness/ci/check-composed-native-provider.sh", "harness/fixtures/composed-native-provider", "harness/fixtures/gameplay-module-sdk", "public-rust/native-runtime-provider", "public-rust/runtime-session-composition"],
-      "providerIds": ["asha-native-runtime-provider"]
+      "providerIds": ["asha-native-runtime-provider"],
+      "claimIds": ["provider.composed-native.behavior"]
     },
     {
       "id": "gate.gameplay-runtime-host",
       "artifactId": "evidence.execution.gameplay-runtime-host",
       "command": ["harness/ci/check-gameplay-runtime-host.sh"],
       "inputs": ["engine-rs/crates", "harness/ci/check-gameplay-runtime-host.sh", "harness/fixtures/gameplay-module-sdk", "public-rust"],
-      "providerIds": ["asha-gameplay-runtime-host"]
+      "providerIds": ["asha-gameplay-runtime-host"],
+      "claimIds": ["provider.gameplay-runtime-host.lifecycle"]
     },
     {
       "id": "gate.trigger-volumes",
       "artifactId": "evidence.execution.trigger-volumes",
       "command": ["harness/ci/check-trigger-volumes.sh"],
       "inputs": ["engine-rs/crates", "harness/ci/check-trigger-volumes.sh", "harness/fixtures/gameplay-module-sdk", "public-rust"],
-      "providerIds": ["provider.fixture-pulse"]
+      "providerIds": ["provider.fixture-pulse"],
+      "claimIds": ["provider.trigger-volume.behavior"]
     },
     {
       "id": "rust.downstream-gameplay-module",
       "artifactId": "evidence.execution.downstream-gameplay-module",
       "command": ["cargo", "test", "--locked", "--offline", "--manifest-path", "harness/fixtures/gameplay-module-sdk/downstream-module/Cargo.toml", "--", "--skip", "public_static_runtime_provider_lifecycle_releases_each_isolated_cell"],
       "inputs": ["engine-rs/crates", "harness/fixtures/gameplay-module-sdk", "public-rust"],
-      "providerIds": ["provider.fixture-pulse"]
+      "providerIds": ["provider.fixture-pulse"],
+      "claimIds": ["provider.gameplay-module.behavior"]
     },
     {
       "id": "rust.workspace.tests",
       "artifactId": "evidence.execution.rust-workspace-tests",
       "command": ["cargo", "test", "--locked", "--offline", "--manifest-path", "engine-rs/Cargo.toml", "--workspace", "--exclude", "gameplay-runtime-host"],
       "inputs": ["engine-rs/crates"],
-      "providerIds": ["@asha/runtime-bridge", "asha-gameplay-module-sdk", "provider.fixture-pulse"]
+      "providerIds": ["@asha/runtime-bridge", "asha-gameplay-module-sdk", "provider.fixture-pulse"],
+      "claimIds": ["workspace.rust.behavior"]
     },
     {
       "id": "rust.native-bridge.lib",
       "artifactId": "evidence.execution.native-bridge-lib",
       "command": ["cargo", "test", "--locked", "--manifest-path", "engine-rs/crates/bridge/native-bridge/Cargo.toml", "--lib"],
       "inputs": ["engine-rs/crates/bridge", "engine-rs/crates/protocol", "engine-rs/crates/state"],
-      "providerIds": ["@asha/native-bridge"]
+      "providerIds": ["@asha/native-bridge"],
+      "claimIds": ["provider.native-bridge.behavior"]
     },
     {
       "id": "ts.workspace.tests",
       "artifactId": "evidence.execution.ts-workspace-tests",
       "command": ["pnpm", "--dir", "ts", "-r", "test"],
       "inputs": ["ts/package.json", "ts/packages"],
-      "providerIds": ["@asha/app", "@asha/browser-host", "@asha/game-workspace", "@asha/renderer-host", "@asha/runtime-session", "@asha/smoke"]
+      "providerIds": ["@asha/app", "@asha/browser-host", "@asha/game-workspace", "@asha/renderer-host", "@asha/runtime-session", "@asha/smoke"],
+      "claimIds": ["workspace.typescript.behavior"]
     },
     {
       "id": "ts.native-runtime-bridge.tests",
       "artifactId": "evidence.execution.native-runtime-bridge-tests",
       "command": ["pnpm", "--dir", "ts", "--filter", "@asha/runtime-bridge", "test"],
       "inputs": ["ts/packages/native-bridge", "ts/packages/runtime-bridge"],
-      "providerIds": ["@asha/native-bridge", "@asha/runtime-bridge"]
+      "providerIds": ["@asha/native-bridge", "@asha/runtime-bridge"],
+      "claimIds": ["provider.runtime-bridge.native-behavior"]
     },
     {
       "id": "ts.native-browser-host.tests",
       "artifactId": "evidence.execution.native-browser-host-tests",
       "command": ["pnpm", "--dir", "ts", "--filter", "@asha/browser-host", "test"],
       "inputs": ["ts/packages/browser-host", "ts/packages/native-bridge", "ts/packages/runtime-bridge"],
-      "providerIds": ["@asha/browser-host", "@asha/native-bridge", "@asha/runtime-bridge"]
+      "providerIds": ["@asha/browser-host", "@asha/native-bridge", "@asha/runtime-bridge"],
+      "claimIds": ["provider.browser-host.native-lifecycle"]
     }
   ]
 }

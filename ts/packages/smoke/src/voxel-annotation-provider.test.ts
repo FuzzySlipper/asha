@@ -1,7 +1,3 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -22,13 +18,7 @@ import {
 } from '@asha/runtime-bridge';
 import type { RuntimeSessionFacade } from '@asha/runtime-session';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const proofPath = resolve(repoRoot, 'harness/smoke-out/voxel-annotation-consumer-proof.json');
 const TARGET_GRID = 2;
-
-function gitValue(args: readonly string[]): string {
-  return execFileSync('git', [...args], { cwd: repoRoot, encoding: 'utf8' }).trim();
-}
 
 function bootNativeSession(t: { skip: (reason?: string) => void }): RuntimeSessionFacade | null {
   let bridge: RuntimeBridge;
@@ -36,7 +26,7 @@ function bootNativeSession(t: { skip: (reason?: string) => void }): RuntimeSessi
     bridge = createNativeRuntimeBridge();
   } catch (error) {
     if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
-      t.skip('native addon not built; run harness/ci/check-native.sh for the voxel annotation proof');
+      t.skip('native addon not built; run harness/ci/check-native.sh for this provider regression');
       return null;
     }
     throw error;
@@ -44,10 +34,10 @@ function bootNativeSession(t: { skip: (reason?: string) => void }): RuntimeSessi
 
   const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
   session.initialize({
-    sessionId: 'runtime-session.voxel-annotation.consumer-proof',
+    sessionId: 'runtime-session.voxel-annotation.provider-regression',
     seed: 5278,
     project: {
-      gameId: 'asha-annotation-consumer-proof',
+      gameId: 'asha-provider-regression',
       workspaceId: 'workspace.local',
     },
     projectBundle: {
@@ -62,15 +52,15 @@ function bootNativeSession(t: { skip: (reason?: string) => void }): RuntimeSessi
 function createVoxelAsset(session: RuntimeSessionFacade): VoxelVolumeAsset {
   const registration = session.registerVoxelConversionMeshAsset({
     source: {
-      assetId: 'mesh/annotation-consumer-proof-quad',
+      assetId: 'mesh/annotation-provider-quad',
       assetKind: 'mesh',
       assetVersion: 1,
-      sourceHash: 'sha256:annotation-consumer-proof-quad',
+      sourceHash: 'sha256:annotation-provider-quad',
       meshPrimitive: 'default',
     },
     meshAsset: {
-      assetId: 'mesh/annotation-consumer-proof-quad',
-      sourcePath: 'assets/meshes/annotation-consumer-proof-quad.mesh.json',
+      assetId: 'mesh/annotation-provider-quad',
+      sourcePath: 'assets/meshes/annotation-provider-quad.mesh.json',
       positions: [[0, 0, 0], [2, 0, 0], [2, 1, 0], [0, 1, 0]],
       normals: [],
       indices: [0, 1, 2, 0, 2, 3],
@@ -128,7 +118,7 @@ function createVoxelAsset(session: RuntimeSessionFacade): VoxelVolumeAsset {
   const exported = session.exportVoxelVolumeAsset({
     grid: TARGET_GRID,
     volumeAssetId: 'voxel/generated',
-    targetAssetId: 'voxel-volume/annotation-consumer-proof',
+    targetAssetId: 'voxel-volume/annotation-provider-regression',
     label: 'Voxel annotation consumer proof',
     createdBy: '@asha/smoke',
     sourceTool: '@asha/runtime-bridge',
@@ -154,7 +144,7 @@ function firstRegionFromAsset(asset: VoxelVolumeAsset): {
     regionId: 'region/annotation-proof-room',
     label: 'Annotation proof room',
     kind: 'room',
-    tags: ['consumer-proof'],
+    tags: ['provider-regression'],
     parentRegionId: null,
     bounds: {
       min: run.start,
@@ -173,7 +163,7 @@ function annotationLayer(asset: VoxelVolumeAsset): {
   return {
     queryCell,
     layer: {
-      layerId: 'voxel-annotation/annotation-consumer-proof',
+      layerId: 'voxel-annotation/annotation-provider-regression',
       schemaVersion: 1,
       mediaType: 'application/vnd.asha.voxel-annotation+json;version=1',
       targetVoxelVolumeAssetId: asset.assetId,
@@ -182,8 +172,8 @@ function annotationLayer(asset: VoxelVolumeAsset): {
       regions: [region],
       provenance: [{
         kind: 'authored',
-        uri: 'asha://smoke/voxel-annotation-consumer-proof',
-        contentHash: 'fnv1a64:annotation-consumer-proof-source',
+        uri: 'asha://smoke/voxel-annotation-provider-regression',
+        contentHash: 'fnv1a64:annotation-provider-regression-source',
       }],
     },
   };
@@ -204,7 +194,7 @@ function validationRequest(
   };
 }
 
-void test('voxel annotation public consumer proof validates loads queries edits and exports', (t) => {
+void test('native provider validates, loads, queries, edits, and exports voxel annotations', (t) => {
   const session = bootNativeSession(t);
   if (session === null) return;
 
@@ -328,37 +318,10 @@ void test('voxel annotation public consumer proof validates loads queries edits 
   assert.equal(exported.canonicalJsonHash, edit.layerHashAfter);
   assert.match(exported.membershipDataHash ?? '', /^fnv1a64:/);
 
-  const proof = {
-    schemaVersion: 1,
-    project: 'asha',
-    consumer: '@asha/smoke',
-    publicImports: ['@asha/contracts', '@asha/runtime-bridge', '@asha/runtime-session'],
-    engineCommit: gitValue(['rev-parse', 'HEAD']),
-    engineRef: gitValue(['rev-parse', '--abbrev-ref', 'HEAD']),
-    targetAssetId: asset.assetId,
-    targetGrid: TARGET_GRID,
-    targetVoxelDataHash: asset.contentHashes.voxelData,
-    runtimeLayerId: load.runtimeLayerId,
-    layerHashBeforeEdit: edit.layerHashBefore,
-    layerHashAfterEdit: edit.layerHashAfter,
-    canonicalJsonHash: exported.canonicalJsonHash,
-    membershipDataHash: exported.membershipDataHash,
-    queryMatchedRegions: query.matchedRegions.map((region) => region.regionId),
-    diagnostics: {
-      draft: draftValidation.diagnostics.map((diagnostic) => diagnostic.code),
-      quota: quotaReport.diagnostics[0]?.code,
-      staleLoad: staleLoad.diagnostics[0]?.code,
-      staleEdit: staleEdit.diagnostics[0]?.code,
-    },
-  };
-  mkdirSync(dirname(proofPath), { recursive: true });
-  writeFileSync(proofPath, `${JSON.stringify(proof, null, 2)}\n`);
-
-  assert.deepEqual(proof.publicImports, [
-    '@asha/contracts',
-    '@asha/runtime-bridge',
-    '@asha/runtime-session',
-  ]);
-  assert.match(proof.engineCommit, /^[0-9a-f]{40}$/u);
-  assert.deepEqual(proof.queryMatchedRegions, ['region/annotation-proof-room']);
+  assert.deepEqual(
+    query.matchedRegions.map((region) => region.regionId),
+    ['region/annotation-proof-room'],
+  );
+  assert.match(exported.canonicalJsonHash ?? '', /^fnv1a64:/u);
+  assert.match(exported.membershipDataHash ?? '', /^fnv1a64:/u);
 });

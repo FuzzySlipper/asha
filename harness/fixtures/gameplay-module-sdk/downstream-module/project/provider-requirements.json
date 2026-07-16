@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "consumer": {
     "id": "gameplay-module-sdk.pulse-fixture",
-    "role": "asha-testing",
+    "role": "engine-provider-regression",
     "source": "harness/fixtures/gameplay-module-sdk/downstream-module"
   },
   "requirements": [
@@ -190,3 +190,4 @@
     }
   ]
 }
+

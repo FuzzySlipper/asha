@@ -53,7 +53,7 @@ const REJECTIONS_BY_REASON = {
   },
 } satisfies Record<VoxelEditRejection['reason'], VoxelEditRejection>;
 
-void test('public RuntimeSession submits the exhaustive generated voxel command union to native authority', (t) => {
+void test('native provider accepts the generated voxel command union and returns typed rejections', (t) => {
   let session: RuntimeSessionFacade;
   try {
     session = createRuntimeSessionFacade({
@@ -62,15 +62,15 @@ void test('public RuntimeSession submits the exhaustive generated voxel command 
     });
   } catch (error) {
     if (error instanceof RuntimeBridgeError && error.kind === 'native_unavailable') {
-      t.skip('native addon not built; run harness/ci/check-native.sh for this proof');
+      t.skip('native addon not built; run harness/ci/check-native.sh for this provider regression');
       return;
     }
     throw error;
   }
   session.initialize({
-    sessionId: 'runtime-session.voxel-command.consumer-proof',
+    sessionId: 'runtime-session.voxel-command.provider-regression',
     seed: 77,
-    project: { gameId: 'asha-voxel-command-proof', workspaceId: 'workspace.local' },
+    project: { gameId: 'asha-provider-regression', workspaceId: 'workspace.local' },
     projectBundle: { bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 5547 },
   });
 

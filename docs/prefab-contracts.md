@@ -111,15 +111,15 @@ surface in `@asha/contracts` (`generated/projectBundle.ts`). Generated types
 include registry/definition/part/variant/override/instance/reference shapes,
 schema constants, and classified diagnostics.
 
-The consumer-needs manifest uses explicit prefab fields:
+Public consumers use explicit prefab fields:
 
 - required prefab ids;
 - required `PrefabPartReference` values (prefab id plus stable role);
-- required prefab-registry artifact reachability; and
+- a validated prefab-registry artifact; and
 - operations for validation/instantiation only when their real public provider
   exists.
 
-It must not express display-name searches, raw Scene-node scans, or private
+The public contract must not express display-name searches, raw Scene-node scans, or private
 registry access as supported needs.
 
 Gameplay-module binding is now implemented by the generated

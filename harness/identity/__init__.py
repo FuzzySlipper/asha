@@ -1,1 +1,1 @@
-"""Shared harness identity and proof-execution support."""
+"""Shared gate execution identities and receipt support."""

@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Route work around deterministic tests, compatibility proofs, fixtures, goldens,
+Route work around deterministic tests, provider regressions, fixtures, goldens,
 smoke outputs, and CI gates.
 
 ## Owns
 
 - Harness scripts and CI entrypoints.
-- Fixtures and goldens that prove Rust authority, generated contracts, bridge
+- Fixtures and goldens that check Rust authority, generated contracts, bridge
   behavior, render projection, replay, and public-surface compatibility.
-- Reviewable evidence files that prevent stubs or half implementations from
+- Reviewable product inputs that prevent stubs or half implementations from
   becoming load-bearing structure.
 
 ## Does Not Own
@@ -34,17 +34,17 @@ smoke outputs, and CI gates.
 - Public package compatibility artifacts emitted by
   [pack-public-artifacts.mjs](../../ts/scripts/pack-public-artifacts.mjs) under
   `ts/artifacts/public-packages/`.
-- Smoke and conformance fixtures consumed through approved package roots.
-- Review packets that cite exact commands and generated artifacts.
+- Smoke fixtures consumed through approved package roots.
+- Review packets that cite exact commands and behavior.
 
 ## Private Or Forbidden Paths
 
-- Do not let synthetic proofs become required product runtime paths.
+- Do not let synthetic checks become required product runtime paths.
 - Do not hide known limitations only in fixture names or task prose.
 - Do not weaken depgraph, vocabulary, public-surface, or bridge checks to make a
   local task pass.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-all.sh](../../harness/ci/check-all.sh)
 - [check-depgraph.sh](../../harness/ci/check-depgraph.sh)
@@ -57,7 +57,7 @@ smoke outputs, and CI gates.
 
 ## Common Agent Mistakes
 
-- Adding a proof-only path that is more complicated than the intended final
+- Adding a test-only path that is more complicated than the intended final
   runtime path.
 - Updating snapshots without checking whether the semantic behavior should have
   changed.
@@ -67,7 +67,7 @@ smoke outputs, and CI gates.
 
 - Missing evidence for an engine behavior change: add a focused fixture or
   golden in the owning lane.
-- Broken public compatibility proof: route to public-surface or contract
+- Broken public package/provider regression: route to public-surface or contract
   stewardship first.
 - Product-demo evidence: keep it downstream unless it reveals a missing engine
   substrate.

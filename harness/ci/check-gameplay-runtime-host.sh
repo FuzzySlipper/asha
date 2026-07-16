@@ -39,7 +39,7 @@ run_with_evidence host \
   cargo test --locked --offline --manifest-path "$ROOT/engine-rs/Cargo.toml" \
     -p gameplay-runtime-host -- --nocapture
 
-echo "==> Running one-cell native provider lifecycle proof"
+echo "==> Running one-cell native provider lifecycle regression"
 run_with_evidence provider-lifecycle \
   cargo test --locked --offline \
     --manifest-path "$ROOT/harness/fixtures/gameplay-module-sdk/downstream-module/Cargo.toml" \

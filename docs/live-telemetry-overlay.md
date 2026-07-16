@@ -110,4 +110,4 @@ The baseline is a stats overlay, not a system profiler. It does not yet provide
 per-system timing, memory accounting, asset reference counts, GPU timing, or a
 shared F3 binding. Adding a counter requires a stable owner and unit semantics;
 adding an overlay capability requires the normal closed G1 contract, decoder,
-host, reachability, and downstream proof changes.
+host/provider regressions, and downstream visible acceptance.

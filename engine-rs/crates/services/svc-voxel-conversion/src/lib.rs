@@ -1945,7 +1945,7 @@ mod tests {
         assert_eq!(
             generated.trim(),
             include_str!(
-                "../../../../../harness/goldens/voxel-conversion/studio-consumer-proof-authority.golden.json"
+                "../../../../../harness/goldens/voxel-conversion/provider-regression-authority.golden.json"
             )
             .trim()
         );

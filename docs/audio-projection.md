@@ -104,9 +104,9 @@ audio readout plus the originating owner-fact id. The live browser test checks
 that one signal was decoded/emitted and that its origin matches the accepted
 combat result.
 
-The consumer need is `asha-demo.audio-projection`; joined reachability evidence
-binds it to `read_projection_frame`, the generated presentation contract, the
-renderer host, and the live downstream delivery.
+Demo owns the visible audio acceptance. Engine regressions cover
+`read_projection_frame`, the generated presentation contract, and renderer host
+behavior without claiming the downstream workflow is delivered.
 
 ## Wave 1 limits
 

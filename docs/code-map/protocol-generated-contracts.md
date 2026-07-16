@@ -42,7 +42,7 @@ to generated outputs are forbidden.
 - Protocol crates should not import runtime services, render hosts, UI packages,
   or product-specific demo code.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-contracts.sh](../../harness/ci/check-contracts.sh)
 - [check-depgraph.sh](../../harness/ci/check-depgraph.sh)

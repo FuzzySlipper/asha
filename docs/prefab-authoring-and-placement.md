@@ -57,7 +57,7 @@ authority path; `origin` is durable evidence, not a second execution model.
   overrides, Entity provenance, scoped module state, and hashes. Restore runs
   the same validation and composition boundary and must reproduce the readout.
 
-The `asha-demo` proof creates one two-part interaction-console definition and
+Demo's visible acceptance creates one two-part interaction-console definition and
 places it twice. The authored instance and player instance retain the same
 stable sensor role, use distinct body EntityDefinition overrides, resolve to
 distinct Entities, run a prefab-part-scoped typed gameplay event, survive

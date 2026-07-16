@@ -44,7 +44,7 @@ runtime CapabilityState, policy bindings, catalogs, and game-rule substrate.
 - Do not create game-specific turn/action-economy assumptions in upstream
   generic game-rules substrate.
 
-## Proof Gates And Goldens
+## Acceptance Gates And Goldens
 
 - [check-vocabulary.sh](../../harness/ci/check-vocabulary.sh)
 - [check-depgraph.sh](../../harness/ci/check-depgraph.sh)

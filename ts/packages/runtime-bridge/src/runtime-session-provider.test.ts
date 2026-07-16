@@ -255,7 +255,7 @@ function rustEvidenceBridge(): {
   return { bridge, calls };
 }
 
-void test('[reference evidence] RuntimeSession fixture lane is explicitly non-product authority', () => {
+void test('[reference provider] RuntimeSession fixture lane is explicitly non-product authority', () => {
   const session = createMockRuntimeSession();
   const initialized = session.initialize(sessionInput());
 
@@ -285,7 +285,7 @@ void test('[reference evidence] RuntimeSession fixture lane is explicitly non-pr
   assert.equal(receipt.combatReadout?.authority.mutationOwner, 'reference-runtime-session');
 });
 
-void test('[rust authority evidence] public RuntimeSession facade reports backend provenance for product loop', () => {
+void test('[rust provider] public RuntimeSession facade reports backend provenance for product loop', () => {
   const { bridge, calls } = rustEvidenceBridge();
   const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
   const initialized = session.initialize(sessionInput());

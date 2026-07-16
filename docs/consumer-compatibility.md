@@ -50,13 +50,10 @@ behind the governed facades. The gate is
 from a Git checkout and rejects private/path escapes, missing or stale revisions,
 and incompatible version pins.
 
-Role-scoped observed consumption is recorded separately in
-`harness/consumer-needs/manifests/` under the schema documented in
-`docs/consumer-needs-manifests.md`. Public-surface manifests answer what a role
-may import; consumer-needs manifests answer which operations, types, providers,
-selectors, fields, quotas, bindings, and proof level a real consumer requires.
-`./harness/ci/check-consumer-needs.sh` validates both together without treating
-type existence as provider or delivery evidence.
+Public-surface manifests answer which package roots and Rust facades a consumer
+role may import. Concrete downstream requirements and visible acceptance stay in
+the owning consumer repository and Den; the engine does not maintain a second
+delivery manifest that can become green without running that consumer.
 
 Tier 1 public packages carry `asha.compatibility` in `package.json` and a package-local
 `compatibility.json` file. Some unstable surfaces carry package-local compatibility
@@ -112,8 +109,8 @@ The metadata schema is intentionally tiny for now:
 
 ## Consumer Repo Roles
 
-- `asha-testing` is the synthetic proof/conformance consumer. It owns boundary checks, compatibility evidence, generated proof artifacts, and scripted conformance workflows.
-- `asha-demo` is the new human-facing demo/product-content repo. It should start from a product README and consume approved engine public or unstable surfaces through the engine manifest. Proof harnesses can be added later, but should not become the repo identity.
+- `asha-testing` owns focused synthetic public-surface regressions and strict boundary negatives. It does not certify product delivery.
+- `asha-demo` is the human-facing demo/product-content repo. It owns visible gameplay acceptance through approved engine public or unstable surfaces.
 - `asha-studio` is the editor/product tooling repo. It may use Studio-approved unstable packages through its own boundary policy, but those allowlists should validate against the engine manifest.
 - `downstream-authoring` is the reusable offline authoring/compiler role. It may import only the package roots `@asha/contracts`, `@asha/game-workspace`, `@asha/runtime-bridge`, and `@asha/runtime-session`, with no package subpaths. This role does not imply browser, renderer, UI, devtools, editor, raw native, or WASM access.
 
@@ -174,9 +171,9 @@ slices. VoxelForge-derived assets or candidates may be used only as predecessor
 evidence after asset/license review; they are not runtime dependencies, source
 truth, or a Studio-owned conversion path.
 
-The #4286 consumer proof covers the practical adoption boundary:
-`harness/fixtures/voxel-conversion/studio-consumer-proof.json` and
-`ts/packages/smoke/src/voxel-conversion-consumer-proof.test.ts` import only
+The #4286 provider regression covers the practical public-surface boundary:
+`harness/fixtures/voxel-conversion/provider-regression.json` and
+`ts/packages/smoke/src/voxel-conversion-provider.test.ts` exercise
 approved public roots, verify command metadata and generated DTO shapes, check
 the Rust authority golden
 `harness/goldens/voxel-conversion/conversion-summary.golden`, and assert the
@@ -231,17 +228,15 @@ encodes the intended roles: `asha-demo` may use the allowed package roots above,
 while renderer-three, devtools, raw transports, replay bridge, and policy authoring
 packages remain outside the demo boundary.
 
-Task #4053 adds an engine-owned consumer compatibility proof in
-`@asha/smoke` (`public-consumer-compat.test.ts`). The proof imports only
+The engine-owned package-boundary regression originating in #4053 lives in
+`@asha/smoke` (`public-package-boundary.test.ts`). The regression imports only
 `@asha/runtime-bridge` and `@asha/ui-dom` package roots, exercises the approved
 RuntimeSession motion/collision, generated tunnel, combat/health, nav/path,
 policy-view, and HUD/menu projections, and verifies fail-closed typed receipts
 instead of arbitrary JSON payloads. It also imports `@asha/runtime-bridge` through
 the package `browser` condition and fails if native-only symbols leak into the
-browser entry. This is the explicit public-surface safety gate for resuming
-#4037, #4044, #4045, and #4046 as long as those tasks stay on approved package
-roots and do not introduce private ASHA paths, raw transports, Rust crate imports,
-or JSON command tunnels.
+browser entry. This is a public-surface safety gate, not acceptance that any
+downstream product is delivered.
 
 ## Generated contract compatibility log
 
@@ -472,9 +467,9 @@ Status: task #5749 preferred public Rust provider boundary.
   build/dev tool. It consumes the existing SDK and ProjectBundle binding
   contracts; it does not add runtime plugin loading or a new authority path.
 
-### `asha-gameplay-module-conformance` — public downstream proof runner
+### `asha-gameplay-module-conformance` — public gameplay provider validator
 
-Status: task #5635 public build, bootstrap, invocation, state, and replay proof.
+Status: task #5635 public build, bootstrap, invocation, state, and replay validation.
 
 - Public facade: `public-rust/gameplay-module-conformance`.
 - Owning engine authority: `engine-rs/crates/rules/rule-project-bundle` plus the
@@ -605,7 +600,7 @@ Additive notes under `runtime-bridge.v0`:
 - #4629 adds `RuntimeSessionFacade.registerVoxelConversionSource`, a typed source-registration wrapper over the existing runtime bridge voxel source registry. Rust-backed sessions delegate to the native/runtime bridge authority surface; reference sessions fail closed with `operation_unimplemented`. Consumers can now keep voxel conversion setup and plan/preview/apply/model-info flows on the RuntimeSession facade instead of mixing facade calls with raw bridge registration. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #4908 adds `RuntimeSessionFacade.exportVoxelVolumeAsset`, backed by the stable `export_voxel_volume_asset` runtime bridge operation and generated `VoxelVolumeAssetExportRequest` / `VoxelVolumeAssetExportReceipt` DTOs. Rust exports the complete resident converted voxel model as an Asha-native `VoxelVolumeAsset` with sparse runs, material palette, provenance refs, canonical JSON, and `svc-voxel-asset` hashes; missing resident models, stale session hashes, sparse-run limits, and unrepresentable material refs fail closed through typed voxel-asset diagnostics. Consumers must not reconstruct stored voxel assets from preview samples or private conversion state. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #5295 extends `VoxelAssetMaterialBinding` with durable `paletteEntryId`, nullable `displayName`, and nullable `materialCatalogBindingId` fields. Named voxel palette/catalog binding authoring belongs to the stored `VoxelVolumeAsset` surface; runtime SessionState still consumes compact material ids through Rust-validated export/save/load paths. Rust rejects duplicate palette/binding identifiers and invalid `material/...` references before save/load succeeds. Studio follow-up should build material chooser and named palette editing against these public DTOs instead of maintaining a private material-binding model.
-- #5495 adds `RuntimeSessionFacade.updateVoxelVolumeAssetPalette`, backed by the stable `update_voxel_volume_asset_palette` operation and generated request/receipt/diff DTOs. Consumers submit the current stored asset, a bounded complete replacement palette, required optimistic canonical/voxel hashes, and a ProjectBundle target. Rust returns a canonical updated stored asset only after validating both source and replacement; the operation preserves voxel content and cannot mutate Runtime SessionState. The native public consumer proof covers update, reopen/load, stale hashes, and duplicate bindings.
+- #5495 adds `RuntimeSessionFacade.updateVoxelVolumeAssetPalette`, backed by the stable `update_voxel_volume_asset_palette` operation and generated request/receipt/diff DTOs. Consumers submit the current stored asset, a bounded complete replacement palette, required optimistic canonical/voxel hashes, and a ProjectBundle target. Rust returns a canonical updated stored asset only after validating both source and replacement; the operation preserves voxel content and cannot mutate Runtime SessionState. The native provider regression covers update, reopen/load, stale hashes, and duplicate bindings.
 - #4909 adds `RuntimeSessionFacade.loadVoxelVolumeAsset`, backed by the stable `load_voxel_volume_asset` runtime bridge operation and generated `VoxelVolumeAssetLoadRequest` / `VoxelVolumeAssetLoadReceipt` DTOs. Rust validates stored `.avxl.json` asset hashes/schema/material refs through `svc-voxel-asset`, commits accepted sparse runs through voxel command authority, and returns runtime readback evidence with model id, bounds, counts, provenance, session hash, and replay hash. Rejected loads leave runtime voxel state untouched. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 - #4910 adds `RuntimeSessionFacade.registerVoxelConversionMeshAsset`, backed by the stable `register_voxel_conversion_mesh_asset` runtime bridge operation and generated `VoxelConversionMeshAssetRegistrationRequest` DTO. Rust validates ProjectBundle/catalog static mesh identity, primitive support, indexed triangle groups, material-slot bindings, and later source-hash matches before plan/preview/apply can use the source. Consumers should pass project mesh refs through this facade path instead of inlining proof geometry or bypassing Rust source authority. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 
@@ -613,9 +608,9 @@ Additive notes under `runtime-bridge.v0`:
 - #4913 adds `RuntimeSessionFacade.saveVoxelVolumeAsset`, backed by the stable `save_voxel_volume_asset` runtime bridge operation and generated `VoxelVolumeAssetSaveRequest` / `VoxelVolumeAssetSaveReceipt` DTOs. Rust packages an explicit ProjectBundle stored-asset diff plus canonical payload after validating the resident runtime model, target asset path, sparse-run representation, expected output hashes, export limits, and material refs. Host/Studio code can write the returned payload only after accepting the receipt; SessionState is never silently promoted into stored content. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
 
 - #5552 adds `RuntimeSessionFacade.unloadVoxelVolumeAsset`, backed by the stable `unload_voxel_volume_asset` runtime bridge operation and generated `VoxelVolumeAssetUnloadRequest` / `VoxelVolumeAssetUnloadReceipt` DTOs. Rust owns the hash-guarded resident-model removal, restores the model's recorded prior voxel footprint, rejects missing/stale/drifted/overlapping state, and preserves unrelated resident models. Durable `.avxl.json` ProjectBundle content remains host-owned and can be loaded again through the public facade. The compatibility marker remains `runtime-bridge.v0` because the change is additive.
-- #4911 adds an engine-owned public consumer proof in `@asha/smoke`: `pnpm --filter @asha/smoke test:persisted-voxel-proof`. The proof imports only `@asha/contracts` and `@asha/runtime-bridge`, runs against the built native RuntimeBridge, converts a project mesh asset, exports and saves a `VoxelVolumeAsset`, reloads it, verifies model-info readback, and records current run evidence under `harness/smoke-out/persisted-voxel-asset-consumer-proof.json`. The negative matrix covers bad content hash, bad coordinate system, invalid material ref, unsupported schema, stale runtime snapshot, and missing source evidence.
-- #5278/#5513 add an engine-owned public consumer proof for voxel annotation layers in `@asha/smoke`: `pnpm --filter @asha/smoke test:voxel-annotation-proof`. The proof imports `@asha/contracts`, `@asha/runtime-session`, and concrete construction from `@asha/runtime-bridge`; creates and loads a target voxel-volume asset; submits a hashless `VoxelAnnotationLayerDraft`; receives the Rust-normalized `VoxelAnnotationLayer`; and then validates, loads, queries, edits, and exports it. The negative matrix covers quota diagnostics, stale target session hash, and stale annotation layer hash. Consumers must not bypass these verbs through `@asha/native-bridge`, generated file paths, Studio private transports, Rust crates, or arbitrary JSON method tunnels.
-- #5538 adds grid `2` to the bounded native RuntimeSession conversion-target fixture while preserving default grid `1` and authored grid `7`. The public voxel-annotation consumer proof now plans/applies conversion, exports and reloads its stored voxel asset, and loads the annotation layer on grid `2`; `check-native.sh` runs that proof against the freshly built N-API addon. This is an additive fixture capability under `runtime-bridge.v0`, not a generic arbitrary-grid registration API.
+- #4911 adds an engine-owned native provider regression in `@asha/smoke`: `pnpm --filter @asha/smoke test:persisted-voxel-provider`. It converts a project mesh asset, exports and saves a `VoxelVolumeAsset`, reloads it, verifies model-info readback, and directly asserts the negative matrix. It does not emit a delivery report.
+- #5278/#5513 add an engine-owned native provider regression for voxel annotation layers: `pnpm --filter @asha/smoke test:voxel-annotation-provider`. It creates and loads a target voxel-volume asset, normalizes a draft through Rust, and validates load/query/edit/export plus quota and stale-hash rejection.
+- #5538 adds grid `2` to the bounded native RuntimeSession conversion-target fixture while preserving default grid `1` and authored grid `7`. `check-native.sh` runs the provider regression against the freshly built N-API addon. This is an additive fixture capability under `runtime-bridge.v0`, not a generic arbitrary-grid registration API.
 - #4287 records the Studio voxel conversion adoption boundary for the #4284 facade methods. Studio may consume generated DTOs from `@asha/contracts`, runtime methods from `@asha/runtime-bridge`, command/evidence metadata from `@asha/command-registry`, and optional renderer-neutral projection/readout surfaces only through approved package roots. Unavailable backend support remains a typed fail-closed `operation_unimplemented` result rather than permission to use raw native bridge calls, private generated imports, renderer buffers as authority, Rust crates, VoxelForge runtime code, or Studio-owned mesh voxelization. The compatibility marker remains `runtime-bridge.v0` because this is documentation of additive surfaces.
 
 ## Runtime session compatibility log
@@ -752,7 +747,7 @@ Consumer behavior:
 
 - Consumers import only from `@asha/game-workspace` root export.
 - `asha-testing` uses it for synthetic conformance/proof workflows.
-- The new `asha-demo` may use it for human-facing project workspace setup, but should keep product identity separate from proof harness machinery.
+- Demo may use it for human-facing project workspace setup and owns the resulting visible acceptance.
 - Manifest validation rejects private transport hints, ASHA internals, generated paths, and unsupported backend/profile claims.
 - Prefab helpers expose explicit draft create/replace/delete/instantiate
   commands, browser/selection/role/binding/configuration readouts, and canonical

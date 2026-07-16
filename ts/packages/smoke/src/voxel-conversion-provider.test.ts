@@ -22,7 +22,7 @@ import {
 import { RuntimeBridgeError } from '@asha/runtime-bridge';
 import { createMockRuntimeSession } from '@asha/runtime-bridge/reference';
 
-interface VoxelConversionStudioProofFixture {
+interface VoxelConversionProviderFixture {
   readonly schemaVersion: 1;
   readonly publicImports: readonly string[];
   readonly commandIds: readonly string[];
@@ -38,7 +38,7 @@ interface VoxelConversionStudioProofFixture {
   readonly evidenceExport: readonly VoxelConversionEvidenceRef[];
 }
 
-interface VoxelConversionAuthorityProofFixture {
+interface VoxelConversionAuthorityFixture {
   readonly schemaVersion: 1;
   readonly authorityVersion: string;
   readonly sourceAssetId: string;
@@ -52,22 +52,22 @@ interface VoxelConversionAuthorityProofFixture {
 }
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
-const fixturePath = resolve(repoRoot, 'harness/fixtures/voxel-conversion/studio-consumer-proof.json');
+const fixturePath = resolve(repoRoot, 'harness/fixtures/voxel-conversion/provider-regression.json');
 
 function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, 'utf8')) as T;
 }
 
-function readFixture(): VoxelConversionStudioProofFixture {
-  return readJson<VoxelConversionStudioProofFixture>(fixturePath);
+function readFixture(): VoxelConversionProviderFixture {
+  return readJson<VoxelConversionProviderFixture>(fixturePath);
 }
 
 function sessionInput() {
   return {
-    sessionId: 'runtime-session.voxel-conversion.consumer-proof',
+    sessionId: 'runtime-session.voxel-conversion.provider-regression',
     seed: 17,
     project: {
-      gameId: 'asha-studio-consumer-proof',
+      gameId: 'asha-provider-regression',
       workspaceId: 'workspace.local',
     },
     projectBundle: {
@@ -78,7 +78,7 @@ function sessionInput() {
   };
 }
 
-void test('voxel conversion consumer proof uses public roots and deterministic fixtures', () => {
+void test('voxel conversion provider contract uses public roots and deterministic authority fixtures', () => {
   const fixture = readFixture();
   assert.deepEqual(fixture.publicImports, [
     '@asha/contracts',
@@ -111,7 +111,7 @@ void test('voxel conversion consumer proof uses public roots and deterministic f
   const preview: VoxelConversionPreview = fixture.preview;
   const receipt: VoxelConversionReceipt = fixture.receipt;
   const evidence: readonly VoxelConversionEvidenceRef[] = fixture.evidenceExport;
-  const authorityFixture = readJson<VoxelConversionAuthorityProofFixture>(
+  const authorityFixture = readJson<VoxelConversionAuthorityFixture>(
     resolve(repoRoot, fixture.rustAuthorityFixture),
   );
 
@@ -168,7 +168,7 @@ void test('voxel conversion consumer proof uses public roots and deterministic f
   assert.match(rustGolden, /stale\.code=source_hash_mismatch/);
 });
 
-void test('voxel conversion consumer proof sees RuntimeSession fail closed without mocked success', () => {
+void test('voxel conversion reference provider fails closed without fabricated authority success', () => {
   const fixture = readFixture();
   const session = createMockRuntimeSession();
 

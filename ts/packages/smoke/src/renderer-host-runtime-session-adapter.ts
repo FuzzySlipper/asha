@@ -7,7 +7,7 @@ import type {
   RuntimeSessionFacade,
 } from '@asha/runtime-session';
 
-export interface RendererHostRuntimeSessionConsumerReadout {
+export interface RendererHostRuntimeSessionReadout {
   readonly projectionStatus: ReturnType<AshaRendererAnimatedMeshProjection['playback']>['status'];
   readonly surfaceStatus: ReturnType<AshaRendererSurface['animatedMeshPlayback']>['status'];
 }
@@ -16,7 +16,7 @@ export function consumeRuntimeSessionAnimationIntent(
   session: Pick<RuntimeSessionFacade, 'readAnimationIntent'>,
   projection: AshaRendererAnimatedMeshProjection,
   surface: AshaRendererSurface,
-): RendererHostRuntimeSessionConsumerReadout {
+): RendererHostRuntimeSessionReadout {
   const intent: RuntimeSessionAnimationIntentReadout = session.readAnimationIntent();
   projection.applyFrame(intent.frame);
   surface.applyFrame(intent.frame);

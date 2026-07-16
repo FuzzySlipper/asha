@@ -33,7 +33,7 @@ marked `excludedFromReplayTruth`.
 A consumer may tear down all presentation hosts and rebuild them from the last
 public projection frame. Rebuild must leave the RuntimeSession hash, gameplay
 interaction readout, and projected controller state unchanged. The downstream
-`asha-demo` live proof performs this teardown and reconstruction after the
+Demo's visible acceptance performs this teardown and reconstruction after the
 combined feedback frame, then verifies all five domains are visible or active
 again.
 

@@ -28,10 +28,10 @@ import { buildHudProjection, hudControlToIntent } from '@asha/ui-dom';
 
 function sessionInput() {
   return {
-    sessionId: 'runtime-session.asha-demo.consumer-compat',
+    sessionId: 'runtime-session.public-package-boundary',
     seed: 17,
     project: {
-      gameId: 'asha-demo',
+      gameId: 'provider-boundary-fixture',
       workspaceId: 'workspace.local',
     },
     projectBundle: {
@@ -59,7 +59,7 @@ const cameraRequest: CameraCreateRequest = {
   },
 };
 
-void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu projection', () => {
+void test('public package roots compose RuntimeSession readouts and HUD/menu projection', () => {
   const session = createMockRuntimeSession();
   const initialized = session.initialize(sessionInput());
   assert.equal(initialized.identity.mode, 'reference');
@@ -302,9 +302,9 @@ void test('asha-demo public roots cover RuntimeSession readouts and HUD/menu pro
   );
 });
 
-void test('asha-demo browser condition imports runtime bridge without native-only exports', () => {
+void test('browser condition imports runtime bridge without native-only exports', () => {
   const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  const proof = `
+  const boundaryProbe = `
     const surface = await import('@asha/runtime-bridge');
     const reference = await import('@asha/runtime-bridge/reference');
     const required = ['BrowserInputHost', 'BrowserFpsResolvedActionConsumer', 'RuntimeBridgeError'];
@@ -317,7 +317,7 @@ void test('asha-demo browser condition imports runtime bridge without native-onl
       throw new Error(JSON.stringify({ missing, referenceMissing, leaked }));
     }
   `;
-  execFileSync(process.execPath, ['--conditions=browser', '--input-type=module', '--eval', proof], {
+  execFileSync(process.execPath, ['--conditions=browser', '--input-type=module', '--eval', boundaryProbe], {
     cwd: packageRoot,
     stdio: 'pipe',
   });

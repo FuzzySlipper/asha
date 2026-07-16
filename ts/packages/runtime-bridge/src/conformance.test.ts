@@ -140,7 +140,7 @@ void test('game runtime launcher public DTOs compile as package-root consumer fi
   };
   const resourceProfile: GameRuntimeResourceProfile = {
     profileId: 'demo.reference.resources.v1',
-    runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
+    runtimeEntry: 'fixtures/runtime-bridge/minimal-project.json',
     projectBundleId: 'world.minimal',
     resourceManifestHash: 'sha256-resource-profile',
     estimatedBytes: 4096,
@@ -206,7 +206,7 @@ function gameRuntimeConfig(): GameRuntimeConfig {
   return {
     gameId: 'asha-demo',
     workspaceId: 'workspace.local',
-    runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
+    runtimeEntry: 'fixtures/runtime-bridge/minimal-project.json',
     compatibility: {
       contractsPackageVersion: '0.1.0',
       runtimeBridgePackageVersion: '0.1.0',
@@ -215,7 +215,7 @@ function gameRuntimeConfig(): GameRuntimeConfig {
     },
     resourceProfile: {
       profileId: 'demo.reference.resources.v1',
-      runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
+      runtimeEntry: 'fixtures/runtime-bridge/minimal-project.json',
       projectBundleId: 'world.minimal',
       resourceManifestHash: 'sha256-resource-profile',
     },
@@ -314,14 +314,14 @@ void test('reference game runtime launcher fails closed on unsupported project b
       launcher.launch({
         gameId: 'asha-demo',
         workspaceId: 'workspace.local',
-        runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
+        runtimeEntry: 'fixtures/runtime-bridge/minimal-project.json',
         compatibility: {
           contractsPackageVersion: '0.1.0',
           runtimeBridgePackageVersion: '0.1.0',
         },
         resourceProfile: {
           profileId: 'demo.reference.resources.v1',
-          runtimeEntry: 'harness/conformance/fixtures/minimal-world.json',
+          runtimeEntry: 'fixtures/runtime-bridge/minimal-project.json',
           projectBundleId: 'world.minimal',
         },
         projectBundle: { bundleSchemaVersion: 99, protocolVersion: 1, sceneId: 7 },
