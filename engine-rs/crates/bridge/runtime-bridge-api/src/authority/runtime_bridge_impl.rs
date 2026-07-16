@@ -1162,6 +1162,13 @@ impl RuntimeBridge for EngineBridge {
         self.encode_scene_document_authority(request)
     }
 
+    fn apply_scene_document_authoring(
+        &self,
+        request: SceneDocumentAuthoringRequestDto,
+    ) -> BridgeResult<SceneDocumentAuthoringResultDto> {
+        self.apply_scene_document_authoring_authority(request)
+    }
+
     fn read_scene_object_snapshot(&self) -> BridgeResult<SceneObjectSnapshotDto> {
         self.read_scene_object_snapshot_authority()
     }

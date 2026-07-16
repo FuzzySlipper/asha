@@ -8,6 +8,7 @@ publish = false
 # source traces, bootstrap records, and classified scene-validation reports.
 # Authority logic stays in `core-scene`; this crate carries only the wire shape
 # and the stable string vocabularies that `protocol-codegen` mirrors to TypeScript.
-# Like `protocol-render`, it depends on `core-ids` only.
+# It depends only on identifier and renderer-neutral border crates.
 [dependencies]
 core-ids = { path = "../../foundation/core-ids" }
+protocol-render = { path = "../protocol-render" }

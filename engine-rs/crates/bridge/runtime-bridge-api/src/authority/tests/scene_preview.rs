@@ -193,6 +193,115 @@ fn stored_scene_codec_preserves_v2_lights_and_v1_without_migration() {
 }
 
 #[test]
+fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_lights() {
+    let bridge = init_bridge();
+    let runtime_before = bridge.read_scene_object_snapshot().unwrap();
+    let decoded = bridge
+        .decode_scene_document(SceneDocumentDecodeRequestDto {
+            source_text: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../../harness/fixtures/scenes/lights-v2.json"
+            ))
+            .into(),
+        })
+        .unwrap();
+    let current = decoded.document.unwrap();
+    let current_core = EngineBridge::scene_document_from_dto(current.clone()).unwrap();
+    let current_hash = core_scene::scene_object_snapshot(&current_core)
+        .document_hash
+        .0
+        & ((1_u64 << 53) - 1);
+
+    let mut candidate = current.clone();
+    let spot = candidate
+        .nodes
+        .iter_mut()
+        .find(|node| {
+            matches!(
+                node.kind,
+                SceneNodeKindDto::Light(SceneLightDto::Spot { .. })
+            )
+        })
+        .expect("spot light fixture");
+    spot.transform.translation = [3.0, 4.0, 5.0];
+    if let SceneNodeKindDto::Light(SceneLightDto::Spot { intensity, .. }) = &mut spot.kind {
+        *intensity = 9.0;
+    }
+
+    let accepted = bridge
+        .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+            expected_document_hash: current_hash,
+            current_document: current.clone(),
+            candidate_document: candidate,
+        })
+        .unwrap();
+    assert!(accepted.accepted);
+    assert!(accepted.document.is_some());
+    assert!(accepted.rejection.is_none());
+    assert!(accepted
+        .authored_light_frame
+        .as_ref()
+        .is_some_and(|frame| frame.ops.iter().any(|op| matches!(
+            op,
+            protocol_render::RenderDiff::CreateLight {
+                light: protocol_render::LightDescriptor::Spot { intensity: 9.0, .. },
+                ..
+            }
+        ))));
+    assert_eq!(bridge.read_scene_object_snapshot().unwrap(), runtime_before);
+
+    let stale = bridge
+        .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+            expected_document_hash: current_hash + 1,
+            current_document: current.clone(),
+            candidate_document: current.clone(),
+        })
+        .unwrap();
+    assert!(!stale.accepted);
+    assert!(stale.document.is_none());
+    assert!(stale.authored_light_frame.is_none());
+    assert_eq!(
+        stale.rejection.unwrap().code,
+        SceneDocumentAuthoringRejectionCode::StaleDocument
+    );
+
+    let mut invalid = current.clone();
+    invalid.nodes.push(invalid.nodes[0].clone());
+    let rejected = bridge
+        .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+            expected_document_hash: current_hash,
+            current_document: current.clone(),
+            candidate_document: invalid,
+        })
+        .unwrap();
+    assert!(!rejected.accepted);
+    assert!(rejected.document.is_none());
+    assert!(rejected.authored_light_frame.is_none());
+    assert_eq!(
+        rejected.rejection.unwrap().code,
+        SceneDocumentAuthoringRejectionCode::InvalidCandidateDocument
+    );
+
+    let mut foreign = current.clone();
+    foreign.id = SceneId::new(current.id.raw() + 1);
+    let rejected = bridge
+        .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+            expected_document_hash: current_hash,
+            current_document: current,
+            candidate_document: foreign,
+        })
+        .unwrap();
+    assert!(!rejected.accepted);
+    assert!(rejected.document.is_none());
+    assert!(rejected.authored_light_frame.is_none());
+    assert_eq!(
+        rejected.rejection.unwrap().code,
+        SceneDocumentAuthoringRejectionCode::ForeignDocumentIdentity
+    );
+    assert_eq!(bridge.read_scene_object_snapshot().unwrap(), runtime_before);
+}
+
+#[test]
 fn blank_runtime_scene_accepts_typed_light_create_and_update_commands() {
     let mut bridge = init_bridge();
     let before = bridge.read_scene_object_snapshot().unwrap();

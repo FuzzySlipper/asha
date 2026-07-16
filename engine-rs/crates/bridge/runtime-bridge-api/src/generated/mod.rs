@@ -640,6 +640,17 @@ pub(crate) const GENERATED_BRIDGE_BINDINGS: &[GeneratedBridgeBinding] = &[
         surface: GeneratedBridgeSurface::Stable,
     },
     GeneratedBridgeBinding {
+        manifest_name: "apply_scene_document_authoring",
+        facade_method: "applySceneDocumentAuthoring",
+        capability: "scene_entities",
+        input: "protocol_scene::SceneDocumentAuthoringRequest",
+        output: "protocol_scene::SceneDocumentAuthoringResult",
+        errors: "RuntimeBridgeError",
+        max_input_bytes: 8388608,
+        max_output_bytes: 8388608,
+        surface: GeneratedBridgeSurface::Stable,
+    },
+    GeneratedBridgeBinding {
         manifest_name: "read_model_material_preview",
         facade_method: "readModelMaterialPreview",
         capability: "scene_entities",

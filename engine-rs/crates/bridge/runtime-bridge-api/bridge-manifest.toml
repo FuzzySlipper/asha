@@ -60,7 +60,7 @@ initialization = "requiresEngine"
 project_bundle = "retainedAcrossLoadUnload"
 snapshot_hash = "sceneDocument"
 resource_lifetime = "session"
-operations = ["decode_scene_document", "encode_scene_document", "read_model_material_preview", "read_scene_object_snapshot", "apply_scene_object_command", "apply_enemy_direct_nav_movement"]
+operations = ["decode_scene_document", "encode_scene_document", "apply_scene_document_authoring", "read_model_material_preview", "read_scene_object_snapshot", "apply_scene_object_command", "apply_enemy_direct_nav_movement"]
 
 [[capability]]
 id = "voxel_assets_buffers"
@@ -593,6 +593,14 @@ input = "protocol_scene::SceneDocumentEncodeRequest"
 output = "protocol_scene::SceneDocumentCodecResult"
 errors = "RuntimeBridgeError"
 summary = "Validate and canonically encode one typed stored authored scene document through Rust authority without loading or mutating RuntimeSession state."
+
+[[operation]]
+name = "apply_scene_document_authoring"
+surface = "stable"
+input = "protocol_scene::SceneDocumentAuthoringRequest"
+output = "protocol_scene::SceneDocumentAuthoringResult"
+errors = "RuntimeBridgeError"
+summary = "Compare-and-swap one typed stored SceneDocument candidate through Rust validation and return the accepted canonical document plus engine-authored light projection without mutating RuntimeSession state."
 
 [[operation]]
 name = "read_model_material_preview"

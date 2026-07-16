@@ -60,6 +60,7 @@ const GENERATED_NATIVE_ADDON_EXPORT_NAMES = [
   'readRenderDiffs',
   'decodeSceneDocument',
   'encodeSceneDocument',
+  'applySceneDocumentAuthoring',
   'readModelMaterialPreview',
   'readSceneObjectSnapshot',
   'applySceneObjectCommand',

@@ -35,6 +35,8 @@ import type {
   SceneObjectCommandResult,
   SceneObjectSnapshot,
   SceneDocumentCodecResult,
+  SceneDocumentAuthoringRequest,
+  SceneDocumentAuthoringResult,
   SceneDocumentDecodeRequest,
   SceneDocumentEncodeRequest,
   ScreenPointToPickRayRequest,
@@ -1169,6 +1171,14 @@ export class MockRuntimeBridge implements RuntimeBridge {
     return this.#unsupportedAfterInit(
       'encodeSceneDocument',
       'Canonical stored scene encoding requires Rust authority',
+    );
+  }
+
+  applySceneDocumentAuthoring(_request: SceneDocumentAuthoringRequest): SceneDocumentAuthoringResult {
+    void _request;
+    return this.#unsupportedAfterInit(
+      'applySceneDocumentAuthoring',
+      'Stored scene authoring transactions require Rust authority',
     );
   }
 

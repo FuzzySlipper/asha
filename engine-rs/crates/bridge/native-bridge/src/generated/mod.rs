@@ -296,6 +296,12 @@ pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
         8388608,
     ),
     (
+        "apply_scene_document_authoring",
+        "applySceneDocumentAuthoring",
+        8388608,
+        8388608,
+    ),
+    (
         "read_model_material_preview",
         "readModelMaterialPreview",
         8388608,

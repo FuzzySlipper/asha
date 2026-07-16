@@ -44,6 +44,7 @@ pub use presentation::{
     NodePresentation, ProjectionMode, RenderProjectionDiagnostic, RenderRegistry, RenderSource,
     RenderSourceKind, ScenePresentation, ScenePresentationProjector, SpriteRuntime,
 };
+pub use scene_lighting::project_authored_scene_lights;
 pub use voxel::{
     to_payload_descriptor, ChunkMeshStrategy, VisibleFaceStrategy, VoxelChunkProjector,
     VoxelProjectionDiagnostic, VoxelProjectionInstance, VoxelProjectionInstanceError,

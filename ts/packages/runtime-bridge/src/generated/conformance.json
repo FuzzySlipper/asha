@@ -59,6 +59,7 @@
       "operations": [
         "decode_scene_document",
         "encode_scene_document",
+        "apply_scene_document_authoring",
         "read_model_material_preview",
         "read_scene_object_snapshot",
         "apply_scene_object_command",
@@ -1538,6 +1539,30 @@
       "outputWire": {
         "owner": "generated",
         "name": "scene.SceneDocumentCodecResult",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_scene_document_authoring",
+      "facadeMethod": "applySceneDocumentAuthoring",
+      "capability": "scene_entities",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_scene::SceneDocumentAuthoringRequest",
+      "output": "protocol_scene::SceneDocumentAuthoringResult",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "generated",
+        "name": "scene.SceneDocumentAuthoringRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "scene.SceneDocumentAuthoringResult",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

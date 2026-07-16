@@ -206,6 +206,119 @@ impl EngineBridge {
         Ok(Self::scene_codec_result(document))
     }
 
+    pub(super) fn apply_scene_document_authoring_authority(
+        &self,
+        request: SceneDocumentAuthoringRequestDto,
+    ) -> BridgeResult<SceneDocumentAuthoringResultDto> {
+        self.require_initialized("apply_scene_document_authoring")?;
+        let current = match Self::scene_document_from_dto(request.current_document) {
+            Ok(document) => document,
+            Err(error) => {
+                return Ok(Self::scene_authoring_rejection(
+                    SceneDocumentAuthoringRejectionCode::InvalidCurrentDocument,
+                    error.message,
+                    None,
+                    None,
+                ))
+            }
+        };
+        let current_result = Self::scene_codec_result(current);
+        let Some(current_dto) = current_result.document else {
+            return Ok(Self::scene_authoring_rejection(
+                SceneDocumentAuthoringRejectionCode::InvalidCurrentDocument,
+                Self::scene_codec_rejection_message(&current_result),
+                None,
+                None,
+            ));
+        };
+        let current = Self::scene_document_from_dto(current_dto.clone())?;
+        let actual_hash = core_scene::scene_object_snapshot(&current).document_hash.0
+            & Self::PUBLIC_SCENE_HASH_MASK;
+        if request.expected_document_hash != actual_hash {
+            return Ok(Self::scene_authoring_rejection(
+                SceneDocumentAuthoringRejectionCode::StaleDocument,
+                "stored scene authoring expected hash does not match the current document",
+                Some(request.expected_document_hash),
+                Some(actual_hash),
+            ));
+        }
+
+        let candidate = match Self::scene_document_from_dto(request.candidate_document) {
+            Ok(document) => document,
+            Err(error) => {
+                return Ok(Self::scene_authoring_rejection(
+                    SceneDocumentAuthoringRejectionCode::InvalidCandidateDocument,
+                    error.message,
+                    Some(request.expected_document_hash),
+                    Some(actual_hash),
+                ))
+            }
+        };
+        if candidate.id != current.id
+            || candidate.schema_version != current.schema_version
+            || candidate.metadata.authoring_format_version
+                != current.metadata.authoring_format_version
+        {
+            return Ok(Self::scene_authoring_rejection(
+                SceneDocumentAuthoringRejectionCode::ForeignDocumentIdentity,
+                "stored scene authoring cannot replace scene identity or format versions",
+                Some(request.expected_document_hash),
+                Some(actual_hash),
+            ));
+        }
+        let candidate_result = Self::scene_codec_result(candidate);
+        let Some(document) = candidate_result.document else {
+            return Ok(Self::scene_authoring_rejection(
+                SceneDocumentAuthoringRejectionCode::InvalidCandidateDocument,
+                Self::scene_codec_rejection_message(&candidate_result),
+                Some(request.expected_document_hash),
+                Some(actual_hash),
+            ));
+        };
+        let canonical = Self::scene_document_from_dto(document.clone())?;
+        let authored_light_frame = render_bridge::project_authored_scene_lights(&canonical);
+        Ok(SceneDocumentAuthoringResultDto {
+            accepted: true,
+            document: Some(document),
+            authored_light_frame: Some(authored_light_frame),
+            rejection: None,
+        })
+    }
+
+    fn scene_codec_rejection_message(result: &SceneDocumentCodecResultDto) -> String {
+        result
+            .diagnostics
+            .first()
+            .map(|diagnostic| diagnostic.message.clone())
+            .or_else(|| {
+                result
+                    .validation
+                    .errors
+                    .first()
+                    .map(|error| error.code.as_str().to_string())
+            })
+            .unwrap_or_else(|| "Rust rejected the stored scene document".to_string())
+    }
+
+    fn scene_authoring_rejection(
+        code: SceneDocumentAuthoringRejectionCode,
+        message: impl Into<String>,
+        expected_hash: Option<u64>,
+        actual_hash: Option<u64>,
+    ) -> SceneDocumentAuthoringResultDto {
+        SceneDocumentAuthoringResultDto {
+            accepted: false,
+            document: None,
+            authored_light_frame: None,
+            rejection: Some(SceneDocumentAuthoringRejectionDto {
+                code,
+                message: message.into(),
+                expected_hash,
+                actual_hash,
+            }),
+        }
+    }
+
     pub(super) fn apply_scene_object_command_authority(
         &mut self,
         request: SceneObjectCommandRequestDto,
@@ -379,7 +492,7 @@ impl EngineBridge {
         }
     }
 
-    fn scene_document_from_dto(
+    pub(super) fn scene_document_from_dto(
         document: FlatSceneDocumentDto,
     ) -> BridgeResult<core_scene::FlatSceneDocument> {
         let dependencies = document

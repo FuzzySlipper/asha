@@ -5,7 +5,9 @@ use core_math::Vec3;
 use core_scene::{
     FlatSceneDocument, SceneLight, SceneLightShadowIntent, SceneNodeRecord, SceneTransform,
 };
-use protocol_render::{LightDescriptor, LightShadowIntent};
+use protocol_render::{
+    LightDescriptor, LightShadowIntent, RenderDiff, RenderFrameDiff, RenderHandle,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) fn project_scene_light(
@@ -80,6 +82,34 @@ pub(crate) fn project_scene_light(
             shadow_intent: shadow(*shadow_intent),
         },
     }
+}
+
+/// Project only durable authored lights into a renderer-neutral replacement
+/// frame. Handles are deterministic in sorted scene-node order and have meaning
+/// only inside this projection channel.
+pub fn project_authored_scene_lights(scene: &FlatSceneDocument) -> RenderFrameDiff {
+    let mut lights: Vec<_> = scene
+        .nodes
+        .iter()
+        .filter_map(|node| match &node.kind {
+            core_scene::SceneNodeKind::Light(light) => Some((node.id, light)),
+            _ => None,
+        })
+        .collect();
+    lights.sort_by_key(|(id, _)| id.raw());
+
+    let mut frame = RenderFrameDiff::new();
+    for (index, (node_id, light)) in lights.into_iter().enumerate() {
+        let Some(transform) = authored_world_transform(scene, node_id) else {
+            continue;
+        };
+        frame.push(RenderDiff::CreateLight {
+            handle: RenderHandle::new(index as u64 + 1),
+            parent: None,
+            light: project_scene_light(light, transform),
+        });
+    }
+    frame
 }
 
 pub(crate) fn light_kind(light: &LightDescriptor) -> u8 {

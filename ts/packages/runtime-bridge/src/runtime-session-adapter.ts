@@ -61,6 +61,8 @@ import {
   type TimeControlReceipt,
   type TimeControlState,
   type SceneDocumentCodecResult,
+  type SceneDocumentAuthoringRequest,
+  type SceneDocumentAuthoringResult,
   type SceneDocumentDecodeRequest,
   type SceneDocumentEncodeRequest,
   type WeaponEffectHookRequest,
@@ -316,6 +318,11 @@ class ReferenceRuntimeSessionFacade implements RuntimeSessionFacade {
   encodeSceneDocument(request: SceneDocumentEncodeRequest): SceneDocumentCodecResult {
     this.#requireInitialized('encodeSceneDocument');
     return this.#bridge.encodeSceneDocument(request);
+  }
+
+  applySceneDocumentAuthoring(request: SceneDocumentAuthoringRequest): SceneDocumentAuthoringResult {
+    this.#requireInitialized('applySceneDocumentAuthoring');
+    return this.#bridge.applySceneDocumentAuthoring(request);
   }
 
   loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt {

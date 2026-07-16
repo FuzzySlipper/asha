@@ -75,6 +75,8 @@ import type {
   TimeControlReceipt,
   TimeControlState,
   SceneDocumentCodecResult,
+  SceneDocumentAuthoringRequest,
+  SceneDocumentAuthoringResult,
   SceneDocumentDecodeRequest,
   SceneDocumentEncodeRequest,
 } from '@asha/contracts';
@@ -297,6 +299,11 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
   encodeSceneDocument(request: SceneDocumentEncodeRequest): SceneDocumentCodecResult {
     this.#requireInitialized('encodeSceneDocument');
     return this.#bridge.encodeSceneDocument(request);
+  }
+
+  applySceneDocumentAuthoring(request: SceneDocumentAuthoringRequest): SceneDocumentAuthoringResult {
+    this.#requireInitialized('applySceneDocumentAuthoring');
+    return this.#bridge.applySceneDocumentAuthoring(request);
   }
 
   loadEcrpProject(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectLoadReceipt {

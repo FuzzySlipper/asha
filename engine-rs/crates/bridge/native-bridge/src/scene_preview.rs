@@ -11,6 +11,7 @@ use protocol_render::{
 };
 use protocol_scene::{
     AssetReferenceDto, AssetVersionReqDto, FlatSceneDocumentDto, SceneDocumentCodecResultDto,
+    SceneDocumentAuthoringRequestDto, SceneDocumentAuthoringResultDto,
     SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneLightDto,
     SceneLightShadowIntentDto, SceneMetadataDto, SceneNodeKindDto, SceneNodeRecordDto,
     SceneObjectCommandDto, SceneObjectCommandRequestDto, SceneObjectCommandResultDto,
@@ -480,6 +481,14 @@ struct SceneDocumentDecodeRequestJson {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SceneDocumentEncodeRequestJson {
     document: SceneDocumentJson,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SceneDocumentAuthoringRequestJson {
+    expected_document_hash: u64,
+    current_document: SceneDocumentJson,
+    candidate_document: SceneDocumentJson,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -966,6 +975,29 @@ fn scene_result_json(result: &SceneObjectCommandResultDto) -> Value {
     })
 }
 
+fn scene_authoring_result_json(result: &SceneDocumentAuthoringResultDto) -> napi::Result<Value> {
+    let authored_light_frame = result
+        .authored_light_frame
+        .as_ref()
+        .map(|frame| {
+            serde_json::from_str::<Value>(&render_bridge::json::encode_frame(frame)).map_err(|error| {
+                internal(format!("authored light frame could not be encoded: {error}"))
+            })
+        })
+        .transpose()?;
+    Ok(json!({
+        "accepted": result.accepted,
+        "document": result.document.as_ref().map(scene_document_json),
+        "authoredLightFrame": authored_light_frame,
+        "rejection": result.rejection.as_ref().map(|rejection| json!({
+            "code": rejection.code.as_str(),
+            "message": rejection.message,
+            "expectedHash": rejection.expected_hash,
+            "actualHash": rejection.actual_hash,
+        })),
+    }))
+}
+
 #[napi]
 pub fn decode_scene_document(handle: i64, request_json: String) -> napi::Result<String> {
     let request =
@@ -991,6 +1023,24 @@ pub fn encode_scene_document(handle: i64, request_json: String) -> napi::Result<
             })
             .map_err(to_napi)?;
         encode(scene_codec_result_json(&result), "scene document encode")
+    })
+}
+
+#[napi]
+pub fn apply_scene_document_authoring(handle: i64, request_json: String) -> napi::Result<String> {
+    let request = parse_wire_json::<SceneDocumentAuthoringRequestJson>(
+        "apply_scene_document_authoring",
+        &request_json,
+    )?;
+    with_bridge(handle, |bridge| {
+        let result = bridge
+            .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+                expected_document_hash: request.expected_document_hash,
+                current_document: request.current_document.protocol(),
+                candidate_document: request.candidate_document.protocol(),
+            })
+            .map_err(to_napi)?;
+        encode(scene_authoring_result_json(&result)?, "scene document authoring")
     })
 }
 

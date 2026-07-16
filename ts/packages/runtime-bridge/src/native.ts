@@ -40,6 +40,8 @@ import type {
   SceneObjectCommandRequest,
   SceneObjectSnapshot,
   SceneDocumentCodecResult,
+  SceneDocumentAuthoringRequest,
+  SceneDocumentAuthoringResult,
   SceneDocumentDecodeRequest,
   SceneDocumentEncodeRequest,
   VoxelConversionApplyRequest,
@@ -1243,6 +1245,12 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('encodeSceneDocument');
     const payload = callNative(() => this.#addon.encodeSceneDocument(handle, JSON.stringify(request)));
     return parseNativeJson<SceneDocumentCodecResult>(payload, 'scene document encode result');
+  }
+
+  applySceneDocumentAuthoring(request: SceneDocumentAuthoringRequest): SceneDocumentAuthoringResult {
+    const handle = this.#requireHandle('applySceneDocumentAuthoring');
+    const payload = callNative(() => this.#addon.applySceneDocumentAuthoring(handle, JSON.stringify(request)));
+    return parseNativeJson<SceneDocumentAuthoringResult>(payload, 'scene document authoring result');
   }
 
   readSceneObjectSnapshot(): SceneObjectSnapshot {

@@ -248,6 +248,11 @@ pub trait RuntimeBridge {
         &self,
         request: SceneDocumentEncodeRequestDto,
     ) -> BridgeResult<SceneDocumentCodecResultDto>;
+    /// Atomically validate a candidate replacement for caller-owned stored scene data.
+    fn apply_scene_document_authoring(
+        &self,
+        request: SceneDocumentAuthoringRequestDto,
+    ) -> BridgeResult<SceneDocumentAuthoringResultDto>;
     /// Read the canonical authored scene hierarchy without exposing mutable state.
     fn read_scene_object_snapshot(&self) -> BridgeResult<SceneObjectSnapshotDto>;
     /// Apply one hash-guarded authored scene hierarchy command through Rust authority.

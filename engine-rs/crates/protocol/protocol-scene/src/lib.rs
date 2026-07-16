@@ -4,8 +4,8 @@
 //! # Lane
 //!
 //! `contract-steward` — owns the border shape TypeScript uses to **author and
-//! inspect** scene documents, source traces, and bootstrap records. Like
-//! [`protocol_render`](../protocol_render) it depends on `core-ids` only and
+//! inspect** scene documents, source traces, and bootstrap records. It depends
+//! only on `core-ids` and renderer-neutral protocol vocabulary and
 //! carries **no authority logic**: validation, flattening, bootstrap allocation,
 //! and serialization all stay in `core-scene`. This crate is the single Rust
 //! home for the *wire shape* plus the *stable string vocabularies*
@@ -34,6 +34,7 @@
 #![forbid(unsafe_code)]
 
 use core_ids::{EntityId, RuntimeSessionId, SceneId, SceneNodeId};
+use protocol_render::RenderFrameDiff;
 
 // ── Stable string vocabularies (the contract) ─────────────────────────────────
 
@@ -82,6 +83,35 @@ pub const SCENE_DOCUMENT_CODEC_DIAGNOSTIC_CODES: &[&str] = &[
     "unsupported-authoring-format",
     "invalid-document",
 ];
+
+/// Stable classifications for a stored SceneDocument compare-and-swap
+/// authoring transaction.
+pub const SCENE_DOCUMENT_AUTHORING_REJECTION_CODES: &[&str] = &[
+    "stale-scene-document",
+    "invalid-current-scene-document",
+    "invalid-candidate-scene-document",
+    "foreign-scene-document-identity",
+];
+
+/// Classified stored-authoring transaction rejection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SceneDocumentAuthoringRejectionCode {
+    StaleDocument,
+    InvalidCurrentDocument,
+    InvalidCandidateDocument,
+    ForeignDocumentIdentity,
+}
+
+impl SceneDocumentAuthoringRejectionCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::StaleDocument => "stale-scene-document",
+            Self::InvalidCurrentDocument => "invalid-current-scene-document",
+            Self::InvalidCandidateDocument => "invalid-candidate-scene-document",
+            Self::ForeignDocumentIdentity => "foreign-scene-document-identity",
+        }
+    }
+}
 
 /// The scene-node kind tag as a closed enum with a stable string form.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -436,6 +466,35 @@ pub struct SceneDocumentCodecResultDto {
     pub content_hash: Option<String>,
     pub diagnostics: Vec<SceneDocumentCodecDiagnosticDto>,
     pub validation: SceneValidationReportDto,
+}
+
+/// One compare-and-swap proposal against durable stored scene data. The current
+/// document remains caller-owned input; Rust validates both documents and only
+/// returns a replacement after accepting the complete candidate atomically.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneDocumentAuthoringRequestDto {
+    pub expected_document_hash: u64,
+    pub current_document: FlatSceneDocumentDto,
+    pub candidate_document: FlatSceneDocumentDto,
+}
+
+/// Classified rejection from a stored scene authoring transaction.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneDocumentAuthoringRejectionDto {
+    pub code: SceneDocumentAuthoringRejectionCode,
+    pub message: String,
+    pub expected_hash: Option<u64>,
+    pub actual_hash: Option<u64>,
+}
+
+/// Accepted stored authoring output. Rejections never carry a document or
+/// projection, preventing callers from adopting their unvalidated candidate.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneDocumentAuthoringResultDto {
+    pub accepted: bool,
+    pub document: Option<FlatSceneDocumentDto>,
+    pub authored_light_frame: Option<RenderFrameDiff>,
+    pub rejection: Option<SceneDocumentAuthoringRejectionDto>,
 }
 
 // ── Validation border DTOs ────────────────────────────────────────────────────

@@ -7,6 +7,7 @@
 // (harness/ci/check-contracts.sh).
 
 import type { EntityId } from './ids.js';
+import type { RenderFrameDiff } from './render.js';
 
 // Branded `ProjectId` border identifier.
 export type ProjectId = number & { readonly __brand: 'ProjectId' };
@@ -35,6 +36,9 @@ export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'i
 
 // Stable classifications for stored scene-document codec failures. Structural decode failures are kept separate from semantic [`SceneValidationCode`] entries so authoring tools never need to parse Rust error prose.
 export type SceneDocumentCodecDiagnosticCode = 'invalid-json' | 'invalid-field' | 'invalid-asset' | 'unknown-kind' | 'unknown-version-requirement' | 'unsupported-schema' | 'unsupported-authoring-format' | 'invalid-document';
+
+// Stable classifications for a stored SceneDocument compare-and-swap authoring transaction.
+export type SceneDocumentAuthoringRejectionCode = 'stale-scene-document' | 'invalid-current-scene-document' | 'invalid-candidate-scene-document' | 'foreign-scene-document-identity';
 
 // Border form of an asset version requirement. Mirrors the `{ "req": … }` wire object `core_scene::json` reads/writes.
 export type AssetVersionReq =
@@ -124,6 +128,29 @@ export interface SceneDocumentCodecResult {
   readonly contentHash: string | null;
   readonly diagnostics: readonly SceneDocumentCodecDiagnostic[];
   readonly validation: SceneValidationReport;
+}
+
+// One compare-and-swap proposal against durable stored scene data. The current document remains caller-owned input; Rust validates both documents and only returns a replacement after accepting the complete candidate atomically.
+export interface SceneDocumentAuthoringRequest {
+  readonly expectedDocumentHash: number;
+  readonly currentDocument: FlatSceneDocument;
+  readonly candidateDocument: FlatSceneDocument;
+}
+
+// Classified rejection from a stored scene authoring transaction.
+export interface SceneDocumentAuthoringRejection {
+  readonly code: SceneDocumentAuthoringRejectionCode;
+  readonly message: string;
+  readonly expectedHash: number | null;
+  readonly actualHash: number | null;
+}
+
+// Accepted stored authoring output. Rejections never carry a document or projection, preventing callers from adopting their unvalidated candidate.
+export interface SceneDocumentAuthoringResult {
+  readonly accepted: boolean;
+  readonly document: FlatSceneDocument | null;
+  readonly authoredLightFrame: RenderFrameDiff | null;
+  readonly rejection: SceneDocumentAuthoringRejection | null;
 }
 
 // Border form of one classified validation failure. Optional fields are populated per code (e.g. `parent` for `unknown-parent`, `cycle_path` for `cycle`), so TS can render the failure precisely without parsing prose.

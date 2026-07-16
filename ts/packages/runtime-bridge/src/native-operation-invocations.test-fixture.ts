@@ -208,6 +208,11 @@ export function createNativeOperationInvocations(
     ['redoVoxelEdit', (bridge) => bridge.redoVoxelEdit(input.historyRedo)],
     ['decodeSceneDocument', (bridge) => bridge.decodeSceneDocument({ sourceText: JSON.stringify(SCENE_DOCUMENT) })],
     ['encodeSceneDocument', (bridge) => bridge.encodeSceneDocument({ document: SCENE_DOCUMENT })],
+    ['applySceneDocumentAuthoring', (bridge) => bridge.applySceneDocumentAuthoring({
+      expectedDocumentHash: 0,
+      currentDocument: SCENE_DOCUMENT,
+      candidateDocument: SCENE_DOCUMENT,
+    })],
     ['readModelMaterialPreview', (bridge) => bridge.readModelMaterialPreview(input.materialPreview)],
     ['readSceneObjectSnapshot', (bridge) => bridge.readSceneObjectSnapshot()],
     ['applySceneObjectCommand', (bridge) => bridge.applySceneObjectCommand({ expectedDocumentHash: 1, command: { kind: 'select', id: null } })],

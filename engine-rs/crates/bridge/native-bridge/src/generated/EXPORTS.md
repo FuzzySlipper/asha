@@ -62,6 +62,7 @@ handwritten semantic exports. Quarantined compatibility wiring is explicit.
 | `read_render_diffs` | `projection` | stable | `FrameCursor` | `protocol_render::RenderFrameDiffDescriptor` | `RuntimeBridgeError` |
 | `decode_scene_document` | `scene_entities` | stable | `protocol_scene::SceneDocumentDecodeRequest` | `protocol_scene::SceneDocumentCodecResult` | `RuntimeBridgeError` |
 | `encode_scene_document` | `scene_entities` | stable | `protocol_scene::SceneDocumentEncodeRequest` | `protocol_scene::SceneDocumentCodecResult` | `RuntimeBridgeError` |
+| `apply_scene_document_authoring` | `scene_entities` | stable | `protocol_scene::SceneDocumentAuthoringRequest` | `protocol_scene::SceneDocumentAuthoringResult` | `RuntimeBridgeError` |
 | `read_model_material_preview` | `scene_entities` | stable | `protocol_render::ModelMaterialPreviewRequest` | `protocol_render::ModelMaterialPreviewSnapshot` | `RuntimeBridgeError` |
 | `read_scene_object_snapshot` | `scene_entities` | stable | `Unit` | `protocol_scene::SceneObjectSnapshot` | `RuntimeBridgeError` |
 | `apply_scene_object_command` | `scene_entities` | stable | `protocol_scene::SceneObjectCommandRequest` | `protocol_scene::SceneObjectCommandResult` | `RuntimeBridgeError` |
