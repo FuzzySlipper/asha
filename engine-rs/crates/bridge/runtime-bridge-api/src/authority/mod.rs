@@ -1,5 +1,7 @@
 use crate::*;
 
+mod enemy_navigation;
+mod fps_animation_catalog;
 mod initialization;
 mod input;
 mod scene_and_preview;

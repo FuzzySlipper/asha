@@ -428,9 +428,6 @@ Committed path classes: 729 source; 26 generated source; 535 other; 0 build/cach
 
 | Source | Lines / warning / cap | Owner | Review by |
 |---|---:|---|---|
-| `engine-rs/crates/bridge/native-bridge/src/lib.rs` | 1726 / 1400 / 1600 | rust-bridge | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1711 / 1570 / 1621 | rust-bridge | 2026-10-15 |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1613 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1600 / 1400 / 1600 | rust-render | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/observe.rs` | 1622 / 1580 / 1622 | rust-rule | 2026-10-15 |
 | `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1600 / 1400 / 1600 | rust-rule | global policy |
@@ -446,6 +443,7 @@ Committed path classes: 729 source; 26 generated source; 535 other; 0 build/cach
 | `ts/packages/script-sdk/src/index.ts` | 207 / 180 / 207 | ts-policy | 2026-10-15 |
 | `ts/packages/wasm-replay-bridge/src/index.ts` | 190 / 170 / 190 | ts-shell | 2026-10-15 |
 | `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1726 / 1680 / 1728 | ts-shell | 2026-09-15 |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1615 / 1570 / 1621 | rust-bridge | 2026-10-15 |
 | `ts/packages/renderer-three/src/three-renderer.ts` | 1593 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/protocol/protocol-codegen/src/lib.rs` | 1582 / 1560 / 1601 | contract-steward | 2026-10-15 |
 | `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1573 / 1400 / 1600 | ts-shell | global policy |
@@ -457,6 +455,7 @@ Committed path classes: 729 source; 26 generated source; 535 other; 0 build/cach
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1555 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs` | 1554 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1541 / 1400 / 1600 | contract-steward | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1532 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_assets.rs` | 1531 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/lib.rs` | 1510 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-entity-authoring/src/lib.rs` | 1508 / 1400 / 1600 | rust-service | global policy |
