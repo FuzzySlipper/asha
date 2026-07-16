@@ -223,6 +223,7 @@ impl EngineBridge {
             }
         };
         let current_result = Self::scene_codec_result(current);
+        let actual_hash = current_result.content_hash.clone();
         let Some(current_dto) = current_result.document else {
             return Ok(Self::scene_authoring_rejection(
                 SceneDocumentAuthoringRejectionCode::InvalidCurrentDocument,
@@ -232,13 +233,19 @@ impl EngineBridge {
             ));
         };
         let current = Self::scene_document_from_dto(current_dto.clone())?;
-        let actual_hash = core_scene::scene_object_snapshot(&current).document_hash.0
-            & Self::PUBLIC_SCENE_HASH_MASK;
-        if request.expected_document_hash != actual_hash {
+        let Some(actual_hash) = actual_hash else {
+            return Ok(Self::scene_authoring_rejection(
+                SceneDocumentAuthoringRejectionCode::InvalidCurrentDocument,
+                "Rust accepted the current document without issuing its content hash",
+                None,
+                None,
+            ));
+        };
+        if request.expected_content_hash != actual_hash {
             return Ok(Self::scene_authoring_rejection(
                 SceneDocumentAuthoringRejectionCode::StaleDocument,
                 "stored scene authoring expected hash does not match the current document",
-                Some(request.expected_document_hash),
+                Some(request.expected_content_hash),
                 Some(actual_hash),
             ));
         }
@@ -249,8 +256,8 @@ impl EngineBridge {
                 return Ok(Self::scene_authoring_rejection(
                     SceneDocumentAuthoringRejectionCode::InvalidCandidateDocument,
                     error.message,
-                    Some(request.expected_document_hash),
-                    Some(actual_hash),
+                    Some(request.expected_content_hash.clone()),
+                    Some(actual_hash.clone()),
                 ))
             }
         };
@@ -262,16 +269,17 @@ impl EngineBridge {
             return Ok(Self::scene_authoring_rejection(
                 SceneDocumentAuthoringRejectionCode::ForeignDocumentIdentity,
                 "stored scene authoring cannot replace scene identity or format versions",
-                Some(request.expected_document_hash),
-                Some(actual_hash),
+                Some(request.expected_content_hash.clone()),
+                Some(actual_hash.clone()),
             ));
         }
         let candidate_result = Self::scene_codec_result(candidate);
+        let content_hash = candidate_result.content_hash.clone();
         let Some(document) = candidate_result.document else {
             return Ok(Self::scene_authoring_rejection(
                 SceneDocumentAuthoringRejectionCode::InvalidCandidateDocument,
                 Self::scene_codec_rejection_message(&candidate_result),
-                Some(request.expected_document_hash),
+                Some(request.expected_content_hash),
                 Some(actual_hash),
             ));
         };
@@ -280,6 +288,7 @@ impl EngineBridge {
         Ok(SceneDocumentAuthoringResultDto {
             accepted: true,
             document: Some(document),
+            content_hash,
             authored_light_frame: Some(authored_light_frame),
             rejection: None,
         })
@@ -303,12 +312,13 @@ impl EngineBridge {
     fn scene_authoring_rejection(
         code: SceneDocumentAuthoringRejectionCode,
         message: impl Into<String>,
-        expected_hash: Option<u64>,
-        actual_hash: Option<u64>,
+        expected_hash: Option<String>,
+        actual_hash: Option<String>,
     ) -> SceneDocumentAuthoringResultDto {
         SceneDocumentAuthoringResultDto {
             accepted: false,
             document: None,
+            content_hash: None,
             authored_light_frame: None,
             rejection: Some(SceneDocumentAuthoringRejectionDto {
                 code,

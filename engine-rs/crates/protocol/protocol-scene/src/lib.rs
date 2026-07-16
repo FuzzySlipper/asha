@@ -473,7 +473,7 @@ pub struct SceneDocumentCodecResultDto {
 /// returns a replacement after accepting the complete candidate atomically.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SceneDocumentAuthoringRequestDto {
-    pub expected_document_hash: u64,
+    pub expected_content_hash: String,
     pub current_document: FlatSceneDocumentDto,
     pub candidate_document: FlatSceneDocumentDto,
 }
@@ -483,8 +483,8 @@ pub struct SceneDocumentAuthoringRequestDto {
 pub struct SceneDocumentAuthoringRejectionDto {
     pub code: SceneDocumentAuthoringRejectionCode,
     pub message: String,
-    pub expected_hash: Option<u64>,
-    pub actual_hash: Option<u64>,
+    pub expected_hash: Option<String>,
+    pub actual_hash: Option<String>,
 }
 
 /// Accepted stored authoring output. Rejections never carry a document or
@@ -493,6 +493,7 @@ pub struct SceneDocumentAuthoringRejectionDto {
 pub struct SceneDocumentAuthoringResultDto {
     pub accepted: bool,
     pub document: Option<FlatSceneDocumentDto>,
+    pub content_hash: Option<String>,
     pub authored_light_frame: Option<RenderFrameDiff>,
     pub rejection: Option<SceneDocumentAuthoringRejectionDto>,
 }

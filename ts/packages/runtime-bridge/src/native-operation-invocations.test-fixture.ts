@@ -209,7 +209,7 @@ export function createNativeOperationInvocations(
     ['decodeSceneDocument', (bridge) => bridge.decodeSceneDocument({ sourceText: JSON.stringify(SCENE_DOCUMENT) })],
     ['encodeSceneDocument', (bridge) => bridge.encodeSceneDocument({ document: SCENE_DOCUMENT })],
     ['applySceneDocumentAuthoring', (bridge) => bridge.applySceneDocumentAuthoring({
-      expectedDocumentHash: 0,
+      expectedContentHash: 'fnv1a64:fixture',
       currentDocument: SCENE_DOCUMENT,
       candidateDocument: SCENE_DOCUMENT,
     })],

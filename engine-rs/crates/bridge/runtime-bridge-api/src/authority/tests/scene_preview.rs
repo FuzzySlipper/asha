@@ -205,12 +205,8 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
             .into(),
         })
         .unwrap();
+    let current_hash = decoded.content_hash.unwrap();
     let current = decoded.document.unwrap();
-    let current_core = EngineBridge::scene_document_from_dto(current.clone()).unwrap();
-    let current_hash = core_scene::scene_object_snapshot(&current_core)
-        .document_hash
-        .0
-        & ((1_u64 << 53) - 1);
 
     let mut candidate = current.clone();
     let spot = candidate
@@ -230,13 +226,14 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
 
     let accepted = bridge
         .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
-            expected_document_hash: current_hash,
+            expected_content_hash: current_hash.clone(),
             current_document: current.clone(),
             candidate_document: candidate,
         })
         .unwrap();
     assert!(accepted.accepted);
     assert!(accepted.document.is_some());
+    assert!(accepted.content_hash.is_some());
     assert!(accepted.rejection.is_none());
     assert!(accepted
         .authored_light_frame
@@ -252,7 +249,7 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
 
     let stale = bridge
         .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
-            expected_document_hash: current_hash + 1,
+            expected_content_hash: format!("{current_hash}:stale"),
             current_document: current.clone(),
             candidate_document: current.clone(),
         })
@@ -269,7 +266,7 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
     invalid.nodes.push(invalid.nodes[0].clone());
     let rejected = bridge
         .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
-            expected_document_hash: current_hash,
+            expected_content_hash: current_hash.clone(),
             current_document: current.clone(),
             candidate_document: invalid,
         })
@@ -286,7 +283,7 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
     foreign.id = SceneId::new(current.id.raw() + 1);
     let rejected = bridge
         .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
-            expected_document_hash: current_hash,
+            expected_content_hash: current_hash,
             current_document: current,
             candidate_document: foreign,
         })

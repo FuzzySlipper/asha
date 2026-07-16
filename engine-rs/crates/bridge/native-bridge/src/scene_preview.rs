@@ -486,7 +486,7 @@ struct SceneDocumentEncodeRequestJson {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SceneDocumentAuthoringRequestJson {
-    expected_document_hash: u64,
+    expected_content_hash: String,
     current_document: SceneDocumentJson,
     candidate_document: SceneDocumentJson,
 }
@@ -944,6 +944,7 @@ fn scene_codec_result_json(result: &SceneDocumentCodecResultDto) -> Value {
     json!({
         "accepted": result.accepted,
         "document": result.document.as_ref().map(scene_document_json),
+        "contentHash": result.content_hash,
         "canonicalJson": result.canonical_json,
         "contentHash": result.content_hash,
         "diagnostics": result.diagnostics.iter().map(|diagnostic| json!({
@@ -1035,7 +1036,7 @@ pub fn apply_scene_document_authoring(handle: i64, request_json: String) -> napi
     with_bridge(handle, |bridge| {
         let result = bridge
             .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
-                expected_document_hash: request.expected_document_hash,
+                expected_content_hash: request.expected_content_hash,
                 current_document: request.current_document.protocol(),
                 candidate_document: request.candidate_document.protocol(),
             })

@@ -132,7 +132,7 @@ export interface SceneDocumentCodecResult {
 
 // One compare-and-swap proposal against durable stored scene data. The current document remains caller-owned input; Rust validates both documents and only returns a replacement after accepting the complete candidate atomically.
 export interface SceneDocumentAuthoringRequest {
-  readonly expectedDocumentHash: number;
+  readonly expectedContentHash: string;
   readonly currentDocument: FlatSceneDocument;
   readonly candidateDocument: FlatSceneDocument;
 }
@@ -141,14 +141,15 @@ export interface SceneDocumentAuthoringRequest {
 export interface SceneDocumentAuthoringRejection {
   readonly code: SceneDocumentAuthoringRejectionCode;
   readonly message: string;
-  readonly expectedHash: number | null;
-  readonly actualHash: number | null;
+  readonly expectedHash: string | null;
+  readonly actualHash: string | null;
 }
 
 // Accepted stored authoring output. Rejections never carry a document or projection, preventing callers from adopting their unvalidated candidate.
 export interface SceneDocumentAuthoringResult {
   readonly accepted: boolean;
   readonly document: FlatSceneDocument | null;
+  readonly contentHash: string | null;
   readonly authoredLightFrame: RenderFrameDiff | null;
   readonly rejection: SceneDocumentAuthoringRejection | null;
 }
