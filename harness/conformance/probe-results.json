@@ -2,23 +2,23 @@
   "schemaVersion": 1,
   "valid": true,
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:775398748827e8bc22419a2d5828d26041a40339df765a0cd2b7c5c5855c9fb3",
+  "inventoryHash": "sha256:d0f0c06ea48a2af69ca97f5f6e90166a1570929edb3b83c7ab4b34213dc6c6c0",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:790e0aa21c5500c81d90090a02ff31f25ddd7d2ac9b81f26cb097564e3f377a3"
+    "hash": "sha256:dcbb6406beecb0d31eeaeaeac6f9ce880a03a2c94d250c1707c3ac8c240eb7d0"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:79d4515c64cbea965b5b1d4aa84d76a86fd2f4e060e3f850d5c8b6ef725e42f1"
+      "hash": "sha256:051c9012bc979bc6ff230d0d56b155fd5bddeaa4ec6aaee399b7cc1dde224cf2"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:5ccf3523961eedbf0a2d51913a3c0c0e8b5bb23f1132ff0bc59078d15379109d"
+      "hash": "sha256:cac801c3c1c4b358af33e6ed0ab4d4a891f06ac7993c7db0272c92e10d56289a"
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:c813d0c68d325e2393c1658677eb8633188c0b5d948db5675df5932646958d25"
+      "hash": "sha256:f2cec01dc7680f7eb196ca25cddeee02d666071111bcbf98bd1f747af7701a14"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -26,20 +26,20 @@
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:6854d4635b7808b1459caf9e3db64a3de35da70c8d043c3031b513288eeb7b41"
+      "hash": "sha256:290f525ee518c2b007b37912b341e955ae7edb9e1f1298040b06f4fd30d88467"
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:12a23b55086aad7f41b5dc04e84a3a59d75d8b5470fb4441d78c491c7b045b35"
+      "hash": "sha256:79bd1fabed26be8865a880b67aab80e714b1b6de7a547330662f83be76d1c1ce"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
-      "hash": "sha256:ef88444cbe92cb1060ef63d541ad577f26ba1d8485218b9abf515e8f7a210876"
+      "hash": "sha256:5ec535e82d58310141550c53ece5e3166cdf51812b3003fb7408574b0795589e"
     }
   ],
   "summary": {
-    "stableOperationCount": 74,
-    "realOperationProbeCount": 74,
+    "stableOperationCount": 77,
+    "realOperationProbeCount": 77,
     "temporaryOperationExemptionCount": 0,
     "quarantinedOperationCount": 3,
     "semanticProbeCount": 27,
@@ -55,13 +55,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "raw_json_entrypoints_reject_unknown_fields_before_domain_invocation"
         },
         {
@@ -98,7 +98,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -154,7 +154,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -191,7 +191,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -229,7 +229,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -291,7 +291,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -340,6 +340,19 @@
       ]
     },
     {
+      "operation": "apply_scene_document_authoring",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_lights"
+        }
+      ]
+    },
+    {
       "operation": "apply_scene_object_command",
       "status": "probed",
       "nativeWired": true,
@@ -347,14 +360,20 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "raw_json_entrypoints_reject_unknown_fields_before_domain_invocation"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "blank_runtime_scene_accepts_typed_light_create_and_update_commands"
         },
         {
           "suite": "bridge.rust-authority",
@@ -372,7 +391,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -508,6 +527,31 @@
       ]
     },
     {
+      "operation": "configure_voxel_projection_instances",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "explicit_empty_instance_binding_never_recreates_the_legacy_default"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_binding_projects_two_independent_roots_and_hashes_every_transform"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_pick_is_transform_aware_and_rejects_stale_or_untrusted_inputs"
+        }
+      ]
+    },
+    {
       "operation": "create_camera",
       "status": "probed",
       "nativeWired": true,
@@ -515,7 +559,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -594,14 +638,26 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "raw_json_entrypoints_reject_unknown_fields_before_domain_invocation"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_lights"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "stored_scene_codec_preserves_v2_lights_and_v1_without_migration"
         },
         {
           "suite": "bridge.rust-authority",
@@ -619,13 +675,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "raw_json_entrypoints_reject_unknown_fields_before_domain_invocation"
         },
         {
@@ -695,7 +751,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -714,13 +770,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_rejects_invalid_inputs_without_fallback"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -770,19 +826,19 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_rejects_invalid_inputs_without_fallback"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_voxel_command_union_reaches_rust_authority"
         },
         {
@@ -833,6 +889,12 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
           "assertion": "initialize_voxel_volume_authoring_commits_a_real_runtime_model_atomically"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+          "assertion": "workspace_authored_voxels_project_as_retained_mesh_payloads"
         }
       ]
     },
@@ -844,7 +906,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -953,13 +1015,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_rejects_invalid_inputs_without_fallback"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1058,7 +1120,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1084,6 +1146,19 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime.rs",
           "assertion": "pick_unknown_grid_fails_closed"
+        }
+      ]
+    },
+    {
+      "operation": "pick_voxel_instance",
+      "status": "probed",
+      "nativeWired": true,
+      "evidenceAssertions": [
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_pick_is_transform_aware_and_rejects_stale_or_untrusted_inputs"
         }
       ]
     },
@@ -1224,7 +1299,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1249,7 +1324,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1313,7 +1388,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1407,7 +1482,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1426,7 +1501,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1475,8 +1550,32 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+          "assertion": "workspace_authored_voxels_project_as_retained_mesh_payloads"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "explicit_empty_instance_binding_never_recreates_the_legacy_default"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_binding_projects_two_independent_roots_and_hashes_every_transform"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_history_tests.rs",
+          "assertion": "mixed_batches_reject_atomically_without_world_projection_or_history_mutation"
         }
       ]
     },
@@ -1488,14 +1587,26 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "blank_runtime_scene_accepts_typed_light_create_and_update_commands"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
           "assertion": "scene_object_commands_are_hash_guarded_and_commit_canonical_state"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
+          "assertion": "stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_lights"
         },
         {
           "suite": "bridge.rust-authority",
@@ -1582,7 +1693,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_voxel_command_union_reaches_rust_authority"
         },
         {
@@ -1601,7 +1712,7 @@
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_history_tests.rs",
-          "assertion": "mixed_batches_preserve_partial_acceptance_and_record_one_accepted_transaction"
+          "assertion": "mixed_batches_reject_atomically_without_world_projection_or_history_mutation"
         },
         {
           "suite": "bridge.rust-authority",
@@ -1643,13 +1754,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "raw_json_entrypoints_reject_unknown_fields_before_domain_invocation"
         },
         {
@@ -1706,6 +1817,12 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
           "assertion": "voxel_volume_asset_save_rejects_missing_material_refs_without_storage_diff"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+          "assertion": "workspace_authored_voxels_project_as_retained_mesh_payloads"
         },
         {
           "suite": "bridge.rust-authority",
@@ -1823,7 +1940,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1855,7 +1972,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1880,7 +1997,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1930,7 +2047,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -1955,13 +2072,13 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_rejects_invalid_inputs_without_fallback"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
@@ -2010,19 +2127,19 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_rejects_invalid_inputs_without_fallback"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_voxel_command_union_reaches_rust_authority"
         },
         {
@@ -2047,7 +2164,7 @@
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime.rs",
-          "assertion": "mixed_batch_accepts_valid_and_classifies_invalid_in_order"
+          "assertion": "mixed_batch_classifies_invalid_input_and_withholds_the_valid_peer_atomically"
         },
         {
           "suite": "bridge.rust-authority",
@@ -2072,6 +2189,30 @@
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime.rs",
           "assertion": "submit_before_init_fails_closed"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+          "assertion": "workspace_authored_voxels_project_as_retained_mesh_payloads"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "explicit_empty_instance_binding_never_recreates_the_legacy_default"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_binding_projects_two_independent_roots_and_hashes_every_transform"
+        },
+        {
+          "suite": "bridge.rust-authority",
+          "corpus": "bridge.rust-authority",
+          "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
+          "assertion": "public_pick_is_transform_aware_and_rejects_stale_or_untrusted_inputs"
         },
         {
           "suite": "bridge.rust-authority",
@@ -2101,7 +2242,7 @@
           "suite": "bridge.rust-authority",
           "corpus": "bridge.rust-authority",
           "path": "engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_history_tests.rs",
-          "assertion": "mixed_batches_preserve_partial_acceptance_and_record_one_accepted_transaction"
+          "assertion": "mixed_batches_reject_atomically_without_world_projection_or_history_mutation"
         },
         {
           "suite": "bridge.rust-authority",
@@ -2188,7 +2329,7 @@
         {
           "suite": "bridge.native-wrapper",
           "corpus": "bridge.native-transport",
-          "path": "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+          "path": "engine-rs/crates/bridge/native-bridge/src/tests.rs",
           "assertion": "native_bridge_stateful_smoke_uses_bounded_operations"
         },
         {

@@ -6,7 +6,8 @@
       "executionClass": "nativeTransport",
       "suite": "bridge.native-wrapper",
       "paths": [
-        "engine-rs/crates/bridge/native-bridge/src/lib.rs"
+        "engine-rs/crates/bridge/native-bridge/src/lib.rs",
+        "engine-rs/crates/bridge/native-bridge/src/tests.rs"
       ]
     },
     {
@@ -27,6 +28,7 @@
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/scene_preview.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/time_control.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs",
+        "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_instances.rs",
         "engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel_unload.rs"
       ]
     }
