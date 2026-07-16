@@ -203,6 +203,7 @@ function bridgeWith(overrides: Partial<RuntimeBridge>): RuntimeBridge {
     readModelMaterialPreview: base.readModelMaterialPreview.bind(base),
     decodeSceneDocument: base.decodeSceneDocument.bind(base),
     encodeSceneDocument: base.encodeSceneDocument.bind(base),
+    applySceneDocumentAuthoring: base.applySceneDocumentAuthoring.bind(base),
     readSceneObjectSnapshot: base.readSceneObjectSnapshot.bind(base),
     applySceneObjectCommand: base.applySceneObjectCommand.bind(base),
     readRenderDiffs: base.readRenderDiffs.bind(base),
