@@ -51,7 +51,7 @@ export interface CommandBatch {
   readonly commands: readonly VoxelCommand[];
 }
 
-// The classified outcome of a [`RuntimeBridge::submit_commands`] batch: how many commands authority accepted/rejected, plus the classified rejection for each refused command (never a silent drop). Accepted commands have already mutated authority voxel state and marked their chunks dirty.
+// The classified outcome of a [`RuntimeBridge::submit_commands`] batch: how many commands authority committed plus the classified rejection for each invalid command (never a silent drop). The batch is atomic: if any command is invalid, `accepted` is zero and otherwise-valid peer commands are withheld without mutation. In that case `accepted + rejected` need not equal the batch length. Accepted commands have already mutated authority voxel state and marked their chunks dirty.
 export interface CommandResult {
   readonly accepted: number;
   readonly rejected: number;
