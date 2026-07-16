@@ -8,7 +8,7 @@ OUTPUT_DIR="$ROOT/harness/smoke-out/composed-native-provider"
 DESTINATION="$OUTPUT_DIR/asha-composed-native-provider.node"
 
 echo "==> Building downstream-shaped composed native provider"
-CARGO_TARGET_DIR="$TARGET_DIR" cargo build --locked --offline --release \
+CARGO_TARGET_DIR="$TARGET_DIR" cargo build --locked --release \
   --manifest-path "$FIXTURE/Cargo.toml"
 
 ARTIFACT="$(find "$TARGET_DIR/release" -maxdepth 1 \
