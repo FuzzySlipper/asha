@@ -10,16 +10,20 @@ echo "==> Rust source shape guard"
 node "$REPO_ROOT/harness/depgraph/check-rust-source-shape.mjs" "$REPO_ROOT"
 node "$REPO_ROOT/harness/depgraph/check-rust-source-shape-policy-diff.mjs" "$REPO_ROOT"
 
-echo "==> Rust source shape fixtures"
-node "$REPO_ROOT/harness/depgraph/check-rust-source-shape-fixtures.mjs" "$REPO_ROOT"
-node "$REPO_ROOT/harness/depgraph/check-rust-source-shape-policy-fixtures.mjs" "$REPO_ROOT"
+if [[ "${ASHA_HARNESS_SELF_TESTS:-1}" == "1" ]]; then
+  echo "==> Rust source shape fixtures"
+  node "$REPO_ROOT/harness/depgraph/check-rust-source-shape-fixtures.mjs" "$REPO_ROOT"
+  node "$REPO_ROOT/harness/depgraph/check-rust-source-shape-policy-fixtures.mjs" "$REPO_ROOT"
+fi
 
 echo "==> Verifying TypeScript dependency graph"
 bash "$REPO_ROOT/harness/depgraph/verify-ts-deps.sh"
 
 echo "==> Committed path classification"
 python3 "$REPO_ROOT/harness/depgraph/check-committed-path-classification.py"
-python3 "$REPO_ROOT/harness/depgraph/check-committed-path-classification-fixtures.py"
+if [[ "${ASHA_HARNESS_SELF_TESTS:-1}" == "1" ]]; then
+  python3 "$REPO_ROOT/harness/depgraph/check-committed-path-classification-fixtures.py"
+fi
 
 echo "==> Runtime bridge root isolation"
 node "$REPO_ROOT/harness/depgraph/check-runtime-bridge-root-isolation.mjs" "$REPO_ROOT"
@@ -29,16 +33,20 @@ python3 "$REPO_ROOT/harness/depgraph/generate-ts-eslint-boundaries.py" --check
 
 echo "==> Checking Agent Code Atlas inventory"
 python3 "$REPO_ROOT/harness/code-map/check-agent-code-atlas.py" --check
-python3 "$REPO_ROOT/harness/code-map/check-agent-code-atlas-fixtures.py"
+if [[ "${ASHA_HARNESS_SELF_TESTS:-1}" == "1" ]]; then
+  python3 "$REPO_ROOT/harness/code-map/check-agent-code-atlas-fixtures.py"
+fi
 
 echo "==> Checking generated README workspace counts"
 python3 "$REPO_ROOT/harness/code-map/check-readme-workspace-counts.py" --check
 
-echo "==> Running README workspace-count fixtures"
-python3 "$REPO_ROOT/harness/code-map/check-readme-workspace-counts-fixtures.py"
+if [[ "${ASHA_HARNESS_SELF_TESTS:-1}" == "1" ]]; then
+  echo "==> Running README workspace-count fixtures"
+  python3 "$REPO_ROOT/harness/code-map/check-readme-workspace-counts-fixtures.py"
 
-echo "==> Running depgraph negative fixtures"
-bash "$REPO_ROOT/harness/depgraph/check-negative-fixtures.sh"
+  echo "==> Running depgraph negative fixtures"
+  bash "$REPO_ROOT/harness/depgraph/check-negative-fixtures.sh"
 
-echo "==> Smoke-testing TypeScript package generator"
-bash "$REPO_ROOT/harness/depgraph/check-package-generator.sh"
+  echo "==> Smoke-testing TypeScript package generator"
+  bash "$REPO_ROOT/harness/depgraph/check-package-generator.sh"
+fi

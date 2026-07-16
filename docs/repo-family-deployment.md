@@ -46,12 +46,14 @@ Run from `/home/dev/asha-engine`:
 ./harness/ci/check-contracts.sh
 ./harness/ci/check-ts.sh
 ./harness/ci/check-rust.sh
+./harness/ci/check-fast.sh
 ./harness/ci/check-all.sh
 ```
 
-Use focused gates first when the edited surface is narrow. Run `check-all.sh`
-for broad architecture, generated contract, bridge, replay, or cross-language
-work.
+Use `check-fast.sh` as the normal changed-surface loop. Run `check-all.sh` for
+campaign/release closure and manually dispatched comprehensive verification.
+The full inventory includes the native/browser-host claim; use
+`check-native.sh` only for focused native iteration.
 
 ## Consumer checks
 

@@ -141,11 +141,26 @@ Do not “just import” across lanes to make a task pass. If a dependency is ne
 
 Run from the repository root unless noted.
 
+### Normal iteration check
+
+```sh
+./harness/ci/check-fast.sh
+```
+
+This selects blocking checks from the current diff and writes an ignored timing
+report under `harness/smoke-out/ci/`. Unknown or cross-cutting changes expand
+to the full engine suite.
+
 ### Full check suite
 
 ```sh
 ./harness/ci/check-all.sh
 ```
+
+Run the full suite before campaign/release closure or when a task changes
+cross-cutting harness behavior. The full inventory includes native addon and
+browser-host acceptance; `./harness/ci/check-native.sh` remains available as a
+focused native-only command.
 
 ### Rust
 

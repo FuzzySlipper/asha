@@ -1,13 +1,20 @@
 # GitHub Check Gates
 
-ASHA runs the same repo gate locally and in GitHub Actions:
+ASHA exposes a fast changed-surface gate for ordinary iteration:
+
+```bash
+./harness/ci/check-fast.sh
+```
+
+The comprehensive engine gate remains:
 
 ```bash
 ./harness/ci/check-all.sh
 ```
 
-The workflow is `.github/workflows/offline-ci.yml`. It runs automatically on
-pushes to `main`, pull requests, and manual dispatch.
+The workflow is `.github/workflows/offline-ci.yml`. Pushes and pull requests run
+`Fast changed-surface safeguards`. The scheduled job and a manual dispatch with
+`tier=full` run `Full engine and native safeguards`.
 
 `check-all.sh` owns the semantic gate inventory. In particular,
 `check-gameplay-runtime-host.sh` is the single execution owner for direct host
@@ -25,7 +32,7 @@ For Den Review GitHub check gates, use:
   "repository": "FuzzySlipper/asha-engine",
   "commit_sha": "<full-40-character-sha>",
   "ref": "main",
-  "required_checks": ["Verify ASHA"],
+  "required_checks": ["Fast changed-surface safeguards"],
   "requested_by": "<agent-name>"
 }
 ```
@@ -34,6 +41,7 @@ Agents should register the exact pushed commit SHA after a task commit is
 pushed. The Den service records pass, fail, timeout, or superseded evidence on
 the task thread; GitHub Actions remains the runner.
 
-`Verify ASHA` is the GitHub Actions job/check-run name from
-`.github/workflows/offline-ci.yml`. Do not use the workflow file name as the
-required check.
+Use `Fast changed-surface safeguards` for ordinary exact-SHA task gates. Use
+`Full engine and native safeguards` only when the task explicitly requires a
+manually dispatched comprehensive/native run. A fast result is not evidence
+that the full or product-consumer tier ran.

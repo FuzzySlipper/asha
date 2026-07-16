@@ -964,19 +964,9 @@
     ],
     "evidenceArtifacts": [
       {
-        "id": "evidence.execution.app-tests",
-        "kind": "proofExecution",
-        "executionId": "ts.app.tests"
-      },
-      {
         "id": "evidence.execution.asha-demo-input-live",
         "kind": "proofExecution",
         "executionId": "gate.asha-demo-input-live"
-      },
-      {
-        "id": "evidence.execution.browser-host-tests",
-        "kind": "proofExecution",
-        "executionId": "ts.browser-host.tests"
       },
       {
         "id": "evidence.execution.composed-native-provider",
@@ -989,21 +979,6 @@
         "executionId": "rust.downstream-gameplay-module"
       },
       {
-        "id": "evidence.execution.game-workspace-tests",
-        "kind": "proofExecution",
-        "executionId": "ts.game-workspace.tests"
-      },
-      {
-        "id": "evidence.execution.gameplay-fabric-reads",
-        "kind": "proofExecution",
-        "executionId": "rust.gameplay-fabric.reads"
-      },
-      {
-        "id": "evidence.execution.gameplay-module-sdk-static-composition",
-        "kind": "proofExecution",
-        "executionId": "rust.gameplay-module-sdk.static-composition"
-      },
-      {
         "id": "evidence.execution.gameplay-runtime-host",
         "kind": "proofExecution",
         "executionId": "gate.gameplay-runtime-host"
@@ -1014,34 +989,29 @@
         "executionId": "rust.native-bridge.lib"
       },
       {
-        "id": "evidence.execution.project-bundle-gameplay-bindings",
+        "id": "evidence.execution.native-browser-host-tests",
         "kind": "proofExecution",
-        "executionId": "rust.project-bundle.gameplay-bindings"
+        "executionId": "ts.native-browser-host.tests"
       },
       {
-        "id": "evidence.execution.renderer-host-tests",
+        "id": "evidence.execution.native-runtime-bridge-tests",
         "kind": "proofExecution",
-        "executionId": "ts.renderer-host.tests"
+        "executionId": "ts.native-runtime-bridge.tests"
       },
       {
-        "id": "evidence.execution.renderer-three-tests",
+        "id": "evidence.execution.rust-workspace-tests",
         "kind": "proofExecution",
-        "executionId": "ts.renderer-three.tests"
-      },
-      {
-        "id": "evidence.execution.runtime-bridge-api-lib",
-        "kind": "proofExecution",
-        "executionId": "rust.runtime-bridge-api.lib"
-      },
-      {
-        "id": "evidence.execution.smoke-tests",
-        "kind": "proofExecution",
-        "executionId": "ts.smoke.tests"
+        "executionId": "rust.workspace.tests"
       },
       {
         "id": "evidence.execution.trigger-volumes",
         "kind": "proofExecution",
         "executionId": "gate.trigger-volumes"
+      },
+      {
+        "id": "evidence.execution.ts-workspace-tests",
+        "kind": "proofExecution",
+        "executionId": "ts.workspace.tests"
       },
       {
         "id": "evidence.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
@@ -1533,59 +1503,29 @@
         "sourceHash": "sha256:1b6211008f6ceb3f765ce7b5690e06c7db2f32d9e7156c088fa2cc13ec70b1d3"
       },
       {
-        "id": "rust.gameplay-fabric.reads",
-        "artifactId": "evidence.execution.gameplay-fabric-reads",
-        "sourceHash": "sha256:a319d6c556f3fe83214b2224d21f252ea636de6241896e519b2ea5a86a11d299"
-      },
-      {
-        "id": "rust.gameplay-module-sdk.static-composition",
-        "artifactId": "evidence.execution.gameplay-module-sdk-static-composition",
-        "sourceHash": "sha256:213259767615d8bdd5b923ef310e5a691bd0afb63a34c387e11e5c36711cbafd"
-      },
-      {
         "id": "rust.native-bridge.lib",
         "artifactId": "evidence.execution.native-bridge-lib",
         "sourceHash": "sha256:244374dec56e29488809cc5a98065916c48c53e2f4fa6be8376bd2d77a610d6a"
       },
       {
-        "id": "rust.project-bundle.gameplay-bindings",
-        "artifactId": "evidence.execution.project-bundle-gameplay-bindings",
-        "sourceHash": "sha256:29dfd5107597e61eefbbd402fecc29de6d4d295e7254463e67b47e6d8ff5c52b"
+        "id": "rust.workspace.tests",
+        "artifactId": "evidence.execution.rust-workspace-tests",
+        "sourceHash": "sha256:72b2d81043ac4060e1fbc850264945685f60909bbb0c70216074ff8f1c39c112"
       },
       {
-        "id": "rust.runtime-bridge-api.lib",
-        "artifactId": "evidence.execution.runtime-bridge-api-lib",
-        "sourceHash": "sha256:640aed5445456426701b3e8116aebe8fdadaa304ac81929b35b469ad50f25ea6"
+        "id": "ts.native-browser-host.tests",
+        "artifactId": "evidence.execution.native-browser-host-tests",
+        "sourceHash": "sha256:739429712c956a38276a298804e06888e42a61e85403b3bc71cac9dade6579e5"
       },
       {
-        "id": "ts.app.tests",
-        "artifactId": "evidence.execution.app-tests",
-        "sourceHash": "sha256:88319166ac5296e8d2ef73d2143995bc8da79d37411824e7610b04d6825997be"
+        "id": "ts.native-runtime-bridge.tests",
+        "artifactId": "evidence.execution.native-runtime-bridge-tests",
+        "sourceHash": "sha256:89e2fdcbe0e144d9a56d2ba3909eb68d93aa1822e00e5f52c8078ebbb49e4d8b"
       },
       {
-        "id": "ts.browser-host.tests",
-        "artifactId": "evidence.execution.browser-host-tests",
-        "sourceHash": "sha256:4d76f722b91f737df299d0c43db5829efbfe8659fdfc9642d395badbed44cad0"
-      },
-      {
-        "id": "ts.game-workspace.tests",
-        "artifactId": "evidence.execution.game-workspace-tests",
-        "sourceHash": "sha256:167fa89cea3e36a3a94fd008e293ec9188543f95872fa726d819789928b0bed8"
-      },
-      {
-        "id": "ts.renderer-host.tests",
-        "artifactId": "evidence.execution.renderer-host-tests",
-        "sourceHash": "sha256:c7dd7e1b70e7f1f55d4c0e50987453964d68fc6a302bbfe6238b46d22eb3779b"
-      },
-      {
-        "id": "ts.renderer-three.tests",
-        "artifactId": "evidence.execution.renderer-three-tests",
-        "sourceHash": "sha256:1ea23a9e70c772ef615184409f10e5d57a79554859d61f3b1a95456870b287c1"
-      },
-      {
-        "id": "ts.smoke.tests",
-        "artifactId": "evidence.execution.smoke-tests",
-        "sourceHash": "sha256:0ca245bb3d576b24448ca4d6d3f1cf2f616ebbc30cdcaadf3875c929c56d65bb"
+        "id": "ts.workspace.tests",
+        "artifactId": "evidence.execution.ts-workspace-tests",
+        "sourceHash": "sha256:f55c293530482f94c14e77d7e91bccf8845033b5b73cd94c4698dad82cff6e91"
       }
     ],
     "operations": [
@@ -2980,15 +2920,15 @@
       },
       {
         "id": "bridge.rust-authority",
-        "executionId": "rust.runtime-bridge-api.lib",
+        "executionId": "rust.workspace.tests",
         "executionClass": "compiledRustAuthority",
-        "sourceHash": "sha256:914cc7d79ea3a5b0b93ce74c0a6b18d54c6cd753525df4efecac54d80d349689"
+        "sourceHash": "sha256:96fb06eadd10a1f88034072ca773865e3a59c640af50364e35a3cd6211e8f4c7"
       },
       {
         "id": "gameplay.binding",
-        "executionId": "rust.project-bundle.gameplay-bindings",
+        "executionId": "rust.workspace.tests",
         "executionClass": "compiledRustAuthority",
-        "sourceHash": "sha256:0b7fe8ee89f22b149f6fb4c8304cf78fb345c469d0b8482498aa24a1a0304afe"
+        "sourceHash": "sha256:06b6a042d39cc5aef7f0fa1e051ab911dd27acd7796a5aed9e2bc1d836fe2bbc"
       },
       {
         "id": "gameplay.downstream-module",
@@ -3004,9 +2944,9 @@
       },
       {
         "id": "gameplay.reads",
-        "executionId": "rust.gameplay-fabric.reads",
+        "executionId": "rust.workspace.tests",
         "executionClass": "compiledRustAuthority",
-        "sourceHash": "sha256:a123225de2ef7d7154200aeb9a1396dd39dc2b61d25270b0e72d361d7c17945b"
+        "sourceHash": "sha256:91889ce91d3fb364163dfdeb5ff3a04043882c0b637e00d8a1d98b9fb16f5941"
       },
       {
         "id": "gameplay.runtime-host",
@@ -3016,9 +2956,9 @@
       },
       {
         "id": "gameplay.static-composition",
-        "executionId": "rust.gameplay-module-sdk.static-composition",
+        "executionId": "rust.workspace.tests",
         "executionClass": "compiledRustAuthority",
-        "sourceHash": "sha256:c993981a9336761ce328fee6954c53605ba0b1a2ff09519bb4c10dd8ffd27357"
+        "sourceHash": "sha256:742907a15c756820f567e83281da6beadfea06d51b9037523810a818543baa5c"
       },
       {
         "id": "gameplay.triggers",
@@ -3028,51 +2968,51 @@
       },
       {
         "id": "public.animation",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:3d491f3978be19ded48e111451ce0992d5ed2675dffd4b018b189174dbf933ab"
+        "sourceHash": "sha256:5d783b45ed90406ef717eae54a693f5d30ab4f3d76dfc7cf079cc22a821dc76d"
       },
       {
         "id": "public.audio",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:82c089c47f2d69c26d10065ab82d6d89934aa05a5ad81b850b562cea813636da"
+        "sourceHash": "sha256:1bce0eb3329ef991fa7d2ee2e3be86dbe984efcf530632b15961be3cc665c0cd"
       },
       {
         "id": "public.billboard",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:7d509c2baf57b66a78c66a7f3753eaff23d391ef55485d1b107550394a767c75"
+        "sourceHash": "sha256:bae64841dede03703ee2ff1c798140f179b5a5bb3d05a197109a3d3d462be1bc"
       },
       {
         "id": "public.browser-host",
-        "executionId": "ts.browser-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:13271e357d5cc6c74d6558219d4334733113e07cbf01c9f9d80707b52c4db168"
+        "sourceHash": "sha256:6a6e50881a346d13badced0f37ed20fa7531d931d26afc2eb3c5a6f80f70efbc"
       },
       {
         "id": "public.camera-flow",
-        "executionId": "ts.app.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:3f34ccdbbead16ac35820ac44971f2f91fa625e0c22d1af4ab99d6bc13867c85"
+        "sourceHash": "sha256:48dca128992a3b172cfcdbf4b6779763cc0e5ff424ece3d4cb77af3622bcdffb"
       },
       {
         "id": "public.consumer",
-        "executionId": "ts.smoke.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:2409c27c5442ce96ad15034caa996d080861999e5ff9ab2e0b0ff987cf27e973"
+        "sourceHash": "sha256:aea4acc179b080520c9b0fdae9850d4fc6a4acb799e0f6f6786243af84ce306d"
       },
       {
         "id": "public.editor-viewport",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:2b424013b8ad78fad021b77be248332b33441d59d41ab03aedb60ce5830a6e54"
+        "sourceHash": "sha256:4662c6b4f491e9ff642fd0d690d6c730ecd71f81a8617b60cb7689c50cc10d6a"
       },
       {
         "id": "public.editor-viewport-backend",
-        "executionId": "ts.renderer-three.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:66fd6d30a3bd3618ce57e15cbd6a465b30307c46601b7af5f7ef94dda5b11588"
+        "sourceHash": "sha256:88026573cb1a4acbc73e6c62181f0296124ac1e0e43795ba9906b3ebbcb8a331"
       },
       {
         "id": "public.input-pause-demo",
@@ -3082,29 +3022,29 @@
       },
       {
         "id": "public.particle",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:51eec008e40a52b261dc617e5efb04e5231783221d8f01c4faa076fa33790455"
+        "sourceHash": "sha256:641e6a51733ef582b03d14054292b043dd754254861f6d6d77f08757ff1167b5"
       },
       {
         "id": "public.prefab-authoring",
-        "executionId": "ts.game-workspace.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:259f6b40d90fec19bb5e1de6e3167d70186236d97776eaea1eca93af5c39ee55"
+        "sourceHash": "sha256:bde67c6d8740f0ed2058512d3f77558eefaabff15756580a23f9f9d88a4b450c"
       },
       {
         "id": "public.projection-pick",
-        "executionId": "ts.renderer-three.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:64a216d65ccd2eb3c52d6669a973d371b171b73743c5ff5a3f8676910e778ad3"
+        "sourceHash": "sha256:9e72091e38704d93f27c5f6d115c877859a5415025a827d7dd26e4401fc376ae"
       },
       {
         "id": "public.telemetry",
-        "executionId": "ts.renderer-host.tests",
+        "executionId": "ts.workspace.tests",
         "executionClass": "publicConsumer",
-        "sourceHash": "sha256:c2a295820729f3bf3c40e4e2a3caa81fe51365414e58da6f2c43fcb417017ad3"
+        "sourceHash": "sha256:b358653f80fc660b3f575301a6eb5e938b7b824d08da8cf7bc3cc0419057e10c"
       }
     ]
   },
-  "catalogHash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3"
+  "catalogHash": "sha256:ffe4b5bf9a96eda5277d0b5f32264e2e15f77956b34e9a20a0023ef050d3da2c"
 }

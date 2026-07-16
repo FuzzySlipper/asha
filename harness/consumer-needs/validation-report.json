@@ -251,7 +251,7 @@
     }
   ],
   "gaps": [],
-  "identityCatalogHash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3",
+  "identityCatalogHash": "sha256:ffe4b5bf9a96eda5277d0b5f32264e2e15f77956b34e9a20a0023ef050d3da2c",
   "semanticValidation": {
     "runner": "harness/fixtures/gameplay-module-sdk/downstream-module/src/bin/conformance.rs",
     "valid": true,

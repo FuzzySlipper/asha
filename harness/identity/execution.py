@@ -13,6 +13,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import tomllib
 from typing import Any, Iterable
 
@@ -22,12 +23,6 @@ DEFINITIONS = ROOT / "harness/identity/executions.json"
 CATALOG = ROOT / "harness/identity/catalog.json"
 CONFORMANCE = ROOT / "harness/conformance/probe-inventory.json"
 IGNORED_PARTS = {".git", "node_modules", "target", "smoke-out", "__pycache__"}
-
-# Downstream Cargo fixtures share a disposable build root outside their source
-# workspaces. The effective value is part of the proof-execution fingerprint via
-# the existing CARGO_ environment-prefix rule.
-os.environ.setdefault("CARGO_TARGET_DIR", str(ROOT / "target" / "proof-execution"))
-
 
 class ExecutionError(ValueError):
     """An execution definition is ambiguous or cannot be resolved."""
@@ -564,6 +559,7 @@ def merge_attributions(*groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def run_plan(
     plan: list[dict[str, Any]], cache_root: pathlib.Path = CACHE_ROOT
 ) -> tuple[int, dict[str, Any]]:
+    started = time.monotonic()
     results: list[dict[str, Any]] = []
     for item in plan:
         paths = cache_paths(cache_root, item["fingerprint"])
@@ -571,7 +567,9 @@ def run_plan(
         hit = cache_valid(paths, item["fingerprint"])
         prior_attributions: list[dict[str, Any]] = []
         if hit:
-            prior_attributions = load_json(paths["receipt"]).get("attributions", [])
+            prior_receipt = load_json(paths["receipt"])
+            prior_attributions = prior_receipt.get("attributions", [])
+            duration_ms = prior_receipt.get("durationMs", 0)
             exit_code = 0
         else:
             print(
@@ -579,6 +577,7 @@ def run_plan(
                 f"{' '.join(item['command'])}",
                 flush=True,
             )
+            execution_started = time.monotonic()
             with paths["stdout"].open("w", encoding="utf-8") as stdout, paths["stderr"].open(
                 "w", encoding="utf-8"
             ) as stderr:
@@ -586,11 +585,13 @@ def run_plan(
                     item["command"], cwd=ROOT, check=False, text=True, stdout=stdout, stderr=stderr
                 )
             exit_code = completed.returncode
+            duration_ms = round((time.monotonic() - execution_started) * 1000)
         attributions = merge_attributions(prior_attributions, item["attributions"])
         receipt = {
             "schemaVersion": 1,
             "fingerprint": item["fingerprint"],
             "exitCode": exit_code,
+            "durationMs": duration_ms,
             "executionIds": item["executionIds"],
             "artifactIds": item["artifactIds"],
             "attributions": attributions,
@@ -604,8 +605,48 @@ def run_plan(
         results.append({**receipt, "cacheHit": hit})
         if exit_code != 0:
             print(paths["stderr"].read_text(encoding="utf-8")[-8000:], file=sys.stderr)
-            return exit_code, {"schemaVersion": 1, "valid": False, "executions": results}
-    return 0, {"schemaVersion": 1, "valid": True, "executions": results}
+            report = execution_report(plan, results, started, valid=False)
+            record_job_event(report)
+            return exit_code, report
+    report = execution_report(plan, results, started, valid=True)
+    record_job_event(report)
+    return 0, report
+
+
+def record_job_event(report: dict[str, Any]) -> None:
+    event_log = os.environ.get("ASHA_PROOF_EXECUTION_EVENT_LOG")
+    if not event_log:
+        return
+    path = pathlib.Path(event_log)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(report, sort_keys=True) + "\n")
+
+
+def execution_report(
+    plan: list[dict[str, Any]],
+    results: list[dict[str, Any]],
+    started: float,
+    *,
+    valid: bool,
+) -> dict[str, Any]:
+    requested = sum(len(item["executionIds"]) for item in plan)
+    unique = len(plan)
+    cache_hits = sum(bool(item["cacheHit"]) for item in results)
+    return {
+        "schemaVersion": 1,
+        "valid": valid,
+        "summary": {
+            "requestedExecutionCount": requested,
+            "uniqueExecutionCount": unique,
+            "repeatedExecutionCount": requested - unique,
+            "executedCount": len(results) - cache_hits,
+            "receiptReuseCount": cache_hits,
+            "runnerWallTimeMs": round((time.monotonic() - started) * 1000),
+            "executionWallTimeMs": sum(item["durationMs"] for item in results if not item["cacheHit"]),
+        },
+        "executions": results,
+    }
 
 
 def main() -> int:
@@ -627,10 +668,12 @@ def main() -> int:
     report_path = CACHE_ROOT / "latest-report.json"
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if exit_code == 0:
-        shared = sum(len(item["attributions"]) > 1 for item in report["executions"])
+        summary = report["summary"]
         print(
-            f"Real proof execution: OK ({len(report['executions'])} executions, "
-            f"{shared} shared, report {report_path.relative_to(ROOT)})"
+            f"Real proof execution: OK ({summary['uniqueExecutionCount']} unique, "
+            f"{summary['repeatedExecutionCount']} grouped repeats, "
+            f"{summary['receiptReuseCount']} receipt reuses, "
+            f"report {report_path.relative_to(ROOT)})"
         )
     return exit_code
 

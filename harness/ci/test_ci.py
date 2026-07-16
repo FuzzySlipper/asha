@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Selection and fail-closed tests for the small ASHA CI planner."""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import tempfile
+import unittest
+
+import ci
+
+
+class CiSelectionTests(unittest.TestCase):
+    def selected(self, path: str) -> set[str]:
+        plan = ci.plan_document("fast", [path])
+        return {gate["id"] for gate in plan["gates"]}
+
+    def test_representative_change_classes_select_responsible_gates(self) -> None:
+        cases = {
+            "engine-rs/crates/state/core-scene/src/lib.rs": {"rust", "depgraph"},
+            "ts/packages/ui-dom/src/index.ts": {"typescript", "depgraph"},
+            "engine-rs/crates/protocol/protocol-scene/src/lib.rs": {"contracts", "rust", "typescript", "bridge"},
+            "harness/identity/execution.py": {"identities", "consumer-needs", "reachability", "conformance"},
+            "engine-rs/crates/bridge/native-bridge/src/lib.rs": {"rust", "bridge", "native"},
+            "engine-rs/crates/sim/sim-replay/src/lib.rs": {"rust", "replays"},
+            "engine-rs/crates/render/render-bridge/src/lib.rs": {"rust", "render-goldens"},
+        }
+        for path, required in cases.items():
+            with self.subTest(path=path):
+                self.assertTrue(required.issubset(self.selected(path)))
+
+    def test_unknown_and_ci_changes_expand_to_full(self) -> None:
+        for path in (
+            "unclassified/new-root.file",
+            "harness/ci/check-all.sh",
+            "harness/ci/check-native.sh",
+        ):
+            plan = ci.plan_document("fast", [path])
+            with self.subTest(path=path):
+                self.assertTrue(plan["expandedToFull"])
+                self.assertEqual(
+                    [gate["id"] for gate in plan["gates"]],
+                    ci.FULL_ORDER,
+                )
+                self.assertNotIn(
+                    "ASHA_HARNESS_SELF_TESTS=0",
+                    next(
+                        gate["normalizedCommand"]
+                        for gate in plan["gates"]
+                        if gate["id"] == "typescript"
+                    ),
+                )
+
+    def test_docs_only_change_keeps_blocking_structural_rails(self) -> None:
+        self.assertEqual(
+            self.selected("docs/runtime-session-facade.md"),
+            set(ci.FAST_ALWAYS),
+        )
+
+    def test_each_selection_class_propagates_its_responsible_gate_failure(self) -> None:
+        cases = {
+            "engine-rs/crates/state/core-scene/src/lib.rs": "rust",
+            "ts/packages/ui-dom/src/index.ts": "typescript",
+            "engine-rs/crates/protocol/protocol-scene/src/lib.rs": "contracts",
+            "harness/identity/execution.py": "identities",
+            "engine-rs/crates/bridge/native-bridge/src/lib.rs": "native",
+            "engine-rs/crates/sim/sim-replay/src/lib.rs": "replays",
+            "unclassified/new-root.file": "depgraph",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            for index, (path, responsible_gate) in enumerate(cases.items()):
+                selected = ci.plan_document("fast", [path])
+                matching_gates = [
+                    gate for gate in selected["gates"] if gate["id"] == responsible_gate
+                ]
+                self.assertEqual(len(matching_gates), 1)
+                isolated_plan = {**selected, "gates": matching_gates}
+                output = root / f"report-{index}.json"
+                exit_code = ci.run_plan(isolated_plan, output, responsible_gate)
+                with self.subTest(path=path, gate=responsible_gate):
+                    self.assertEqual(exit_code, 86)
+                    report = json.loads(output.read_text(encoding="utf-8"))
+                    self.assertFalse(report["valid"])
+                    self.assertEqual(report["results"][0]["exitCode"], 86)
+
+
+if __name__ == "__main__":
+    unittest.main()

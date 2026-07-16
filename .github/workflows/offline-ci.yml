@@ -5,15 +5,78 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: "17 9 * * *"
   workflow_dispatch:
+    inputs:
+      tier:
+        description: Validation tier to run against the selected ref
+        required: true
+        default: fast
+        type: choice
+        options:
+          - fast
+          - full
 
 concurrency:
-  group: asha-ci-${{ github.ref }}
+  group: asha-ci-${{ github.ref }}-${{ inputs.tier || 'fast' }}
   cancel-in-progress: true
 
 jobs:
-  verify-asha:
-    name: Verify ASHA
+  fast-feedback:
+    name: Fast changed-surface safeguards
+    if: github.event_name != 'schedule' && (github.event_name != 'workflow_dispatch' || inputs.tier == 'fast')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine-rs
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            ts/pnpm-lock.yaml
+
+      - name: Run selected blocking safeguards
+        env:
+          ASHA_CI_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          ASHA_SOURCE_SHAPE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: ./harness/ci/check-fast.sh
+
+      - name: Upload fast timing and receipt reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asha-fast-ci-report
+          path: |
+            harness/smoke-out/ci/
+            harness/smoke-out/proof-execution/
+          if-no-files-found: ignore
+
+  full-safeguards:
+    name: Full engine and native safeguards
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.tier == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -46,10 +109,18 @@ jobs:
             pnpm-lock.yaml
             ts/pnpm-lock.yaml
 
-      - name: Run ASHA checks
+      - name: Run full engine safeguards
         env:
           ASHA_SOURCE_SHAPE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: ./harness/ci/check-all.sh
 
-      - name: Build and verify the native browser host
-        run: ./harness/ci/check-native.sh
+      - name: Upload full timing and receipt reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asha-full-ci-report
+          path: |
+            harness/smoke-out/ci/
+            harness/smoke-out/proof-execution/
+            harness/smoke-out/gameplay-runtime-host/
+          if-no-files-found: ignore

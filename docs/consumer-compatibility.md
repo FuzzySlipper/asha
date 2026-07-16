@@ -677,6 +677,11 @@ one engine revision; a previously loaded addon is not valid evidence for a newer
 TypeScript host. Native invocation errors return structured HTTP failures, and
 the host must remain healthy for subsequent authority reads.
 
+#5855 replaces the historical `Verify ASHA` job with a fast changed-surface
+status and a scheduled/manually dispatched comprehensive status. Native addon
+and browser-host acceptance remains in the comprehensive inventory and is also
+selected directly when native paths change.
+
 #5611 fixes live-addon replacement after a fresh-build SIGBUS was traced to an
 invalid file-backed instruction page at the composition-status N-API wrapper.
 Native addon installation now writes a complete temporary file beside the

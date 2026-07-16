@@ -6,15 +6,15 @@
     "state": "passed"
   },
   "inventory": "harness/conformance/probe-inventory.json",
-  "inventoryHash": "sha256:80a227dcfb34b98088f3c01910a8326d48800f62a9790e771fbecb50507f5ed8",
+  "inventoryHash": "sha256:6e192c5cf3e0ecafc341e12d517be9b4810090c71077fab33bb052c3ca1331bb",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:812e952099ab5b6aad200e281ae1fe598758ccae2d70ad689e5b7f1b313757e3"
+    "hash": "sha256:ffe4b5bf9a96eda5277d0b5f32264e2e15f77956b34e9a20a0023ef050d3da2c"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:6d3dd86c375a11473e93ed74dd8bdc4606a8212eada00f2b3f41b0c55ec5bb5e"
+      "hash": "sha256:49127eb1324e242c3538a761ea598fae79a7e83cfe9f9d3e7d379d3ba52d0e45"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -22,7 +22,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:61525ee4a316f1526c6d970980dac3607b09dc0610caedd1ee20379f22f7d825"
+      "hash": "sha256:4c6718d11d3da29985fc351ed5b143fed9daddedcef0be0a18a22845802879a4"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -34,7 +34,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:a4ce8e41b2e3292931b88585d4d1abddaca3dd97973ebc96a6199ef05c13d2b8"
+      "hash": "sha256:7bc8457993990583b953442103464b3e132d63292b5b07be9a3dd0534cd5826f"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
@@ -2579,7 +2579,7 @@
     {
       "id": "gameplay.binding.bootstrap",
       "suite": "gameplay.binding",
-      "executionId": "rust.project-bundle.gameplay-bindings",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.binding.bootstrap.bindings-activate-atomic-facets-and-round-trip-against-project-bundle-authority",
@@ -2613,7 +2613,7 @@
     {
       "id": "gameplay.read.event-bound",
       "suite": "gameplay.reads",
-      "executionId": "rust.gameplay-fabric.reads",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.read.event-bound.coordinator-delivers-declared-reads-and-binds-them-into-delivery-evidence",
@@ -2625,7 +2625,7 @@
     {
       "id": "gameplay.read.module-state",
       "suite": "gameplay.static-composition",
-      "executionId": "rust.gameplay-module-sdk.static-composition",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.gameplay.read.module-state.provider-state-adapters-initialize-and-apply-recorded-local-facts"
@@ -2696,7 +2696,7 @@
     {
       "id": "public.animation-projection",
       "suite": "public.animation",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.animation-projection.accepted-gameplay-fact-is-retained-in-transition-state-and-verification-replay",
@@ -2709,7 +2709,7 @@
     {
       "id": "public.audio-projection",
       "suite": "public.audio",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.audio-projection.audioprojectionevidence",
@@ -2721,7 +2721,7 @@
     {
       "id": "public.billboard-projection",
       "suite": "public.billboard",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.billboard-projection.billboard-host-creates-updates-localizes-lays-out-and-destroys-multiple-entity-cues",
@@ -2733,7 +2733,7 @@
     {
       "id": "public.browser-host",
       "suite": "public.browser-host",
-      "executionId": "ts.browser-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.browser-host.generated-runtimebridge-operation-inventory",
@@ -2746,7 +2746,7 @@
     {
       "id": "public.camera-controller",
       "suite": "public.camera-flow",
-      "executionId": "ts.app.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.camera-controller.camera-transition-sampling-is-disposable-and-preserves-exact-authority-endpoints",
@@ -2760,7 +2760,7 @@
     {
       "id": "public.editor-viewport",
       "suite": "public.editor-viewport",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.editor-viewport.editor-viewport-accepts-stored-and-runtime-cameras-and-maps-pixel-picks-to-typed-logical-hints",
@@ -2775,7 +2775,7 @@
     {
       "id": "public.editor-viewport-backend",
       "suite": "public.editor-viewport-backend",
-      "executionId": "ts.renderer-three.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.editor-viewport-backend.one-missing-editor-resource-fails-closed-without-degrading-healthy-runtime-projection",
@@ -2801,7 +2801,7 @@
     {
       "id": "public.integrated-feedback-projection",
       "suite": "public.animation",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.integrated-feedback-projection.exercisepresentationdegradation",
@@ -2817,7 +2817,7 @@
     {
       "id": "public.particle-projection",
       "suite": "public.particle",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.particle-projection.burst-and-retained-lifecycle-are-catalog-validated-and-budgeted",
@@ -2830,7 +2830,7 @@
     {
       "id": "public.prefab-authoring-and-placement",
       "suite": "public.prefab-authoring",
-      "executionId": "ts.game-workspace.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.prefab-authoring-and-placement.prefabauthoringreadout",
@@ -2843,7 +2843,7 @@
     {
       "id": "public.projection-pick",
       "suite": "public.projection-pick",
-      "executionId": "ts.renderer-three.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.projection-pick.projection-pick-filters-are-descriptive-only-and-invalid-rays-fail-closed",
@@ -2855,7 +2855,7 @@
     {
       "id": "public.runtime-session.projection",
       "suite": "public.consumer",
-      "executionId": "ts.smoke.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.runtime-session.projection.asha-demo-public-roots-cover-runtimesession-readouts-and-hud-menu-projection"
@@ -2866,7 +2866,7 @@
     {
       "id": "public.scene-document-codec",
       "suite": "bridge.rust-authority",
-      "executionId": "rust.runtime-bridge-api.lib",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.scene-document-codec.canonical-round-trip-does-not-mutate-runtime-authority",
@@ -2878,7 +2878,7 @@
     {
       "id": "public.session-input-replay",
       "suite": "bridge.rust-authority",
-      "executionId": "rust.runtime-bridge-api.lib",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.session-input-replay.resolved-pause-context-records-and-replays-without-browser-events-or-double-delivery",
@@ -2890,7 +2890,7 @@
     {
       "id": "public.session-time-control",
       "suite": "bridge.rust-authority",
-      "executionId": "rust.runtime-bridge-api.lib",
+      "executionId": "rust.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.session-time-control.exact-steps-advance-the-requested-count-and-remain-paused",
@@ -2902,7 +2902,7 @@
     {
       "id": "public.telemetry-snapshot-overlay",
       "suite": "public.telemetry",
-      "executionId": "ts.renderer-host.tests",
+      "executionId": "ts.workspace.tests",
       "claimClass": "structuralDeclaration",
       "assertionIds": [
         "assertion.public.telemetry-snapshot-overlay.headless-live-telemetry-omits-unavailable-counters-and-preserves-bounded-history",

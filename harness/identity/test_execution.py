@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 import unittest
 
 import execution
@@ -281,6 +282,70 @@ class ProofExecutionTests(unittest.TestCase):
             [item["suiteId"] for item in grouped[0]["attributions"]],
             ["suite.one", "suite.two"],
         )
+
+    def test_execution_report_counts_grouping_and_receipt_reuse(self) -> None:
+        plan = [
+            {"executionIds": ["proof.one", "proof.two"]},
+            {"executionIds": ["proof.three"]},
+        ]
+        results = [
+            {"cacheHit": False, "durationMs": 25},
+            {"cacheHit": True, "durationMs": 10},
+        ]
+        report = execution.execution_report(
+            plan,
+            results,
+            time.monotonic(),
+            valid=True,
+        )
+        self.assertEqual(report["summary"]["requestedExecutionCount"], 3)
+        self.assertEqual(report["summary"]["uniqueExecutionCount"], 2)
+        self.assertEqual(report["summary"]["repeatedExecutionCount"], 1)
+        self.assertEqual(report["summary"]["executedCount"], 1)
+        self.assertEqual(report["summary"]["receiptReuseCount"], 1)
+        self.assertEqual(report["summary"]["executionWallTimeMs"], 25)
+
+    def test_run_plan_reuses_one_receipt_across_claim_consumers(self) -> None:
+        smoke_root = execution.ROOT / "harness/smoke-out"
+        smoke_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=smoke_root) as temporary:
+            root = pathlib.Path(temporary)
+            event_log = root / "events.jsonl"
+            previous = os.environ.get("ASHA_PROOF_EXECUTION_EVENT_LOG")
+            os.environ["ASHA_PROOF_EXECUTION_EVENT_LOG"] = str(event_log)
+            plan = [{
+                "fingerprint": "sha256:shared-command",
+                "fingerprintInputs": {"normalizedCommand": ["bash", "-c", "exit 0"]},
+                "command": ["bash", "-c", "exit 0"],
+                "executionIds": ["proof.shared"],
+                "artifactIds": ["evidence.shared"],
+                "attributions": [{
+                    "suiteId": "suite.first",
+                    "probeIds": [],
+                    "assertionIds": [],
+                }],
+            }]
+            try:
+                first_code, first = execution.run_plan(plan, root / "cache")
+                plan[0]["attributions"] = [{
+                    "suiteId": "suite.second",
+                    "probeIds": [],
+                    "assertionIds": [],
+                }]
+                second_code, second = execution.run_plan(plan, root / "cache")
+            finally:
+                if previous is None:
+                    os.environ.pop("ASHA_PROOF_EXECUTION_EVENT_LOG", None)
+                else:
+                    os.environ["ASHA_PROOF_EXECUTION_EVENT_LOG"] = previous
+            self.assertEqual((first_code, second_code), (0, 0))
+            self.assertFalse(first["executions"][0]["cacheHit"])
+            self.assertTrue(second["executions"][0]["cacheHit"])
+            self.assertEqual(
+                [item["suiteId"] for item in second["executions"][0]["attributions"]],
+                ["suite.first", "suite.second"],
+            )
+            self.assertEqual(len(event_log.read_text(encoding="utf-8").splitlines()), 2)
 
 
 if __name__ == "__main__":

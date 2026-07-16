@@ -43,12 +43,12 @@
     {
       "id": "bridge.rust-authority",
       "executionClass": "compiledRustAuthority",
-      "executionId": "rust.runtime-bridge-api.lib"
+      "executionId": "rust.workspace.tests"
     },
     {
       "id": "gameplay.binding",
       "executionClass": "compiledRustAuthority",
-      "executionId": "rust.project-bundle.gameplay-bindings"
+      "executionId": "rust.workspace.tests"
     },
     {
       "id": "gameplay.downstream-module",
@@ -63,7 +63,7 @@
     {
       "id": "gameplay.reads",
       "executionClass": "compiledRustAuthority",
-      "executionId": "rust.gameplay-fabric.reads"
+      "executionId": "rust.workspace.tests"
     },
     {
       "id": "gameplay.runtime-host",
@@ -73,7 +73,7 @@
     {
       "id": "gameplay.static-composition",
       "executionClass": "compiledRustAuthority",
-      "executionId": "rust.gameplay-module-sdk.static-composition"
+      "executionId": "rust.workspace.tests"
     },
     {
       "id": "gameplay.triggers",
@@ -83,42 +83,42 @@
     {
       "id": "public.animation",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.audio",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.billboard",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.browser-host",
       "executionClass": "publicConsumer",
-      "executionId": "ts.browser-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.camera-flow",
       "executionClass": "publicConsumer",
-      "executionId": "ts.app.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.consumer",
       "executionClass": "publicConsumer",
-      "executionId": "ts.smoke.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.editor-viewport",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.editor-viewport-backend",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-three.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.input-pause-demo",
@@ -132,22 +132,22 @@
     {
       "id": "public.particle",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.prefab-authoring",
       "executionClass": "publicConsumer",
-      "executionId": "ts.game-workspace.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.projection-pick",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-three.tests"
+      "executionId": "ts.workspace.tests"
     },
     {
       "id": "public.telemetry",
       "executionClass": "publicConsumer",
-      "executionId": "ts.renderer-host.tests"
+      "executionId": "ts.workspace.tests"
     }
   ],
   "semanticProbes": [

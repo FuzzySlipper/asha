@@ -27,11 +27,16 @@ def main() -> int:
     args = parser.parse_args()
     definitions_path = ROOT / "harness/identity/executions.json"
     definitions = json.loads(definitions_path.read_text(encoding="utf-8"))["executions"]
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    claimed_execution_ids = {
+        suite["executionId"] for suite in manifest["suites"]
+    }
     workspace_parent = args.workspace_parent.resolve()
     unavailable = unavailable_executions(definitions, workspace_parent)
     available_ids = [
         definition["id"] for definition in definitions
-        if definition["id"] not in unavailable
+        if definition["id"] in claimed_execution_ids
+        and definition["id"] not in unavailable
     ]
     try:
         plan = make_plan(available_ids)
@@ -40,7 +45,7 @@ def main() -> int:
         print(f"conformance execution: {error}", file=sys.stderr)
         return 1
     report = build_claim_report(
-        json.loads(MANIFEST.read_text(encoding="utf-8")),
+        manifest,
         validate(MANIFEST),
         definitions,
         plan,

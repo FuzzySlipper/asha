@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build the napi-rs native addon and verify it round-trips from TS (ADR 0006, #2250).
 #
-# OPT-IN: not part of check-all.sh — it needs the native toolchain + (first run)
-# network to fetch napi crates. Run it where those are available.
+# The comprehensive tier owns this gate. It needs the native toolchain and may
+# need a first-run network fetch for napi crates.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -13,7 +13,9 @@ echo "==> Verifying atomic native-addon installation"
 "$REPO_ROOT/harness/ci/test-install-native-addon.sh"
 
 echo "==> Running native-bridge Rust tests"
-( cd "$CRATE_DIR" && cargo test --lib )
+python3 "$REPO_ROOT/harness/identity/execution.py" \
+  --execution rust.native-bridge.lib \
+  --attribution gate.native-browser-host
 
 echo "==> Building native-bridge cdylib (release)"
 ( cd "$CRATE_DIR" && cargo build --release )
@@ -429,10 +431,14 @@ console.log('Native addon smoke: OK');
 "
 
 echo "==> runtime-bridge facade tests (native parity test now runs, not skipped)"
-( cd "$REPO_ROOT/ts" && pnpm --filter @asha/runtime-bridge test )
+python3 "$REPO_ROOT/harness/identity/execution.py" \
+  --execution ts.native-runtime-bridge.tests \
+  --attribution gate.native-browser-host
 
 echo "==> native browser-host sustained lifecycle proof"
-( cd "$REPO_ROOT/ts" && pnpm --filter @asha/browser-host test )
+python3 "$REPO_ROOT/harness/identity/execution.py" \
+  --execution ts.native-browser-host.tests \
+  --attribution gate.native-browser-host
 
 echo "==> public RuntimeSession non-default-grid voxel annotation proof"
 ( cd "$REPO_ROOT/ts" && pnpm --filter @asha/smoke test:voxel-annotation-proof )

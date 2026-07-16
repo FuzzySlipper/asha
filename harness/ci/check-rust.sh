@@ -15,7 +15,11 @@ cargo clippy --workspace -- -D warnings
 
 echo "==> cargo test"
 if [[ "${ASHA_GAMEPLAY_RUNTIME_HOST_GATE_OWNS_TESTS:-0}" == "1" ]]; then
-  cargo test --workspace --exclude gameplay-runtime-host
+  cd "$REPO_ROOT"
+  env -u ASHA_GAMEPLAY_RUNTIME_HOST_GATE_OWNS_TESTS \
+    python3 "$REPO_ROOT/harness/identity/execution.py" \
+      --execution rust.workspace.tests \
+      --attribution gate.rust-workspace
 else
   cargo test --workspace
 fi
