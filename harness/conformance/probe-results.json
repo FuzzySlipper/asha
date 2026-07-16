@@ -5,12 +5,12 @@
   "inventoryHash": "sha256:d0f0c06ea48a2af69ca97f5f6e90166a1570929edb3b83c7ab4b34213dc6c6c0",
   "identityCatalog": {
     "path": "harness/identity/catalog.json",
-    "hash": "sha256:dcbb6406beecb0d31eeaeaeac6f9ce880a03a2c94d250c1707c3ac8c240eb7d0"
+    "hash": "sha256:691e624190701b6fae26c82588c918e60e1216bbeb1690da83b022ad3f92d983"
   },
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:051c9012bc979bc6ff230d0d56b155fd5bddeaa4ec6aaee399b7cc1dde224cf2"
+      "hash": "sha256:3472961b304a23f17d6345306cf8ee408ea150e977a4b77db607045b9274a02b"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
@@ -18,7 +18,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:f2cec01dc7680f7eb196ca25cddeee02d666071111bcbf98bd1f747af7701a14"
+      "hash": "sha256:9ac51b3f0a1b5d6763c6b67e01cd858763d0dcb0a3ed13507527221d6b665bb5"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -30,7 +30,7 @@
     },
     {
       "path": "harness/reachability/validation-report.json",
-      "hash": "sha256:79bd1fabed26be8865a880b67aab80e714b1b6de7a547330662f83be76d1c1ce"
+      "hash": "sha256:53faed63fa4ae7784888699bf8e6d5a794715c848a3cfd3b03d25c92781681c7"
     },
     {
       "path": "ts/packages/runtime-bridge/src/native.ts",
