@@ -119,6 +119,11 @@ class ProofExecutionTests(unittest.TestCase):
                 "LIBCLANG_PATH": str(libclang),
                 "HOME": str(root / "home"),
                 "CARGO_HOME": str(root / "cargo-home"),
+                # GitHub's cargo is a rustup proxy. Keep its installed
+                # toolchain discoverable while isolating Cargo configuration.
+                "RUSTUP_HOME": os.environ.get(
+                    "RUSTUP_HOME", str(pathlib.Path.home() / ".rustup")
+                ),
             }
             cargo_home = pathlib.Path(environment["CARGO_HOME"])
             cargo_home.mkdir(parents=True)
