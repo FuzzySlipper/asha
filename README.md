@@ -147,9 +147,9 @@ Run from the repository root unless noted.
 ./harness/ci/check-fast.sh
 ```
 
-This selects blocking checks from the current diff and writes an ignored timing
-report under `harness/smoke-out/ci/`. Unknown or cross-cutting changes expand
-to the full engine suite.
+This selects consequential checks and advisory structural diagnostics from the
+current diff and writes an ignored timing report under `harness/smoke-out/ci/`.
+Unknown or cross-cutting changes expand to the full engine suite.
 
 ### Full check suite
 
@@ -245,6 +245,7 @@ Check the relevant package scripts before adding new commands; this workspace in
 |---|---|
 | `docs/agent-code-atlas.md` | Agent navigation atlas: lane maps, public/private boundaries, behavioral gates, and generated inventory checks |
 | `docs/proof-artifact-disposition.md` | Current boundary between engine guardrails/provider regressions, synthetic testing, and downstream product acceptance |
+| `docs/guardrail-policy.md` | Blocking versus advisory guardrail posture, trigger/cost registry, and two visible-slice calibration |
 | `docs/launchable-voxel.md` | **Launchable voxel loop hub**: fixture, launch/smoke commands, regeneration, known limitations |
 | `docs/perf-baseline.md` | Same-host perf baseline harness (`dev:asha-perf`) plus optional non-gating GPU/WebGL lane (`dev:asha-gpu-perf`): trend tracking, field stability |
 | `docs/design.md` | Canonical repository architecture, layer model, dependency direction, and design principles |

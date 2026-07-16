@@ -30,12 +30,8 @@ class CiSelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(required.issubset(self.selected(path)))
 
-    def test_unknown_and_ci_changes_expand_to_full(self) -> None:
-        for path in (
-            "unclassified/new-root.file",
-            "harness/ci/check-all.sh",
-            "harness/ci/check-native.sh",
-        ):
+    def test_unknown_changes_expand_to_full(self) -> None:
+        for path in ("unclassified/new-root.file", "harness/fixtures/new-fixture.json"):
             plan = ci.plan_document("fast", [path])
             with self.subTest(path=path):
                 self.assertTrue(plan["expandedToFull"])
@@ -52,7 +48,22 @@ class CiSelectionTests(unittest.TestCase):
                     ),
                 )
 
-    def test_docs_only_change_keeps_blocking_structural_rails(self) -> None:
+    def test_ci_policy_changes_validate_policy_and_expand_to_full(self) -> None:
+        for path in (
+            "harness/ci/guardrail-policy.json",
+            "harness/ci/check-all.sh",
+            "harness/ci/check-native.sh",
+            ".github/workflows/offline-ci.yml",
+        ):
+            plan = ci.plan_document("fast", [path])
+            with self.subTest(path=path):
+                self.assertTrue(plan["expandedToFull"])
+                self.assertEqual(
+                    [gate["id"] for gate in plan["gates"]],
+                    ["guardrail-policy", *ci.FULL_ORDER],
+                )
+
+    def test_docs_only_change_keeps_baseline_rails_and_advisory_vocabulary(self) -> None:
         self.assertEqual(
             self.selected("docs/runtime-session-facade.md"),
             set(ci.FAST_ALWAYS),
@@ -84,6 +95,22 @@ class CiSelectionTests(unittest.TestCase):
                     report = json.loads(output.read_text(encoding="utf-8"))
                     self.assertFalse(report["valid"])
                     self.assertEqual(report["results"][0]["exitCode"], 86)
+
+    def test_advisory_failure_warns_without_invalidating_the_run(self) -> None:
+        plan = ci.plan_document("fast", ["docs/runtime-session-facade.md"])
+        vocabulary_gate = [gate for gate in plan["gates"] if gate["id"] == "vocabulary"]
+        self.assertEqual(len(vocabulary_gate), 1)
+        isolated_plan = {**plan, "gates": vocabulary_gate}
+        with tempfile.TemporaryDirectory() as temporary:
+            output = pathlib.Path(temporary) / "advisory.json"
+            exit_code = ci.run_plan(isolated_plan, output, "vocabulary")
+            report = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(report["valid"])
+        self.assertEqual(report["summary"]["advisoryWarningCount"], 1)
+        self.assertEqual(report["summary"]["blockingFailureCount"], 0)
+        self.assertEqual(report["results"][0]["outcome"], "warning")
+        self.assertEqual(report["results"][0]["owner"], "Architecture stewardship")
 
 
 if __name__ == "__main__":

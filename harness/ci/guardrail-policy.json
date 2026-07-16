@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "computedResults": "CI and task artifacts; never committed refresh obligations",
+  "newBlockingGateRequirements": [
+    "named consequential failure class",
+    "named owner",
+    "bounded trigger and fail-safe fallback",
+    "representative regression",
+    "rough cost estimate",
+    "narrowing or removal condition"
+  ],
+  "gates": {
+    "guardrail-policy": {
+      "owner": "CI stewardship",
+      "claim": "guardrail registry and CI entrypoints agree",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "guardrail registry, workflow, or harness/ci entrypoint changes",
+      "failSafe": "CI entrypoint changes also expand the fast selector to the full retained inventory",
+      "cost": "tiny; expected below one second",
+      "escalation": "remove fields or merge entries if policy maintenance becomes larger than reconciliation",
+      "failureClass": "CI can silently skip or misclassify a consequential guard",
+      "representativeRegression": "missing gate mappings, invalid blocking metadata, and unknown selector categories fail the validator"
+    },
+    "rust": {
+      "owner": "Rust lane owners",
+      "claim": "Rust formatting, compilation, clippy, and workspace tests",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "Rust/public-Rust changes or scheduled/full closure",
+      "failSafe": "unknown or CI changes expand to the full inventory",
+      "cost": "large; 21.817 seconds in the 2026-07-16 warm full sample",
+      "escalation": "split only when a narrower command preserves affected-workspace coverage",
+      "failureClass": "authoritative Rust code does not compile, lint, or satisfy its behavior regressions",
+      "representativeRegression": "an injected Rust gate failure propagates through the changed-surface selector"
+    },
+    "typescript": {
+      "owner": "TypeScript lane owners",
+      "claim": "TypeScript build, typecheck, tests, lint, and package boundaries",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "TypeScript/package changes or scheduled/full closure",
+      "failSafe": "unknown or CI changes expand to the full inventory",
+      "cost": "large; 46.334 seconds in the 2026-07-16 warm full sample",
+      "escalation": "split only when affected-package selection retains package-boundary coverage",
+      "failureClass": "consumer-facing TypeScript no longer builds, typechecks, or obeys authority/import boundaries",
+      "representativeRegression": "an injected TypeScript gate failure propagates through the changed-surface selector"
+    },
+    "contracts": {
+      "owner": "Contract stewardship",
+      "claim": "generated Rust-to-TypeScript border parity",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "protocol or generated-contract changes",
+      "failSafe": "protocol changes also select Rust, TypeScript, and bridge validation",
+      "cost": "small; 1.598 seconds in the 2026-07-16 warm full sample",
+      "escalation": "narrow by protocol family only after stale generated output still fails reliably",
+      "failureClass": "generated consumer contracts disagree with Rust wire source truth",
+      "representativeRegression": "fresh code generation must byte-match committed generated contracts"
+    },
+    "depgraph": {
+      "owner": "Architecture and lane stewardship",
+      "claim": "authority lanes, dependency edges, committed paths, and public package roots remain valid; source-shape and inventory pressure is advisory",
+      "disposition": "blocking",
+      "failureMode": "blocking",
+      "trigger": "every fast and full run",
+      "failSafe": "unclassified paths still run this gate and expand to full",
+      "cost": "small; 4.008 seconds in the 2026-07-16 warm full sample",
+      "escalation": "move structural-pressure checks out if advisory noise obscures consequential dependency failures",
+      "failureClass": "Rust or TypeScript authority/import boundaries are violated or generated/public paths become unsafe",
+      "representativeRegression": "negative fixtures reject forbidden Rust/TypeScript edges and tracked build output"
+    },
+    "no-den-coupling": {
+      "owner": "Engine architecture stewardship",
+      "claim": "engine remains independent of Den runtime code",
+      "disposition": "blocking",
+      "failureMode": "blocking",
+      "trigger": "every fast and full run",
+      "failSafe": "unclassified paths still run the gate",
+      "cost": "tiny; 0.024 seconds in the 2026-07-16 warm full sample",
+      "escalation": "remove only if an explicit architecture decision makes Den a product dependency",
+      "failureClass": "engine runtime or build becomes coupled to the task-control plane",
+      "representativeRegression": "forbidden Den references fail the no-coupling scan"
+    },
+    "vocabulary": {
+      "owner": "Architecture stewardship",
+      "claim": "ECRP vocabulary and Rust authority naming remain legible",
+      "disposition": "advisory",
+      "failureMode": "warning",
+      "trigger": "every fast and full run while the scan remains cheap",
+      "failSafe": "a true contract or authority violation is owned by contracts or depgraph instead",
+      "cost": "small; 2.634 seconds in the 2026-07-16 warm full sample",
+      "escalation": "promote one precise rule only when a representative consequential API or authority ambiguity exists"
+    },
+    "identities": {
+      "owner": "CI stewardship",
+      "claim": "shared execution fingerprints, receipts, and artifact identity",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "harness identity/public-surface changes or scheduled/full closure",
+      "failSafe": "CI entrypoint changes expand to full",
+      "cost": "small; 1.661 seconds in the 2026-07-16 warm full sample",
+      "escalation": "merge with CI policy if identity logic stops owning distinct collision/reuse behavior",
+      "failureClass": "stale execution reuse or duplicate artifact identity can hide the command actually tested",
+      "representativeRegression": "environment/input drift and cross-layer artifact collisions change or reject execution identity"
+    },
+    "bridge": {
+      "owner": "Bridge and contract stewardship",
+      "claim": "strict public wire and bridge boundary",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "bridge, protocol, or native boundary changes",
+      "failSafe": "protocol changes select bridge validation; unknown changes expand to full",
+      "cost": "medium; 10.121 seconds in the 2026-07-16 warm full sample",
+      "escalation": "split distribution checks only if they remain exact-revision and fail closed",
+      "failureClass": "unknown or malformed public wire data reaches authority, or public glue drifts from the manifest",
+      "representativeRegression": "missing, duplicate, mismatched, and unwired bridge fixtures fail"
+    },
+    "gameplay-conformance": {
+      "owner": "Gameplay fabric/provider owners",
+      "claim": "engine-owned gameplay provider behavior through public Rust seams",
+      "disposition": "scheduled/campaign-close",
+      "failureMode": "blocking",
+      "trigger": "scheduled/full closure and gameplay fixture changes",
+      "failSafe": "unknown fixture changes expand to full",
+      "cost": "small; 1.404 seconds in the 2026-07-16 warm full sample",
+      "escalation": "move external-consumer scenarios to asha-testing; retain only concrete provider regressions",
+      "failureClass": "public gameplay bootstrap, invocation, state, or replay behavior breaks",
+      "representativeRegression": "negative composition fixtures and public provider save/replay checks fail"
+    },
+    "gameplay-sdk": {
+      "owner": "Gameplay SDK stewardship",
+      "claim": "public gameplay SDK fixture and scaffold",
+      "disposition": "scheduled/campaign-close",
+      "failureMode": "blocking",
+      "trigger": "scheduled/full closure and public gameplay SDK changes",
+      "failSafe": "public-Rust changes select Rust and identity checks; unknown changes expand to full",
+      "cost": "small; 1.342 seconds in the 2026-07-16 warm full sample",
+      "escalation": "merge with gameplay provider validation if scaffold generation ceases to be a distinct public claim",
+      "failureClass": "the published SDK cannot compose or scaffold a real provider",
+      "representativeRegression": "a freshly scaffolded module must compile and compose"
+    },
+    "replays": {
+      "owner": "Replay and authority owners",
+      "claim": "replay, snapshot, and atomicity fixtures",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "replay/snapshot paths or scheduled/full closure",
+      "failSafe": "ambiguous paths expand to full",
+      "cost": "tiny warm replay; 0.038 seconds in the 2026-07-16 full sample",
+      "escalation": "add a golden only for intentional durable product input, not report freshness",
+      "failureClass": "accepted state cannot be reproduced or atomic state transitions partially apply",
+      "representativeRegression": "committed replay checkpoints must reproduce exactly"
+    },
+    "render-goldens": {
+      "owner": "Render projection owners",
+      "claim": "render projection goldens",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "render/projection paths or scheduled/full closure",
+      "failSafe": "ambiguous paths expand to full",
+      "cost": "small; 0.521 seconds in the 2026-07-16 warm full sample",
+      "escalation": "remove a golden when it no longer represents a reviewed renderer-neutral product input",
+      "failureClass": "renderer-neutral projection changes incompatibly or nondeterministically",
+      "representativeRegression": "committed projection fixtures must reproduce exact snapshots"
+    },
+    "native": {
+      "owner": "Native bridge and runtime-host owners",
+      "claim": "native addon, strict wire, runtime bridge, and browser-host integration",
+      "disposition": "scheduled/campaign-close",
+      "failureMode": "blocking",
+      "trigger": "native bridge changes, scheduled full CI, or campaign closure",
+      "failSafe": "native paths select this gate; ambiguous CI paths expand to full",
+      "cost": "large; 27.454 seconds including release rebuild in the 2026-07-16 warm full sample",
+      "escalation": "narrow only if installed-addon and browser-host semantics remain distinct from reference tests",
+      "failureClass": "the public native provider accepts invalid wire data or fails its installed runtime lifecycle",
+      "representativeRegression": "strict N-API decode, installed-addon parity, browser-host lifecycle, and provider regressions fail closed"
+    }
+  },
+  "selectorCategories": {
+    "unknown": { "disposition": "blocking", "gates": "full", "fallback": "expand to every retained gate" },
+    "cross-cutting": { "disposition": "blocking", "gates": "full", "fallback": "expand to every retained gate" },
+    "guardrail-policy": { "disposition": "change-triggered", "gates": ["guardrail-policy"], "fallback": "combine with full expansion for CI entrypoints" },
+    "docs": { "disposition": "change-triggered", "gates": ["depgraph", "no-den-coupling", "vocabulary"], "fallback": "unknown paths expand to full" },
+    "harness-policy": { "disposition": "change-triggered", "gates": ["identities"], "fallback": "cross-cutting harness changes expand to full" },
+    "harness-contract": { "disposition": "change-triggered", "gates": ["identities"], "fallback": "unknown public fixtures expand to full" },
+    "rust": { "disposition": "change-triggered", "gates": ["rust"], "fallback": "unknown paths expand to full" },
+    "typescript": { "disposition": "change-triggered", "gates": ["typescript"], "fallback": "unknown paths expand to full" },
+    "contract": { "disposition": "change-triggered", "gates": ["contracts", "rust", "typescript", "bridge"], "fallback": "generated-border changes select all border owners" },
+    "bridge": { "disposition": "change-triggered", "gates": ["bridge"], "fallback": "unknown paths expand to full" },
+    "native": { "disposition": "change-triggered", "gates": ["native"], "fallback": "unknown paths expand to full" },
+    "replay": { "disposition": "change-triggered", "gates": ["replays"], "fallback": "unknown paths expand to full" },
+    "render": { "disposition": "change-triggered", "gates": ["render-goldens"], "fallback": "unknown paths expand to full" }
+  },
+  "explicitDecisions": {
+    "source-shape-pressure": {
+      "owner": "owning Rust or TypeScript lane",
+      "claim": "large files and barrels signal review pressure",
+      "disposition": "advisory",
+      "failureMode": "warning",
+      "trigger": "affected language gate and scheduled/full closure",
+      "failSafe": "dependency, compile, and authority violations remain separate blockers",
+      "cost": "small within Rust/TypeScript/depgraph gates",
+      "escalation": "name the hotspot and split candidate; never treat a line count as architecture truth"
+    },
+    "generated-inventory-freshness": {
+      "owner": "architecture documentation stewardship",
+      "claim": "code maps and workspace counts remain useful navigation",
+      "disposition": "advisory",
+      "failureMode": "warning",
+      "trigger": "depgraph runs",
+      "failSafe": "actual dependency and public-root checks remain blocking",
+      "cost": "small within depgraph",
+      "escalation": "repair during the owning change or schedule cleanup; retire inventory that becomes ambient churn"
+    },
+    "validator-negative-fixtures": {
+      "owner": "owning guardrail maintainer",
+      "claim": "a changed validator still rejects its representative bad input",
+      "disposition": "change-triggered",
+      "failureMode": "blocking",
+      "trigger": "harness-policy changes and scheduled/full closure; skipped on unrelated fast paths",
+      "failSafe": "unknown harness changes expand to full self-tests",
+      "cost": "medium only when harness self-tests are enabled",
+      "escalation": "merge duplicate fixtures that exercise the same rejection class",
+      "failureClass": "a consequential guard silently stops detecting its named invalid case",
+      "representativeRegression": "each retained authority, path, lint, and identity validator has a bounded negative fixture"
+    },
+    "computed-validation-reports": {
+      "owner": "CI stewardship",
+      "claim": "per-run results describe one execution, not source truth",
+      "disposition": "retired",
+      "failureMode": "external",
+      "trigger": "none in source control",
+      "failSafe": "CI uploads ignored timing, receipt, and failure-tail artifacts",
+      "cost": "no committed refresh cost",
+      "escalation": "commit only deliberate protocol/replay/render/serialization goldens"
+    },
+    "consumer-live-acceptance": {
+      "owner": "owning Demo or Studio repository",
+      "claim": "a person can use the visible gameplay or authoring result",
+      "disposition": "consumer-owned",
+      "failureMode": "external",
+      "trigger": "the owning user-facing task and repository",
+      "failSafe": "engine structural evidence cannot close the downstream task",
+      "cost": "measured in the owning consumer workflow",
+      "escalation": "route a concrete public-provider defect upstream with a focused regression"
+    },
+    "duplicate-execution-wrappers": {
+      "owner": "CI stewardship",
+      "claim": "one normalized input/toolchain identity executes once",
+      "disposition": "merged",
+      "failureMode": "blocking",
+      "trigger": "shared execution requests",
+      "failSafe": "duplicate actual fingerprints invalidate the CI report",
+      "cost": "reduces rather than adds execution cost",
+      "escalation": "delete wrappers with no distinct semantic claim",
+      "failureClass": "duplicate execution wastes time or stale receipts misstate the tested surface",
+      "representativeRegression": "identity self-tests reject duplicate artifact IDs and environment-insensitive reuse"
+    }
+  }
+}

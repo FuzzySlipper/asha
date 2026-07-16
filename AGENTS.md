@@ -153,6 +153,18 @@ source tokens, manifests, evidence catalogs, or an engine-only report. Computed
 run results belong in ignored CI/task artifacts unless they are intentional
 protocol, replay, render, or serialization goldens reviewed as product inputs.
 
+Use `./harness/ci/check-fast.sh` for ordinary affected-surface iteration. Reserve
+the full inventory for scheduled/campaign closure, explicit native verification,
+or the selector's fail-safe expansion; reviewers should not demand it for an
+unrelated narrow change. Source-shape, vocabulary, and generated navigation
+warnings are review signals, not architecture law. Discuss their concrete impact
+and named next action proportionately.
+
+A user-facing task cannot close from structural evidence alone. New blocking
+gates require a consequential failure class, owner, bounded trigger and fallback,
+representative regression, rough cost, and narrowing/removal condition. See
+`harness/ci/guardrail-policy.json` and `docs/guardrail-policy.md`.
+
 ## TypeScript House Style
 
 TypeScript in this repo is written for agent governance, not clever human terseness.

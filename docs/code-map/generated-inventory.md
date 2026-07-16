@@ -299,7 +299,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Assignment And Dependency Pressure
 
-Committed path classes: 742 source; 26 generated source; 536 other; 0 build/cache/output.
+Committed path classes: 731 source; 26 generated source; 500 other; 0 build/cache/output.
 
 ### Rust actual and allowed edges
 
@@ -490,7 +490,7 @@ Counts include committed non-output paths only; ambient worktree files do not al
 - [`harness/fixtures/entities`](../../harness/fixtures/entities) — 1 files
 - [`harness/fixtures/events`](../../harness/fixtures/events) — 1 files
 - [`harness/fixtures/game-rules`](../../harness/fixtures/game-rules) — 2 files
-- [`harness/fixtures/gameplay-module-sdk`](../../harness/fixtures/gameplay-module-sdk) — 5 files
+- [`harness/fixtures/gameplay-module-sdk`](../../harness/fixtures/gameplay-module-sdk) — 6 files
 - [`harness/fixtures/gameplay-presets`](../../harness/fixtures/gameplay-presets) — 1 files
 - [`harness/fixtures/generated-levels`](../../harness/fixtures/generated-levels) — 1 files
 - [`harness/fixtures/materials`](../../harness/fixtures/materials) — 1 files

@@ -2,16 +2,29 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$REPO_ROOT/harness/ci/advisory.sh"
 cd "$REPO_ROOT/ts"
 
 echo "==> pnpm install --frozen-lockfile"
 pnpm install --frozen-lockfile
 
 echo "==> TypeScript source shape guard"
-node "$REPO_ROOT/harness/depgraph/check-ts-source-shape.mjs" "$REPO_ROOT"
-node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-diff.mjs" "$REPO_ROOT"
+run_advisory \
+  "typescript-source-shape" \
+  "owning TypeScript lane" \
+  "record the hotspot and split candidate; build, lint, and import guards remain blocking" \
+  node "$REPO_ROOT/harness/depgraph/check-ts-source-shape.mjs" "$REPO_ROOT"
+run_advisory \
+  "typescript-source-shape-policy" \
+  "owning TypeScript lane" \
+  "review the structural-pressure baseline without treating it as architecture truth" \
+  node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-diff.mjs" "$REPO_ROOT"
 if [[ "${ASHA_HARNESS_SELF_TESTS:-1}" == "1" ]]; then
-  node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-fixtures.mjs" "$REPO_ROOT"
+  run_advisory \
+    "typescript-source-shape-self-tests" \
+    "architecture stewardship" \
+    "repair or merge the changed advisory validator fixtures" \
+    node "$REPO_ROOT/harness/depgraph/check-ts-source-shape-policy-fixtures.mjs" "$REPO_ROOT"
 fi
 
 echo "==> pnpm -r build (untracked workspace outputs)"

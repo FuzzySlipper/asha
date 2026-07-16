@@ -20,7 +20,10 @@ the native addon and browser-host gate.
 
 These tiers schedule existing checks; they do not define a proof or delivery system.
 The selector is a small path classifier in `harness/ci/ci.py`, and its unit tests
-cover representative classes, safe expansion, and injected failures.
+cover representative classes, safe expansion, injected blocking failures, and
+advisory warnings. The compact claim/trigger/cost policy lives in
+[`guardrail-policy.md`](guardrail-policy.md); its validator runs only when the
+registry, workflow, or CI entrypoints change.
 
 ## Reports
 
@@ -98,6 +101,11 @@ their actual dependency and authority guards still run. Product browser
 acceptance remains owned by the consumer instead of running for every unrelated
 engine change.
 
+Source-shape pressure, vocabulary drift, and generated navigation freshness are
+advisory. Their failures name an owner and next action but do not invalidate the
+run. Compilation, dependency edges, generated/public roots, strict borders,
+replay, and native/provider behavior remain blocking in their owning gates.
+
 ## Execution reuse and semantic isolation
 
 The Rust workspace, TypeScript workspace, native-bridge library, and downstream
@@ -132,6 +140,13 @@ repeated request and zero duplicate actual fingerprints. This is the current
 inventory measurement; it remains below the three-minute warm optimization
 budget, but it is not presented as a speedup over the differently warmed
 pre-retirement sample.
+
+The #5856 policy-entrypoint change exercised the fail-safe fast path: it selected
+the 0.040-second policy validator plus all 13 retained gates and completed in
+93.064 seconds (1.551 runner minutes). The report recorded 14 unique commands,
+zero repeats, zero advisory failures, zero blocking failures, five shared
+execution requests for four fingerprints, one receipt reuse, and zero duplicate
+actual fingerprints.
 
 The first cold GitHub comparison used implementation run `29496495981` at
 commit `6af53b04635ebeb977b1699b83648568568d2b53`. Because the change modified

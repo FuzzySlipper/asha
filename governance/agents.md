@@ -24,3 +24,13 @@ Do not accept or reject Demo/Studio delivery from source tokens, manifests,
 evidence catalogs, or engine-only reports. Do not require a downstream product
 proof to close an engine substrate task unless that task explicitly owns a live
 cross-repository acceptance run.
+
+For ordinary narrow changes, request the affected-surface fast gate rather than
+the full inventory. Full validation belongs to scheduled/campaign closure,
+explicit native verification, or fail-safe expansion for ambiguous changes.
+Source-shape, vocabulary, generated inventory, and code-map warnings are
+proportional review signals; they are not blocking architecture rules by default.
+
+A new blocking gate must identify its consequential failure class, owner,
+bounded trigger and fallback, representative regression, rough cost, and
+narrowing/removal condition in `harness/ci/guardrail-policy.json`.

@@ -58,7 +58,7 @@ jobs:
             pnpm-lock.yaml
             ts/pnpm-lock.yaml
 
-      - name: Run selected blocking safeguards
+      - name: Run selected safeguards and advisories
         env:
           ASHA_CI_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
           ASHA_SOURCE_SHAPE_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}

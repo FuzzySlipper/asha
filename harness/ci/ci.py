@@ -16,7 +16,33 @@ from typing import Any
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 REPORT_ROOT = ROOT / "harness/smoke-out/ci"
 
+GUARDRAIL_POLICY_PATHS = {
+    ".github/workflows/offline-ci.yml",
+    "harness/ci/guardrail-policy.json",
+    "harness/ci/guardrail_policy.py",
+}
+
+SELECTOR_CATEGORIES = (
+    "unknown",
+    "cross-cutting",
+    "guardrail-policy",
+    "docs",
+    "harness-policy",
+    "harness-contract",
+    "rust",
+    "typescript",
+    "contract",
+    "bridge",
+    "native",
+    "replay",
+    "render",
+)
+
 GATES: dict[str, dict[str, Any]] = {
+    "guardrail-policy": {
+        "command": ["python3", "harness/ci/guardrail_policy.py", "--self-test"],
+        "claims": ["guardrail registry and CI entrypoints agree"],
+    },
     "rust": {
         "command": ["env", "ASHA_GAMEPLAY_RUNTIME_HOST_GATE_OWNS_TESTS=1", "harness/ci/check-rust.sh"],
         "claims": ["Rust formatting, compilation, clippy, and workspace tests"],
@@ -31,7 +57,9 @@ GATES: dict[str, dict[str, Any]] = {
     },
     "depgraph": {
         "command": ["harness/ci/check-depgraph.sh"],
-        "claims": ["authority lanes, dependency edges, source shape, and committed-path hygiene"],
+        "claims": [
+            "authority lanes, dependency edges, committed paths, and public package roots remain valid; source-shape and inventory pressure is advisory"
+        ],
     },
     "no-den-coupling": {
         "command": ["harness/ci/check-no-den-coupling.sh"],
@@ -39,7 +67,7 @@ GATES: dict[str, dict[str, Any]] = {
     },
     "vocabulary": {
         "command": ["harness/ci/check-vocabulary.sh"],
-        "claims": ["ECRP vocabulary and Rust authority naming"],
+        "claims": ["ECRP vocabulary and Rust authority naming remain legible"],
     },
     "identities": {
         "command": ["harness/ci/check-harness-identities.sh"],
@@ -71,6 +99,13 @@ GATES: dict[str, dict[str, Any]] = {
     },
 }
 
+ADVISORY_GATES: dict[str, dict[str, str]] = {
+    "vocabulary": {
+        "owner": "Architecture stewardship",
+        "nextAction": "promote one precise rule only when a representative consequential API or authority ambiguity exists",
+    },
+}
+
 FULL_ORDER = [
     "rust",
     "typescript",
@@ -88,6 +123,7 @@ FULL_ORDER = [
 ]
 FAST_ALWAYS = ["depgraph", "no-den-coupling", "vocabulary"]
 FAST_ORDER = [
+    "guardrail-policy",
     "depgraph",
     "no-den-coupling",
     "vocabulary",
@@ -109,6 +145,17 @@ def stable_hash(value: Any) -> str:
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
+def gate_runtime_policy(gate: str) -> dict[str, str]:
+    advisory = ADVISORY_GATES.get(gate)
+    if advisory is not None:
+        return {"failureMode": "warning", **advisory}
+    return {
+        "failureMode": "blocking",
+        "owner": "Owning gate maintainer",
+        "nextAction": "repair the named consequential failure before accepting the change",
+    }
+
+
 def classify_path(path: str) -> set[str]:
     normalized = pathlib.PurePosixPath(path).as_posix()
     categories: set[str] = set()
@@ -122,6 +169,8 @@ def classify_path(path: str) -> set[str]:
         categories.add("docs")
     if normalized.startswith((".github/", "harness/ci/")):
         categories.add("cross-cutting")
+    if normalized in GUARDRAIL_POLICY_PATHS or normalized.startswith("harness/ci/"):
+        categories.add("guardrail-policy")
     if normalized.startswith(("governance/", "harness/depgraph/", "harness/code-map/", "harness/lint/")):
         categories.add("harness-policy")
     if normalized.startswith((
@@ -157,8 +206,13 @@ def classify_path(path: str) -> set[str]:
 def select_fast(changed_files: list[str]) -> tuple[list[str], set[str], bool]:
     categories = set().union(*(classify_path(path) for path in changed_files)) if changed_files else set()
     if categories & {"unknown", "cross-cutting"}:
-        return [*FULL_ORDER], categories, True
+        selected = [*FULL_ORDER]
+        if "guardrail-policy" in categories:
+            selected.insert(0, "guardrail-policy")
+        return selected, categories, True
     selected = set(FAST_ALWAYS)
+    if "guardrail-policy" in categories:
+        selected.add("guardrail-policy")
     if "rust" in categories:
         selected.add("rust")
     if "typescript" in categories:
@@ -233,11 +287,15 @@ def plan_document(tier: str, changed_files: list[str]) -> dict[str, Any]:
     gates = []
     for gate in selected:
         command = gate_command(gate, tier, categories, expanded)
+        policy = gate_runtime_policy(gate)
         gates.append({
             "id": gate,
             "normalizedCommand": command,
             "commandFingerprint": stable_hash(command),
             "semanticClaimConsumers": GATES[gate]["claims"],
+            "failureMode": policy["failureMode"],
+            "owner": policy["owner"],
+            "nextAction": policy["nextAction"],
         })
     return {
         "schemaVersion": 1,
@@ -263,12 +321,24 @@ def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | N
         print(f"==> CI gate {gate['id']}: {' '.join(command)}", flush=True)
         gate_started = time.monotonic()
         completed = subprocess.run(command, cwd=ROOT, check=False)
+        outcome = "passed"
+        if completed.returncode != 0:
+            outcome = "warning" if gate["failureMode"] == "warning" else "failed"
         results.append({
             **gate,
             "exitCode": completed.returncode,
+            "outcome": outcome,
             "wallTimeMs": round((time.monotonic() - gate_started) * 1000),
         })
         if completed.returncode != 0:
+            if gate["failureMode"] == "warning":
+                print(
+                    f"WARN: advisory gate {gate['id']} failed; owner={gate['owner']}; "
+                    f"next={gate['nextAction']}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                continue
             break
     fingerprints = [item["commandFingerprint"] for item in results]
     execution_events = []
@@ -306,7 +376,10 @@ def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | N
         **plan,
         "valid": (
             len(results) == len(plan["gates"])
-            and all(item["exitCode"] == 0 for item in results)
+            and all(
+                item["exitCode"] == 0 or item["failureMode"] == "warning"
+                for item in results
+            )
             and not duplicate_actual_fingerprints
         ),
         "summary": {
@@ -314,6 +387,14 @@ def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | N
             "completedGateCount": len(results),
             "uniqueCommandCount": len(set(fingerprints)),
             "repeatedCommandCount": len(fingerprints) - len(set(fingerprints)),
+            "advisoryWarningCount": sum(
+                item["exitCode"] != 0 and item["failureMode"] == "warning"
+                for item in results
+            ),
+            "blockingFailureCount": sum(
+                item["exitCode"] != 0 and item["failureMode"] == "blocking"
+                for item in results
+            ),
             "runnerWallTimeMs": wall_time_ms,
             "runnerMinutes": round(wall_time_ms / 60_000, 3),
             "sharedExecutions": execution_summary,
