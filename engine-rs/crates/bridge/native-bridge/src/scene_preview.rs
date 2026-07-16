@@ -944,7 +944,6 @@ fn scene_codec_result_json(result: &SceneDocumentCodecResultDto) -> Value {
     json!({
         "accepted": result.accepted,
         "document": result.document.as_ref().map(scene_document_json),
-        "contentHash": result.content_hash,
         "canonicalJson": result.canonical_json,
         "contentHash": result.content_hash,
         "diagnostics": result.diagnostics.iter().map(|diagnostic| json!({
@@ -989,6 +988,7 @@ fn scene_authoring_result_json(result: &SceneDocumentAuthoringResultDto) -> napi
     Ok(json!({
         "accepted": result.accepted,
         "document": result.document.as_ref().map(scene_document_json),
+        "contentHash": result.content_hash,
         "authoredLightFrame": authored_light_frame,
         "rejection": result.rejection.as_ref().map(|rejection| json!({
             "code": rejection.code.as_str(),
@@ -997,6 +997,25 @@ fn scene_authoring_result_json(result: &SceneDocumentAuthoringResultDto) -> napi
             "actualHash": rejection.actual_hash,
         })),
     }))
+}
+
+#[cfg(test)]
+mod scene_authoring_wire_tests {
+    use super::*;
+
+    #[test]
+    fn accepted_scene_authoring_json_carries_the_rotated_content_hash() {
+        let value = scene_authoring_result_json(&SceneDocumentAuthoringResultDto {
+            accepted: true,
+            document: None,
+            content_hash: Some("fnv1a64:0123456789abcdef".to_string()),
+            authored_light_frame: Some(protocol_render::RenderFrameDiff::new()),
+            rejection: None,
+        })
+        .unwrap();
+
+        assert_eq!(value["contentHash"], "fnv1a64:0123456789abcdef");
+    }
 }
 
 #[napi]
