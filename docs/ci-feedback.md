@@ -126,5 +126,19 @@ fingerprints. The native gate accounted for 4.360 seconds and its Rust library
 test reused the conformance receipt; the two post-addon TypeScript suites each
 produced one reusable native-semantic receipt.
 
-The first cold GitHub comparison is recorded in the task review evidence after
-the implementation commit is pushed.
+The first cold GitHub comparison used implementation run `29496495981` at
+commit `6af53b04635ebeb977b1699b83648568568d2b53`. Because the change modified
+the selector and execution harness themselves, the fast job correctly expanded
+to all 16 gates. The measured command inventory took 769.986 seconds (12.833
+runner minutes); the complete GitHub job, including checkout/toolchain/cache
+setup and teardown, took 857 seconds (14.283 runner minutes). It recorded 16
+unique gate commands, zero gate repeats, 13 proof requests for 10 unique
+fingerprints, four receipt reuses, and zero duplicate actual fingerprints.
+
+The equivalent pre-change all-gates job took 826 seconds (13.767 runner
+minutes), so this worst-case cold run was 31 seconds, or 3.8%, slower. This is
+reported deliberately rather than presented as a speedup: the material gain is
+that ordinary narrow changes no longer pay for the all-gates/native path, while
+cross-cutting CI changes retain the complete fail-safe path. The same-host warm
+measurements above demonstrate the execution-reuse improvement independently
+of cold runner setup and compilation.
