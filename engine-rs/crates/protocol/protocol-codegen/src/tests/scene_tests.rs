@@ -2,6 +2,9 @@ use super::*;
 
 pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
     coverage.extend([
+        interface_coverage_key("scene", "SceneDocumentAuthoringRequest"),
+        interface_coverage_key("scene", "SceneDocumentAuthoringRejection"),
+        interface_coverage_key("scene", "SceneDocumentAuthoringResult"),
         variant_coverage_key("scene", "SceneLight", "ambient"),
         variant_coverage_key("scene", "SceneLight", "directional"),
         variant_coverage_key("scene", "SceneLight", "point"),
@@ -32,6 +35,12 @@ fn scene_family_emits_tags_codes_and_shapes() {
             "missing scene-document codec diagnostic code {code}"
         );
     }
+    for code in protocol_scene::SCENE_DOCUMENT_AUTHORING_REJECTION_CODES {
+        assert!(
+            source.contains(&format!("'{code}'")),
+            "missing scene-document authoring rejection code {code}"
+        );
+    }
     for shape in [
         "export type ProjectId =",
         "export type SceneId =",
@@ -41,6 +50,9 @@ fn scene_family_emits_tags_codes_and_shapes() {
         "export interface SceneDocumentDecodeRequest {",
         "export interface SceneDocumentEncodeRequest {",
         "export interface SceneDocumentCodecResult {",
+        "export interface SceneDocumentAuthoringRequest {",
+        "export interface SceneDocumentAuthoringRejection {",
+        "export interface SceneDocumentAuthoringResult {",
         "export interface SceneNodeRecord {",
         "export interface SceneValidationReport {",
         "export interface SceneSourceTrace {",
@@ -52,6 +64,49 @@ fn scene_family_emits_tags_codes_and_shapes() {
             "missing generated scene shape {shape}"
         );
     }
+}
+
+#[test]
+fn scene_document_authoring_samples_match_generated_ir_shapes() {
+    let scene = module("scene");
+    let document = json!({
+        "formatVersion": 2,
+        "projectId": 1,
+        "sceneId": 2,
+        "dependencies": [],
+        "nodes": [],
+        "metadata": { "name": "Authoring sample", "description": null, "tags": [] }
+    });
+    let request = json!({
+        "expectedContentHash": "fnv1a64:1111111111111111",
+        "currentDocument": document,
+        "candidateDocument": document
+    });
+    let rejection = json!({
+        "code": "stale-scene-document",
+        "message": "expected content hash did not match",
+        "expectedHash": "fnv1a64:1111111111111111",
+        "actualHash": "fnv1a64:2222222222222222"
+    });
+    let accepted = json!({
+        "accepted": true,
+        "document": document,
+        "contentHash": "fnv1a64:3333333333333333",
+        "authoredLightFrame": { "ops": [] },
+        "rejection": null
+    });
+    let rejected = json!({
+        "accepted": false,
+        "document": null,
+        "contentHash": null,
+        "authoredLightFrame": null,
+        "rejection": rejection
+    });
+
+    compare_object_to_interface(&scene, "SceneDocumentAuthoringRequest", &request).unwrap();
+    compare_object_to_interface(&scene, "SceneDocumentAuthoringRejection", &rejection).unwrap();
+    compare_object_to_interface(&scene, "SceneDocumentAuthoringResult", &accepted).unwrap();
+    compare_object_to_interface(&scene, "SceneDocumentAuthoringResult", &rejected).unwrap();
 }
 
 #[test]

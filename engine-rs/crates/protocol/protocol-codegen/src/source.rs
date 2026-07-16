@@ -1416,6 +1416,10 @@ mod tests {
                 "wire values derive from its canonical const table",
             ),
             (
+                "SceneDocumentAuthoringRejectionCode",
+                "wire values derive from its canonical const table",
+            ),
+            (
                 "SceneValidationCode",
                 "wire values derive from its canonical const table",
             ),

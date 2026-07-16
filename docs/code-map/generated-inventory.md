@@ -456,7 +456,7 @@ Committed path classes: 729 source; 26 generated source; 535 other; 0 build/cach
 | `engine-rs/crates/rules/rule-animation-controller/src/lib.rs` | 1565 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1555 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs` | 1554 / 1400 / 1600 | rust-bridge | global policy |
-| `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1537 / 1400 / 1600 | contract-steward | global policy |
+| `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1541 / 1400 / 1600 | contract-steward | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_assets.rs` | 1531 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/lib.rs` | 1510 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-entity-authoring/src/lib.rs` | 1508 / 1400 / 1600 | rust-service | global policy |
