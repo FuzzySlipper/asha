@@ -261,14 +261,10 @@ impl EngineBridge {
                 ))
             }
         };
-        if candidate.id != current.id
-            || candidate.schema_version != current.schema_version
-            || candidate.metadata.authoring_format_version
-                != current.metadata.authoring_format_version
-        {
+        if candidate.id != current.id {
             return Ok(Self::scene_authoring_rejection(
                 SceneDocumentAuthoringRejectionCode::ForeignDocumentIdentity,
-                "stored scene authoring cannot replace scene identity or format versions",
+                "stored scene authoring cannot replace scene identity",
                 Some(request.expected_content_hash.clone()),
                 Some(actual_hash.clone()),
             ));

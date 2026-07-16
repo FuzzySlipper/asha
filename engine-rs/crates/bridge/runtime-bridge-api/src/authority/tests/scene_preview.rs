@@ -295,6 +295,30 @@ fn stored_scene_authoring_accepts_only_rust_validated_candidates_and_projects_li
         rejected.rejection.unwrap().code,
         SceneDocumentAuthoringRejectionCode::ForeignDocumentIdentity
     );
+
+    let v1 = bridge
+        .decode_scene_document(SceneDocumentDecodeRequestDto {
+            source_text: include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../../../harness/fixtures/scenes/sample-flat.json"
+            ))
+            .into(),
+        })
+        .unwrap();
+    let v1_hash = v1.content_hash.unwrap();
+    let v1_document = v1.document.unwrap();
+    let mut upgraded = v1_document.clone();
+    upgraded.schema_version = 2;
+    upgraded.metadata.authoring_format_version = 2;
+    let upgraded = bridge
+        .apply_scene_document_authoring(SceneDocumentAuthoringRequestDto {
+            expected_content_hash: v1_hash,
+            current_document: v1_document,
+            candidate_document: upgraded,
+        })
+        .unwrap();
+    assert!(upgraded.accepted);
+    assert_eq!(upgraded.document.unwrap().schema_version, 2);
     assert_eq!(bridge.read_scene_object_snapshot().unwrap(), runtime_before);
 }
 
