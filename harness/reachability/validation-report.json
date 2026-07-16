@@ -2,20 +2,20 @@
   "schemaVersion": 1,
   "valid": true,
   "manifest": "harness/reachability/manifest.json",
-  "manifestHash": "sha256:376786f2417b0cc5a3b0d83548f2f0dd28e28809c3b7073bd8b3a282dccbf178",
-  "identityCatalogHash": "sha256:790e0aa21c5500c81d90090a02ff31f25ddd7d2ac9b81f26cb097564e3f377a3",
+  "manifestHash": "sha256:e930b029da819809ca41ea943d1a1e206192aab651c38e85d1ef0ddfdbc9ea34",
+  "identityCatalogHash": "sha256:dcbb6406beecb0d31eeaeaeac6f9ce880a03a2c94d250c1707c3ac8c240eb7d0",
   "catalogs": [
     {
       "path": "harness/identity/catalog.json",
-      "hash": "sha256:79d4515c64cbea965b5b1d4aa84d76a86fd2f4e060e3f850d5c8b6ef725e42f1"
+      "hash": "sha256:051c9012bc979bc6ff230d0d56b155fd5bddeaa4ec6aaee399b7cc1dde224cf2"
     },
     {
       "path": "engine-rs/crates/bridge/runtime-bridge-api/bridge-manifest.toml",
-      "hash": "sha256:5ccf3523961eedbf0a2d51913a3c0c0e8b5bb23f1132ff0bc59078d15379109d"
+      "hash": "sha256:cac801c3c1c4b358af33e6ed0ab4d4a891f06ac7993c7db0272c92e10d56289a"
     },
     {
       "path": "harness/public-surface/ts-packages.json",
-      "hash": "sha256:6854d4635b7808b1459caf9e3db64a3de35da70c8d043c3031b513288eeb7b41"
+      "hash": "sha256:290f525ee518c2b007b37912b341e955ae7edb9e1f1298040b06f4fd30d88467"
     },
     {
       "path": "harness/public-surface/rust-crates.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "harness/consumer-needs/validation-report.json",
-      "hash": "sha256:c813d0c68d325e2393c1658677eb8633188c0b5d948db5675df5932646958d25"
+      "hash": "sha256:f2cec01dc7680f7eb196ca25cddeee02d666071111bcbf98bd1f747af7701a14"
     },
     {
       "path": "ts/packages/contracts/src/generated/gameExtension.ts",
@@ -38,7 +38,7 @@
       "id": "catalog.bridge-operations",
       "kind": "bridgeOperations",
       "valid": true,
-      "actualCount": 77
+      "actualCount": 80
     },
     {
       "id": "catalog.consumer-needs",
@@ -50,7 +50,7 @@
       "id": "catalog.generated-contracts",
       "kind": "generatedContracts",
       "valid": true,
-      "actualCount": 628
+      "actualCount": 645
     },
     {
       "id": "catalog.rust-public-surfaces",
