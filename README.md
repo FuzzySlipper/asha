@@ -151,6 +151,28 @@ This selects consequential checks and advisory structural diagnostics from the
 current diff and writes an ignored timing report under `harness/smoke-out/ci/`.
 Unknown or cross-cutting changes expand to the full engine suite.
 
+### Clean exact-commit check
+
+After committing, validate the exact commit without allowing unrelated staged,
+unstaged, or untracked work in the shared checkout to affect selection or gate
+execution:
+
+```sh
+./harness/ci/check-fast.sh --clean-commit HEAD
+```
+
+The command resolves the commit and its parent, creates an owned temporary
+detached worktree, runs the ordinary fast gate inventory there, and removes the
+worktree afterward. For a multi-commit push range, supply the intended base:
+
+```sh
+./harness/ci/check-fast.sh --clean-commit <head-sha> --base-ref <before-sha>
+```
+
+`./harness/ci/check-all.sh --clean-commit <sha>` provides the same isolation for
+the full suite. Normal `check-fast.sh` remains intentionally dirty-tree-aware
+for pre-commit iteration.
+
 ### Full check suite
 
 ```sh

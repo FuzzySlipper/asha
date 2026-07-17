@@ -2,8 +2,8 @@ use asha_gameplay_module_conformance::{
     run_gameplay_module_conformance, GameplayModuleConformanceCase,
 };
 use asha_gameplay_module_fixture::{
-    composition as build_composition, provider_requirements_json,
-    conformance_reachable_surfaces, root_event, trigger_entered_event,
+    composition as build_composition, conformance_reachable_surfaces, provider_requirements_json,
+    root_event, trigger_entered_event,
 };
 use asha_gameplay_module_sdk::{GameplayStaticComposition, GameplayStaticCompositionError};
 

@@ -10,6 +10,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Any
 
@@ -244,6 +245,149 @@ def git_lines(*arguments: str) -> tuple[list[str], bool]:
     return [line for line in completed.stdout.splitlines() if line], completed.returncode == 0
 
 
+def resolve_commit(ref: str) -> str:
+    if not ref or ref.startswith("-"):
+        raise ValueError(f"invalid git commit ref: {ref!r}")
+    completed = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        cwd=ROOT,
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+    resolved = completed.stdout.strip()
+    if completed.returncode != 0 or len(resolved) != 40:
+        raise ValueError(f"git commit ref does not resolve: {ref}")
+    return resolved
+
+
+def clean_commit_command(
+    worktree: pathlib.Path,
+    tier: str,
+    base_commit: str | None,
+    plan_only: bool,
+    output: pathlib.Path | None,
+    inject_failure: str | None,
+) -> list[str]:
+    script = worktree / "harness/ci" / ("check-fast.sh" if tier == "fast" else "check-all.sh")
+    command = [str(script)]
+    if tier == "fast" and base_commit:
+        command.extend(("--base-ref", base_commit))
+    if plan_only:
+        command.append("--plan")
+    if output:
+        command.extend(("--output", str(output)))
+    if inject_failure:
+        command.extend(("--inject-failure", inject_failure))
+    return command
+
+
+def run_clean_commit(
+    parser: argparse.ArgumentParser,
+    tier: str,
+    commit_ref: str,
+    base_ref: str | None,
+    plan_only: bool,
+    output: pathlib.Path | None,
+    inject_failure: str | None,
+) -> int:
+    try:
+        commit = resolve_commit(commit_ref)
+        base_commit = resolve_commit(base_ref or f"{commit}^")
+    except ValueError as error:
+        parser.error(str(error))
+
+    selected_output = output
+    if selected_output and not selected_output.is_absolute():
+        selected_output = (pathlib.Path.cwd() / selected_output).resolve()
+    if not plan_only and selected_output is None:
+        selected_output = REPORT_ROOT / f"{tier}-commit-{commit[:12]}.json"
+
+    print(
+        f"==> Validating exact commit {commit} from clean detached worktree "
+        f"(base {base_commit}, tier {tier})",
+        file=sys.stderr,
+        flush=True,
+    )
+    with tempfile.TemporaryDirectory(prefix="asha-ci-clean-") as temporary:
+        worktree = pathlib.Path(temporary) / "worktree"
+        added = False
+        try:
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", str(worktree), commit],
+                cwd=ROOT,
+                check=True,
+                stdout=sys.stderr,
+            )
+            added = True
+            command = clean_commit_command(
+                worktree,
+                tier,
+                base_commit,
+                plan_only,
+                selected_output,
+                inject_failure,
+            )
+            environment = os.environ.copy()
+            environment.update({
+                "ASHA_CI_BASE_REF": base_commit,
+                "ASHA_SOURCE_SHAPE_BASE_REF": base_commit,
+                "ASHA_CI_VALIDATION_MODE": "clean-commit",
+                "ASHA_CI_VALIDATION_COMMIT": commit,
+                "ASHA_CI_VALIDATION_BASE_COMMIT": base_commit,
+            })
+            validation_target = {
+                "mode": "clean-commit",
+                "commit": commit,
+                "baseCommit": base_commit,
+            }
+            completed = subprocess.run(
+                command,
+                cwd=worktree,
+                env=environment,
+                check=False,
+                text=plan_only,
+                capture_output=plan_only,
+            )
+            if plan_only:
+                if completed.stderr:
+                    print(completed.stderr, file=sys.stderr, end="")
+                if completed.stdout:
+                    plan = json.loads(completed.stdout)
+                    plan["validationTarget"] = validation_target
+                    print(json.dumps(plan, indent=2))
+            elif selected_output and selected_output.is_file():
+                report = json.loads(selected_output.read_text(encoding="utf-8"))
+                report["validationTarget"] = validation_target
+                selected_output.write_text(
+                    json.dumps(report, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            return completed.returncode
+        finally:
+            if added:
+                removed = subprocess.run(
+                    ["git", "worktree", "remove", "--force", str(worktree)],
+                    cwd=ROOT,
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                if removed.returncode != 0:
+                    print(
+                        f"WARN: could not unregister temporary CI worktree: {removed.stderr.strip()}",
+                        file=sys.stderr,
+                    )
+                    subprocess.run(
+                        ["git", "worktree", "prune"],
+                        cwd=ROOT,
+                        check=False,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+
+
 def detect_changed_files(base_ref: str | None) -> list[str]:
     changed: set[str] = set()
     reliable = True
@@ -299,7 +443,7 @@ def plan_document(tier: str, changed_files: list[str]) -> dict[str, Any]:
             "owner": policy["owner"],
             "nextAction": policy["nextAction"],
         })
-    return {
+    plan = {
         "schemaVersion": 1,
         "tier": tier,
         "changedFiles": changed_files,
@@ -307,6 +451,14 @@ def plan_document(tier: str, changed_files: list[str]) -> dict[str, Any]:
         "expandedToFull": expanded,
         "gates": gates,
     }
+    validation_commit = os.environ.get("ASHA_CI_VALIDATION_COMMIT")
+    if validation_commit:
+        plan["validationTarget"] = {
+            "mode": os.environ.get("ASHA_CI_VALIDATION_MODE", "clean-commit"),
+            "commit": validation_commit,
+            "baseCommit": os.environ.get("ASHA_CI_VALIDATION_BASE_COMMIT"),
+        }
+    return plan
 
 
 def run_plan(plan: dict[str, Any], output: pathlib.Path, inject_failure: str | None) -> int:
@@ -423,12 +575,30 @@ def main() -> int:
     parser.add_argument("--tier", choices=("fast", "full"), required=True)
     parser.add_argument("--base-ref", default=os.environ.get("ASHA_CI_BASE_REF"))
     parser.add_argument("--changed-file", action="append", default=[])
+    parser.add_argument(
+        "--clean-commit",
+        nargs="?",
+        const="HEAD",
+        help="run this tier at an exact commit in a temporary clean detached worktree",
+    )
     parser.add_argument("--plan", action="store_true")
     parser.add_argument("--output", type=pathlib.Path)
     parser.add_argument("--inject-failure", choices=tuple(GATES))
     args = parser.parse_args()
     if args.inject_failure and os.environ.get("ASHA_CI_ALLOW_FAILURE_INJECTION") != "1":
         parser.error("failure injection requires ASHA_CI_ALLOW_FAILURE_INJECTION=1")
+    if args.clean_commit:
+        if args.changed_file:
+            parser.error("--clean-commit cannot be combined with --changed-file")
+        return run_clean_commit(
+            parser,
+            args.tier,
+            args.clean_commit,
+            args.base_ref,
+            args.plan,
+            args.output,
+            args.inject_failure,
+        )
     changed_files = args.changed_file or (
         detect_changed_files(args.base_ref) if args.tier == "fast" else []
     )

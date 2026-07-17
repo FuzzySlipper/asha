@@ -989,18 +989,21 @@ mod tests {
     use asha_runtime_session_composition::{
         BundleArtifacts, ComposedGameplayOwner, ComposedGameplayOwnerCheckpoint,
         ComposedGameplayOwnerOutput, EnemyDirectNavAuthoritySource, EnemyDirectNavMovementRequest,
-        EngineConfig, FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding,
-        FpsBridgeRole, FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability,
-        FpsBridgeWeaponMount, FpsPrimaryFireRequest, FpsRuntimeSessionLoadRequest,
-        FpsRuntimeSessionRestartRequest, GameplayBindingEntityTargets, GameplayDecisionMoment,
-        GameplayDecisionStatus, GameplayModuleViewRequest, GameplayModuleViewScope,
-        GameplayOperationWorkspace, GameplayPrefabPartInteractionRequest,
-        GameplayRuntimeDecisionOwner, GameplayRuntimeDecisionOwnerOutput,
-        GameplayRuntimeSchedulerCommand, GameplayRuntimeSchedulerDefinition,
-        GameplayRuntimeSpatialEntity, GameplayTriggerDefinition, LoadPlan, LoadStep,
-        ProjectBundleLoadRequest, RuntimeBridge, RuntimeSessionId, SceneId, ScheduledActionId,
-        ScheduledActionValidity, StaticRuntimeSessionBuilder, TickScheduledActionDraft,
-        TriggerReconcileCause, Vec3, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
+        EngineConfig, FlatSceneDocumentDto, FpsBridgeBoundsCapability, FpsBridgeHealth,
+        FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
+        FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsPrimaryFireRequest,
+        FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
+        GameplayBindingEntityTargets, GameplayDecisionMoment, GameplayDecisionStatus,
+        GameplayModuleViewRequest, GameplayModuleViewScope, GameplayOperationWorkspace,
+        GameplayPrefabPartInteractionRequest, GameplayRuntimeDecisionOwner,
+        GameplayRuntimeDecisionOwnerOutput, GameplayRuntimeSchedulerCommand,
+        GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
+        GameplayTriggerDefinition, LoadPlan, LoadStep, ProjectBundleLoadRequest, RuntimeBridge,
+        RuntimeSessionId, SceneEntityInstanceDto, SceneEntityReferenceDto, SceneId,
+        SceneMetadataDto, SceneNodeId, SceneNodeKindDto, SceneNodeRecordDto, SceneTransformDto,
+        ScheduledActionId, ScheduledActionValidity, StaticRuntimeSessionBuilder,
+        TickScheduledActionDraft, TriggerReconcileCause, Vec3,
+        GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
     };
     use std::sync::{
         atomic::{AtomicUsize, Ordering},
@@ -1229,6 +1232,7 @@ mod tests {
     fn composed_fps_load_request() -> FpsRuntimeSessionLoadRequest {
         FpsRuntimeSessionLoadRequest {
             project_bundle: "downstream-composed-cell".to_owned(),
+            scene_document: composed_fps_scene_document(),
             definitions: vec![
                 FpsBridgeStoredEntityDefinition {
                     entity: 101,
@@ -1295,6 +1299,43 @@ mod tests {
                 },
             ],
             game_rule_modules: Vec::new(),
+        }
+    }
+
+    fn composed_fps_scene_document() -> FlatSceneDocumentDto {
+        let instance = |id: u64, stable_id: &str, translation: [f32; 3]| SceneNodeRecordDto {
+            id: SceneNodeId::new(id),
+            parent: None,
+            child_order: id as u32,
+            label: Some(stable_id.to_owned()),
+            tags: Vec::new(),
+            transform: SceneTransformDto {
+                translation,
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [1.0, 1.0, 1.0],
+            },
+            kind: SceneNodeKindDto::EntityInstance {
+                instance: SceneEntityInstanceDto {
+                    instance_id: format!("instance.{id}"),
+                    reference: SceneEntityReferenceDto::EntityDefinition {
+                        stable_id: stable_id.to_owned(),
+                    },
+                    spawn_marker_id: None,
+                },
+            },
+        };
+        FlatSceneDocumentDto {
+            schema_version: 3,
+            id: SceneId::new(9002),
+            metadata: SceneMetadataDto {
+                name: Some("Downstream composed FPS fixture".to_owned()),
+                authoring_format_version: 3,
+            },
+            dependencies: Vec::new(),
+            nodes: vec![
+                instance(101, "actor/composed-player", [2.5, 1.5, 1.5]),
+                instance(777, "actor/composed-enemy", [2.5, 1.5, 5.2]),
+            ],
         }
     }
 
@@ -1378,6 +1419,7 @@ mod tests {
             min: [2.2, 1.0, 7.8],
             max: [2.8, 2.0, 8.6],
         });
+        far_request.scene_document.nodes[1].transform.translation = [2.5, 1.5, 8.0];
         let mut far = initialized_primary_fire_bridge(primary_fire_runtime_host_project_input());
         far.load_fps_runtime_session(far_request).unwrap();
         let far_result = far

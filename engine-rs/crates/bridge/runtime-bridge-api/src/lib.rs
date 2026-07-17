@@ -33,7 +33,8 @@ pub(crate) use core_entity::{
     TransformError,
 };
 pub(crate) use core_error::ErrorCategory;
-pub(crate) use core_ids::{EntityId, SceneId, SceneNodeId};
+pub use core_ids::SceneNodeId;
+pub(crate) use core_ids::{EntityId, SceneId};
 pub use core_math::Vec3;
 pub(crate) use core_space::{
     ChunkCoord, ChunkDims, Direction6, Face, GridId, VoxelCoord, VoxelGridSpec, WorldPos, WorldVec,

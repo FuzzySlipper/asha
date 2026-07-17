@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
+import subprocess
 import tempfile
 import unittest
 
@@ -112,6 +114,83 @@ class CiSelectionTests(unittest.TestCase):
         self.assertEqual(report["summary"]["blockingFailureCount"], 0)
         self.assertEqual(report["results"][0]["outcome"], "warning")
         self.assertEqual(report["results"][0]["owner"], "Architecture stewardship")
+
+
+class CleanCommitTests(unittest.TestCase):
+    def run_clean_plan(self, tier: str, *extra: str) -> dict[str, object]:
+        entrypoint = ci.ROOT / "harness/ci" / (
+            "check-fast.sh" if tier == "fast" else "check-all.sh"
+        )
+        completed = subprocess.run(
+            [str(entrypoint), "--clean-commit", "HEAD", "--plan", *extra],
+            cwd=ci.ROOT,
+            check=True,
+            text=True,
+            capture_output=True,
+        )
+        return json.loads(completed.stdout)
+
+    def test_clean_fast_plan_excludes_unrelated_dirty_files(self) -> None:
+        descriptor, sentinel_name = tempfile.mkstemp(
+            prefix="clean-ci-dirty-sentinel-",
+            suffix=".tmp",
+            dir=ci.ROOT,
+        )
+        os.close(descriptor)
+        sentinel = pathlib.Path(sentinel_name)
+        try:
+            plan = self.run_clean_plan("fast", "--base-ref", "HEAD^")
+        finally:
+            sentinel.unlink(missing_ok=True)
+
+        commit = ci.resolve_commit("HEAD")
+        self.assertEqual(plan["tier"], "fast")
+        self.assertNotIn(sentinel.name, plan["changedFiles"])
+        self.assertEqual(
+            plan["validationTarget"],
+            {
+                "mode": "clean-commit",
+                "commit": commit,
+                "baseCommit": ci.resolve_commit(f"{commit}^"),
+            },
+        )
+
+    def test_ordinary_fast_detection_remains_dirty_tree_aware(self) -> None:
+        descriptor, sentinel_name = tempfile.mkstemp(
+            prefix="ordinary-ci-dirty-sentinel-",
+            suffix=".tmp",
+            dir=ci.ROOT,
+        )
+        os.close(descriptor)
+        sentinel = pathlib.Path(sentinel_name)
+        try:
+            self.assertIn(sentinel.name, ci.detect_changed_files(None))
+        finally:
+            sentinel.unlink(missing_ok=True)
+
+    def test_clean_full_plan_routes_to_full_inventory(self) -> None:
+        plan = self.run_clean_plan("full")
+        self.assertEqual(plan["tier"], "full")
+        self.assertEqual(
+            [gate["id"] for gate in plan["gates"]],
+            ci.FULL_ORDER,
+        )
+
+    def test_clean_commit_rejects_an_invalid_ref(self) -> None:
+        completed = subprocess.run(
+            [
+                str(ci.ROOT / "harness/ci/check-fast.sh"),
+                "--clean-commit",
+                "not-a-real-commit",
+                "--plan",
+            ],
+            cwd=ci.ROOT,
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertIn("git commit ref does not resolve", completed.stderr)
 
 
 if __name__ == "__main__":
