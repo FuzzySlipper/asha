@@ -15,6 +15,46 @@ type FpsLoadRequest = Parameters<RuntimeBridge['loadFpsRuntimeSession']>[0];
 
 const FPS_LOAD_REQUEST: FpsLoadRequest = {
   projectBundle: 'browser-host-native-lifecycle',
+  sceneDocument: {
+    schemaVersion: 3,
+    id: 4103 as never,
+    metadata: { name: 'Native browser host lifecycle', authoringFormatVersion: 3 },
+    dependencies: [],
+    nodes: [
+      {
+        id: 101 as never,
+        parent: null,
+        childOrder: 0,
+        label: 'Native Host Player',
+        tags: [],
+        transform: { translation: [0, 1.5, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+        kind: {
+          kind: 'entityInstance',
+          instance: {
+            instanceId: 'actor.native-host-player.instance',
+            reference: { kind: 'entityDefinition', stableId: 'actor/native-host-player' },
+            spawnMarkerId: null,
+          },
+        },
+      },
+      {
+        id: 777 as never,
+        parent: null,
+        childOrder: 1,
+        label: 'Native Host Enemy',
+        tags: [],
+        transform: { translation: [0, 1.5, 3], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+        kind: {
+          kind: 'entityInstance',
+          instance: {
+            instanceId: 'actor.native-host-enemy.instance',
+            reference: { kind: 'entityDefinition', stableId: 'actor/native-host-enemy' },
+            spawnMarkerId: null,
+          },
+        },
+      },
+    ],
+  },
   definitions: [
     {
       entity: 101,

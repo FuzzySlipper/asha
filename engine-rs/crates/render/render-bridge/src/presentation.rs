@@ -495,7 +495,10 @@ impl ScenePresentationProjector {
         let asset = match &record.kind {
             SceneNodeKind::StaticMesh(a) => a.id().as_str().to_string(),
             SceneNodeKind::Sprite(a) => a.id().as_str().to_string(),
-            SceneNodeKind::EmptyGroup | SceneNodeKind::VoxelVolume(_) => return None,
+            SceneNodeKind::EmptyGroup
+            | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::EntityInstance(_)
+            | SceneNodeKind::Bootstrap(_) => return None,
             SceneNodeKind::Light(_) => unreachable!("lights return above"),
         };
         let entity = input.world.entity_for_node(record.id);
@@ -550,7 +553,10 @@ impl ScenePresentationProjector {
             }
             // Empty groups carry no geometry; voxel volumes upload through the
             // ADR-0007 mesh-payload path, not this scene projection.
-            SceneNodeKind::EmptyGroup | SceneNodeKind::VoxelVolume(_) => None,
+            SceneNodeKind::EmptyGroup
+            | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::EntityInstance(_)
+            | SceneNodeKind::Bootstrap(_) => None,
             SceneNodeKind::Light(_) => unreachable!("lights return above"),
         }
     }

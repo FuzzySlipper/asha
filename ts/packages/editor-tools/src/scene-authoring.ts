@@ -190,6 +190,16 @@ function describeValidationError(error: SceneValidationError): string {
       return `node ${error.node as number} expected ${error.expectedKind}, found ${error.actualKind}`;
     case 'invalid-light':
       return `node ${error.node as number} has an invalid light${error.lightReason ? ` (${error.lightReason})` : ''}`;
+    case 'duplicate-entity-instance-id':
+      return `node ${error.node as number} duplicates entity instance ${error.instanceId}`;
+    case 'invalid-entity-instance':
+      return `node ${error.node as number} has an invalid entity instance${error.detailReason ? ` (${error.detailReason})` : ''}`;
+    case 'duplicate-bootstrap-node':
+      return `node ${error.node as number} duplicates the scene bootstrap node`;
+    case 'invalid-bootstrap':
+      return `node ${error.node as number} has invalid bootstrap bindings${error.detailReason ? ` (${error.detailReason})` : ''}`;
+    case 'duplicate-catalog-binding':
+      return `node ${error.node as number} duplicates catalog binding ${error.bindingId}`;
   }
 }
 

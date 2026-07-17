@@ -759,6 +759,7 @@ pub struct FpsBridgeStoredEntityDefinition {
 pub struct FpsRuntimeSessionLoadRequest {
     pub project_bundle: String,
     pub definitions: Vec<FpsBridgeStoredEntityDefinition>,
+    pub scene_document: FlatSceneDocumentDto,
     pub game_rule_modules: Vec<GameRuleModuleManifest>,
 }
 

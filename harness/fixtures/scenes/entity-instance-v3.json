@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": 4103,
+  "metadata": { "name": "Generated tunnel room", "authoringFormatVersion": 3 },
+  "dependencies": [],
+  "nodes": [
+    { "id": 1, "parent": null, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "bootstrap", "bindings": { "generator": { "providerId": "asha.generated-tunnel", "presetId": "tiny-enclosed", "seed": 17 }, "catalogs": [{ "bindingId": "materials", "catalogId": "asha.generated-tunnel.materials.v1", "sourcePath": "catalogs/materials/generated-tunnel.materials.json" }, { "bindingId": "spawns", "catalogId": "asha.generated-tunnel.spawns.v1", "sourcePath": "catalogs/spawns/generated-tunnel.spawns.json" }] } } },
+    { "id": 10, "parent": null, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [10, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } },
+    { "id": 20, "parent": 10, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [1, 2, 3], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "entityInstance", "instance": { "instanceId": "instance.player", "reference": { "kind": "entityDefinition", "stableId": "actor/demo-player" }, "spawnMarkerId": "spawn.player.start" } } }
+  ]
+}

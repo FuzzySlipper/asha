@@ -223,6 +223,10 @@ fn native_fps_definitions(enemy_health: u32) -> Vec<NativeFpsStoredEntityDefinit
     ]
 }
 
+fn native_fps_scene_document_json() -> String {
+    r#"{"schemaVersion":3,"id":77,"metadata":{"name":"Native FPS test scene","authoringFormatVersion":3},"dependencies":[],"nodes":[{"id":101,"parent":null,"childOrder":0,"label":"Custom Player","tags":[],"transform":{"translation":[0,1.62,1.5],"rotation":[0,0,0,1],"scale":[1,1,1]},"kind":{"kind":"entityInstance","instance":{"instanceId":"actor.custom-player.instance","reference":{"kind":"entityDefinition","stableId":"actor/custom-player"},"spawnMarkerId":null}}},{"id":777,"parent":null,"childOrder":1,"label":"Custom Enemy","tags":[],"transform":{"translation":[0,0.5,-2.6],"rotation":[0,0,0,1],"scale":[1,1,1]},"kind":{"kind":"entityInstance","instance":{"instanceId":"actor.custom-enemy.instance","reference":{"kind":"entityDefinition","stableId":"actor/custom-enemy"},"spawnMarkerId":null}}}]}"#.to_string()
+}
+
 #[test]
 fn native_bridge_stateful_smoke_uses_bounded_operations() {
     let handle = initialize_engine(7).expect("engine initializes");
@@ -493,6 +497,7 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
     let fps_loaded = load_fps_runtime_session(
         handle,
         "custom-demo".into(),
+        native_fps_scene_document_json(),
         native_fps_definitions(75),
         "[]".into(),
     )

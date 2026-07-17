@@ -22,6 +22,7 @@ import type {
   GameExtensionWeaponEffectInvocationResult,
 } from './bridge.js';
 import { MockRuntimeBridge } from './mock.js';
+import { entitySceneDocument } from './native-fps-fixtures.test-fixture.js';
 import { stableHash } from './runtime-session-hash.js';
 
 const PLAYER_ENTITY = 101;
@@ -195,14 +196,13 @@ function ecrpProjectLoadInput() {
       entityDefinition('actor/custom-player', 'player', 88),
       entityDefinition('actor/custom-enemy', 'enemy', 55),
     ],
-    sceneDocument: {
-      kind: 'SceneDocument' as const,
-      sceneId: 'custom-demo.scene',
-      placements: [
-        { entityDefinitionId: 'actor/custom-player', runtimeEntityId: PLAYER_ENTITY },
-        { entityDefinitionId: 'actor/custom-enemy', runtimeEntityId: ENEMY_ENTITY },
+    sceneDocument: entitySceneDocument({
+      id: 77,
+      instances: [
+        { entity: PLAYER_ENTITY, definitionId: 'actor/custom-player', translation: [1, 1.7, 2] },
+        { entity: ENEMY_ENTITY, definitionId: 'actor/custom-enemy', translation: [4, 1.2, -6] },
       ],
-    },
+    }),
     gameRuleModules: [gameRuleModuleManifest()],
   };
 }

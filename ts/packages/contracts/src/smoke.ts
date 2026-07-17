@@ -269,6 +269,9 @@ const cycleReport: SceneValidationReport = {
       actualKind: null,
       transformReason: null,
       lightReason: null,
+      detailReason: null,
+      instanceId: null,
+      bindingId: null,
       cyclePath: [sceneNodeId(1), sceneNodeId(2), sceneNodeId(1)],
     },
   ],
@@ -286,6 +289,9 @@ const bootstrap: BootstrapRecord = {
     { sceneNodeId: sceneNodeId(1), runtimeEntityId: entity },
     { sceneNodeId: sceneNodeId(2), runtimeEntityId: entityId(2) },
   ],
+  sceneContentHash: 0,
+  resolvedInstances: [],
+  bootstrapBindings: null,
 };
 
 // A ProjectBundle manifest a devtools panel would *display* from a Rust-produced

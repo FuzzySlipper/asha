@@ -28,6 +28,7 @@ import {
   type ProjectBundleLoadRequest,
 } from './index.js';
 import { createMockRuntimeBridge } from './mock.js';
+import { entitySceneDocument } from './native-fps-fixtures.test-fixture.js';
 import { createMockRuntimeSession } from './reference.js';
 import { REFERENCE_FPS_COMBAT_FIXTURE_PROVENANCE } from './runtime-session-reference-fps-combat.js';
 import { stableHash } from './runtime-session-hash.js';
@@ -164,22 +165,24 @@ function ecrpProjectLoadInput() {
         ],
       },
     ],
-    sceneDocument: {
-      kind: 'SceneDocument' as const,
-      sceneId: 'custom-demo.scene',
-      placements: [
+    sceneDocument: entitySceneDocument({
+      id: 77,
+      instances: [
         {
-          entityDefinitionId: 'actor/custom-player',
-          runtimeEntityId: 101,
+          entity: 101,
+          definitionId: 'actor/custom-player',
           spawnMarkerId: 'spawn.player.custom',
+          translation: [1, 1.7, 2],
         },
         {
-          entityDefinitionId: 'actor/custom-enemy',
-          runtimeEntityId: 202,
+          entity: 202,
+          definitionId: 'actor/custom-enemy',
           spawnMarkerId: 'spawn.enemy.custom',
+          translation: [4, 1.2, -6],
+          rotation: [0, 1, 0, 0],
         },
       ],
-    },
+    }),
   };
 }
 
@@ -554,7 +557,7 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
   assert.equal(load.accepted, true);
   assert.equal(load.entityCount, 2);
   assert.equal(load.bootstrapHash, 'fnv1a64:00000000000000aa');
-  assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:custom-demo.scene');
+  assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:77');
   assert.equal(calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.entity, 202);
   assert.equal(
     calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.policyBinding?.policyId,
@@ -656,7 +659,7 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
 
 void test('Rust-backed ECRP load fails closed on authority rejection without replacing live readout', () => {
   const { bridge, calls } = rustRuntimeSessionBridgeDouble({
-    rejectProjectBundle: 'custom-demo:custom-demo.scene',
+    rejectProjectBundle: 'custom-demo:77',
   });
   const session = createRuntimeSessionFacade({ bridge, mode: 'rust' });
   session.initialize(sessionInput());
@@ -1240,15 +1243,10 @@ void test('RuntimeSession rejects invalid ECRP ProjectBundle content without rep
   const before = session.readEcrpRuntimeReadout();
   const invalid = {
     ...ecrpProjectLoadInput(),
-    sceneDocument: {
-      ...ecrpProjectLoadInput().sceneDocument,
-      placements: [
-        {
-          entityDefinitionId: 'actor/unknown',
-          runtimeEntityId: 404,
-        },
-      ],
-    },
+    sceneDocument: entitySceneDocument({
+      id: 77,
+      instances: [{ entity: 404, definitionId: 'actor/unknown' }],
+    }),
   };
 
   const load = session.loadEcrpProject(invalid);

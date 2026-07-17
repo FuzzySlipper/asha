@@ -326,6 +326,7 @@ interface NativeAddonBindings {
   loadFpsRuntimeSession(
     handle: number,
     projectBundle: string,
+    sceneDocumentJson: string,
     definitions: readonly NativeFpsStoredEntityDefinition[],
     gameRuleModulesJson: string,
   ): NativeFpsRuntimeSessionSnapshot;

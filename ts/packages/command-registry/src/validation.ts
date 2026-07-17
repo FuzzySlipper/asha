@@ -492,9 +492,79 @@ function isSceneTransform(value: unknown): boolean {
   return isPlainObject(value) && hasExactKeys(value, ['translation', 'rotation', 'scale']) && isNumberTuple3(value.translation) && isNumberTuple4(value.rotation) && isNumberTuple3(value.scale);
 }
 
+function isSceneLight(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasField(value, 'kind')) return false;
+  const common = ['kind', 'color', 'intensity', 'enabled', 'shadowIntent'];
+  if (value.kind === 'ambient' || value.kind === 'directional') {
+    return hasExactKeys(value, common)
+      && isNumberTuple3(value.color)
+      && typeof value['intensity'] === 'number'
+      && typeof value['enabled'] === 'boolean'
+      && isLiteral(value['shadowIntent'], ['disabled', 'requested']);
+  }
+  const ranged = [...common, 'range', 'decay'];
+  const validRange = value['range'] === null || typeof value['range'] === 'number';
+  const validCommon = isNumberTuple3(value.color)
+    && typeof value['intensity'] === 'number'
+    && typeof value['enabled'] === 'boolean'
+    && validRange
+    && typeof value['decay'] === 'number'
+    && isLiteral(value['shadowIntent'], ['disabled', 'requested']);
+  if (value.kind === 'point') return hasExactKeys(value, ranged) && validCommon;
+  return value.kind === 'spot'
+    && hasExactKeys(value, [...ranged, 'outerAngleRadians', 'penumbra'])
+    && validCommon
+    && typeof value['outerAngleRadians'] === 'number'
+    && typeof value['penumbra'] === 'number';
+}
+
+function isSceneEntityReference(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasField(value, 'kind')) return false;
+  if (value.kind === 'entityDefinition') {
+    return hasExactKeys(value, ['kind', 'stableId']) && isString(value['stableId']);
+  }
+  return value.kind === 'prefab'
+    && hasExactKeys(value, ['kind', 'prefabId', 'variantId'])
+    && isInteger(value['prefabId'])
+    && (value['variantId'] === null || isString(value['variantId']));
+}
+
+function isSceneBootstrapBindings(value: unknown): boolean {
+  if (!isPlainObject(value) || !hasExactKeys(value, ['generator', 'catalogs'])) return false;
+  const generator = value['generator'];
+  const validGenerator = generator === null || (
+    isPlainObject(generator)
+    && hasExactKeys(generator, ['providerId', 'presetId', 'seed'])
+    && isString(generator['providerId'])
+    && isString(generator['presetId'])
+    && isInteger(generator.seed)
+  );
+  return validGenerator
+    && Array.isArray(value['catalogs'])
+    && value['catalogs'].every((catalog) => isPlainObject(catalog)
+      && hasExactKeys(catalog, ['bindingId', 'catalogId', 'sourcePath'])
+      && isString(catalog['bindingId'])
+      && isString(catalog['catalogId'])
+      && isString(catalog.sourcePath));
+}
+
 function isSceneNodeKind(value: unknown): boolean {
   if (!isPlainObject(value) || !hasField(value, 'kind')) return false;
   if (value.kind === 'emptyGroup') return hasExactKeys(value, ['kind']);
+  if (value.kind === 'light') {
+    return hasExactKeys(value, ['kind', 'sceneLight']) && isSceneLight(value['sceneLight']);
+  }
+  if (value.kind === 'entityInstance') {
+    return hasExactKeys(value, ['kind', 'instance'])
+      && isPlainObject(value.instance)
+      && hasExactKeys(value.instance, ['instanceId', 'reference', 'spawnMarkerId'])
+      && isString(value.instance['instanceId'])
+      && isSceneEntityReference(value.instance.reference)
+      && (value.instance['spawnMarkerId'] === null || isString(value.instance['spawnMarkerId']));
+  }
+  if (value.kind === 'bootstrap') {
+    return hasExactKeys(value, ['kind', 'bindings']) && isSceneBootstrapBindings(value['bindings']);
+  }
   return isLiteral(value.kind, ['staticMesh', 'sprite', 'voxelVolume'])
     && hasExactKeys(value, ['kind', 'asset'])
     && isPlainObject(value.asset)
@@ -534,13 +604,17 @@ function isFlatSceneDocument(value: unknown): boolean {
 
 function isSceneValidationError(value: unknown): boolean {
   return isPlainObject(value)
-    && hasExactKeys(value, ['code', 'node', 'parent', 'expectedKind', 'actualKind', 'transformReason', 'cyclePath'])
-    && isLiteral(value.code, ['duplicate-node-id', 'unknown-parent', 'cycle', 'invalid-transform', 'asset-kind-mismatch'])
+    && hasExactKeys(value, ['code', 'node', 'parent', 'expectedKind', 'actualKind', 'transformReason', 'lightReason', 'detailReason', 'instanceId', 'bindingId', 'cyclePath'])
+    && isLiteral(value.code, ['duplicate-node-id', 'unknown-parent', 'cycle', 'invalid-transform', 'asset-kind-mismatch', 'invalid-light', 'duplicate-entity-instance-id', 'invalid-entity-instance', 'duplicate-bootstrap-node', 'invalid-bootstrap', 'duplicate-catalog-binding'])
     && (value.node === null || isInteger(value.node))
     && (value.parent === null || isInteger(value.parent))
     && (value.expectedKind === null || isString(value.expectedKind))
     && (value.actualKind === null || isString(value.actualKind))
     && (value.transformReason === null || isString(value.transformReason))
+    && (value['lightReason'] === null || isString(value['lightReason']))
+    && (value['detailReason'] === null || isString(value['detailReason']))
+    && (value['instanceId'] === null || isString(value['instanceId']))
+    && (value['bindingId'] === null || isString(value['bindingId']))
     && Array.isArray(value.cyclePath)
     && value.cyclePath.every(isInteger);
 }
@@ -552,7 +626,7 @@ function isSceneObjectRecord(value: unknown): boolean {
     && (value.parent === null || isInteger(value.parent))
     && isInteger(value.childOrder)
     && (value.label === null || isString(value.label))
-    && isLiteral(value.kind, ['emptyGroup', 'staticMesh', 'sprite', 'voxelVolume'])
+    && isLiteral(value.kind, ['emptyGroup', 'staticMesh', 'sprite', 'voxelVolume', 'light', 'entityInstance', 'bootstrap'])
     && typeof value.hasRenderableAsset === 'boolean';
 }
 

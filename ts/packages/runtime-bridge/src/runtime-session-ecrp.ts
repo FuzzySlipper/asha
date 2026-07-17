@@ -1,4 +1,12 @@
-import type { GameRuleHookDeclaration, GameRuleModuleManifest, GameRuleModuleRef } from '@asha/contracts';
+import { sceneId, sceneNodeId } from '@asha/contracts';
+import type {
+  FlatSceneDocument,
+  GameRuleHookDeclaration,
+  GameRuleModuleManifest,
+  GameRuleModuleRef,
+  SceneNodeRecord,
+  SceneTransform,
+} from '@asha/contracts';
 import { lifecycleHealth } from './runtime-session-lifecycle.js';
 import { projectBundleHashRecord, stableHash } from './runtime-session-hash.js';
 import type {
@@ -15,7 +23,6 @@ import type {
   RuntimeSessionEcrpRenderTargetIdentity,
   RuntimeSessionEcrpTransformState,
   RuntimeSessionEcrpReadout,
-  RuntimeSessionEcrpScenePlacement,
   RuntimeSessionIdentity,
   RuntimeSessionInitializeInput,
   RuntimeSessionLifecycleHealthReadout,
@@ -122,21 +129,72 @@ export function defaultRuntimeSessionEcrpProjectLoadInput(
         ],
       },
     ],
-    sceneDocument: {
-      kind: 'SceneDocument',
-      sceneId: `compat.scene.${input.projectBundle.sceneId}`,
-      placements: [
-        {
-          entityDefinitionId: 'actor/demo-player',
-          runtimeEntityId: 10,
-          spawnMarkerId: 'spawn.player.start',
+    sceneDocument: defaultRuntimeSessionSceneDocument(input.projectBundle.sceneId),
+  };
+}
+
+function defaultRuntimeSessionSceneDocument(id: number): FlatSceneDocument {
+  return {
+    schemaVersion: 3,
+    id: sceneId(id),
+    metadata: {
+      name: 'RuntimeSession default scene',
+      authoringFormatVersion: 3,
+    },
+    dependencies: [],
+    nodes: [
+      runtimeEntitySceneNode({
+        id: 10,
+        label: 'Demo Player',
+        instanceId: 'actor.demo-player.instance',
+        definitionId: 'actor/demo-player',
+        spawnMarkerId: 'spawn.player.start',
+        translation: [0, 1.62, 0],
+        rotation: [0, 0, 0, 1],
+      }),
+      runtimeEntitySceneNode({
+        id: 20,
+        label: 'Generated Tunnel Enemy',
+        instanceId: 'actor.generated-tunnel-enemy.instance',
+        definitionId: 'actor/generated-tunnel-enemy',
+        spawnMarkerId: 'spawn.enemy.primary',
+        translation: [0, 1.1, -3.5],
+        rotation: [0, 1, 0, 0],
+      }),
+    ],
+  };
+}
+
+function runtimeEntitySceneNode(input: {
+  readonly id: number;
+  readonly label: string;
+  readonly instanceId: string;
+  readonly definitionId: string;
+  readonly spawnMarkerId: string | null;
+  readonly translation: readonly [number, number, number];
+  readonly rotation: readonly [number, number, number, number];
+}): SceneNodeRecord {
+  return {
+    id: sceneNodeId(input.id),
+    parent: null,
+    childOrder: input.id,
+    label: input.label,
+    tags: [],
+    transform: {
+      translation: input.translation,
+      rotation: input.rotation,
+      scale: [1, 1, 1],
+    },
+    kind: {
+      kind: 'entityInstance',
+      instance: {
+        instanceId: input.instanceId,
+        reference: {
+          kind: 'entityDefinition',
+          stableId: input.definitionId,
         },
-        {
-          entityDefinitionId: 'actor/generated-tunnel-enemy',
-          runtimeEntityId: 20,
-          spawnMarkerId: 'spawn.enemy.primary',
-        },
-      ],
+        spawnMarkerId: input.spawnMarkerId,
+      },
     },
   };
 }
@@ -188,56 +246,61 @@ export function validateEcrpProjectLoadInput(
     definitions.set(definition.stableId, definition);
     validateEcrpCapabilities(definition, `entityDefinitions.${index}.capabilities`, diagnostics);
   });
-  if (input.sceneDocument.kind !== 'SceneDocument') {
+  if (!isPlainObject(input.sceneDocument) || input.sceneDocument.schemaVersion !== 3 || !isTypedArray(input.sceneDocument.nodes)) {
     diagnostics.push({
       code: 'missingPlacement',
-      path: 'sceneDocument.placements',
-      detail: 'SceneDocument placements are required',
+      path: 'sceneDocument.nodes',
+      detail: 'a canonical schema-3 FlatSceneDocument is required',
     });
     return diagnostics;
   }
-  const placements: readonly RuntimeSessionEcrpScenePlacement[] = input.sceneDocument.placements;
-  const placed = new Set<string>();
+  const placedDefinitions = new Set<string>();
+  const instanceIds = new Set<string>();
   const runtimeIds = new Set<number>();
+  const placements = input.sceneDocument.nodes.filter((node) => node.kind.kind === 'entityInstance');
   placements.forEach((placement, index) => {
-    if (!definitions.has(placement.entityDefinitionId)) {
+    if (placement.kind.kind !== 'entityInstance') {
+      return;
+    }
+    const instance = placement.kind.instance;
+    if (instance.reference.kind === 'prefab') {
       diagnostics.push({
         code: 'unknownEntityDefinition',
-        path: `sceneDocument.placements.${index}.entityDefinitionId`,
-        detail: `placement references unknown EntityDefinition ${placement.entityDefinitionId}`,
+        path: `sceneDocument.nodes.${index}.kind.instance.reference`,
+        detail: `FPS RuntimeSession does not yet materialize prefab ${instance.reference.prefabId}`,
       });
+    } else if (!definitions.has(instance.reference.stableId)) {
+      diagnostics.push({
+        code: 'unknownEntityDefinition',
+        path: `sceneDocument.nodes.${index}.kind.instance.reference.stableId`,
+        detail: `scene instance references unknown EntityDefinition ${instance.reference.stableId}`,
+      });
+    } else {
+      placedDefinitions.add(instance.reference.stableId);
     }
-    if (placed.has(placement.entityDefinitionId)) {
+    if (instanceIds.has(instance.instanceId)) {
       diagnostics.push({
         code: 'duplicatePlacement',
-        path: `sceneDocument.placements.${index}.entityDefinitionId`,
-        detail: `duplicate placement for EntityDefinition ${placement.entityDefinitionId}`,
+        path: `sceneDocument.nodes.${index}.kind.instance.instanceId`,
+        detail: `duplicate scene instance id ${instance.instanceId}`,
       });
     }
-    placed.add(placement.entityDefinitionId);
-    if (placement.runtimeEntityId !== undefined) {
-      if (!Number.isSafeInteger(placement.runtimeEntityId) || placement.runtimeEntityId <= 0) {
-        diagnostics.push({
-          code: 'invalidCapability',
-          path: `sceneDocument.placements.${index}.runtimeEntityId`,
-          detail: 'runtimeEntityId must be a positive safe integer',
-        });
-      } else if (runtimeIds.has(placement.runtimeEntityId)) {
-        diagnostics.push({
-          code: 'duplicatePlacement',
-          path: `sceneDocument.placements.${index}.runtimeEntityId`,
-          detail: `duplicate runtimeEntityId ${placement.runtimeEntityId}`,
-        });
-      }
-      runtimeIds.add(placement.runtimeEntityId);
+    instanceIds.add(instance.instanceId);
+    if (!Number.isSafeInteger(placement.id) || placement.id <= 0 || runtimeIds.has(placement.id)) {
+      diagnostics.push({
+        code: 'duplicatePlacement',
+        path: `sceneDocument.nodes.${index}.id`,
+        detail: `entity instance node id ${placement.id} must be a unique positive runtime entity id`,
+      });
     }
+    runtimeIds.add(placement.id);
   });
   for (const definition of definitions.values()) {
-    if (!placed.has(definition.stableId)) {
+    if (!placedDefinitions.has(definition.stableId)) {
       diagnostics.push({
         code: 'missingPlacement',
-        path: `sceneDocument.placements.${definition.stableId}`,
-        detail: `missing SceneDocument placement for ${definition.stableId}`,
+        path: `sceneDocument.nodes.${definition.stableId}`,
+        detail: `missing canonical scene instance for ${definition.stableId}`,
       });
     }
   }
@@ -425,14 +488,21 @@ function isVec3(value: readonly number[] | undefined): value is readonly [number
 }
 
 export function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectState {
-  const placements = new Map(
-    input.sceneDocument.placements.map((placement, index) => [placement.entityDefinitionId, { placement, index }]),
-  );
-  const entities = input.entityDefinitions.map((definition, index) => {
-    const placement = placements.get(definition.stableId)?.placement;
-    const entity = placement?.runtimeEntityId ?? inferredRuntimeEntityId(definition, index);
+  const definitions = new Map(input.entityDefinitions.map((definition) => [definition.stableId, definition]));
+  const worldTransforms = sceneWorldTransforms(input.sceneDocument);
+  const entities = input.sceneDocument.nodes.flatMap((placement) => {
+    if (placement.kind.kind !== 'entityInstance' || placement.kind.instance.reference.kind !== 'entityDefinition') {
+      return [];
+    }
+    const definition = definitions.get(placement.kind.instance.reference.stableId);
+    if (definition === undefined) {
+      return [];
+    }
     return {
-      entity,
+      entity: placement.id,
+      instanceId: placement.kind.instance.instanceId,
+      spawnMarkerId: placement.kind.instance.spawnMarkerId,
+      worldTransform: worldTransforms.get(placement.id) ?? placement.transform,
       definition,
       role: inferRuntimeRole(definition),
     };
@@ -446,23 +516,94 @@ export function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput)
         workspaceId: input.projectBundle.project.workspaceId,
       },
       runtimeRequest: projectBundleHashRecord(input.projectBundle.runtimeRequest),
-      sceneId: input.sceneDocument.sceneId,
+      sceneDocumentHash: stableHash(input.sceneDocument as never),
       entityIds: entities.map((entity) => entity.entity),
+      instanceIds: entities.map((entity) => entity.instanceId),
       definitionIds: entities.map((entity) => entity.definition.stableId),
       capabilityKinds: entities.map((entity) => entity.definition.capabilities.map((capability) => capability.kind)),
     }),
   };
 }
 
-function inferredRuntimeEntityId(definition: RuntimeSessionEcrpEntityDefinition, index: number): number {
-  const role = inferRuntimeRole(definition);
-  if (role === 'player') {
-    return 10;
+function sceneWorldTransforms(document: FlatSceneDocument): ReadonlyMap<number, SceneTransform> {
+  const nodes = new Map(document.nodes.map((node) => [node.id, node]));
+  const resolved = new Map<number, SceneTransform>();
+  const resolving = new Set<number>();
+  const resolve = (node: SceneNodeRecord): SceneTransform => {
+    const existing = resolved.get(node.id);
+    if (existing !== undefined) {
+      return existing;
+    }
+    if (resolving.has(node.id) || node.parent === null) {
+      resolved.set(node.id, node.transform);
+      return node.transform;
+    }
+    resolving.add(node.id);
+    const parent = nodes.get(node.parent);
+    const world = parent === undefined ? node.transform : composeSceneTransform(resolve(parent), node.transform);
+    resolving.delete(node.id);
+    resolved.set(node.id, world);
+    return world;
+  };
+  for (const node of document.nodes) {
+    resolve(node);
   }
-  if (role === 'enemy') {
-    return 20;
-  }
-  return 100 + index;
+  return resolved;
+}
+
+function composeSceneTransform(parent: SceneTransform, local: SceneTransform): SceneTransform {
+  const scaled: readonly [number, number, number] = [
+    local.translation[0] * parent.scale[0],
+    local.translation[1] * parent.scale[1],
+    local.translation[2] * parent.scale[2],
+  ];
+  const rotated = rotateSceneVector(parent.rotation, scaled);
+  return {
+    translation: [
+      parent.translation[0] + rotated[0],
+      parent.translation[1] + rotated[1],
+      parent.translation[2] + rotated[2],
+    ],
+    rotation: multiplySceneQuaternion(parent.rotation, local.rotation),
+    scale: [
+      parent.scale[0] * local.scale[0],
+      parent.scale[1] * local.scale[1],
+      parent.scale[2] * local.scale[2],
+    ],
+  };
+}
+
+function multiplySceneQuaternion(
+  left: readonly [number, number, number, number],
+  right: readonly [number, number, number, number],
+): readonly [number, number, number, number] {
+  const [lx, ly, lz, lw] = left;
+  const [rx, ry, rz, rw] = right;
+  return [
+    lw * rx + lx * rw + ly * rz - lz * ry,
+    lw * ry - lx * rz + ly * rw + lz * rx,
+    lw * rz + lx * ry - ly * rx + lz * rw,
+    lw * rw - lx * rx - ly * ry - lz * rz,
+  ];
+}
+
+function rotateSceneVector(
+  rotation: readonly [number, number, number, number],
+  vector: readonly [number, number, number],
+): readonly [number, number, number] {
+  const length = Math.hypot(...rotation);
+  const normalized: readonly [number, number, number, number] = length === 0
+    ? [0, 0, 0, 1]
+    : [rotation[0] / length, rotation[1] / length, rotation[2] / length, rotation[3] / length];
+  const vectorQuaternion: readonly [number, number, number, number] = [vector[0], vector[1], vector[2], 0];
+  const conjugate: readonly [number, number, number, number] = [
+    -normalized[0],
+    -normalized[1],
+    -normalized[2],
+    normalized[3],
+  ];
+  const result = multiplySceneQuaternion(multiplySceneQuaternion(normalized, vectorQuaternion), conjugate);
+  return [result[0], result[1], result[2]];
 }
 
 function inferRuntimeRole(definition: RuntimeSessionEcrpEntityDefinition): RuntimeSessionEcrpEntityState['role'] {
@@ -719,14 +860,27 @@ function ecrpTransform(
 
 function ecrpRuntimeTransform(
   entity: RuntimeSessionEcrpEntityState,
-  capability: Extract<RuntimeSessionEcrpProjectCapabilityDefinition, { readonly kind: 'transform' }>,
+  _capability: Extract<RuntimeSessionEcrpProjectCapabilityDefinition, { readonly kind: 'transform' }>,
   runtimeTransforms: ReadonlyMap<number, RuntimeSessionEcrpTransformState>,
 ): RuntimeSessionEcrpCapabilityState {
   const runtimeTransform = runtimeTransforms.get(entity.entity);
   if (runtimeTransform === undefined) {
-    return ecrpTransform(capability.initial.position, capability.initial.yawDegrees, capability.initial.pitchDegrees);
+    const orientation = sceneQuaternionToYawPitch(entity.worldTransform.rotation);
+    return ecrpTransform(entity.worldTransform.translation, orientation.yawDegrees, orientation.pitchDegrees);
   }
   return ecrpTransform(runtimeTransform.position, runtimeTransform.yawDegrees, runtimeTransform.pitchDegrees);
+}
+
+function sceneQuaternionToYawPitch(
+  rotation: readonly [number, number, number, number],
+): { readonly yawDegrees: number; readonly pitchDegrees: number } {
+  const [x, y, z, w] = rotation;
+  const pitchRadians = Math.asin(Math.max(-1, Math.min(1, 2 * (w * x - y * z))));
+  const yawRadians = Math.atan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y));
+  return {
+    yawDegrees: yawRadians * 180 / Math.PI,
+    pitchDegrees: pitchRadians * 180 / Math.PI,
+  };
 }
 
 function ecrpCollisionBody(

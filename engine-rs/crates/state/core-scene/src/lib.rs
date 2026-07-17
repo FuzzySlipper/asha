@@ -53,11 +53,13 @@ pub mod transform;
 pub mod validate;
 
 pub use bootstrap::{
-    bootstrap_scene, BootstrapError, BootstrapPlan, BootstrapRecord, PlannedEntity,
+    bootstrap_scene, BootstrapError, BootstrapPlan, BootstrapRecord, BootstrapReferenceError,
+    BootstrapResolutionContext, PlannedEntity, ResolvedEntityInstance, SceneContentHash,
 };
 pub use document::{
-    FlatSceneDocument, NodeMetadata, SceneMetadata, SceneNode, SceneNodeKind, SceneNodeRecord,
-    SceneTree,
+    FlatSceneDocument, NodeMetadata, SceneBootstrapBindings, SceneCatalogBinding,
+    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMetadata, SceneNode,
+    SceneNodeKind, SceneNodeRecord, SceneTree,
 };
 pub use json::{decode, encode, SceneDecodeError};
 pub use light::{SceneLight, SceneLightInvalid, SceneLightShadowIntent};

@@ -10,6 +10,57 @@ use core_ids::{SceneId, SceneNodeId};
 
 use crate::{transform::SceneTransform, SceneLight};
 
+/// A durable reference that one authored scene instance resolves during
+/// runtime bootstrap. This is stored placement intent, never a live Entity.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneEntityReference {
+    /// Resolve a stored EntityDefinition by its stable project/catalog id.
+    EntityDefinition { stable_id: String },
+    /// Resolve a validated prefab, optionally selecting one authored variant.
+    Prefab {
+        prefab_id: u64,
+        variant_id: Option<String>,
+    },
+}
+
+/// One authored runtime entity/prefab placement carried by a scene node. The
+/// containing node owns hierarchy and local transform; this value owns only the
+/// durable instance/reference bindings used by bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneEntityInstance {
+    pub instance_id: String,
+    pub reference: SceneEntityReference,
+    pub spawn_marker_id: Option<String>,
+}
+
+/// Generic procedural generator input for a scene. Provider and preset ids are
+/// project-defined stable identities; Rust validates their shape and the host
+/// resolves them against its immutable bootstrap registry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneGeneratorBinding {
+    pub provider_id: String,
+    pub preset_id: String,
+    pub seed: u64,
+}
+
+/// One named catalog input used while bootstrapping a scene. `binding_id`
+/// communicates the scene-local role (for example `materials` or `spawns`)
+/// without hiding the source behind node tags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneCatalogBinding {
+    pub binding_id: String,
+    pub catalog_id: String,
+    pub source_path: String,
+}
+
+/// Explicit non-spatial inputs required to turn stored scene intent into a
+/// fresh RuntimeSession. A document may carry at most one bootstrap node.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SceneBootstrapBindings {
+    pub generator: Option<SceneGeneratorBinding>,
+    pub catalogs: Vec<SceneCatalogBinding>,
+}
+
 /// What a scene node *is*. Asset-backed variants carry a kind-erased
 /// [`AssetReference`]; [`crate::validate`] checks the reference's kind matches
 /// the variant, which is how a wrong-kind asset reference is rejected.
@@ -28,6 +79,11 @@ pub enum SceneNodeKind {
     VoxelVolume(AssetReference),
     /// Renderer-neutral authored light; pose comes from the node transform.
     Light(SceneLight),
+    /// A stored EntityDefinition or prefab instance placement.
+    EntityInstance(SceneEntityInstance),
+    /// Explicit scene-wide generator/catalog inputs. Must be a root with an
+    /// identity transform; validation enforces that there is at most one.
+    Bootstrap(SceneBootstrapBindings),
 }
 
 impl SceneNodeKind {
@@ -38,14 +94,19 @@ impl SceneNodeKind {
             SceneNodeKind::StaticMesh(_) => Some(AssetKind::StaticMesh),
             SceneNodeKind::Sprite(_) => Some(AssetKind::Sprite),
             SceneNodeKind::VoxelVolume(_) => Some(AssetKind::VoxelVolume),
-            SceneNodeKind::Light(_) => None,
+            SceneNodeKind::Light(_)
+            | SceneNodeKind::EntityInstance(_)
+            | SceneNodeKind::Bootstrap(_) => None,
         }
     }
 
     /// The asset reference carried by this node, if any.
     pub fn asset(&self) -> Option<&AssetReference> {
         match self {
-            SceneNodeKind::EmptyGroup | SceneNodeKind::Light(_) => None,
+            SceneNodeKind::EmptyGroup
+            | SceneNodeKind::Light(_)
+            | SceneNodeKind::EntityInstance(_)
+            | SceneNodeKind::Bootstrap(_) => None,
             SceneNodeKind::StaticMesh(a)
             | SceneNodeKind::Sprite(a)
             | SceneNodeKind::VoxelVolume(a) => Some(a),
@@ -60,6 +121,8 @@ impl SceneNodeKind {
             SceneNodeKind::Sprite(_) => "sprite",
             SceneNodeKind::VoxelVolume(_) => "voxelVolume",
             SceneNodeKind::Light(_) => "light",
+            SceneNodeKind::EntityInstance(_) => "entityInstance",
+            SceneNodeKind::Bootstrap(_) => "bootstrap",
         }
     }
 }
@@ -206,6 +269,14 @@ impl FlatSceneDocument {
             .sort_by(|a, b| a.id().as_str().cmp(b.id().as_str()));
         for node in &mut self.nodes {
             node.metadata.tags.sort();
+            if let SceneNodeKind::Bootstrap(bindings) = &mut node.kind {
+                bindings.catalogs.sort_by(|a, b| {
+                    a.binding_id
+                        .cmp(&b.binding_id)
+                        .then_with(|| a.catalog_id.cmp(&b.catalog_id))
+                        .then_with(|| a.source_path.cmp(&b.source_path))
+                });
+            }
         }
     }
 

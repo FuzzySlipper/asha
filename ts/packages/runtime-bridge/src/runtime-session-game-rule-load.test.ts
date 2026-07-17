@@ -9,6 +9,7 @@ import {
   type RuntimeBridge,
 } from './index.js';
 import { MockRuntimeBridge } from './mock.js';
+import { entitySceneDocument } from './native-fps-fixtures.test-fixture.js';
 
 function sessionInput() {
   return {
@@ -89,14 +90,13 @@ function ecrpProjectLoadInput() {
         ],
       },
     ],
-    sceneDocument: {
-      kind: 'SceneDocument' as const,
-      sceneId: 'custom-demo.scene',
-      placements: [
-        { entityDefinitionId: 'actor/custom-player', runtimeEntityId: 101 },
-        { entityDefinitionId: 'actor/custom-enemy', runtimeEntityId: 202 },
+    sceneDocument: entitySceneDocument({
+      id: 77,
+      instances: [
+        { entity: 101, definitionId: 'actor/custom-player', translation: [1, 1.7, 2] },
+        { entity: 202, definitionId: 'actor/custom-enemy', translation: [4, 1.2, -6] },
       ],
-    },
+    }),
   };
 }
 
@@ -147,7 +147,7 @@ void test('Rust-backed ECRP load forwards generated game-rule module manifests',
 
   assert.equal(load.accepted, true);
   assert.equal(calls.load.length, 2);
-  assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:custom-demo.scene');
+  assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:77');
   assert.deepEqual(calls.load.at(-1)?.gameRuleModules, [manifest]);
 });
 

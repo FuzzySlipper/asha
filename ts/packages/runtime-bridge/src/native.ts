@@ -558,7 +558,11 @@ function nativeFpsLoadRequest(request: FpsRuntimeSessionLoadRequest) {
       policyBinding,
     };
   });
-  return { projectBundle: request.projectBundle, definitions };
+  return {
+    projectBundle: request.projectBundle,
+    sceneDocument: request.sceneDocument,
+    definitions,
+  };
 }
 
 export class NativeRuntimeBridge implements RuntimeBridge {
@@ -813,6 +817,7 @@ export class NativeRuntimeBridge implements RuntimeBridge {
       this.#addon.loadFpsRuntimeSession(
         handle,
         nativeRequest.projectBundle,
+        JSON.stringify(nativeRequest.sceneDocument),
         nativeRequest.definitions,
         JSON.stringify(gameRuleModules),
       ) as FpsRuntimeSessionSnapshot,

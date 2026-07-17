@@ -251,7 +251,17 @@ export interface NodeAssetRefs {
 }
 
 function assetOf(kind: SceneNodeKind): AssetReference | null {
-  return kind.kind === 'emptyGroup' || kind.kind === 'light' ? null : kind.asset;
+  switch (kind.kind) {
+    case 'staticMesh':
+    case 'sprite':
+    case 'voxelVolume':
+      return kind.asset;
+    case 'emptyGroup':
+    case 'light':
+    case 'entityInstance':
+    case 'bootstrap':
+      return null;
+  }
 }
 
 /** The inspector read model for one authored scene node. */

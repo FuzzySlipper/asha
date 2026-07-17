@@ -91,21 +91,104 @@ impl EngineBridge {
     pub(super) fn convert_fps_load_request(
         request: &FpsRuntimeSessionLoadRequest,
     ) -> BridgeResult<FpsProjectBundleLoadInput> {
-        let mut definitions = Vec::with_capacity(request.definitions.len());
-        for entry in &request.definitions {
-            let entity = EntityId::new(entry.entity);
+        let scene = Self::scene_document_from_dto(request.scene_document.clone())?;
+        let scene_bootstrap = scene.nodes.iter().find_map(|record| {
+            let core_scene::SceneNodeKind::Bootstrap(bindings) = &record.kind else {
+                return None;
+            };
+            Some(bindings)
+        });
+        let resolution = core_scene::BootstrapResolutionContext {
+            entity_definition_ids: request
+                .definitions
+                .iter()
+                .map(|definition| definition.stable_id.clone())
+                .collect(),
+            prefab_ids: BTreeSet::new(),
+            spawn_marker_ids: request
+                .definitions
+                .iter()
+                .flat_map(|definition| definition.tags.iter())
+                .filter_map(|tag| tag.strip_prefix("spawn:").map(str::to_string))
+                .collect(),
+            generator_presets: scene_bootstrap
+                .and_then(|bindings| bindings.generator.as_ref())
+                .map(|generator| {
+                    BTreeSet::from([(generator.provider_id.clone(), generator.preset_id.clone())])
+                })
+                .unwrap_or_default(),
+            catalog_ids: scene_bootstrap
+                .map(|bindings| {
+                    bindings
+                        .catalogs
+                        .iter()
+                        .map(|catalog| catalog.catalog_id.clone())
+                        .collect()
+                })
+                .unwrap_or_default(),
+        };
+        let plan = core_scene::BootstrapPlan::prepare_resolved(
+            &scene,
+            core_ids::RuntimeSessionId::new(1),
+            &resolution,
+        )
+        .map_err(|error| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!("canonical SceneDocument bootstrap rejected: {error:?}"),
+            )
+        })?;
+        // Applying the plan constructs a complete fresh authority state and one
+        // bootstrap record before FPS-specific capability admission begins. The
+        // state is intentionally not installed here; the resolved plan is the
+        // authoritative input to the specialized lifecycle owner below.
+        let (_spatial_state, bootstrap_record) = plan.apply();
+
+        let mut definitions = Vec::with_capacity(bootstrap_record.resolved_instances.len());
+        for instance in &bootstrap_record.resolved_instances {
+            let stable_id = match &instance.reference {
+                core_scene::SceneEntityReference::EntityDefinition { stable_id } => stable_id,
+                core_scene::SceneEntityReference::Prefab { prefab_id, .. } => {
+                    return Err(RuntimeBridgeError::new(
+                        RuntimeBridgeErrorKind::InvalidInput,
+                        format!(
+                            "FPS RuntimeSession does not yet materialize prefab scene instance {} (prefab {prefab_id})",
+                            instance.instance_id
+                        ),
+                    ))
+                }
+            };
+            let entry = request
+                .definitions
+                .iter()
+                .find(|definition| definition.stable_id == *stable_id)
+                .ok_or_else(|| {
+                    RuntimeBridgeError::new(
+                        RuntimeBridgeErrorKind::InvalidInput,
+                        format!(
+                            "resolved scene instance {} has no EntityDefinition payload for {stable_id}",
+                            instance.instance_id
+                        ),
+                    )
+                })?;
+            let entity = instance.entity;
             let mut capabilities = Vec::new();
-            let authored_translation = entry
+            let definition_translation = entry
                 .transform
                 .as_ref()
                 .map(|transform| transform.translation)
                 .unwrap_or([0.0, 0.0, 0.0]);
-            if let Some(transform) = &entry.transform {
+            if entry.transform.is_some() {
                 capabilities.push(EntityDefinitionCapability::Transform {
                     transform: AuthoringTransform {
-                        translation: transform.translation,
-                        rotation: transform.rotation,
-                        scale: transform.scale,
+                        translation: instance.world_transform.translation.to_array(),
+                        rotation: [
+                            instance.world_transform.rotation.x,
+                            instance.world_transform.rotation.y,
+                            instance.world_transform.rotation.z,
+                            instance.world_transform.rotation.w,
+                        ],
+                        scale: instance.world_transform.scale.to_array(),
                     },
                 });
             }
@@ -116,14 +199,14 @@ impl EngineBridge {
                 // the same live transform + local-bounds authority thereafter.
                 capabilities.push(EntityDefinitionCapability::Bounds {
                     min: [
-                        bounds.min[0] - authored_translation[0],
-                        bounds.min[1] - authored_translation[1],
-                        bounds.min[2] - authored_translation[2],
+                        bounds.min[0] - definition_translation[0],
+                        bounds.min[1] - definition_translation[1],
+                        bounds.min[2] - definition_translation[2],
                     ],
                     max: [
-                        bounds.max[0] - authored_translation[0],
-                        bounds.max[1] - authored_translation[1],
-                        bounds.max[2] - authored_translation[2],
+                        bounds.max[0] - definition_translation[0],
+                        bounds.max[1] - definition_translation[1],
+                        bounds.max[2] - definition_translation[2],
                     ],
                 });
             }

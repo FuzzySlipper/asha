@@ -29,6 +29,7 @@ import {
 } from './scene-authoring.js';
 
 const IDENTITY: SceneTransform = { translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] };
+const INSTANCE_VALIDATION_FIELDS = { detailReason: null, instanceId: null, bindingId: null } as const;
 
 function ref(id: string): AssetReference {
   return { id, version: { req: 'any' }, hash: null };
@@ -161,10 +162,10 @@ function mockAuthorityValidate(doc: FlatSceneDocument): SceneValidationReport {
 
   for (const n of doc.nodes) {
     if (n.parent !== null && !ids.has(n.parent as number)) {
-      errors.push({ code: 'unknown-parent', node: n.id, parent: n.parent, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: [] });
+      errors.push({ code: 'unknown-parent', node: n.id, parent: n.parent, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, ...INSTANCE_VALIDATION_FIELDS, cyclePath: [] });
     }
     if (n.kind.kind === 'staticMesh' && kindFromAssetId(n.kind.asset.id) !== 'mesh') {
-      errors.push({ code: 'asset-kind-mismatch', node: n.id, parent: null, expectedKind: 'mesh', actualKind: kindFromAssetId(n.kind.asset.id), transformReason: null, lightReason: null, cyclePath: [] });
+      errors.push({ code: 'asset-kind-mismatch', node: n.id, parent: null, expectedKind: 'mesh', actualKind: kindFromAssetId(n.kind.asset.id), transformReason: null, lightReason: null, ...INSTANCE_VALIDATION_FIELDS, cyclePath: [] });
     }
   }
 
@@ -177,7 +178,7 @@ function mockAuthorityValidate(doc: FlatSceneDocument): SceneValidationReport {
     while (cur !== null && ids.has(cur)) {
       if (seen.has(cur)) {
         const from = path.indexOf(cur);
-        errors.push({ code: 'cycle', node: null, parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: path.slice(from).map((id) => sceneNodeId(id)) });
+        errors.push({ code: 'cycle', node: null, parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, ...INSTANCE_VALIDATION_FIELDS, cyclePath: path.slice(from).map((id) => sceneNodeId(id)) });
         break;
       }
       seen.add(cur);
@@ -223,9 +224,9 @@ void test('a reparent under an absent parent is rejected with unknown-parent', (
 void test('summarizeValidation maps every classified code to a readout', () => {
   const report: SceneValidationReport = {
     errors: [
-      { code: 'duplicate-node-id', node: sceneNodeId(2), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, cyclePath: [] },
-      { code: 'invalid-transform', node: sceneNodeId(3), parent: null, expectedKind: null, actualKind: null, transformReason: 'zero-scale-axis', lightReason: null, cyclePath: [] },
-      { code: 'invalid-light', node: sceneNodeId(4), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: 'invalid-range', cyclePath: [] },
+      { code: 'duplicate-node-id', node: sceneNodeId(2), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: null, ...INSTANCE_VALIDATION_FIELDS, cyclePath: [] },
+      { code: 'invalid-transform', node: sceneNodeId(3), parent: null, expectedKind: null, actualKind: null, transformReason: 'zero-scale-axis', lightReason: null, ...INSTANCE_VALIDATION_FIELDS, cyclePath: [] },
+      { code: 'invalid-light', node: sceneNodeId(4), parent: null, expectedKind: null, actualKind: null, transformReason: null, lightReason: 'invalid-range', ...INSTANCE_VALIDATION_FIELDS, cyclePath: [] },
     ],
   };
   const feedback = summarizeValidation(report);

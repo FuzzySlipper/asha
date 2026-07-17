@@ -107,6 +107,8 @@ function assetForKind(kind: SceneNodeKind): AssetReference | null {
   switch (kind.kind) {
     case 'emptyGroup':
     case 'light':
+    case 'entityInstance':
+    case 'bootstrap':
       return null;
     case 'staticMesh':
     case 'sprite':
@@ -116,6 +118,12 @@ function assetForKind(kind: SceneNodeKind): AssetReference | null {
 }
 
 function defaultDisplayName(node: SceneNodeRecord): string {
+  if (node.kind.kind === 'entityInstance') {
+    return node.label ?? node.kind.instance.instanceId;
+  }
+  if (node.kind.kind === 'bootstrap') {
+    return node.label ?? 'Scene Bootstrap';
+  }
   return node.label ?? `${node.kind.kind} ${node.id as number}`;
 }
 
@@ -140,8 +148,8 @@ function sceneObjectRecord(
     editability: {
       selectable: true,
       rename: true,
-      reparent: true,
-      transform: !node.tags.includes('studio-root'),
+      reparent: node.kind.kind !== 'bootstrap',
+      transform: node.kind.kind !== 'bootstrap' && !node.tags.includes('studio-root'),
     },
     provenance: {
       source: 'flat_scene_document',

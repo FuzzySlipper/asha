@@ -67,7 +67,7 @@ fn bootstrap_from_valid_scene_is_deterministic() {
     assert_eq!(rec_a.node_count, 2);
     assert_eq!(rec_a.entity_count, 2);
 
-    // Initial transforms were copied into authority for each scene node.
+    // Authored local transforms were composed into runtime world authority.
     let e1 = world_a.entity_for_node(SceneNodeId::new(1)).unwrap();
     let e2 = world_a.entity_for_node(SceneNodeId::new(2)).unwrap();
     assert_eq!(
@@ -76,7 +76,7 @@ fn bootstrap_from_valid_scene_is_deterministic() {
     );
     assert_eq!(
         world_a.transform(e2).unwrap().translation,
-        Vec3::new(2.0, 0.0, 0.0)
+        Vec3::new(3.0, 0.0, 0.0)
     );
     // Provenance is recorded both directions.
     assert_eq!(world_a.source_node(e1), Some(SceneNodeId::new(1)));
@@ -112,7 +112,7 @@ fn unsupported_schema_version_fails_closed() {
         BootstrapPlan::prepare(&doc, RuntimeSessionId::new(1)),
         Err(BootstrapError::UnsupportedSchemaVersion {
             found: 999,
-            supported: 2,
+            supported: 3,
         })
     );
 }
@@ -147,7 +147,7 @@ fn ecrp_project_bundle_scene_bootstrap_seeds_session_capability_state() {
     assert_eq!(runtime.source_node, Some(SceneNodeId::new(2)));
     assert_eq!(
         runtime.transform.unwrap().translation,
-        Vec3::new(2.0, 0.0, 0.0)
+        Vec3::new(3.0, 0.0, 0.0)
     );
 
     let snapshot = world.entity_snapshot();
@@ -162,7 +162,7 @@ fn ecrp_project_bundle_scene_bootstrap_seeds_session_capability_state() {
     ));
     assert_eq!(
         mesh_record.transform.unwrap().transform.translation,
-        Vec3::new(2.0, 0.0, 0.0)
+        Vec3::new(3.0, 0.0, 0.0)
     );
 
     let baseline_hash = world.entity_hash();

@@ -246,6 +246,7 @@ export const CUSTOM_WIRE_SCHEMAS: Readonly<Record<string, CustomWireSchema>> = {
   }),
   FpsRuntimeSessionLoadRequest: object({
     projectBundle: STRING,
+    sceneDocument: generated('scene.FlatSceneDocument'),
     definitions: array(FPS_STORED_ENTITY),
     gameRuleModules: array(generated('gameExtension.GameRuleModuleManifest')),
   }, ['gameRuleModules']),

@@ -40,8 +40,15 @@ use core_ids::{EntityId, ProjectId, RuntimeSessionId, SceneId, SceneNodeId};
 /// Stable tag for each scene-node kind, identical in Rust and generated
 /// TypeScript. The string form is a contract: tags are *added*, never renamed.
 /// Mirrors `core_scene::SceneNodeKind::tag`.
-pub const SCENE_NODE_KIND_TAGS: &[&str] =
-    &["emptyGroup", "staticMesh", "sprite", "voxelVolume", "light"];
+pub const SCENE_NODE_KIND_TAGS: &[&str] = &[
+    "emptyGroup",
+    "staticMesh",
+    "sprite",
+    "voxelVolume",
+    "light",
+    "entityInstance",
+    "bootstrap",
+];
 
 /// Stable classified scene-validation codes. Mirrors
 /// `core_scene::SceneValidationError::label`; the string form is a contract.
@@ -52,6 +59,11 @@ pub const SCENE_VALIDATION_CODES: &[&str] = &[
     "invalid-transform",
     "asset-kind-mismatch",
     "invalid-light",
+    "duplicate-entity-instance-id",
+    "invalid-entity-instance",
+    "duplicate-bootstrap-node",
+    "invalid-bootstrap",
+    "duplicate-catalog-binding",
 ];
 
 /// Stable scene-object command rejection codes. Mirrors
@@ -82,6 +94,7 @@ pub const SCENE_DOCUMENT_CODEC_DIAGNOSTIC_CODES: &[&str] = &[
     "unsupported-schema",
     "unsupported-authoring-format",
     "invalid-document",
+    "legacy-demo-scene",
 ];
 
 /// Stable classifications for a stored SceneDocument compare-and-swap
@@ -127,6 +140,8 @@ pub enum SceneNodeKindTag {
     Sprite,
     VoxelVolume,
     Light,
+    EntityInstance,
+    Bootstrap,
 }
 
 impl SceneNodeKindTag {
@@ -138,6 +153,8 @@ impl SceneNodeKindTag {
             SceneNodeKindTag::Sprite => "sprite",
             SceneNodeKindTag::VoxelVolume => "voxelVolume",
             SceneNodeKindTag::Light => "light",
+            SceneNodeKindTag::EntityInstance => "entityInstance",
+            SceneNodeKindTag::Bootstrap => "bootstrap",
         }
     }
 
@@ -157,6 +174,8 @@ pub const ALL_SCENE_NODE_KIND_TAGS: &[SceneNodeKindTag] = &[
     SceneNodeKindTag::Sprite,
     SceneNodeKindTag::VoxelVolume,
     SceneNodeKindTag::Light,
+    SceneNodeKindTag::EntityInstance,
+    SceneNodeKindTag::Bootstrap,
 ];
 
 /// A classified scene-validation code as a closed enum with a stable string form.
@@ -168,6 +187,11 @@ pub enum SceneValidationCode {
     InvalidTransform,
     AssetKindMismatch,
     InvalidLight,
+    DuplicateEntityInstanceId,
+    InvalidEntityInstance,
+    DuplicateBootstrapNode,
+    InvalidBootstrap,
+    DuplicateCatalogBinding,
 }
 
 impl SceneValidationCode {
@@ -180,6 +204,11 @@ impl SceneValidationCode {
             SceneValidationCode::InvalidTransform => "invalid-transform",
             SceneValidationCode::AssetKindMismatch => "asset-kind-mismatch",
             SceneValidationCode::InvalidLight => "invalid-light",
+            SceneValidationCode::DuplicateEntityInstanceId => "duplicate-entity-instance-id",
+            SceneValidationCode::InvalidEntityInstance => "invalid-entity-instance",
+            SceneValidationCode::DuplicateBootstrapNode => "duplicate-bootstrap-node",
+            SceneValidationCode::InvalidBootstrap => "invalid-bootstrap",
+            SceneValidationCode::DuplicateCatalogBinding => "duplicate-catalog-binding",
         }
     }
 }
@@ -192,6 +221,11 @@ pub const ALL_SCENE_VALIDATION_CODES: &[SceneValidationCode] = &[
     SceneValidationCode::InvalidTransform,
     SceneValidationCode::AssetKindMismatch,
     SceneValidationCode::InvalidLight,
+    SceneValidationCode::DuplicateEntityInstanceId,
+    SceneValidationCode::InvalidEntityInstance,
+    SceneValidationCode::DuplicateBootstrapNode,
+    SceneValidationCode::InvalidBootstrap,
+    SceneValidationCode::DuplicateCatalogBinding,
 ];
 
 /// A classified scene-object command rejection code as a closed enum with a
@@ -257,6 +291,7 @@ pub enum SceneDocumentCodecDiagnosticCode {
     UnsupportedSchema,
     UnsupportedAuthoringFormat,
     InvalidDocument,
+    LegacyDemoScene,
 }
 
 impl SceneDocumentCodecDiagnosticCode {
@@ -270,6 +305,7 @@ impl SceneDocumentCodecDiagnosticCode {
             Self::UnsupportedSchema => "unsupported-schema",
             Self::UnsupportedAuthoringFormat => "unsupported-authoring-format",
             Self::InvalidDocument => "invalid-document",
+            Self::LegacyDemoScene => "legacy-demo-scene",
         }
     }
 }
@@ -283,6 +319,7 @@ pub const ALL_SCENE_DOCUMENT_CODEC_DIAGNOSTIC_CODES: &[SceneDocumentCodecDiagnos
     SceneDocumentCodecDiagnosticCode::UnsupportedSchema,
     SceneDocumentCodecDiagnosticCode::UnsupportedAuthoringFormat,
     SceneDocumentCodecDiagnosticCode::InvalidDocument,
+    SceneDocumentCodecDiagnosticCode::LegacyDemoScene,
 ];
 
 // ── Asset reference border DTO ────────────────────────────────────────────────
@@ -377,6 +414,50 @@ pub enum SceneLightDto {
     },
 }
 
+/// Stored target resolved by one authored runtime instance placement.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SceneEntityReferenceDto {
+    EntityDefinition {
+        stable_id: String,
+    },
+    Prefab {
+        prefab_id: u64,
+        variant_id: Option<String>,
+    },
+}
+
+/// Renderer-neutral stored runtime instance intent. Hierarchy and local pose
+/// remain on the containing [`SceneNodeRecordDto`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneEntityInstanceDto {
+    pub instance_id: String,
+    pub reference: SceneEntityReferenceDto,
+    pub spawn_marker_id: Option<String>,
+}
+
+/// Generic procedural generator input for one scene bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneGeneratorBindingDto {
+    pub provider_id: String,
+    pub preset_id: String,
+    pub seed: u64,
+}
+
+/// One named ProjectBundle catalog input used by scene bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneCatalogBindingDto {
+    pub binding_id: String,
+    pub catalog_id: String,
+    pub source_path: String,
+}
+
+/// Explicit non-spatial scene bootstrap inputs.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SceneBootstrapBindingsDto {
+    pub generator: Option<SceneGeneratorBindingDto>,
+    pub catalogs: Vec<SceneCatalogBindingDto>,
+}
+
 /// Border form of a scene node's kind. Only asset-backed kinds carry an asset,
 /// mirroring the generated TypeScript discriminated union (so an "empty group
 /// with an asset" is unrepresentable rather than merely discouraged).
@@ -387,6 +468,8 @@ pub enum SceneNodeKindDto {
     Sprite(AssetReferenceDto),
     VoxelVolume(AssetReferenceDto),
     Light(SceneLightDto),
+    EntityInstance { instance: SceneEntityInstanceDto },
+    Bootstrap { bindings: SceneBootstrapBindingsDto },
 }
 
 impl SceneNodeKindDto {
@@ -398,13 +481,18 @@ impl SceneNodeKindDto {
             SceneNodeKindDto::Sprite(_) => SceneNodeKindTag::Sprite,
             SceneNodeKindDto::VoxelVolume(_) => SceneNodeKindTag::VoxelVolume,
             SceneNodeKindDto::Light(_) => SceneNodeKindTag::Light,
+            SceneNodeKindDto::EntityInstance { .. } => SceneNodeKindTag::EntityInstance,
+            SceneNodeKindDto::Bootstrap { .. } => SceneNodeKindTag::Bootstrap,
         }
     }
 
     /// The asset reference this kind carries, if any.
     pub fn asset(&self) -> Option<&AssetReferenceDto> {
         match self {
-            SceneNodeKindDto::EmptyGroup | SceneNodeKindDto::Light(_) => None,
+            SceneNodeKindDto::EmptyGroup
+            | SceneNodeKindDto::Light(_)
+            | SceneNodeKindDto::EntityInstance { .. }
+            | SceneNodeKindDto::Bootstrap { .. } => None,
             SceneNodeKindDto::StaticMesh(a)
             | SceneNodeKindDto::Sprite(a)
             | SceneNodeKindDto::VoxelVolume(a) => Some(a),
@@ -586,6 +674,12 @@ pub struct SceneValidationErrorDto {
     pub transform_reason: Option<String>,
     /// A stable reason string, for `invalid-light`.
     pub light_reason: Option<String>,
+    /// A stable reason for typed entity-instance/bootstrap validation failures.
+    pub detail_reason: Option<String>,
+    /// Durable instance identity, for duplicate instance diagnostics.
+    pub instance_id: Option<String>,
+    /// Scene-local catalog binding identity, for duplicate binding diagnostics.
+    pub binding_id: Option<String>,
     /// The ids forming the cycle in order, for `cycle`.
     pub cycle_path: Vec<SceneNodeId>,
 }
@@ -601,6 +695,9 @@ impl SceneValidationErrorDto {
             actual_kind: None,
             transform_reason: None,
             light_reason: None,
+            detail_reason: None,
+            instance_id: None,
+            binding_id: None,
             cycle_path: Vec::new(),
         }
     }
@@ -719,6 +816,18 @@ pub struct SceneSourceTraceDto {
     pub runtime_entity_id: EntityId,
 }
 
+/// One resolved stored placement retained in atomic bootstrap evidence.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SceneResolvedEntityInstanceDto {
+    pub scene_node_id: SceneNodeId,
+    pub runtime_entity_id: EntityId,
+    pub instance_id: String,
+    pub reference: SceneEntityReferenceDto,
+    pub spawn_marker_id: Option<String>,
+    pub local_transform: SceneTransformDto,
+    pub world_transform: SceneTransformDto,
+}
+
 /// Border form of the atomic bootstrap record — the single replay/audit unit a
 /// scene→authority initialization produces.
 #[derive(Debug, Clone, PartialEq)]
@@ -732,6 +841,12 @@ pub struct BootstrapRecordDto {
     pub spatial_session_hash: u64,
     /// One entry per scene-sourced entity, in deterministic order.
     pub source_trace: Vec<SceneSourceTraceDto>,
+    /// Canonical FNV-1a identity of the exact stored scene document.
+    pub scene_content_hash: u64,
+    /// Typed resolved instance placements in stable scene-node order.
+    pub resolved_instances: Vec<SceneResolvedEntityInstanceDto>,
+    /// Explicit generator/catalog inputs retained for replay/audit correlation.
+    pub bootstrap_bindings: Option<SceneBootstrapBindingsDto>,
 }
 
 #[cfg(test)]

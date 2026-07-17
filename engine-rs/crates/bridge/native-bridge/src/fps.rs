@@ -762,9 +762,11 @@ fn module_view_scope(kind: &str, value: Option<i64>) -> napi::Result<GameplayMod
 pub fn load_fps_runtime_session(
     handle: i64,
     project_bundle: String,
+    scene_document_json: String,
     definitions: Vec<NativeFpsStoredEntityDefinition>,
     game_rule_modules_json: String,
 ) -> napi::Result<NativeFpsRuntimeSessionSnapshot> {
+    let scene_document = crate::scene_preview::parse_scene_document_json(&scene_document_json)?;
     let definitions = bridge_fps_definitions(definitions)?;
     let game_rule_modules = parse_game_rule_module_manifests(&game_rule_modules_json)?;
     with_bridge(handle, |bridge| {
@@ -772,6 +774,7 @@ pub fn load_fps_runtime_session(
             .load_fps_runtime_session(FpsRuntimeSessionLoadRequest {
                 project_bundle,
                 definitions,
+                scene_document,
                 game_rule_modules,
             })
             .map(NativeFpsRuntimeSessionSnapshot::from)

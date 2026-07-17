@@ -42,6 +42,22 @@ pub enum SceneValidationError {
         node: SceneNodeId,
         reason: SceneLightInvalid,
     },
+    /// Two authored runtime placements share one durable instance identity.
+    DuplicateEntityInstanceId {
+        node: SceneNodeId,
+        instance_id: String,
+    },
+    /// An entity/prefab placement carries malformed stored binding data.
+    InvalidEntityInstance { node: SceneNodeId, reason: String },
+    /// More than one scene-wide bootstrap binding node was authored.
+    DuplicateBootstrapNode { node: SceneNodeId },
+    /// A scene-wide bootstrap binding is malformed or placed spatially.
+    InvalidBootstrap { node: SceneNodeId, reason: String },
+    /// Two catalog inputs claim the same scene-local binding identity.
+    DuplicateCatalogBinding {
+        node: SceneNodeId,
+        binding_id: String,
+    },
 }
 
 impl SceneValidationError {
@@ -54,6 +70,13 @@ impl SceneValidationError {
             SceneValidationError::InvalidTransform { .. } => "invalid-transform",
             SceneValidationError::AssetKindMismatch { .. } => "asset-kind-mismatch",
             SceneValidationError::InvalidLight { .. } => "invalid-light",
+            SceneValidationError::DuplicateEntityInstanceId { .. } => {
+                "duplicate-entity-instance-id"
+            }
+            SceneValidationError::InvalidEntityInstance { .. } => "invalid-entity-instance",
+            SceneValidationError::DuplicateBootstrapNode { .. } => "duplicate-bootstrap-node",
+            SceneValidationError::InvalidBootstrap { .. } => "invalid-bootstrap",
+            SceneValidationError::DuplicateCatalogBinding { .. } => "duplicate-catalog-binding",
         }
     }
 }
@@ -74,6 +97,8 @@ impl SceneValidationReport {
 /// Validate a flat scene document, returning every classified error.
 pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
     let mut errors = Vec::new();
+    let mut instance_ids = HashSet::new();
+    let mut bootstrap_seen = false;
 
     // 1. Duplicate stable ids. `known` is the set of all ids present (used by the
     //    parent/cycle checks below); `seen`/`reported` track duplicates so each
@@ -129,6 +154,123 @@ pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
                 });
             }
         }
+        match &rec.kind {
+            SceneNodeKind::EntityInstance(instance) => {
+                if doc.schema_version < 3 || doc.metadata.authoring_format_version < 3 {
+                    errors.push(SceneValidationError::InvalidEntityInstance {
+                        node: rec.id,
+                        reason: "requires-schema-3".into(),
+                    });
+                }
+                if !valid_stable_id(&instance.instance_id) {
+                    errors.push(SceneValidationError::InvalidEntityInstance {
+                        node: rec.id,
+                        reason: "invalid-instance-id".into(),
+                    });
+                } else if !instance_ids.insert(instance.instance_id.clone()) {
+                    errors.push(SceneValidationError::DuplicateEntityInstanceId {
+                        node: rec.id,
+                        instance_id: instance.instance_id.clone(),
+                    });
+                }
+                match &instance.reference {
+                    crate::document::SceneEntityReference::EntityDefinition { stable_id } => {
+                        if !valid_stable_id(stable_id) {
+                            errors.push(SceneValidationError::InvalidEntityInstance {
+                                node: rec.id,
+                                reason: "invalid-entity-definition-id".into(),
+                            });
+                        }
+                    }
+                    crate::document::SceneEntityReference::Prefab {
+                        prefab_id,
+                        variant_id,
+                    } => {
+                        if *prefab_id == 0 {
+                            errors.push(SceneValidationError::InvalidEntityInstance {
+                                node: rec.id,
+                                reason: "invalid-prefab-id".into(),
+                            });
+                        }
+                        if variant_id
+                            .as_deref()
+                            .is_some_and(|value| !valid_stable_id(value))
+                        {
+                            errors.push(SceneValidationError::InvalidEntityInstance {
+                                node: rec.id,
+                                reason: "invalid-prefab-variant-id".into(),
+                            });
+                        }
+                    }
+                }
+                if instance
+                    .spawn_marker_id
+                    .as_deref()
+                    .is_some_and(|value| !valid_stable_id(value))
+                {
+                    errors.push(SceneValidationError::InvalidEntityInstance {
+                        node: rec.id,
+                        reason: "invalid-spawn-marker-id".into(),
+                    });
+                }
+            }
+            SceneNodeKind::Bootstrap(bindings) => {
+                if bootstrap_seen {
+                    errors.push(SceneValidationError::DuplicateBootstrapNode { node: rec.id });
+                }
+                bootstrap_seen = true;
+                if doc.schema_version < 3 || doc.metadata.authoring_format_version < 3 {
+                    errors.push(SceneValidationError::InvalidBootstrap {
+                        node: rec.id,
+                        reason: "requires-schema-3".into(),
+                    });
+                }
+                if rec.parent.is_some() {
+                    errors.push(SceneValidationError::InvalidBootstrap {
+                        node: rec.id,
+                        reason: "bootstrap-must-be-root".into(),
+                    });
+                }
+                if rec.transform != crate::SceneTransform::IDENTITY {
+                    errors.push(SceneValidationError::InvalidBootstrap {
+                        node: rec.id,
+                        reason: "bootstrap-transform-must-be-identity".into(),
+                    });
+                }
+                if let Some(generator) = &bindings.generator {
+                    if !valid_stable_id(&generator.provider_id)
+                        || !valid_stable_id(&generator.preset_id)
+                    {
+                        errors.push(SceneValidationError::InvalidBootstrap {
+                            node: rec.id,
+                            reason: "invalid-generator-binding".into(),
+                        });
+                    }
+                }
+                let mut catalog_bindings = HashSet::new();
+                for catalog in &bindings.catalogs {
+                    if !valid_stable_id(&catalog.binding_id)
+                        || !valid_stable_id(&catalog.catalog_id)
+                        || !valid_project_relative_path(&catalog.source_path)
+                    {
+                        errors.push(SceneValidationError::InvalidBootstrap {
+                            node: rec.id,
+                            reason: "invalid-catalog-binding".into(),
+                        });
+                    } else if !catalog_bindings.insert(catalog.binding_id.clone()) {
+                        errors.push(SceneValidationError::DuplicateCatalogBinding {
+                            node: rec.id,
+                            binding_id: catalog.binding_id.clone(),
+                        });
+                    }
+                }
+            }
+            SceneNodeKind::EmptyGroup
+            | SceneNodeKind::StaticMesh(_)
+            | SceneNodeKind::Sprite(_)
+            | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::Light(_) => {}
+        }
     }
 
     // 3. Cycles via the parent map. Only meaningful with present parents; an
@@ -136,6 +278,24 @@ pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
     detect_cycles(doc, &known, &mut errors);
 
     SceneValidationReport { errors }
+}
+
+fn valid_stable_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.trim() == value
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-' | b'/' | b':' | b'@')
+        })
+}
+
+fn valid_project_relative_path(value: &str) -> bool {
+    !value.is_empty()
+        && value.trim() == value
+        && !value.starts_with('/')
+        && !value.contains('\\')
+        && value
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "..")
 }
 
 fn detect_cycles(

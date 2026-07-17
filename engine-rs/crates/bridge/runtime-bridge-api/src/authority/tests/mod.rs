@@ -288,6 +288,7 @@ fn hand_authored_voxel_annotation_layer(asset: &VoxelVolumeAsset) -> VoxelAnnota
 pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadRequest {
     FpsRuntimeSessionLoadRequest {
         project_bundle: "custom-demo".to_string(),
+        scene_document: fps_scene_document(),
         definitions: vec![
             FpsBridgeStoredEntityDefinition {
                 entity: 101,
@@ -357,6 +358,43 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
             },
         ],
         game_rule_modules: Vec::new(),
+    }
+}
+
+fn fps_scene_document() -> FlatSceneDocumentDto {
+    let instance = |id: u64, stable_id: &str, translation: [f32; 3]| SceneNodeRecordDto {
+        id: SceneNodeId::new(id),
+        parent: None,
+        child_order: id as u32,
+        label: Some(stable_id.to_string()),
+        tags: Vec::new(),
+        transform: SceneTransformDto {
+            translation,
+            rotation: [0.0, 0.0, 0.0, 1.0],
+            scale: [1.0, 1.0, 1.0],
+        },
+        kind: SceneNodeKindDto::EntityInstance {
+            instance: SceneEntityInstanceDto {
+                instance_id: format!("instance.{id}"),
+                reference: SceneEntityReferenceDto::EntityDefinition {
+                    stable_id: stable_id.to_string(),
+                },
+                spawn_marker_id: None,
+            },
+        },
+    };
+    FlatSceneDocumentDto {
+        schema_version: 3,
+        id: SceneId::new(9001),
+        metadata: SceneMetadataDto {
+            name: Some("FPS authority fixture".to_string()),
+            authoring_format_version: 3,
+        },
+        dependencies: Vec::new(),
+        nodes: vec![
+            instance(101, "actor/custom-player", [0.0, 1.5, 0.0]),
+            instance(777, "actor/custom-enemy", [0.0, 1.5, 5.2]),
+        ],
     }
 }
 

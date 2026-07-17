@@ -71,6 +71,27 @@ impl SceneTransform {
         }
     }
 
+    /// Compose one local authored transform beneath a parent transform. This is
+    /// the canonical scene hierarchy rule used when stored local placement is
+    /// seeded into flat runtime transform authority.
+    pub fn compose(self, local: SceneTransform) -> SceneTransform {
+        let scaled = Vec3::new(
+            local.translation.x * self.scale.x,
+            local.translation.y * self.scale.y,
+            local.translation.z * self.scale.z,
+        );
+        let rotated = rotate_vector(self.rotation, scaled);
+        SceneTransform {
+            translation: self.translation + rotated,
+            rotation: multiply_quat(self.rotation, local.rotation),
+            scale: Vec3::new(
+                self.scale.x * local.scale.x,
+                self.scale.y * local.scale.y,
+                self.scale.z * local.scale.z,
+            ),
+        }
+    }
+
     /// Validate transform components: all finite, rotation non-degenerate, and
     /// no zero scale axis (a zero scale collapses geometry and breaks inverse
     /// transforms downstream).
@@ -92,6 +113,29 @@ impl SceneTransform {
         }
         Ok(())
     }
+}
+
+fn multiply_quat(a: Quat, b: Quat) -> Quat {
+    Quat::new(
+        a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+        a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+        a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+        a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+    )
+}
+
+fn rotate_vector(rotation: Quat, vector: Vec3) -> Vec3 {
+    let inverse_length = rotation.norm_squared().sqrt().recip();
+    let q = Quat::new(
+        rotation.x * inverse_length,
+        rotation.y * inverse_length,
+        rotation.z * inverse_length,
+        rotation.w * inverse_length,
+    );
+    let v = Quat::new(vector.x, vector.y, vector.z, 0.0);
+    let conjugate = Quat::new(-q.x, -q.y, -q.z, q.w);
+    let rotated = multiply_quat(multiply_quat(q, v), conjugate);
+    Vec3::new(rotated.x, rotated.y, rotated.z)
 }
 
 impl Default for SceneTransform {

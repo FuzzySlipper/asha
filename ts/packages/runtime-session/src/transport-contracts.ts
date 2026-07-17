@@ -1,4 +1,5 @@
 import type {
+  FlatSceneDocument,
   GameExtensionHookReceipt,
   GameExtensionReplayEvidence,
   GameRuleCatalog,
@@ -101,6 +102,7 @@ export interface FpsStoredEntityDefinition {
 
 export interface FpsRuntimeSessionLoadRequest {
   readonly projectBundle: string;
+  readonly sceneDocument: FlatSceneDocument;
   readonly definitions: readonly FpsStoredEntityDefinition[];
   readonly gameRuleModules: readonly GameRuleModuleManifest[];
 }

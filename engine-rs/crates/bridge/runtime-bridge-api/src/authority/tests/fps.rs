@@ -29,6 +29,19 @@ fn centered_tunnel_fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadR
             FpsBridgeRole::Neutral => {}
         }
     }
+    for node in &mut request.scene_document.nodes {
+        let SceneNodeKindDto::EntityInstance { instance } = &node.kind else {
+            continue;
+        };
+        let SceneEntityReferenceDto::EntityDefinition { stable_id } = &instance.reference else {
+            continue;
+        };
+        node.transform.translation = match stable_id.as_str() {
+            "actor/custom-player" => [0.0, 1.62, 1.5],
+            "actor/custom-enemy" => [0.0, 0.5, -2.6],
+            _ => node.transform.translation,
+        };
+    }
     request
 }
 

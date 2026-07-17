@@ -13,7 +13,9 @@ use core_ids::{SceneId, SceneNodeId};
 use core_math::Vec3;
 
 use crate::document::{
-    FlatSceneDocument, NodeMetadata, SceneMetadata, SceneNodeKind, SceneNodeRecord,
+    FlatSceneDocument, NodeMetadata, SceneBootstrapBindings, SceneCatalogBinding,
+    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMetadata, SceneNodeKind,
+    SceneNodeRecord,
 };
 use crate::transform::{Quat, SceneTransform};
 use crate::{SceneLight, SceneLightShadowIntent};
@@ -113,7 +115,69 @@ fn encode_kind(out: &mut String, kind: &SceneNodeKind) {
         out.push_str(", \"sceneLight\": ");
         encode_light(out, light);
     }
+    if let SceneNodeKind::EntityInstance(instance) = kind {
+        out.push_str(", \"instance\": ");
+        encode_entity_instance(out, instance);
+    }
+    if let SceneNodeKind::Bootstrap(bindings) = kind {
+        out.push_str(", \"bindings\": ");
+        encode_bootstrap_bindings(out, bindings);
+    }
     out.push_str(" }");
+}
+
+fn encode_entity_instance(out: &mut String, instance: &SceneEntityInstance) {
+    out.push_str("{ \"instanceId\": ");
+    encode_opt_str(out, Some(&instance.instance_id));
+    out.push_str(", \"reference\": ");
+    match &instance.reference {
+        SceneEntityReference::EntityDefinition { stable_id } => {
+            out.push_str("{ \"kind\": \"entityDefinition\", \"stableId\": ");
+            encode_opt_str(out, Some(stable_id));
+            out.push_str(" }");
+        }
+        SceneEntityReference::Prefab {
+            prefab_id,
+            variant_id,
+        } => {
+            out.push_str(&format!(
+                "{{ \"kind\": \"prefab\", \"prefabId\": {prefab_id}, \"variantId\": "
+            ));
+            encode_opt_str(out, variant_id.as_deref());
+            out.push_str(" }");
+        }
+    }
+    out.push_str(", \"spawnMarkerId\": ");
+    encode_opt_str(out, instance.spawn_marker_id.as_deref());
+    out.push_str(" }");
+}
+
+fn encode_bootstrap_bindings(out: &mut String, bindings: &SceneBootstrapBindings) {
+    out.push_str("{ \"generator\": ");
+    match &bindings.generator {
+        Some(generator) => {
+            out.push_str("{ \"providerId\": ");
+            encode_opt_str(out, Some(&generator.provider_id));
+            out.push_str(", \"presetId\": ");
+            encode_opt_str(out, Some(&generator.preset_id));
+            out.push_str(&format!(", \"seed\": {} }}", generator.seed));
+        }
+        None => out.push_str("null"),
+    }
+    out.push_str(", \"catalogs\": [");
+    for (index, catalog) in bindings.catalogs.iter().enumerate() {
+        if index > 0 {
+            out.push_str(", ");
+        }
+        out.push_str("{ \"bindingId\": ");
+        encode_opt_str(out, Some(&catalog.binding_id));
+        out.push_str(", \"catalogId\": ");
+        encode_opt_str(out, Some(&catalog.catalog_id));
+        out.push_str(", \"sourcePath\": ");
+        encode_opt_str(out, Some(&catalog.source_path));
+        out.push_str(" }");
+    }
+    out.push_str("] }");
 }
 
 fn encode_light(out: &mut String, light: &SceneLight) {
@@ -299,6 +363,9 @@ pub enum SceneDecodeError {
     UnknownKind(String),
     /// A `version.req` discriminant was not recognized.
     UnknownVersionReq(String),
+    /// The removed Demo-only scene shape was supplied. Callers can route a
+    /// migration diagnostic without confusing it with malformed canonical JSON.
+    LegacyDemoScene,
 }
 
 /// Decode canonical/authored scene JSON into a flat document. The result is
@@ -306,6 +373,12 @@ pub enum SceneDecodeError {
 /// and [`crate::validate`] as needed.
 pub fn decode(input: &str) -> Result<FlatSceneDocument, SceneDecodeError> {
     let json = Json::parse(input).map_err(SceneDecodeError::Json)?;
+    if json.get("kind").and_then(Json::as_str) == Some("SceneDocument")
+        && json.get("sceneId").is_some()
+        && json.get("placements").is_some()
+    {
+        return Err(SceneDecodeError::LegacyDemoScene);
+    }
     require_keys(
         &json,
         &["schemaVersion", "id", "metadata", "dependencies", "nodes"],
@@ -421,8 +494,102 @@ fn decode_kind(j: &Json) -> Result<SceneNodeKind, SceneDecodeError> {
             require_keys(j, &["kind", "sceneLight"], "light kind")?;
             Ok(SceneNodeKind::Light(decode_light(field(j, "sceneLight")?)?))
         }
+        "entityInstance" => {
+            require_keys(j, &["kind", "instance"], "entityInstance kind")?;
+            Ok(SceneNodeKind::EntityInstance(decode_entity_instance(
+                field(j, "instance")?,
+            )?))
+        }
+        "bootstrap" => {
+            require_keys(j, &["kind", "bindings"], "bootstrap kind")?;
+            Ok(SceneNodeKind::Bootstrap(decode_bootstrap_bindings(field(
+                j, "bindings",
+            )?)?))
+        }
         other => Err(SceneDecodeError::UnknownKind(other.to_string())),
     }
+}
+
+fn decode_entity_instance(j: &Json) -> Result<SceneEntityInstance, SceneDecodeError> {
+    require_keys(
+        j,
+        &["instanceId", "reference", "spawnMarkerId"],
+        "entity instance",
+    )?;
+    let reference_json = field(j, "reference")?;
+    let reference_kind = field(reference_json, "kind")?.as_str().ok_or_else(|| {
+        SceneDecodeError::Field("instance.reference.kind must be a string".into())
+    })?;
+    let reference = match reference_kind {
+        "entityDefinition" => {
+            require_keys(
+                reference_json,
+                &["kind", "stableId"],
+                "entity definition reference",
+            )?;
+            SceneEntityReference::EntityDefinition {
+                stable_id: field_str(reference_json, "stableId")?,
+            }
+        }
+        "prefab" => {
+            require_keys(
+                reference_json,
+                &["kind", "prefabId", "variantId"],
+                "prefab reference",
+            )?;
+            SceneEntityReference::Prefab {
+                prefab_id: field_u64(reference_json, "prefabId")?,
+                variant_id: opt_str(reference_json, "variantId")?,
+            }
+        }
+        other => return Err(SceneDecodeError::UnknownKind(other.to_string())),
+    };
+    Ok(SceneEntityInstance {
+        instance_id: field_str(j, "instanceId")?,
+        reference,
+        spawn_marker_id: opt_str(j, "spawnMarkerId")?,
+    })
+}
+
+fn decode_bootstrap_bindings(j: &Json) -> Result<SceneBootstrapBindings, SceneDecodeError> {
+    require_keys(j, &["generator", "catalogs"], "bootstrap bindings")?;
+    let generator = match j.get("generator") {
+        Some(Json::Null) | None => None,
+        Some(value) => {
+            require_keys(
+                value,
+                &["providerId", "presetId", "seed"],
+                "generator binding",
+            )?;
+            Some(SceneGeneratorBinding {
+                provider_id: field_str(value, "providerId")?,
+                preset_id: field_str(value, "presetId")?,
+                seed: field_u64(value, "seed")?,
+            })
+        }
+    };
+    let catalogs_json = field(j, "catalogs")?
+        .as_array()
+        .ok_or_else(|| SceneDecodeError::Field("bindings.catalogs must be an array".into()))?;
+    let catalogs = catalogs_json
+        .iter()
+        .map(|value| {
+            require_keys(
+                value,
+                &["bindingId", "catalogId", "sourcePath"],
+                "catalog binding",
+            )?;
+            Ok(SceneCatalogBinding {
+                binding_id: field_str(value, "bindingId")?,
+                catalog_id: field_str(value, "catalogId")?,
+                source_path: field_str(value, "sourcePath")?,
+            })
+        })
+        .collect::<Result<Vec<_>, SceneDecodeError>>()?;
+    Ok(SceneBootstrapBindings {
+        generator,
+        catalogs,
+    })
 }
 
 fn decode_light(j: &Json) -> Result<SceneLight, SceneDecodeError> {
@@ -670,6 +837,15 @@ fn opt_str(j: &Json, key: &str) -> Result<Option<String>, SceneDecodeError> {
         Some(Json::Str(s)) => Ok(Some(s.clone())),
         Some(_) => Err(SceneDecodeError::Field(format!(
             "field `{key}` must be a string or null"
+        ))),
+    }
+}
+
+fn field_str(j: &Json, key: &str) -> Result<String, SceneDecodeError> {
+    match field(j, key)? {
+        Json::Str(value) => Ok(value.clone()),
+        _ => Err(SceneDecodeError::Field(format!(
+            "field `{key}` must be a string"
         ))),
     }
 }

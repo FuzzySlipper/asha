@@ -1,4 +1,4 @@
-import type { GameRuleModuleManifest } from '@asha/contracts';
+import type { FlatSceneDocument, GameRuleModuleManifest, SceneTransform } from '@asha/contracts';
 import type { RuntimeSessionMode, RuntimeSessionProjectIdentity } from './facade-core.js';
 import type {
   RuntimeSessionLifecycleEventKind,
@@ -205,18 +205,6 @@ export interface RuntimeSessionEcrpEntityDefinition {
   readonly capabilities: readonly RuntimeSessionEcrpProjectCapabilityDefinition[];
 }
 
-export interface RuntimeSessionEcrpScenePlacement {
-  readonly entityDefinitionId: string;
-  readonly spawnMarkerId?: string;
-  readonly runtimeEntityId?: number;
-}
-
-export interface RuntimeSessionEcrpSceneDocument {
-  readonly kind: 'SceneDocument';
-  readonly sceneId: string;
-  readonly placements: readonly RuntimeSessionEcrpScenePlacement[];
-}
-
 export interface RuntimeSessionEcrpProjectLoadInput {
   readonly kind: 'runtime_session.load_ecrp_project.v0';
   readonly projectBundle: {
@@ -225,7 +213,7 @@ export interface RuntimeSessionEcrpProjectLoadInput {
     readonly runtimeRequest: ProjectBundleLoadRequest;
   };
   readonly entityDefinitions: readonly RuntimeSessionEcrpEntityDefinition[];
-  readonly sceneDocument: RuntimeSessionEcrpSceneDocument;
+  readonly sceneDocument: FlatSceneDocument;
   readonly gameRuleModules?: readonly GameRuleModuleManifest[];
 }
 
@@ -241,6 +229,9 @@ export interface RuntimeSessionEcrpProjectLoadReceipt {
 }
 export interface RuntimeSessionEcrpEntityState {
   readonly entity: number;
+  readonly instanceId: string;
+  readonly spawnMarkerId: string | null;
+  readonly worldTransform: SceneTransform;
   readonly definition: RuntimeSessionEcrpEntityDefinition;
   readonly role: RuntimeSessionLifecycleRole | 'neutral';
 }

@@ -143,14 +143,13 @@ function ecrpRuntimeTransformForEntity(
   if (runtimeTransform !== undefined) {
     return runtimeTransform;
   }
-  const definitionTransform = entity.definition.capabilities.find((capability) => capability.kind === 'transform');
-  if (definitionTransform?.kind !== 'transform') {
-    return null;
-  }
+  const [x, y, z, w] = entity.worldTransform.rotation;
+  const pitchRadians = Math.asin(Math.max(-1, Math.min(1, 2 * (w * x - y * z))));
+  const yawRadians = Math.atan2(2 * (w * y + x * z), 1 - 2 * (x * x + y * y));
   return {
-    position: definitionTransform.initial.position,
-    yawDegrees: definitionTransform.initial.yawDegrees,
-    pitchDegrees: definitionTransform.initial.pitchDegrees,
+    position: entity.worldTransform.translation,
+    yawDegrees: yawRadians * 180 / Math.PI,
+    pitchDegrees: pitchRadians * 180 / Math.PI,
   };
 }
 

@@ -26,16 +26,16 @@ export type SceneNodeId = number & { readonly __brand: 'SceneNodeId' };
 export const sceneNodeId = (raw: number): SceneNodeId => raw as SceneNodeId;
 
 // The scene-node kind tag as a closed enum with a stable string form.
-export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume' | 'light';
+export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume' | 'light' | 'entityInstance' | 'bootstrap';
 
 // Stable classified scene-validation codes. Mirrors `core_scene::SceneValidationError::label`; the string form is a contract.
-export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch' | 'invalid-light';
+export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch' | 'invalid-light' | 'duplicate-entity-instance-id' | 'invalid-entity-instance' | 'duplicate-bootstrap-node' | 'invalid-bootstrap' | 'duplicate-catalog-binding';
 
 // Stable scene-object command rejection codes. Mirrors `core_scene::SceneObjectCommandRejection::label`; the string form is a contract.
 export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label' | 'invalid-scene-object-kind' | 'invalid-scene-object-transform' | 'readonly-scene-object-transform';
 
 // Stable classifications for stored scene-document codec failures. Structural decode failures are kept separate from semantic [`SceneValidationCode`] entries so authoring tools never need to parse Rust error prose.
-export type SceneDocumentCodecDiagnosticCode = 'invalid-json' | 'invalid-field' | 'invalid-asset' | 'unknown-kind' | 'unknown-version-requirement' | 'unsupported-schema' | 'unsupported-authoring-format' | 'invalid-document';
+export type SceneDocumentCodecDiagnosticCode = 'invalid-json' | 'invalid-field' | 'invalid-asset' | 'unknown-kind' | 'unknown-version-requirement' | 'unsupported-schema' | 'unsupported-authoring-format' | 'invalid-document' | 'legacy-demo-scene';
 
 // Stable classifications for a stored SceneDocument compare-and-swap authoring transaction.
 export type SceneDocumentAuthoringRejectionCode = 'stale-scene-document' | 'invalid-current-scene-document' | 'invalid-resulting-scene-document' | 'invalid-scene-document-command' | 'missing-scene-document-target' | 'foreign-scene-document-identity';
@@ -70,13 +70,47 @@ export type SceneLight =
   | { readonly kind: 'point'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly range: number | null; readonly decay: number; readonly shadowIntent: SceneLightShadowIntent }
   | { readonly kind: 'spot'; readonly color: readonly [number, number, number]; readonly intensity: number; readonly enabled: boolean; readonly range: number | null; readonly decay: number; readonly outerAngleRadians: number; readonly penumbra: number; readonly shadowIntent: SceneLightShadowIntent };
 
+// Stored target resolved by one authored runtime instance placement.
+export type SceneEntityReference =
+  | { readonly kind: 'entityDefinition'; readonly stableId: string }
+  | { readonly kind: 'prefab'; readonly prefabId: number; readonly variantId: string | null };
+
+// Renderer-neutral stored runtime instance intent. Hierarchy and local pose remain on the containing [`SceneNodeRecordDto`].
+export interface SceneEntityInstance {
+  readonly instanceId: string;
+  readonly reference: SceneEntityReference;
+  readonly spawnMarkerId: string | null;
+}
+
+// Generic procedural generator input for one scene bootstrap.
+export interface SceneGeneratorBinding {
+  readonly providerId: string;
+  readonly presetId: string;
+  readonly seed: number;
+}
+
+// One named ProjectBundle catalog input used by scene bootstrap.
+export interface SceneCatalogBinding {
+  readonly bindingId: string;
+  readonly catalogId: string;
+  readonly sourcePath: string;
+}
+
+// Explicit non-spatial scene bootstrap inputs.
+export interface SceneBootstrapBindings {
+  readonly generator: SceneGeneratorBinding | null;
+  readonly catalogs: readonly SceneCatalogBinding[];
+}
+
 // Border form of a scene node's kind. Only asset-backed kinds carry an asset, mirroring the generated TypeScript discriminated union (so an "empty group with an asset" is unrepresentable rather than merely discouraged).
 export type SceneNodeKind =
   | { readonly kind: 'emptyGroup' }
   | { readonly kind: 'staticMesh'; readonly asset: AssetReference }
   | { readonly kind: 'sprite'; readonly asset: AssetReference }
   | { readonly kind: 'voxelVolume'; readonly asset: AssetReference }
-  | { readonly kind: 'light'; readonly sceneLight: SceneLight };
+  | { readonly kind: 'light'; readonly sceneLight: SceneLight }
+  | { readonly kind: 'entityInstance'; readonly instance: SceneEntityInstance }
+  | { readonly kind: 'bootstrap'; readonly bindings: SceneBootstrapBindings };
 
 // Border form of one canonical flat scene-node record.
 export interface SceneNodeRecord {
@@ -181,6 +215,9 @@ export interface SceneValidationError {
   readonly actualKind: string | null;
   readonly transformReason: string | null;
   readonly lightReason: string | null;
+  readonly detailReason: string | null;
+  readonly instanceId: string | null;
+  readonly bindingId: string | null;
   readonly cyclePath: readonly SceneNodeId[];
 }
 
@@ -252,6 +289,17 @@ export interface SceneSourceTrace {
   readonly runtimeEntityId: EntityId;
 }
 
+// One resolved stored placement retained in atomic bootstrap evidence.
+export interface SceneResolvedEntityInstance {
+  readonly sceneNodeId: SceneNodeId;
+  readonly runtimeEntityId: EntityId;
+  readonly instanceId: string;
+  readonly reference: SceneEntityReference;
+  readonly spawnMarkerId: string | null;
+  readonly localTransform: SceneTransform;
+  readonly worldTransform: SceneTransform;
+}
+
 // Border form of the atomic bootstrap record — the single replay/audit unit a scene→authority initialization produces.
 export interface BootstrapRecord {
   readonly sceneId: SceneId;
@@ -261,4 +309,7 @@ export interface BootstrapRecord {
   readonly entityCount: number;
   readonly spatialSessionHash: number;
   readonly sourceTrace: readonly SceneSourceTrace[];
+  readonly sceneContentHash: number;
+  readonly resolvedInstances: readonly SceneResolvedEntityInstance[];
+  readonly bootstrapBindings: SceneBootstrapBindings | null;
 }

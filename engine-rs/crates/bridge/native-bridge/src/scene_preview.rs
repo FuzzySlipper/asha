@@ -13,8 +13,10 @@ use protocol_scene::{
     AssetReferenceDto, AssetVersionReqDto, FlatSceneDocumentDto,
     SceneDocumentAuthoringCommandDto, SceneDocumentAuthoringRequestDto,
     SceneDocumentAuthoringTargetDto, SceneDocumentCodecResultDto,
-    SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneLightDto,
-    SceneLightShadowIntentDto, SceneMetadataDto, SceneNodeKindDto, SceneNodeRecordDto,
+    SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneBootstrapBindingsDto,
+    SceneCatalogBindingDto, SceneEntityInstanceDto, SceneEntityReferenceDto,
+    SceneGeneratorBindingDto, SceneLightDto, SceneLightShadowIntentDto, SceneMetadataDto,
+    SceneNodeKindDto, SceneNodeRecordDto,
     SceneObjectCommandDto, SceneObjectCommandRequestDto, SceneObjectCommandResultDto,
     SceneTransformDto, SceneValidationErrorDto,
 };
@@ -640,6 +642,54 @@ enum SceneKindJson {
     Sprite { asset: SceneAssetDtoJson },
     VoxelVolume { asset: SceneAssetDtoJson },
     Light { scene_light: SceneLightJson },
+    EntityInstance { instance: SceneEntityInstanceJson },
+    Bootstrap { bindings: SceneBootstrapBindingsJson },
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SceneEntityInstanceJson {
+    instance_id: String,
+    reference: SceneEntityReferenceJson,
+    spawn_marker_id: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+enum SceneEntityReferenceJson {
+    EntityDefinition { stable_id: String },
+    Prefab {
+        prefab_id: u64,
+        variant_id: Option<String>,
+    },
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SceneBootstrapBindingsJson {
+    generator: Option<SceneGeneratorBindingJson>,
+    catalogs: Vec<SceneCatalogBindingJson>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SceneGeneratorBindingJson {
+    provider_id: String,
+    preset_id: String,
+    seed: u64,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct SceneCatalogBindingJson {
+    binding_id: String,
+    catalog_id: String,
+    source_path: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -811,6 +861,48 @@ impl SceneRecordJson {
                 SceneKindJson::Light { scene_light } => {
                     SceneNodeKindDto::Light(scene_light.protocol())
                 }
+                SceneKindJson::EntityInstance { instance } => {
+                    SceneNodeKindDto::EntityInstance {
+                        instance: SceneEntityInstanceDto {
+                        instance_id: instance.instance_id,
+                        reference: match instance.reference {
+                            SceneEntityReferenceJson::EntityDefinition { stable_id } => {
+                                SceneEntityReferenceDto::EntityDefinition { stable_id }
+                            }
+                            SceneEntityReferenceJson::Prefab {
+                                prefab_id,
+                                variant_id,
+                            } => SceneEntityReferenceDto::Prefab {
+                                prefab_id,
+                                variant_id,
+                            },
+                        },
+                        spawn_marker_id: instance.spawn_marker_id,
+                        },
+                    }
+                }
+                SceneKindJson::Bootstrap { bindings } => {
+                    SceneNodeKindDto::Bootstrap {
+                        bindings: SceneBootstrapBindingsDto {
+                        generator: bindings.generator.map(|generator| {
+                            SceneGeneratorBindingDto {
+                                provider_id: generator.provider_id,
+                                preset_id: generator.preset_id,
+                                seed: generator.seed,
+                            }
+                        }),
+                        catalogs: bindings
+                            .catalogs
+                            .into_iter()
+                            .map(|catalog| SceneCatalogBindingDto {
+                                binding_id: catalog.binding_id,
+                                catalog_id: catalog.catalog_id,
+                                source_path: catalog.source_path,
+                            })
+                            .collect(),
+                        },
+                    }
+                }
             },
         }
     }
@@ -837,6 +929,13 @@ impl SceneDocumentJson {
                 .collect(),
         }
     }
+}
+
+pub(crate) fn parse_scene_document_json(
+    source: &str,
+) -> napi::Result<FlatSceneDocumentDto> {
+    parse_wire_json::<SceneDocumentJson>("load_fps_runtime_session.scene_document", source)
+        .map(SceneDocumentJson::protocol)
 }
 
 impl SceneDocumentAuthoringTargetJson {
@@ -1046,6 +1145,32 @@ fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value
                 SceneNodeKindDto::Sprite(asset) => json!({ "kind": "sprite", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::VoxelVolume(asset) => json!({ "kind": "voxelVolume", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::Light(light) => json!({ "kind": "light", "sceneLight": scene_light_json(light) }),
+                SceneNodeKindDto::EntityInstance { instance } => json!({
+                    "kind": "entityInstance",
+                    "instance": {
+                        "instanceId": instance.instance_id,
+                        "reference": match &instance.reference {
+                            SceneEntityReferenceDto::EntityDefinition { stable_id } => json!({ "kind": "entityDefinition", "stableId": stable_id }),
+                            SceneEntityReferenceDto::Prefab { prefab_id, variant_id } => json!({ "kind": "prefab", "prefabId": prefab_id, "variantId": variant_id }),
+                        },
+                        "spawnMarkerId": instance.spawn_marker_id,
+                    },
+                }),
+                SceneNodeKindDto::Bootstrap { bindings } => json!({
+                    "kind": "bootstrap",
+                    "bindings": {
+                        "generator": bindings.generator.as_ref().map(|generator| json!({
+                            "providerId": generator.provider_id,
+                            "presetId": generator.preset_id,
+                            "seed": generator.seed,
+                        })),
+                        "catalogs": bindings.catalogs.iter().map(|catalog| json!({
+                            "bindingId": catalog.binding_id,
+                            "catalogId": catalog.catalog_id,
+                            "sourcePath": catalog.source_path,
+                        })).collect::<Vec<_>>(),
+                    },
+                }),
             };
             json!({
                 "id": record.id.raw(),
@@ -1073,6 +1198,9 @@ fn scene_validation_error_json(error: &SceneValidationErrorDto) -> Value {
         "actualKind": error.actual_kind,
         "transformReason": error.transform_reason,
         "lightReason": error.light_reason,
+        "detailReason": error.detail_reason,
+        "instanceId": error.instance_id,
+        "bindingId": error.binding_id,
         "cyclePath": error.cycle_path.iter().map(|value| value.raw()).collect::<Vec<_>>(),
     })
 }

@@ -1,8 +1,56 @@
+import { sceneId, sceneNodeId } from '@asha/contracts';
+import type { FlatSceneDocument } from '@asha/contracts';
 import type { FpsRuntimeSessionLoadRequest } from './bridge.js';
+
+export function entitySceneDocument(input: {
+  readonly id: number;
+  readonly instances: readonly {
+    readonly entity: number;
+    readonly definitionId: string;
+    readonly instanceId?: string;
+    readonly spawnMarkerId?: string | null;
+    readonly translation?: readonly [number, number, number];
+    readonly rotation?: readonly [number, number, number, number];
+  }[];
+}): FlatSceneDocument {
+  return {
+    schemaVersion: 3,
+    id: sceneId(input.id),
+    metadata: { name: 'RuntimeSession test scene', authoringFormatVersion: 3 },
+    dependencies: [],
+    nodes: input.instances.map((instance, childOrder) => ({
+      id: sceneNodeId(instance.entity),
+      parent: null,
+      childOrder,
+      label: instance.definitionId,
+      tags: [],
+      transform: {
+        translation: instance.translation ?? [0, 0, 0],
+        rotation: instance.rotation ?? [0, 0, 0, 1],
+        scale: [1, 1, 1],
+      },
+      kind: {
+        kind: 'entityInstance',
+        instance: {
+          instanceId: instance.instanceId ?? `${instance.definitionId}.instance`,
+          reference: { kind: 'entityDefinition', stableId: instance.definitionId },
+          spawnMarkerId: instance.spawnMarkerId ?? null,
+        },
+      },
+    })),
+  };
+}
 
 export function fpsLoadRequest(): FpsRuntimeSessionLoadRequest {
   return {
     projectBundle: 'custom-demo',
+    sceneDocument: entitySceneDocument({
+      id: 77,
+      instances: [
+        { entity: 101, definitionId: 'actor/custom-player', translation: [0, 1.5, 0] },
+        { entity: 777, definitionId: 'actor/custom-enemy', translation: [0, 1.5, 5.2] },
+      ],
+    }),
     definitions: [
       {
         entity: 101,

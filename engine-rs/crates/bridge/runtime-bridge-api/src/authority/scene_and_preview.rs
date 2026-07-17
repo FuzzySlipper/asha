@@ -182,6 +182,10 @@ impl EngineBridge {
                         SceneDocumentCodecDiagnosticCode::UnknownVersionRequirement,
                         format!("unknown scene asset version requirement {requirement:?}"),
                     ),
+                    core_scene::SceneDecodeError::LegacyDemoScene => (
+                        SceneDocumentCodecDiagnosticCode::LegacyDemoScene,
+                        "legacy Demo SceneDocument shape is unsupported; migrate to canonical schemaVersion/id/metadata/dependencies/nodes data".to_string(),
+                    ),
                 };
                 return Ok(Self::scene_codec_rejection(code, message));
             }
@@ -530,6 +534,8 @@ impl EngineBridge {
             "sprite" => protocol_scene::SceneNodeKindTag::Sprite,
             "voxelVolume" => protocol_scene::SceneNodeKindTag::VoxelVolume,
             "light" => protocol_scene::SceneNodeKindTag::Light,
+            "entityInstance" => protocol_scene::SceneNodeKindTag::EntityInstance,
+            "bootstrap" => protocol_scene::SceneNodeKindTag::Bootstrap,
             _ => protocol_scene::SceneNodeKindTag::EmptyGroup,
         }
     }
@@ -581,6 +587,33 @@ impl EngineBridge {
                         core_scene::SceneNodeKind::Light(light) => {
                             SceneNodeKindDto::Light(Self::scene_light_dto(light))
                         }
+                        core_scene::SceneNodeKind::EntityInstance(instance) => {
+                            SceneNodeKindDto::EntityInstance {
+                                instance: SceneEntityInstanceDto {
+                                    instance_id: instance.instance_id,
+                                    reference: match instance.reference {
+                                        core_scene::SceneEntityReference::EntityDefinition {
+                                            stable_id,
+                                        } => {
+                                            SceneEntityReferenceDto::EntityDefinition { stable_id }
+                                        }
+                                        core_scene::SceneEntityReference::Prefab {
+                                            prefab_id,
+                                            variant_id,
+                                        } => SceneEntityReferenceDto::Prefab {
+                                            prefab_id,
+                                            variant_id,
+                                        },
+                                    },
+                                    spawn_marker_id: instance.spawn_marker_id,
+                                },
+                            }
+                        }
+                        core_scene::SceneNodeKind::Bootstrap(bindings) => {
+                            SceneNodeKindDto::Bootstrap {
+                                bindings: Self::scene_bootstrap_bindings_dto(bindings),
+                            }
+                        }
                     },
                 })
                 .collect(),
@@ -615,20 +648,20 @@ impl EngineBridge {
     fn scene_codec_result(document: core_scene::FlatSceneDocument) -> SceneDocumentCodecResultDto {
         let document = document.canonical();
         let mut diagnostics = Vec::new();
-        if !(1..=2).contains(&document.schema_version) {
+        if !(1..=3).contains(&document.schema_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedSchema,
                 message: format!(
-                    "scene schema version {} is unsupported; expected 1 or 2",
+                    "scene schema version {} is unsupported; expected 1, 2, or 3",
                     document.schema_version
                 ),
             });
         }
-        if !(1..=2).contains(&document.metadata.authoring_format_version) {
+        if !(1..=3).contains(&document.metadata.authoring_format_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedAuthoringFormat,
                 message: format!(
-                    "scene authoring format version {} is unsupported; expected 1 or 2",
+                    "scene authoring format version {} is unsupported; expected 1, 2, or 3",
                     document.metadata.authoring_format_version
                 ),
             });
@@ -705,6 +738,44 @@ impl EngineBridge {
             }
             SceneNodeKindDto::Light(light) => {
                 core_scene::SceneNodeKind::Light(Self::scene_light_from_dto(light))
+            }
+            SceneNodeKindDto::EntityInstance { instance } => {
+                core_scene::SceneNodeKind::EntityInstance(core_scene::SceneEntityInstance {
+                    instance_id: instance.instance_id,
+                    reference: match instance.reference {
+                        SceneEntityReferenceDto::EntityDefinition { stable_id } => {
+                            core_scene::SceneEntityReference::EntityDefinition { stable_id }
+                        }
+                        SceneEntityReferenceDto::Prefab {
+                            prefab_id,
+                            variant_id,
+                        } => core_scene::SceneEntityReference::Prefab {
+                            prefab_id,
+                            variant_id,
+                        },
+                    },
+                    spawn_marker_id: instance.spawn_marker_id,
+                })
+            }
+            SceneNodeKindDto::Bootstrap { bindings } => {
+                core_scene::SceneNodeKind::Bootstrap(core_scene::SceneBootstrapBindings {
+                    generator: bindings.generator.map(|generator| {
+                        core_scene::SceneGeneratorBinding {
+                            provider_id: generator.provider_id,
+                            preset_id: generator.preset_id,
+                            seed: generator.seed,
+                        }
+                    }),
+                    catalogs: bindings
+                        .catalogs
+                        .into_iter()
+                        .map(|catalog| core_scene::SceneCatalogBinding {
+                            binding_id: catalog.binding_id,
+                            catalog_id: catalog.catalog_id,
+                            source_path: catalog.source_path,
+                        })
+                        .collect(),
+                })
             }
         };
         Ok(core_scene::SceneNodeRecord {
@@ -997,7 +1068,54 @@ impl EngineBridge {
                 dto.node = Some(node);
                 dto.light_reason = Some(reason.label().to_string());
             }
+            core_scene::SceneValidationError::DuplicateEntityInstanceId { node, instance_id } => {
+                dto.code = SceneValidationCode::DuplicateEntityInstanceId;
+                dto.node = Some(node);
+                dto.instance_id = Some(instance_id);
+            }
+            core_scene::SceneValidationError::InvalidEntityInstance { node, reason } => {
+                dto.code = SceneValidationCode::InvalidEntityInstance;
+                dto.node = Some(node);
+                dto.detail_reason = Some(reason);
+            }
+            core_scene::SceneValidationError::DuplicateBootstrapNode { node } => {
+                dto.code = SceneValidationCode::DuplicateBootstrapNode;
+                dto.node = Some(node);
+            }
+            core_scene::SceneValidationError::InvalidBootstrap { node, reason } => {
+                dto.code = SceneValidationCode::InvalidBootstrap;
+                dto.node = Some(node);
+                dto.detail_reason = Some(reason);
+            }
+            core_scene::SceneValidationError::DuplicateCatalogBinding { node, binding_id } => {
+                dto.code = SceneValidationCode::DuplicateCatalogBinding;
+                dto.node = Some(node);
+                dto.binding_id = Some(binding_id);
+            }
         }
         dto
+    }
+
+    fn scene_bootstrap_bindings_dto(
+        bindings: core_scene::SceneBootstrapBindings,
+    ) -> SceneBootstrapBindingsDto {
+        SceneBootstrapBindingsDto {
+            generator: bindings
+                .generator
+                .map(|generator| SceneGeneratorBindingDto {
+                    provider_id: generator.provider_id,
+                    preset_id: generator.preset_id,
+                    seed: generator.seed,
+                }),
+            catalogs: bindings
+                .catalogs
+                .into_iter()
+                .map(|catalog| SceneCatalogBindingDto {
+                    binding_id: catalog.binding_id,
+                    catalog_id: catalog.catalog_id,
+                    source_path: catalog.source_path,
+                })
+                .collect(),
+        }
     }
 }
