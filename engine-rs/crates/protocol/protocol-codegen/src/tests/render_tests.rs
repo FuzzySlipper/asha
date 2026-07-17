@@ -2,6 +2,11 @@ use super::*;
 
 pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
     coverage.extend([
+        interface_coverage_key("render", "SpatialGridSpec"),
+        interface_coverage_key("render", "EditorGridStyle"),
+        interface_coverage_key("render", "EditorGridDescriptor"),
+        interface_coverage_key("render", "EditorGridBounds"),
+        interface_coverage_key("render", "EditorGridProjectionReadout"),
         interface_coverage_key("render", "MaterialInstanceParameters"),
         variant_coverage_key("render", "RenderDiff", "setMaterialInstanceParameters"),
         interface_coverage_key("render", "LightShadowIntent"),
@@ -12,6 +17,55 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
         variant_coverage_key("render", "RenderDiff", "createLight"),
         variant_coverage_key("render", "RenderDiff", "updateLight"),
     ]);
+}
+
+#[test]
+fn editor_grid_descriptor_matches_public_y_up_shape() {
+    let render = module("render");
+    assert_eq!(
+        string_enum_values(&render, "SpatialGridCoordinateSystem"),
+        BTreeSet::from(["rightHandedYUp".to_owned()])
+    );
+    assert_eq!(
+        string_enum_values(&render, "EditorGridPlane"),
+        BTreeSet::from(["xy".to_owned(), "xz".to_owned(), "yz".to_owned()])
+    );
+    assert_eq!(
+        string_enum_values(&render, "SpatialGridSnapAnchor"),
+        BTreeSet::from(["boundary".to_owned(), "cellCenter".to_owned()])
+    );
+    let descriptor = json!({
+        "visible": true,
+        "grid": {
+            "coordinateSystem": "rightHandedYUp",
+            "origin": [0.25, 0.0, -0.5],
+            "spacing": [0.5, 1.0, 0.25]
+        },
+        "plane": "xz",
+        "snapAnchor": "cellCenter",
+        "style": {
+            "minorColor": [0.1, 0.2, 0.3, 0.45],
+            "majorColor": [0.2, 0.4, 0.6, 0.8],
+            "xAxisColor": [0.9, 0.2, 0.2, 1.0],
+            "yAxisColor": [0.2, 0.9, 0.2, 1.0],
+            "zAxisColor": [0.2, 0.4, 1.0, 1.0],
+            "majorLineEvery": 4,
+            "opacity": 0.85,
+            "fadeStart": 12.0,
+            "fadeEnd": 48.0
+        }
+    });
+    compare_object_to_interface(&render, "EditorGridDescriptor", &descriptor).unwrap();
+    compare_object_to_interface(&render, "SpatialGridSpec", &descriptor["grid"]).unwrap();
+    compare_object_to_interface(&render, "EditorGridStyle", &descriptor["style"]).unwrap();
+    let readout = json!({
+        "descriptor": descriptor,
+        "bounds": { "min": [-8.0, 0.0, -8.0], "max": [8.0, 0.0, 8.0] },
+        "minorLineStep": 1,
+        "renderedLineCount": 130
+    });
+    compare_object_to_interface(&render, "EditorGridProjectionReadout", &readout).unwrap();
+    compare_object_to_interface(&render, "EditorGridBounds", &readout["bounds"]).unwrap();
 }
 
 #[test]

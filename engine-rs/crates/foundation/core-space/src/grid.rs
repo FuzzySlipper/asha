@@ -9,6 +9,151 @@ use crate::voxel::{ChunkCoord, LocalVoxelCoord, VoxelCoord};
 use crate::world::{WorldPos, WorldScalar};
 use crate::{floor_div, rem_euclid};
 
+/// Integer address of one cell in a generic spatial grid.
+///
+/// This is deliberately distinct from [`VoxelCoord`]. Editor guides, tiles,
+/// navigation overlays, and voxel storage may share conversion semantics
+/// without pretending that every grid cell is a stored voxel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SpatialCellCoord {
+    pub x: i64,
+    pub y: i64,
+    pub z: i64,
+}
+
+impl SpatialCellCoord {
+    pub const ORIGIN: Self = Self { x: 0, y: 0, z: 0 };
+
+    pub const fn new(x: i64, y: i64, z: i64) -> Self {
+        Self { x, y, z }
+    }
+
+    pub const fn to_array(self) -> [i64; 3] {
+        [self.x, self.y, self.z]
+    }
+}
+
+/// Shared axis-aligned world↔cell conversion semantics.
+///
+/// ASHA world space is right-handed and Y-up. `origin_world` is the minimum
+/// corner of cell `(0,0,0)`, and `cell_size` is explicit per axis so no caller
+/// can accidentally inherit a global grid scale. Grid lines therefore lie on
+/// `origin + n * cell_size`; cell centers add exactly half a cell.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SpatialGridSpec {
+    origin_world: WorldPos,
+    cell_size: [WorldScalar; 3],
+}
+
+impl SpatialGridSpec {
+    /// Construct a grid with an explicit origin and positive finite cell size.
+    pub fn new(origin_world: WorldPos, cell_size: [WorldScalar; 3]) -> Option<Self> {
+        if !origin_world
+            .to_array()
+            .iter()
+            .all(|value| value.is_finite())
+            || !cell_size
+                .iter()
+                .all(|value| value.is_finite() && *value > 0.0)
+        {
+            return None;
+        }
+        Some(Self {
+            origin_world,
+            cell_size,
+        })
+    }
+
+    /// Construct a uniform grid at the world origin.
+    pub fn uniform(cell_size: WorldScalar) -> Option<Self> {
+        Self::new(WorldPos::ORIGIN, [cell_size; 3])
+    }
+
+    pub const fn origin_world(self) -> WorldPos {
+        self.origin_world
+    }
+
+    pub const fn cell_size(self) -> [WorldScalar; 3] {
+        self.cell_size
+    }
+
+    /// Return a copy rebased to another world-space minimum corner.
+    pub fn with_origin(self, origin_world: WorldPos) -> Option<Self> {
+        Self::new(origin_world, self.cell_size)
+    }
+
+    /// World position → containing cell using origin-relative floor semantics.
+    pub fn world_to_cell(self, pos: WorldPos) -> SpatialCellCoord {
+        SpatialCellCoord::new(
+            floor_world_axis(pos.x - self.origin_world.x, self.cell_size[0]),
+            floor_world_axis(pos.y - self.origin_world.y, self.cell_size[1]),
+            floor_world_axis(pos.z - self.origin_world.z, self.cell_size[2]),
+        )
+    }
+
+    /// World-space minimum corner of a cell.
+    pub fn cell_min_world(self, cell: SpatialCellCoord) -> WorldPos {
+        WorldPos::new(
+            self.origin_world.x + cell.x as WorldScalar * self.cell_size[0],
+            self.origin_world.y + cell.y as WorldScalar * self.cell_size[1],
+            self.origin_world.z + cell.z as WorldScalar * self.cell_size[2],
+        )
+    }
+
+    /// World-space center of a cell.
+    pub fn cell_center_world(self, cell: SpatialCellCoord) -> WorldPos {
+        let min = self.cell_min_world(cell);
+        WorldPos::new(
+            min.x + self.cell_size[0] * 0.5,
+            min.y + self.cell_size[1] * 0.5,
+            min.z + self.cell_size[2] * 0.5,
+        )
+    }
+
+    /// World-space `(min, max)` cell corners; max is the exclusive extent.
+    pub fn cell_bounds_world(self, cell: SpatialCellCoord) -> (WorldPos, WorldPos) {
+        let min = self.cell_min_world(cell);
+        (
+            min,
+            WorldPos::new(
+                min.x + self.cell_size[0],
+                min.y + self.cell_size[1],
+                min.z + self.cell_size[2],
+            ),
+        )
+    }
+
+    /// Snap to the nearest grid boundary/intersection, relative to the origin.
+    /// Exact half-cell ties choose the boundary in the positive-axis direction.
+    pub fn snap_to_boundary(self, pos: WorldPos) -> WorldPos {
+        WorldPos::new(
+            snap_boundary_axis(pos.x, self.origin_world.x, self.cell_size[0]),
+            snap_boundary_axis(pos.y, self.origin_world.y, self.cell_size[1]),
+            snap_boundary_axis(pos.z, self.origin_world.z, self.cell_size[2]),
+        )
+    }
+
+    /// Snap to the center of the cell containing the position.
+    pub fn snap_to_cell_center(self, pos: WorldPos) -> WorldPos {
+        self.cell_center_world(self.world_to_cell(pos))
+    }
+}
+
+#[inline]
+fn floor_world_axis(world_delta: WorldScalar, cell_size: WorldScalar) -> i64 {
+    (world_delta / cell_size).floor() as i64
+}
+
+#[inline]
+fn snap_boundary_axis(
+    value: WorldScalar,
+    origin: WorldScalar,
+    cell_size: WorldScalar,
+) -> WorldScalar {
+    let boundary = ((value - origin) / cell_size + 0.5).floor();
+    origin + boundary * cell_size
+}
+
 /// Identifies which voxel grid a spec describes, so multiple grids (terrain,
 /// object, local) can be distinguished at call sites and in storage keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -85,29 +230,28 @@ impl ChunkDims {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VoxelGridSpec {
     id: GridId,
-    voxel_size: WorldScalar,
     chunk_dims: ChunkDims,
-    origin_world: WorldPos,
+    spatial: SpatialGridSpec,
 }
 
 impl VoxelGridSpec {
     /// Construct a grid spec. Returns `None` if `voxel_size` is not a positive,
     /// finite number.
     pub fn new(id: GridId, voxel_size: WorldScalar, chunk_dims: ChunkDims) -> Option<Self> {
-        if !voxel_size.is_finite() || voxel_size <= 0.0 {
-            return None;
-        }
+        let spatial = SpatialGridSpec::uniform(voxel_size)?;
         Some(Self {
             id,
-            voxel_size,
             chunk_dims,
-            origin_world: WorldPos::ORIGIN,
+            spatial,
         })
     }
 
     /// Return a copy with an explicit world origin (rebasing hook).
     pub fn with_origin(mut self, origin_world: WorldPos) -> Self {
-        self.origin_world = origin_world;
+        self.spatial = self
+            .spatial
+            .with_origin(origin_world)
+            .expect("existing finite cell size plus finite origin must remain a valid grid");
         self
     }
 
@@ -115,54 +259,39 @@ impl VoxelGridSpec {
         self.id
     }
     pub const fn voxel_size(self) -> WorldScalar {
-        self.voxel_size
+        self.spatial.cell_size()[0]
     }
     pub const fn chunk_dims(self) -> ChunkDims {
         self.chunk_dims
     }
     pub const fn origin_world(self) -> WorldPos {
-        self.origin_world
+        self.spatial.origin_world()
     }
 
     // ── world ↔ voxel ─────────────────────────────────────────────────────────
 
     /// World position → the voxel cell that contains it (floor, origin-relative).
     pub fn world_to_voxel(self, pos: WorldPos) -> VoxelCoord {
-        let o = self.origin_world;
-        VoxelCoord::new(
-            self.floor_axis(pos.x - o.x),
-            self.floor_axis(pos.y - o.y),
-            self.floor_axis(pos.z - o.z),
-        )
-    }
-
-    #[inline]
-    fn floor_axis(self, world_delta: WorldScalar) -> i64 {
-        (world_delta / self.voxel_size).floor() as i64
+        let cell = self.spatial.world_to_cell(pos);
+        VoxelCoord::new(cell.x, cell.y, cell.z)
     }
 
     /// World position of a voxel's minimum corner.
     pub fn voxel_min_world(self, v: VoxelCoord) -> WorldPos {
-        let o = self.origin_world;
-        WorldPos::new(
-            o.x + v.x as WorldScalar * self.voxel_size,
-            o.y + v.y as WorldScalar * self.voxel_size,
-            o.z + v.z as WorldScalar * self.voxel_size,
-        )
+        self.spatial
+            .cell_min_world(SpatialCellCoord::new(v.x, v.y, v.z))
     }
 
     /// World position of a voxel's center.
     pub fn voxel_center_world(self, v: VoxelCoord) -> WorldPos {
-        let half = self.voxel_size * 0.5;
-        let m = self.voxel_min_world(v);
-        WorldPos::new(m.x + half, m.y + half, m.z + half)
+        self.spatial
+            .cell_center_world(SpatialCellCoord::new(v.x, v.y, v.z))
     }
 
     /// World-space `(min, max)` corners of a voxel cell (`max` exclusive extent).
     pub fn voxel_bounds_world(self, v: VoxelCoord) -> (WorldPos, WorldPos) {
-        let min = self.voxel_min_world(v);
-        let s = self.voxel_size;
-        (min, WorldPos::new(min.x + s, min.y + s, min.z + s))
+        self.spatial
+            .cell_bounds_world(SpatialCellCoord::new(v.x, v.y, v.z))
     }
 
     // ── voxel ↔ chunk / local ──────────────────────────────────────────────────
@@ -221,10 +350,85 @@ impl VoxelGridSpec {
 mod tests {
     use super::*;
     use crate::region::VoxelRegion;
+    use serde::Deserialize;
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ConformanceFixture {
+        coordinate_system: String,
+        cases: Vec<ConformanceCase>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct ConformanceCase {
+        name: String,
+        spec: ConformanceSpec,
+        world: [f64; 3],
+        cell: [i64; 3],
+        cell_min: [f64; 3],
+        cell_center: [f64; 3],
+        cell_max: [f64; 3],
+        boundary_snap: [f64; 3],
+        center_snap: [f64; 3],
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct ConformanceSpec {
+        origin: [f64; 3],
+        spacing: [f64; 3],
+    }
+
+    fn assert_world_pos_eq(actual: WorldPos, expected: WorldPos) {
+        let actual = actual.to_array();
+        let expected = expected.to_array();
+        for axis in 0..3 {
+            assert!(
+                (actual[axis] - expected[axis]).abs() < 1e-9,
+                "axis {axis}: expected {}, got {}",
+                expected[axis],
+                actual[axis]
+            );
+        }
+    }
+
+    fn world_pos(values: [f64; 3]) -> WorldPos {
+        WorldPos::new(values[0], values[1], values[2])
+    }
 
     fn terrain() -> VoxelGridSpec {
         // 1 world-unit voxels, 16×16×16 chunks.
         VoxelGridSpec::new(GridId::new(0), 1.0, ChunkDims::cubic(16).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn committed_public_fixture_matches_authority_grid_math() {
+        let fixture: ConformanceFixture = serde_json::from_str(include_str!(
+            "../../../../../harness/fixtures/spatial-grid/conformance.json"
+        ))
+        .unwrap();
+        assert_eq!(fixture.coordinate_system, "rightHandedYUp");
+        for case in fixture.cases {
+            let grid = SpatialGridSpec::new(
+                WorldPos::new(
+                    case.spec.origin[0],
+                    case.spec.origin[1],
+                    case.spec.origin[2],
+                ),
+                case.spec.spacing,
+            )
+            .unwrap();
+            let world = WorldPos::new(case.world[0], case.world[1], case.world[2]);
+            let cell = SpatialCellCoord::new(case.cell[0], case.cell[1], case.cell[2]);
+            assert_eq!(grid.world_to_cell(world), cell, "{}", case.name);
+            assert_world_pos_eq(grid.cell_min_world(cell), world_pos(case.cell_min));
+            assert_world_pos_eq(grid.cell_center_world(cell), world_pos(case.cell_center));
+            let (min, max) = grid.cell_bounds_world(cell);
+            assert_world_pos_eq(min, world_pos(case.cell_min));
+            assert_world_pos_eq(max, world_pos(case.cell_max));
+            assert_world_pos_eq(grid.snap_to_boundary(world), world_pos(case.boundary_snap));
+            assert_world_pos_eq(grid.snap_to_cell_center(world), world_pos(case.center_snap));
+        }
     }
 
     #[test]
@@ -235,6 +439,48 @@ mod tests {
             VoxelGridSpec::new(GridId::new(0), f64::NAN, ChunkDims::cubic(8).unwrap()).is_none()
         );
         assert!(ChunkDims::new(0, 4, 4).is_none());
+        assert!(SpatialGridSpec::new(WorldPos::ORIGIN, [1.0, 0.0, 1.0]).is_none());
+        assert!(SpatialGridSpec::new(WorldPos::ORIGIN, [1.0, f64::NAN, 1.0]).is_none());
+        assert!(SpatialGridSpec::new(WorldPos::new(f64::INFINITY, 0.0, 0.0), [1.0; 3]).is_none());
+    }
+
+    #[test]
+    fn generic_grid_uses_min_corner_center_and_bounds_convention() {
+        let grid = SpatialGridSpec::new(WorldPos::new(10.0, -2.0, 3.0), [2.0, 0.5, 4.0]).unwrap();
+        let cell = SpatialCellCoord::new(-2, 3, 1);
+        assert_world_pos_eq(grid.cell_min_world(cell), WorldPos::new(6.0, -0.5, 7.0));
+        assert_world_pos_eq(grid.cell_center_world(cell), WorldPos::new(7.0, -0.25, 9.0));
+        let (min, max) = grid.cell_bounds_world(cell);
+        assert_world_pos_eq(min, WorldPos::new(6.0, -0.5, 7.0));
+        assert_world_pos_eq(max, WorldPos::new(8.0, 0.0, 11.0));
+        assert_eq!(
+            grid.world_to_cell(WorldPos::new(7.999, -0.001, 10.999)),
+            cell
+        );
+    }
+
+    #[test]
+    fn generic_grid_floor_and_snaps_are_origin_relative_across_zero() {
+        let grid = SpatialGridSpec::new(WorldPos::new(0.25, 1.0, -0.5), [0.5, 2.0, 0.25]).unwrap();
+        let input = WorldPos::new(-0.01, -0.01, -0.64);
+        assert_eq!(grid.world_to_cell(input), SpatialCellCoord::new(-1, -1, -1));
+        assert_world_pos_eq(
+            grid.snap_to_boundary(input),
+            WorldPos::new(-0.25, -1.0, -0.75),
+        );
+        assert_world_pos_eq(
+            grid.snap_to_cell_center(input),
+            WorldPos::new(0.0, 0.0, -0.625),
+        );
+    }
+
+    #[test]
+    fn boundary_snap_half_cell_ties_choose_positive_direction() {
+        let grid = SpatialGridSpec::uniform(1.0).unwrap();
+        assert_world_pos_eq(
+            grid.snap_to_boundary(WorldPos::new(-0.5, 0.5, 1.5)),
+            WorldPos::new(0.0, 1.0, 2.0),
+        );
     }
 
     #[test]

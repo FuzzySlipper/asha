@@ -40,9 +40,15 @@ use core_ids::{EntityId, TagId};
 use protocol_assets::{CatalogEntry, MaterialProjection};
 use serde::{Deserialize, Serialize};
 
+mod editor_grid;
 mod lighting;
 mod material_feedback;
 mod pick;
+pub use editor_grid::{
+    EditorGridBounds, EditorGridDescriptor, EditorGridDescriptorError, EditorGridPlane,
+    EditorGridProjectionReadout, EditorGridStyle, SpatialGridCoordinateSystem,
+    SpatialGridSnapAnchor, SpatialGridSpec,
+};
 pub use lighting::{LightDescriptor, LightDescriptorError, LightShadowIntent};
 pub use material_feedback::{
     MaterialInstanceParameters, MaterialUvStrategy, RenderMaterialDescriptor,

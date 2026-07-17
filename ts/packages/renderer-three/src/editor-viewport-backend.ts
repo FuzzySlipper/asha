@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import type {
   CameraBasis,
   CameraPose,
+  EditorGridDescriptor,
+  EditorGridProjectionReadout,
   EntityId,
   PerspectiveProjection,
   RenderFrameDiff,
@@ -17,6 +19,7 @@ import {
   type AshaRendererBrowserSurfacePickFilter,
 } from './browser-surface.js';
 import { ThreeRenderer, type MeshBufferSource } from './three-renderer.js';
+import { ThreeEditorGridProjection } from './editor-grid.js';
 
 export type AshaRendererEditorBackendChannel = 'runtime' | 'authored' | 'overlay';
 
@@ -74,11 +77,13 @@ export interface AshaRendererEditorBackendOptions {
 
 export interface AshaRendererEditorBackend {
   readonly dispose: () => void;
+  readonly gridReadout: () => EditorGridProjectionReadout | null;
   readonly pick: (request: AshaRendererEditorBackendPickRequest) => AshaRendererEditorBackendPickReceipt;
   readonly renderOnce: (timeMs?: number) => void;
   readonly replaceChannel: (channel: AshaRendererEditorBackendChannel, frame: RenderFrameDiff) => void;
   readonly resize: (size: AshaRendererEditorBackendSize) => void;
   readonly setCamera: (camera: AshaRendererEditorBackendCamera) => void;
+  readonly setGrid: (descriptor: EditorGridDescriptor | null) => void;
   readonly snapshot: () => string;
   readonly start: () => void;
   readonly stop: () => void;
@@ -138,6 +143,7 @@ export function mountAshaRendererEditorBackend(
   options: AshaRendererEditorBackendOptions = {},
 ): AshaRendererEditorBackend {
   const channels = new AshaRendererEditorProjectionChannels(options);
+  const gridProjection = new ThreeEditorGridProjection();
 
   const webgl = new THREE.WebGLRenderer({ canvas, antialias: true });
   webgl.autoClear = false;
@@ -162,6 +168,7 @@ export function mountAshaRendererEditorBackend(
     webgl.setSize(next.width, next.height, false);
     camera.aspect = next.width / next.height;
     camera.updateProjectionMatrix();
+    gridProjection.resize(next);
   };
 
   const setCamera = (next: AshaRendererEditorBackendCamera): void => {
@@ -178,6 +185,7 @@ export function mountAshaRendererEditorBackend(
     camera.near = next.projection.near;
     camera.far = next.projection.far;
     camera.updateProjectionMatrix();
+    gridProjection.setCamera(next);
   };
 
   const renderOnce = (timeMs = globalThis.performance?.now() ?? 0): void => {
@@ -187,6 +195,7 @@ export function mountAshaRendererEditorBackend(
       : Math.min(0.05, Math.max(0, (timeMs - lastRenderTimeMs) / 1000));
     lastRenderTimeMs = timeMs;
     webgl.clear(true, true, true);
+    webgl.render(gridProjection.scene, camera);
     for (const channel of CHANNEL_ORDER) {
       const renderer = channels.renderer(channel);
       renderer.advanceAnimation(deltaSeconds);
@@ -224,18 +233,24 @@ export function mountAshaRendererEditorBackend(
       channels.replace(channel, frame);
     },
     setCamera,
+    setGrid: (descriptor) => {
+      requireActive(disposed);
+      gridProjection.setDescriptor(descriptor);
+    },
+    gridReadout: () => gridProjection.readout(),
     resize,
     pick: (request) => pickAcrossChannels(channels, camera, raycaster, pickPoint, request),
     renderOnce,
     start,
     stop,
-    snapshot: () => channels.snapshot(),
+    snapshot: () => `[grid]\n${gridProjection.snapshot()}\n${channels.snapshot()}`,
     dispose: () => {
       if (disposed) {
         return;
       }
       stop();
       disposed = true;
+      gridProjection.dispose();
       channels.dispose();
       webgl.dispose();
     },

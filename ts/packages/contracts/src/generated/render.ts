@@ -34,6 +34,58 @@ export interface Material {
   readonly wireframe: boolean;
 }
 
+// The one world coordinate system supported by current ASHA project data.
+export type SpatialGridCoordinateSystem = 'rightHandedYUp';
+
+// Axis-aligned spatial grid with an explicit minimum-corner origin and cell size.
+export interface SpatialGridSpec {
+  readonly coordinateSystem: SpatialGridCoordinateSystem;
+  readonly origin: readonly [number, number, number];
+  readonly spacing: readonly [number, number, number];
+}
+
+// Which pair of world axes an editor grid visualizes.
+export type EditorGridPlane = 'xz' | 'xy' | 'yz';
+
+// How transform translation proposals align to the active spatial grid.
+export type SpatialGridSnapAnchor = 'boundary' | 'cellCenter';
+
+// Renderer-neutral appearance and distance policy for an editor grid.
+export interface EditorGridStyle {
+  readonly minorColor: readonly [number, number, number, number];
+  readonly majorColor: readonly [number, number, number, number];
+  readonly xAxisColor: readonly [number, number, number, number];
+  readonly yAxisColor: readonly [number, number, number, number];
+  readonly zAxisColor: readonly [number, number, number, number];
+  readonly majorLineEvery: number;
+  readonly opacity: number;
+  readonly fadeStart: number;
+  readonly fadeEnd: number;
+}
+
+// Complete public grid projection intent consumed by renderer hosts.
+export interface EditorGridDescriptor {
+  readonly visible: boolean;
+  readonly grid: SpatialGridSpec;
+  readonly plane: EditorGridPlane;
+  readonly snapAnchor: SpatialGridSnapAnchor;
+  readonly style: EditorGridStyle;
+}
+
+// Camera-derived world bounds covered by the current procedural grid projection.
+export interface EditorGridBounds {
+  readonly min: readonly [number, number, number];
+  readonly max: readonly [number, number, number];
+}
+
+// Backend readout for the currently realized procedural editor grid.
+export interface EditorGridProjectionReadout {
+  readonly descriptor: EditorGridDescriptor;
+  readonly bounds: EditorGridBounds | null;
+  readonly minorLineStep: number;
+  readonly renderedLineCount: number;
+}
+
 // Renderer-neutral shadow request. A backend may degrade `Requested` to disabled when its surface has no shadow-map support, but it must expose that degradation in projection diagnostics rather than silently changing intent.
 export type LightShadowIntent = 'disabled' | 'requested';
 

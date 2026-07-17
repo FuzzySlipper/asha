@@ -22,6 +22,14 @@ down-converts to `f32`.
 
 ## Grid context
 
+`SpatialGridSpec` is the generic, grid-ID-independent world lattice used by
+editor snapping and other spatial tools. It carries an explicit world origin
+and positive finite spacing for each axis. Its cell convention is minimum-corner
+anchored: cell `n` occupies `[origin + n*spacing, origin + (n+1)*spacing)`, and
+negative coordinates use floor semantics. Boundary and cell-center snapping are
+defined by this same spec rather than by renderer pixels or an editor-only
+formula.
+
 All world↔grid conversion goes through an explicit **`VoxelGridSpec`** — there is
 no spec-less `WorldPos → VoxelCoord`. A spec carries:
 
@@ -34,6 +42,10 @@ no spec-less `WorldPos → VoxelCoord`. A spec carries:
 
 ## Conventions
 
+- ASHA world and stored project data are always right-handed Y-up. The common
+  ground grid is therefore the XZ plane at an explicit Y origin. Importers
+  convert source coordinate systems at the border; voxel/runtime consumers do
+  not select an alternate up-axis.
 - Voxel `(0,0,0)` occupies `[0,1)³` in grid units; center `(0.5,0.5,0.5)`; world
   size of a cell is `voxel_size`.
 - **Floor division** for negatives (`floor_div`/`rem_euclid`), so the grid is

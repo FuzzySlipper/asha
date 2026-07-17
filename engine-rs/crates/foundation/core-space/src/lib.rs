@@ -43,7 +43,7 @@ mod voxel;
 mod world;
 
 pub use direction::{Axis, Direction6, Face};
-pub use grid::{ChunkDims, GridId, VoxelGridSpec};
+pub use grid::{ChunkDims, GridId, SpatialCellCoord, SpatialGridSpec, VoxelGridSpec};
 pub use region::{ChunkRegion, VoxelRegion};
 pub use voxel::{ChunkCoord, LocalVoxelCoord, VoxelCoord};
 pub use world::{WorldPos, WorldScalar, WorldVec};

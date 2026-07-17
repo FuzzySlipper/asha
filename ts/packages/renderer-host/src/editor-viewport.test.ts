@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   renderHandle,
   type CameraBasis,
+  type EditorGridDescriptor,
+  type EditorGridProjectionReadout,
   type RenderFrameDiff,
 } from '@asha/contracts';
 import {
@@ -154,6 +156,40 @@ void test('editor viewport owns bounded lifecycle resize clear and channel dispo
   assert.equal(viewport.channels.runtime.apply(primitiveFrame(1, 'late-runtime', 'scene')).applied, false);
 });
 
+void test('editor viewport validates and realizes one public procedural grid outside scene channels', () => {
+  const backend = new FakeEditorViewportBackend();
+  const viewport = createAshaRendererEditorViewportWithBackend(backend, { autoStart: false });
+  assert.equal(viewport.grid(), null);
+
+  const descriptor = editorGridDescriptor();
+  const applied = viewport.setGrid(descriptor);
+  assert.equal(applied.applied, true);
+  assert.deepEqual(applied.grid?.descriptor, descriptor);
+  assert.equal(viewport.readout().grid?.renderedLineCount, 42);
+  assert.equal(viewport.channels.overlay.snapshot().retainedOpCount, 0);
+
+  const cameraHashBefore = viewport.readout().camera.pose.position;
+  const moved = viewport.setCamera({
+    ...viewport.camera(),
+    pose: { ...viewport.camera().pose, position: [8, 10, 12] },
+  });
+  assert.equal(moved.applied, true);
+  assert.notDeepEqual(viewport.readout().camera.pose.position, cameraHashBefore);
+  assert.deepEqual(viewport.grid()?.descriptor.grid.spacing, [0.5, 1, 0.25]);
+
+  const rejected = viewport.setGrid({
+    ...descriptor,
+    grid: { ...descriptor.grid, coordinateSystem: 'leftHandedZUp' as never },
+  });
+  assert.equal(rejected.applied, false);
+  assert.equal(rejected.diagnostics[0]?.code, 'invalid_grid');
+  assert.deepEqual(viewport.grid()?.descriptor, descriptor);
+
+  const cleared = viewport.setGrid(null);
+  assert.equal(cleared.applied, true);
+  assert.equal(cleared.grid, null);
+});
+
 void test('editor viewport accepts stored and runtime cameras and maps pixel picks to typed logical hints', () => {
   const backend = new FakeEditorViewportBackend();
   const viewport = createAshaRendererEditorViewportWithBackend(backend, {
@@ -264,6 +300,7 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
   readonly sizes: unknown[] = [];
   readonly renderTimes: Array<number | undefined> = [];
   readonly pickRequests: Array<{ readonly point: readonly [number, number] }> = [];
+  grid: EditorGridProjectionReadout | null = null;
   starts = 0;
   stops = 0;
   disposals = 0;
@@ -286,6 +323,19 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
 
   setCamera(camera: unknown): void {
     this.cameras.push(structuredClone(camera));
+  }
+
+  setGrid(descriptor: EditorGridDescriptor | null): void {
+    this.grid = descriptor === null ? null : {
+      descriptor: structuredClone(descriptor),
+      bounds: { min: [-8, descriptor.grid.origin[1], -8], max: [8, descriptor.grid.origin[1], 8] },
+      minorLineStep: 1,
+      renderedLineCount: 42,
+    };
+  }
+
+  gridReadout(): EditorGridProjectionReadout | null {
+    return this.grid === null ? null : structuredClone(this.grid);
   }
 
   resize(size: unknown): void {
@@ -316,6 +366,30 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
   dispose(): void {
     this.disposals += 1;
   }
+}
+
+function editorGridDescriptor(): EditorGridDescriptor {
+  return {
+    visible: true,
+    grid: {
+      coordinateSystem: 'rightHandedYUp',
+      origin: [0.25, 0, -0.5],
+      spacing: [0.5, 1, 0.25],
+    },
+    plane: 'xz',
+    snapAnchor: 'boundary',
+    style: {
+      minorColor: [0.1, 0.2, 0.3, 0.4],
+      majorColor: [0.2, 0.3, 0.4, 0.8],
+      xAxisColor: [1, 0, 0, 1],
+      yAxisColor: [0, 1, 0, 1],
+      zAxisColor: [0, 0, 1, 1],
+      majorLineEvery: 4,
+      opacity: 0.9,
+      fadeStart: 12,
+      fadeEnd: 48,
+    },
+  };
 }
 
 function primitiveFrame(handle: number, label: string, layer: 'scene' | 'debug'): RenderFrameDiff {

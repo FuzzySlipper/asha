@@ -31,7 +31,7 @@ The surface has exactly three fixed channels:
 |---|---:|---|---|
 | `runtime` | 0 | `scene` or `debug` | Current RuntimeSession projection |
 | `authored` | 1 | `scene` or `debug` | Stored scene and unsaved authoring preview |
-| `overlay` | 2 | `debug` only, rendered after a depth clear | Grid, selection, gizmo, and debug evidence |
+| `overlay` | 2 | `debug` only, rendered after a depth clear | Selection, gizmo, and debug evidence |
 
 Each channel supports bounded `apply`, atomic `replace`, `clear`, `snapshot`, and
 `dispose`. Equal downstream `RenderHandle` values are mapped to distinct
@@ -40,11 +40,37 @@ last accepted channel projection intact and does not block the other channels.
 Frame receipts carry typed diagnostics and stable logical snapshot hashes.
 
 Use existing `RenderFrameDiff` primitives first. Cubes and quads cover selection
-bounds and planes; points and lines cover pivots, grids, axes, and pick markers.
+bounds and planes; points and lines cover pivots, axes, and pick markers.
 Static meshes, animated meshes, sprites, material previews, and handle-backed
 voxel meshes continue through the same engine-owned renderer realization and
 classified resource paths. The editor API does not add a renderer plugin or
 callback registry.
+
+## Spatial grid
+
+The viewport exposes the procedural editor grid separately from the retained
+scene channels:
+
+```ts
+viewport.setGrid(descriptor); // add or update
+viewport.setGrid(null);       // remove
+const readout = viewport.grid();
+```
+
+`EditorGridDescriptor` is generated from the Rust protocol. Its
+`coordinateSystem` accepts only `rightHandedYUp`; the usual ground grid uses the
+`xz` plane and an explicit Y origin. `SpatialGridSpec` defines the exact origin,
+per-axis spacing, minimum-corner cell bounds, and boundary or cell-center snap
+anchor shared with `core-space` and `@asha/editor-tools`. Committed conformance
+fixtures cover non-unit spacing, shifted origins, and negative coordinates in
+both languages.
+
+The renderer derives visible bounds, fade, and minor-line level of detail from
+the current camera. It may omit minor lines only in exact multiples of the base
+spacing; camera movement never changes the authored origin or spacing. The grid
+is renderer-local projection and does not consume an authored/overlay handle or
+mutate Rust authority. Invalid descriptors are rejected while the last valid
+grid remains intact.
 
 ## Camera and picking
 

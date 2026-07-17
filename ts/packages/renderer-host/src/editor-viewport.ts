@@ -3,6 +3,8 @@
 import type {
   CameraBasis,
   CameraPose,
+  EditorGridDescriptor,
+  EditorGridProjectionReadout,
   PerspectiveProjection,
   RenderDiff,
   RenderFrameDiff,
@@ -79,6 +81,7 @@ export interface AshaRendererEditorViewportOptions {
   readonly bufferSource?: AshaRendererEditorViewportBufferSource;
   readonly clearColor?: number;
   readonly initialCamera?: AshaRendererEditorViewportCamera;
+  readonly initialGrid?: EditorGridDescriptor | null;
   readonly pixelRatio?: number;
   readonly resolveAnimatedMeshResource?: AshaRendererAnimatedMeshResourceResolver;
 }
@@ -89,6 +92,7 @@ export type AshaRendererEditorViewportDiagnosticCode =
   | 'frame_limit_exceeded'
   | 'invalid_camera'
   | 'invalid_frame'
+  | 'invalid_grid'
   | 'invalid_handle'
   | 'invalid_pick_request'
   | 'invalid_viewport_size'
@@ -184,6 +188,7 @@ export interface AshaRendererEditorViewportReadout {
   readonly channels: readonly AshaRendererEditorViewportChannelSnapshot[];
   readonly channelPolicies: readonly AshaRendererEditorViewportChannelPolicy[];
   readonly diagnostics: readonly AshaRendererEditorViewportDiagnostic[];
+  readonly grid: EditorGridProjectionReadout | null;
   readonly viewportHash: string;
 }
 
@@ -192,13 +197,22 @@ export interface AshaRendererEditorViewport {
   readonly channels: Readonly<Record<AshaRendererEditorViewportChannel, AshaRendererEditorViewportChannelHandle>>;
   readonly camera: () => AshaRendererEditorViewportCamera;
   readonly dispose: () => void;
+  readonly grid: () => EditorGridProjectionReadout | null;
   readonly pick: (request: AshaRendererEditorViewportPickRequest) => AshaRendererEditorViewportPickReceipt;
   readonly readout: () => AshaRendererEditorViewportReadout;
   readonly renderOnce: (timeMs?: number) => void;
   readonly resize: (size: AshaRendererEditorViewportSize) => AshaRendererEditorViewportSizeReceipt;
   readonly setCamera: (camera: AshaRendererEditorViewportCamera) => AshaRendererEditorViewportCameraReceipt;
+  readonly setGrid: (descriptor: EditorGridDescriptor | null) => AshaRendererEditorViewportGridReceipt;
   readonly start: () => void;
   readonly stop: () => void;
+}
+
+export interface AshaRendererEditorViewportGridReceipt {
+  readonly applied: boolean;
+  readonly diagnostics: readonly AshaRendererEditorViewportDiagnostic[];
+  readonly grid: EditorGridProjectionReadout | null;
+  readonly hash: string;
 }
 
 interface ChannelState {
@@ -211,11 +225,13 @@ interface ChannelState {
 
 export interface AshaRendererEditorViewportBackendPort {
   readonly dispose: () => void;
+  readonly gridReadout: () => EditorGridProjectionReadout | null;
   readonly pick: (request: BackendPickRequest) => BackendPickReceipt;
   readonly renderOnce: (timeMs?: number) => void;
   readonly replaceChannel: (channel: AshaRendererEditorViewportChannel, frame: RenderFrameDiff) => void;
   readonly resize: (size: AshaRendererEditorViewportSize) => void;
   readonly setCamera: (camera: Omit<AshaRendererEditorViewportCamera, 'source'>) => void;
+  readonly setGrid: (descriptor: EditorGridDescriptor | null) => void;
   readonly snapshot: () => string;
   readonly start: () => void;
   readonly stop: () => void;
@@ -292,6 +308,7 @@ export async function mountAshaRendererEditorViewport(
   return createAshaRendererEditorViewportWithBackend(backend, {
     ...(options.autoStart === undefined ? {} : { autoStart: options.autoStart }),
     ...(options.initialCamera === undefined ? {} : { initialCamera: options.initialCamera }),
+    ...(options.initialGrid === undefined ? {} : { initialGrid: options.initialGrid }),
     size,
   });
 }
@@ -302,6 +319,7 @@ export function createAshaRendererEditorViewportWithBackend(
   options: {
     readonly autoStart?: boolean;
     readonly initialCamera?: AshaRendererEditorViewportCamera;
+    readonly initialGrid?: EditorGridDescriptor | null;
     readonly size?: AshaRendererEditorViewportSize;
   } = {},
 ): AshaRendererEditorViewport {
@@ -329,9 +347,16 @@ export function createAshaRendererEditorViewportWithBackend(
   if (sizeIssue !== null) {
     rememberDiagnostic(diagnostics, sizeIssue);
   }
+  const requestedGrid = options.initialGrid ?? null;
+  const gridIssue = validateGrid(requestedGrid);
+  const initialGridDescriptor = gridIssue === null ? cloneGrid(requestedGrid) : null;
+  if (gridIssue !== null) {
+    rememberDiagnostic(diagnostics, gridIssue);
+  }
 
   backend.resize(size);
   backend.setCamera(camera);
+  backend.setGrid(initialGridDescriptor);
 
   const channelHandles = Object.fromEntries(CHANNELS.map((channel) => [
     channel,
@@ -340,6 +365,7 @@ export function createAshaRendererEditorViewportWithBackend(
 
   const readout = (): AshaRendererEditorViewportReadout => {
     const channelSnapshots = CHANNELS.map((channel) => snapshotChannel(requireState(states, channel)));
+    const grid = backend.gridReadout();
     const viewportHash = stableHash({
       camera,
       channels: channelSnapshots.map(({ channel, disposed, generation, hash }) => ({
@@ -350,6 +376,7 @@ export function createAshaRendererEditorViewportWithBackend(
       })),
       size,
       status,
+      grid,
     });
     return {
       kind: 'asha_renderer_editor_viewport_readout.v0',
@@ -360,6 +387,7 @@ export function createAshaRendererEditorViewportWithBackend(
       channels: channelSnapshots,
       channelPolicies: ASHA_RENDERER_EDITOR_VIEWPORT_CHANNEL_POLICIES,
       diagnostics: [...diagnostics],
+      grid,
       viewportHash,
     };
   };
@@ -368,6 +396,7 @@ export function createAshaRendererEditorViewportWithBackend(
     kind: 'asha_renderer_editor_viewport.v0',
     channels: channelHandles,
     camera: () => camera,
+    grid: () => backend.gridReadout(),
     setCamera: (next) => {
       const issue = validateCamera(next);
       if (issue !== null || status === 'disposed') {
@@ -400,6 +429,25 @@ export function createAshaRendererEditorViewportWithBackend(
         const diagnostic = backendDiagnostic(null, error);
         rememberDiagnostic(diagnostics, diagnostic);
         return { applied: false, diagnostics: [diagnostic], size };
+      }
+    },
+    setGrid: (next) => {
+      const issue = validateGrid(next);
+      if (issue !== null || status === 'disposed') {
+        const diagnostic = issue ?? viewportDisposedDiagnostic(null);
+        rememberDiagnostic(diagnostics, diagnostic);
+        const grid = backend.gridReadout();
+        return { applied: false, diagnostics: [diagnostic], grid, hash: stableHash(grid) };
+      }
+      try {
+        backend.setGrid(next);
+        const grid = backend.gridReadout();
+        return { applied: true, diagnostics: [], grid, hash: stableHash(grid) };
+      } catch (error) {
+        const diagnostic = backendDiagnostic(null, error);
+        rememberDiagnostic(diagnostics, diagnostic);
+        const grid = backend.gridReadout();
+        return { applied: false, diagnostics: [diagnostic], grid, hash: stableHash(grid) };
       }
     },
     pick: (request) => pickViewport(status, size, states, backend, diagnostics, request),
@@ -782,6 +830,49 @@ function validateSize(
     };
   }
   return null;
+}
+
+function validateGrid(
+  descriptor: EditorGridDescriptor | null,
+): AshaRendererEditorViewportDiagnostic | null {
+  if (descriptor === null) return null;
+  const finiteTuple = (values: readonly number[]): boolean => values.every(Number.isFinite);
+  const normalizedColor = (values: readonly number[]): boolean =>
+    finiteTuple(values) && values.every(value => value >= 0 && value <= 1);
+  const coordinateSystemValid = descriptor.grid.coordinateSystem === 'rightHandedYUp';
+  const gridValid = finiteTuple(descriptor.grid.origin)
+    && finiteTuple(descriptor.grid.spacing)
+    && descriptor.grid.spacing.every(value => value > 0);
+  const colors = [
+    descriptor.style.minorColor,
+    descriptor.style.majorColor,
+    descriptor.style.xAxisColor,
+    descriptor.style.yAxisColor,
+    descriptor.style.zAxisColor,
+  ];
+  const styleValid = colors.every(normalizedColor)
+    && Number.isSafeInteger(descriptor.style.majorLineEvery)
+    && descriptor.style.majorLineEvery > 0
+    && Number.isFinite(descriptor.style.opacity)
+    && descriptor.style.opacity >= 0
+    && descriptor.style.opacity <= 1
+    && Number.isFinite(descriptor.style.fadeStart)
+    && Number.isFinite(descriptor.style.fadeEnd)
+    && descriptor.style.fadeStart >= 0
+    && descriptor.style.fadeEnd > descriptor.style.fadeStart;
+  if (!coordinateSystemValid || !gridValid || !styleValid) {
+    return {
+      channel: null,
+      code: 'invalid_grid',
+      message: 'editor grid requires right-handed Y-up coordinates, finite positive spacing, normalized colors/opacity, and an increasing fade range',
+      recoverable: true,
+    };
+  }
+  return null;
+}
+
+function cloneGrid(descriptor: EditorGridDescriptor | null): EditorGridDescriptor | null {
+  return descriptor === null ? null : structuredClone(descriptor);
 }
 
 function defaultEditorCamera(): AshaRendererEditorViewportCamera {

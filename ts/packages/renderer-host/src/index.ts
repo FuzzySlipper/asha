@@ -21,6 +21,7 @@ export type {
   AshaRendererEditorViewportChannelSnapshot,
   AshaRendererEditorViewportDiagnostic,
   AshaRendererEditorViewportDiagnosticCode,
+  AshaRendererEditorViewportGridReceipt,
   AshaRendererEditorViewportOptions,
   AshaRendererEditorViewportPickFilter,
   AshaRendererEditorViewportPickHint,

@@ -865,6 +865,12 @@ Additive editor viewport in #5741:
   renderer-neutral look-at to canonical pose/basis conversion for stored editor
   cameras and rejects non-finite, coincident, collinear, or invalid-projection
   inputs without returning partial camera state.
+- #5878 adds generated `SpatialGridSpec` and `EditorGridDescriptor` contracts,
+  shared fixture-backed grid arithmetic in `@asha/editor-tools`, and
+  `setGrid`/`grid` on the editor viewport. The selected backend realizes a
+  camera-sized procedural grid outside retained scene channels. The only public
+  coordinate-system value is right-handed Y-up; ordinary ground grids use XZ.
+  This is additive under `renderer-host.v1` and `editor-viewport.v0`.
 
 ### `renderer-host.v0` - historical mixed interaction host
 

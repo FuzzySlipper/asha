@@ -79,6 +79,22 @@ Rust protocol crates define the canonical schema. TypeScript contract packages a
 
 A contract change is treated as a border change. It requires protocol review, generated fixture updates, compatibility notes when applicable, and downstream typecheck/test runs.
 
+### 2.2.1 World space is right-handed Y-up
+
+ASHA project data, runtime world coordinates, editor cameras, transform tools,
+voxel assets, spatial grids, and renderer projections use one coordinate system:
+**right-handed, with +Y as up**. +X and +Z span the ordinary ground plane. This
+is a project-format and public-contract invariant, not a per-consumer display
+preference. New APIs must carry or inherit that convention; they must not add a
+configurable up-axis or silently reinterpret Z-up data.
+
+Importers may accept a source asset whose native axes differ, but conversion to
+ASHA Y-up happens explicitly at the import border and the stored result records
+the canonical convention. Existing artifacts created under a conflicting
+assumption require a named migration or a classified rejection. Camera, grid,
+gizmo, snapping, picking, and serialization must not each invent independent
+axis rules.
+
 ### 2.3 Crates and packages are assignment cells
 
 A crate or package is not just an organizational folder. It is the unit of agent assignment.
