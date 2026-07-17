@@ -92,41 +92,8 @@ impl EngineBridge {
         request: &FpsRuntimeSessionLoadRequest,
     ) -> BridgeResult<FpsProjectBundleLoadInput> {
         let scene = Self::scene_document_from_dto(request.scene_document.clone())?;
-        let scene_bootstrap = scene.nodes.iter().find_map(|record| {
-            let core_scene::SceneNodeKind::Bootstrap(bindings) = &record.kind else {
-                return None;
-            };
-            Some(bindings)
-        });
-        let resolution = core_scene::BootstrapResolutionContext {
-            entity_definition_ids: request
-                .definitions
-                .iter()
-                .map(|definition| definition.stable_id.clone())
-                .collect(),
-            prefab_ids: BTreeSet::new(),
-            spawn_marker_ids: request
-                .definitions
-                .iter()
-                .flat_map(|definition| definition.tags.iter())
-                .filter_map(|tag| tag.strip_prefix("spawn:").map(str::to_string))
-                .collect(),
-            generator_presets: scene_bootstrap
-                .and_then(|bindings| bindings.generator.as_ref())
-                .map(|generator| {
-                    BTreeSet::from([(generator.provider_id.clone(), generator.preset_id.clone())])
-                })
-                .unwrap_or_default(),
-            catalog_ids: scene_bootstrap
-                .map(|bindings| {
-                    bindings
-                        .catalogs
-                        .iter()
-                        .map(|catalog| catalog.catalog_id.clone())
-                        .collect()
-                })
-                .unwrap_or_default(),
-        };
+        let resolution =
+            Self::fps_bootstrap_resolution_context(&request.bootstrap_resolution_registry)?;
         let plan = core_scene::BootstrapPlan::prepare_resolved(
             &scene,
             core_ids::RuntimeSessionId::new(1),

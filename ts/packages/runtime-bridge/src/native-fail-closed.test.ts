@@ -605,12 +605,22 @@ function fakeAddon(calls: string[] = []): NativeAddon {
       _handle: number,
       projectBundle: string,
       sceneDocumentJson: string,
+      bootstrapResolutionRegistryJson: string,
       definitions: readonly unknown[],
       gameRuleModulesJson: string,
     ) => {
       const sceneDocument = parseJsonFixture<{ readonly schemaVersion: number }>(sceneDocumentJson);
+      const bootstrapResolutionRegistry = parseJsonFixture<{
+        readonly schemaVersion: number;
+        readonly entityDefinitionIds: readonly string[];
+      }>(bootstrapResolutionRegistryJson);
       const gameRuleModules = parseJsonFixture<unknown[]>(gameRuleModulesJson);
       assert.equal(sceneDocument.schemaVersion, 3);
+      assert.equal(bootstrapResolutionRegistry.schemaVersion, 1);
+      assert.deepEqual(
+        bootstrapResolutionRegistry.entityDefinitionIds,
+        ['actor/custom-player', 'actor/custom-enemy'],
+      );
       calls.push(`fpsLoad:${projectBundle}:${definitions.length}:${gameRuleModules.length}`);
       const player = definitions[0] as Record<string, unknown>;
       const enemy = definitions[1] as Record<string, unknown>;
@@ -1626,6 +1636,7 @@ void test('native facade defaults omitted FPS game-rule modules before addon con
   const request = fpsLoadRequest();
   const legacyRequest = {
     projectBundle: request.projectBundle,
+    bootstrapResolutionRegistry: request.bootstrapResolutionRegistry,
     sceneDocument: request.sceneDocument,
     definitions: request.definitions,
   };

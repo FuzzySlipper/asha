@@ -706,3 +706,27 @@ fn invalid_fps_load_fails_closed_without_replacing_prior_session() {
     assert_eq!(after.health, before.health);
     assert_eq!(after.replay_hash, before.replay_hash);
 }
+
+#[test]
+fn scene_reference_drift_from_bootstrap_registry_fails_before_session_replacement() {
+    let mut bridge = init_bridge();
+    let loaded = bridge
+        .load_fps_runtime_session(fps_load_request(75))
+        .unwrap();
+    let mut invalid = fps_load_request(33);
+    let SceneNodeKindDto::EntityInstance { instance } = &mut invalid.scene_document.nodes[1].kind
+    else {
+        panic!("FPS fixture enemy must be an entity instance");
+    };
+    instance.spawn_marker_id = Some("spawn.scene-invented".to_string());
+
+    let err = bridge.load_fps_runtime_session(invalid).unwrap_err();
+    assert_eq!(err.kind, RuntimeBridgeErrorKind::InvalidInput);
+    assert!(err.message.contains("UnknownSpawnMarker"));
+
+    let after = bridge.read_fps_runtime_session().unwrap();
+    assert_eq!(after.session_epoch, loaded.session_epoch);
+    assert_eq!(after.entity_hash, loaded.entity_hash);
+    assert_eq!(after.health_hash, loaded.health_hash);
+    assert_eq!(after.replay_hash, loaded.replay_hash);
+}

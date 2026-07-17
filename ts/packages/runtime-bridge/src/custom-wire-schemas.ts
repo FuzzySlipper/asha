@@ -246,6 +246,14 @@ export const CUSTOM_WIRE_SCHEMAS: Readonly<Record<string, CustomWireSchema>> = {
   }),
   FpsRuntimeSessionLoadRequest: object({
     projectBundle: STRING,
+    bootstrapResolutionRegistry: object({
+      schemaVersion: NON_NEGATIVE_INTEGER,
+      entityDefinitionIds: STRING_ARRAY,
+      prefabIds: array(NON_NEGATIVE_INTEGER),
+      spawnMarkerIds: STRING_ARRAY,
+      generatorPresets: array(object({ providerId: STRING, presetId: STRING })),
+      catalogIds: STRING_ARRAY,
+    }),
     sceneDocument: generated('scene.FlatSceneDocument'),
     definitions: array(FPS_STORED_ENTITY),
     gameRuleModules: array(generated('gameExtension.GameRuleModuleManifest')),

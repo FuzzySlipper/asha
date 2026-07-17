@@ -44,6 +44,14 @@ export function entitySceneDocument(input: {
 export function fpsLoadRequest(): FpsRuntimeSessionLoadRequest {
   return {
     projectBundle: 'custom-demo',
+    bootstrapResolutionRegistry: {
+      schemaVersion: 1,
+      entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
+      prefabIds: [],
+      spawnMarkerIds: [],
+      generatorPresets: [],
+      catalogIds: [],
+    },
     sceneDocument: entitySceneDocument({
       id: 77,
       instances: [

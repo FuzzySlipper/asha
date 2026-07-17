@@ -1361,6 +1361,7 @@ function fpsLoadRequestFromEcrpProject(input: RuntimeSessionEcrpProjectLoadInput
   );
   return {
     projectBundle: `${input.projectBundle.project.gameId}:${input.sceneDocument.id}`,
+    bootstrapResolutionRegistry: input.bootstrapResolutionRegistry,
     sceneDocument: input.sceneDocument,
     definitions,
     gameRuleModules: input.gameRuleModules ?? [],
@@ -1384,7 +1385,6 @@ function fpsStoredEntityDefinition(entity: RuntimeSessionEcrpEntityState): FpsSt
     sourcePath: definition.source.relativePath,
     tags: [
       ...(faction?.kind === 'faction' ? [`faction:${faction.factionId}`] : []),
-      ...(entity.spawnMarkerId === null ? [] : [`spawn:${entity.spawnMarkerId}`]),
       ...(spawnMarker?.kind === 'spawnMarker' ? [`spawn:${spawnMarker.markerId}`] : []),
     ],
     role: entity.role,

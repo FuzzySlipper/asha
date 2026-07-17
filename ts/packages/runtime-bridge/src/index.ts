@@ -143,6 +143,8 @@ export type {
   EnemyDirectNavMovementResult,
   EngineConfig,
   EngineHandle,
+  FpsBootstrapGeneratorPresetIdentity,
+  FpsBootstrapResolutionRegistry,
   FpsEncounterDirectorSnapshot,
   FpsEncounterLastTransition,
   FpsEncounterLifecycleInput,

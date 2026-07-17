@@ -75,6 +75,14 @@ function ecrpProjectLoadInput() {
         sceneId: 77,
       },
     },
+    bootstrapResolutionRegistry: {
+      schemaVersion: 1 as const,
+      entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
+      prefabIds: [],
+      spawnMarkerIds: ['spawn.player.custom', 'spawn.enemy.custom'],
+      generatorPresets: [],
+      catalogIds: [],
+    },
     entityDefinitions: [
       {
         kind: 'EntityDefinition' as const,
@@ -558,6 +566,14 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
   assert.equal(load.entityCount, 2);
   assert.equal(load.bootstrapHash, 'fnv1a64:00000000000000aa');
   assert.equal(calls.load.at(-1)?.projectBundle, 'custom-demo:77');
+  assert.deepEqual(calls.load.at(-1)?.bootstrapResolutionRegistry, {
+    schemaVersion: 1,
+    entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
+    prefabIds: [],
+    spawnMarkerIds: ['spawn.player.custom', 'spawn.enemy.custom'],
+    generatorPresets: [],
+    catalogIds: [],
+  });
   assert.equal(calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.entity, 202);
   assert.equal(
     calls.load.at(-1)?.definitions.find((definition) => definition.role === 'enemy')?.policyBinding?.policyId,

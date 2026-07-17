@@ -588,6 +588,7 @@ fn built_in_game_rule_declared_manifest() -> GameRuleModuleManifest {
 mod camera;
 mod composition;
 mod fps_and_rules;
+mod fps_bootstrap_registry;
 mod fps_runtime_session;
 mod presentation_catalog;
 mod project_and_sources;

@@ -755,9 +755,37 @@ pub struct FpsBridgeStoredEntityDefinition {
     pub policy_binding: Option<FpsBridgePolicyBinding>,
 }
 
+/// One generator provider/preset identity present in the validated
+/// ProjectBundle registry. This is deliberately independent of the scene that
+/// requests the preset during bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FpsBootstrapGeneratorPresetIdentity {
+    pub provider_id: String,
+    pub preset_id: String,
+}
+
+/// Immutable ProjectBundle identities available to FPS scene bootstrap.
+///
+/// The scene contains references; this registry contains the independently
+/// validated identities those references are allowed to resolve to. Keeping
+/// both in the public request prevents a scene from authorizing its own
+/// provider, catalog, prefab, or spawn-marker references.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FpsBootstrapResolutionRegistry {
+    pub schema_version: u32,
+    pub entity_definition_ids: Vec<String>,
+    pub prefab_ids: Vec<u64>,
+    pub spawn_marker_ids: Vec<String>,
+    pub generator_presets: Vec<FpsBootstrapGeneratorPresetIdentity>,
+    pub catalog_ids: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FpsRuntimeSessionLoadRequest {
     pub project_bundle: String,
+    pub bootstrap_resolution_registry: FpsBootstrapResolutionRegistry,
     pub definitions: Vec<FpsBridgeStoredEntityDefinition>,
     pub scene_document: FlatSceneDocumentDto,
     pub game_rule_modules: Vec<GameRuleModuleManifest>,

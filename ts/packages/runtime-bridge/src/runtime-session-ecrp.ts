@@ -39,6 +39,20 @@ export function defaultRuntimeSessionEcrpProjectLoadInput(
       project: input.project,
       runtimeRequest: input.projectBundle,
     },
+    bootstrapResolutionRegistry: {
+      schemaVersion: 1,
+      entityDefinitionIds: [
+        'actor/demo-player',
+        'actor/generated-tunnel-enemy',
+      ],
+      prefabIds: [],
+      spawnMarkerIds: [
+        'spawn.player.start',
+        'spawn.enemy.primary',
+      ],
+      generatorPresets: [],
+      catalogIds: [],
+    },
     entityDefinitions: [
       {
         kind: 'EntityDefinition',
@@ -218,6 +232,7 @@ export function validateEcrpProjectLoadInput(
       detail: 'projectBundle.kind must be ProjectBundle',
     });
   }
+  validateBootstrapResolutionRegistry(input.bootstrapResolutionRegistry, diagnostics);
   if (!Array.isArray(input.entityDefinitions) || input.entityDefinitions.length === 0) {
     diagnostics.push({
       code: 'emptyEntityDefinitionList',
@@ -305,6 +320,63 @@ export function validateEcrpProjectLoadInput(
     }
   }
   return diagnostics;
+}
+
+function validateBootstrapResolutionRegistry(
+  value: RuntimeSessionEcrpProjectLoadInput['bootstrapResolutionRegistry'] | null | undefined,
+  diagnostics: RuntimeSessionEcrpProjectDiagnostic[],
+): void {
+  if (typeof value !== 'object' || value === null || value.schemaVersion !== 1) {
+    diagnostics.push({
+      code: 'invalidBootstrapResolutionRegistry',
+      path: 'bootstrapResolutionRegistry.schemaVersion',
+      detail: 'a schema-1 bootstrap resolution registry is required',
+    });
+    return;
+  }
+
+  const identifierLists = [
+    ['entityDefinitionIds', value.entityDefinitionIds],
+    ['spawnMarkerIds', value.spawnMarkerIds],
+    ['catalogIds', value.catalogIds],
+  ] as const;
+  for (const [field, identifiers] of identifierLists) {
+    if (!Array.isArray(identifiers)
+      || identifiers.some((identifier) => typeof identifier !== 'string' || identifier.trim() !== identifier || identifier === '')
+      || new Set(identifiers).size !== identifiers.length) {
+      diagnostics.push({
+        code: 'invalidBootstrapResolutionRegistry',
+        path: `bootstrapResolutionRegistry.${field}`,
+        detail: `${field} must contain unique non-empty canonical identifiers`,
+      });
+    }
+  }
+  if (!Array.isArray(value.prefabIds)
+    || value.prefabIds.some((prefabId) => !Number.isSafeInteger(prefabId) || prefabId <= 0)
+    || new Set(value.prefabIds).size !== value.prefabIds.length) {
+    diagnostics.push({
+      code: 'invalidBootstrapResolutionRegistry',
+      path: 'bootstrapResolutionRegistry.prefabIds',
+      detail: 'prefabIds must contain unique positive safe integers',
+    });
+  }
+  if (!isTypedArray(value.generatorPresets)
+    || value.generatorPresets.some((preset) => typeof preset !== 'object'
+      || preset === null
+      || typeof preset.providerId !== 'string'
+      || preset.providerId.trim() !== preset.providerId
+      || preset.providerId === ''
+      || typeof preset.presetId !== 'string'
+      || preset.presetId.trim() !== preset.presetId
+      || preset.presetId === '')
+    || new Set(value.generatorPresets.map((preset) => `${preset.providerId}\u0000${preset.presetId}`)).size
+      !== value.generatorPresets.length) {
+    diagnostics.push({
+      code: 'invalidBootstrapResolutionRegistry',
+      path: 'bootstrapResolutionRegistry.generatorPresets',
+      detail: 'generatorPresets must contain unique provider/preset identities',
+    });
+  }
 }
 
 function validateGameRuleModuleManifests(

@@ -560,9 +560,72 @@ function nativeFpsLoadRequest(request: FpsRuntimeSessionLoadRequest) {
   });
   return {
     projectBundle: request.projectBundle,
+    bootstrapResolutionRegistry: nativeBootstrapResolutionRegistry(request.bootstrapResolutionRegistry),
     sceneDocument: request.sceneDocument,
     definitions,
   };
+}
+
+function nativeBootstrapResolutionRegistry(
+  registry: FpsRuntimeSessionLoadRequest['bootstrapResolutionRegistry'],
+) {
+  if (registry.schemaVersion !== 1) {
+    throw new RuntimeBridgeError('invalid_input', 'bootstrapResolutionRegistry.schemaVersion must be 1');
+  }
+  const uniqueStrings = (values: readonly string[], field: string): readonly string[] => {
+    const normalized = requiredStringArray(values, field);
+    if (new Set(normalized).size !== normalized.length) {
+      throw new RuntimeBridgeError('invalid_input', `${field} must not contain duplicates`);
+    }
+    return normalized;
+  };
+  const entityDefinitionIds = uniqueStrings(
+    registry.entityDefinitionIds,
+    'bootstrapResolutionRegistry.entityDefinitionIds',
+  );
+  const spawnMarkerIds = uniqueStrings(
+    registry.spawnMarkerIds,
+    'bootstrapResolutionRegistry.spawnMarkerIds',
+  );
+  const catalogIds = uniqueStrings(registry.catalogIds, 'bootstrapResolutionRegistry.catalogIds');
+  const prefabIds = registry.prefabIds.map((prefabId, index) => {
+    nonNegativeSafeInteger(prefabId, `bootstrapResolutionRegistry.prefabIds[${index}]`);
+    if (prefabId === 0) {
+      throw new RuntimeBridgeError(
+        'invalid_input',
+        `bootstrapResolutionRegistry.prefabIds[${index}] must be positive`,
+      );
+    }
+    return prefabId;
+  });
+  if (new Set(prefabIds).size !== prefabIds.length) {
+    throw new RuntimeBridgeError('invalid_input', 'bootstrapResolutionRegistry.prefabIds must not contain duplicates');
+  }
+  const generatorPresets = registry.generatorPresets.map((preset, index) => ({
+    providerId: requiredString(
+      preset.providerId,
+      `bootstrapResolutionRegistry.generatorPresets[${index}].providerId`,
+    ),
+    presetId: requiredString(
+      preset.presetId,
+      `bootstrapResolutionRegistry.generatorPresets[${index}].presetId`,
+    ),
+  }));
+  const generatorIdentities = generatorPresets.map((preset) => `${preset.providerId}\u0000${preset.presetId}`);
+  if (new Set(generatorIdentities).size !== generatorIdentities.length) {
+    throw new RuntimeBridgeError(
+      'invalid_input',
+      'bootstrapResolutionRegistry.generatorPresets must not contain duplicates',
+    );
+  }
+  return {
+    schemaVersion: 1,
+    entityDefinitionIds,
+    prefabIds,
+    spawnMarkerIds,
+    generatorPresets,
+    catalogIds,
+  } as const;
 }
 
 export class NativeRuntimeBridge implements RuntimeBridge {
@@ -818,6 +881,7 @@ export class NativeRuntimeBridge implements RuntimeBridge {
         handle,
         nativeRequest.projectBundle,
         JSON.stringify(nativeRequest.sceneDocument),
+        JSON.stringify(nativeRequest.bootstrapResolutionRegistry),
         nativeRequest.definitions,
         JSON.stringify(gameRuleModules),
       ) as FpsRuntimeSessionSnapshot,

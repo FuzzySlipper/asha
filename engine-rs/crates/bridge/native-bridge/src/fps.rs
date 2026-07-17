@@ -3,8 +3,8 @@ use protocol_game_extension::{
     GameplayCompositionDiagnostic, GameplayCompositionDiagnosticCode, GameplayCompositionLoadMode,
 };
 use runtime_bridge_api::{
-    ComposedRuntimeSessionReadout, FpsBridgeBoundsCapability, FpsBridgeHealth,
-    FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
+    ComposedRuntimeSessionReadout, FpsBootstrapResolutionRegistry, FpsBridgeBoundsCapability,
+    FpsBridgeHealth, FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
     FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsEncounterDirectorSnapshot,
     FpsEncounterLifecycleInput, FpsEncounterStateReadout, FpsEncounterTransitionRequest,
     FpsEncounterTransitionResult, FpsPrimaryFireRequest, FpsPrimaryFireResult,
@@ -18,7 +18,7 @@ use runtime_bridge_api::{
 use crate::{
     game_extension_json, game_rule_json, parse_game_rule_catalog, parse_game_rule_module_manifests,
     parse_game_rule_resolution_request, parse_weapon_effect_hook_request, to_napi, u32_input,
-    u64_input, with_bridge, NativeVec3,
+    u64_input, wire::parse_wire_json, with_bridge, NativeVec3,
 };
 
 #[napi(object)]
@@ -763,16 +763,22 @@ pub fn load_fps_runtime_session(
     handle: i64,
     project_bundle: String,
     scene_document_json: String,
+    bootstrap_resolution_registry_json: String,
     definitions: Vec<NativeFpsStoredEntityDefinition>,
     game_rule_modules_json: String,
 ) -> napi::Result<NativeFpsRuntimeSessionSnapshot> {
     let scene_document = crate::scene_preview::parse_scene_document_json(&scene_document_json)?;
+    let bootstrap_resolution_registry = parse_wire_json::<FpsBootstrapResolutionRegistry>(
+        "load_fps_runtime_session.bootstrap_resolution_registry",
+        &bootstrap_resolution_registry_json,
+    )?;
     let definitions = bridge_fps_definitions(definitions)?;
     let game_rule_modules = parse_game_rule_module_manifests(&game_rule_modules_json)?;
     with_bridge(handle, |bridge| {
         bridge
             .load_fps_runtime_session(FpsRuntimeSessionLoadRequest {
                 project_bundle,
+                bootstrap_resolution_registry,
                 definitions,
                 scene_document,
                 game_rule_modules,

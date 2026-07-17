@@ -192,6 +192,14 @@ function ecrpProjectLoadInput() {
         sceneId: 77,
       },
     },
+    bootstrapResolutionRegistry: {
+      schemaVersion: 1 as const,
+      entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
+      prefabIds: [],
+      spawnMarkerIds: [],
+      generatorPresets: [],
+      catalogIds: [],
+    },
     entityDefinitions: [
       entityDefinition('actor/custom-player', 'player', 88),
       entityDefinition('actor/custom-enemy', 'enemy', 55),

@@ -989,10 +989,10 @@ mod tests {
     use asha_runtime_session_composition::{
         BundleArtifacts, ComposedGameplayOwner, ComposedGameplayOwnerCheckpoint,
         ComposedGameplayOwnerOutput, EnemyDirectNavAuthoritySource, EnemyDirectNavMovementRequest,
-        EngineConfig, FlatSceneDocumentDto, FpsBridgeBoundsCapability, FpsBridgeHealth,
-        FpsBridgePolicyBinding, FpsBridgeRole, FpsBridgeStoredEntityDefinition,
-        FpsBridgeTransformCapability, FpsBridgeWeaponMount, FpsPrimaryFireRequest,
-        FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
+        EngineConfig, FlatSceneDocumentDto, FpsBootstrapResolutionRegistry,
+        FpsBridgeBoundsCapability, FpsBridgeHealth, FpsBridgePolicyBinding, FpsBridgeRole,
+        FpsBridgeStoredEntityDefinition, FpsBridgeTransformCapability, FpsBridgeWeaponMount,
+        FpsPrimaryFireRequest, FpsRuntimeSessionLoadRequest, FpsRuntimeSessionRestartRequest,
         GameplayBindingEntityTargets, GameplayDecisionMoment, GameplayDecisionStatus,
         GameplayModuleViewRequest, GameplayModuleViewScope, GameplayOperationWorkspace,
         GameplayPrefabPartInteractionRequest, GameplayRuntimeDecisionOwner,
@@ -1233,6 +1233,17 @@ mod tests {
         FpsRuntimeSessionLoadRequest {
             project_bundle: "downstream-composed-cell".to_owned(),
             scene_document: composed_fps_scene_document(),
+            bootstrap_resolution_registry: FpsBootstrapResolutionRegistry {
+                schema_version: 1,
+                entity_definition_ids: vec![
+                    "actor/composed-player".to_owned(),
+                    "actor/composed-enemy".to_owned(),
+                ],
+                prefab_ids: Vec::new(),
+                spawn_marker_ids: Vec::new(),
+                generator_presets: Vec::new(),
+                catalog_ids: Vec::new(),
+            },
             definitions: vec![
                 FpsBridgeStoredEntityDefinition {
                     entity: 101,

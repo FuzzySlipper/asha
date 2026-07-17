@@ -289,6 +289,17 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
     FpsRuntimeSessionLoadRequest {
         project_bundle: "custom-demo".to_string(),
         scene_document: fps_scene_document(),
+        bootstrap_resolution_registry: FpsBootstrapResolutionRegistry {
+            schema_version: 1,
+            entity_definition_ids: vec![
+                "actor/custom-player".to_string(),
+                "actor/custom-enemy".to_string(),
+            ],
+            prefab_ids: Vec::new(),
+            spawn_marker_ids: Vec::new(),
+            generator_presets: Vec::new(),
+            catalog_ids: Vec::new(),
+        },
         definitions: vec![
             FpsBridgeStoredEntityDefinition {
                 entity: 101,

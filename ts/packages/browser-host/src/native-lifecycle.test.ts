@@ -15,6 +15,17 @@ type FpsLoadRequest = Parameters<RuntimeBridge['loadFpsRuntimeSession']>[0];
 
 const FPS_LOAD_REQUEST: FpsLoadRequest = {
   projectBundle: 'browser-host-native-lifecycle',
+  bootstrapResolutionRegistry: {
+    schemaVersion: 1,
+    entityDefinitionIds: [
+      'actor/native-host-player',
+      'actor/native-host-enemy',
+    ],
+    prefabIds: [],
+    spawnMarkerIds: [],
+    generatorPresets: [],
+    catalogIds: [],
+  },
   sceneDocument: {
     schemaVersion: 3,
     id: 4103 as never,

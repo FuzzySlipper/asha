@@ -100,8 +100,28 @@ export interface FpsStoredEntityDefinition {
   readonly policyBinding: FpsPolicyBinding | null;
 }
 
+export interface FpsBootstrapGeneratorPresetIdentity {
+  readonly providerId: string;
+  readonly presetId: string;
+}
+
+/**
+ * Identities from validated ProjectBundle registries that a scene may resolve
+ * during Rust bootstrap. Scene references are intentionally not used to build
+ * this registry.
+ */
+export interface FpsBootstrapResolutionRegistry {
+  readonly schemaVersion: 1;
+  readonly entityDefinitionIds: readonly string[];
+  readonly prefabIds: readonly number[];
+  readonly spawnMarkerIds: readonly string[];
+  readonly generatorPresets: readonly FpsBootstrapGeneratorPresetIdentity[];
+  readonly catalogIds: readonly string[];
+}
+
 export interface FpsRuntimeSessionLoadRequest {
   readonly projectBundle: string;
+  readonly bootstrapResolutionRegistry: FpsBootstrapResolutionRegistry;
   readonly sceneDocument: FlatSceneDocument;
   readonly definitions: readonly FpsStoredEntityDefinition[];
   readonly gameRuleModules: readonly GameRuleModuleManifest[];

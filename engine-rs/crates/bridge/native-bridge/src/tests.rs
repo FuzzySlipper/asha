@@ -227,6 +227,11 @@ fn native_fps_scene_document_json() -> String {
     r#"{"schemaVersion":3,"id":77,"metadata":{"name":"Native FPS test scene","authoringFormatVersion":3},"dependencies":[],"nodes":[{"id":101,"parent":null,"childOrder":0,"label":"Custom Player","tags":[],"transform":{"translation":[0,1.62,1.5],"rotation":[0,0,0,1],"scale":[1,1,1]},"kind":{"kind":"entityInstance","instance":{"instanceId":"actor.custom-player.instance","reference":{"kind":"entityDefinition","stableId":"actor/custom-player"},"spawnMarkerId":null}}},{"id":777,"parent":null,"childOrder":1,"label":"Custom Enemy","tags":[],"transform":{"translation":[0,0.5,-2.6],"rotation":[0,0,0,1],"scale":[1,1,1]},"kind":{"kind":"entityInstance","instance":{"instanceId":"actor.custom-enemy.instance","reference":{"kind":"entityDefinition","stableId":"actor/custom-enemy"},"spawnMarkerId":null}}}]}"#.to_string()
 }
 
+fn native_fps_bootstrap_registry_json() -> String {
+    r#"{"schemaVersion":1,"entityDefinitionIds":["actor/custom-player","actor/custom-enemy"],"prefabIds":[],"spawnMarkerIds":[],"generatorPresets":[],"catalogIds":[]}"#
+        .to_string()
+}
+
 #[test]
 fn native_bridge_stateful_smoke_uses_bounded_operations() {
     let handle = initialize_engine(7).expect("engine initializes");
@@ -262,11 +267,8 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
     assert_eq!(blocked.tick, 6);
     assert_eq!(blocked.diff_count, 0);
     let exact: runtime_bridge_api::TimeControlReceipt = serde_json::from_str(
-        &apply_time_control_command(
-            handle,
-            r#"{"operation":"stepTicks","ticks":2}"#.to_string(),
-        )
-        .expect("time control exact-steps"),
+        &apply_time_control_command(handle, r#"{"operation":"stepTicks","ticks":2}"#.to_string())
+            .expect("time control exact-steps"),
     )
     .expect("exact-step receipt decodes");
     assert_eq!(exact.exact_ticks_advanced, 2);
@@ -325,7 +327,8 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
     let pick: serde_json::Value = serde_json::from_str(
         &pick_voxel(
             handle,
-            r#"{"grid":1,"origin":[-1.0,0.5,0.5],"direction":[1.0,0.0,0.0],"maxDistance":10.0}"#.to_string(),
+            r#"{"grid":1,"origin":[-1.0,0.5,0.5],"direction":[1.0,0.0,0.0],"maxDistance":10.0}"#
+                .to_string(),
         )
         .expect("voxel pick reaches Rust authority"),
     )
@@ -498,6 +501,7 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
         handle,
         "custom-demo".into(),
         native_fps_scene_document_json(),
+        native_fps_bootstrap_registry_json(),
         native_fps_definitions(75),
         "[]".into(),
     )
@@ -508,9 +512,8 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
     assert_eq!(fps_loaded.policy_bindings.len(), 1);
     assert!(fps_loaded.replay_hash.starts_with("fnv1a64:"));
 
-    let tunnel =
-        apply_generated_tunnel_to_runtime_world(handle, "tiny-enclosed".to_string(), 17)
-            .expect("generated tunnel collision authority applies");
+    let tunnel = apply_generated_tunnel_to_runtime_world(handle, "tiny-enclosed".to_string(), 17)
+        .expect("generated tunnel collision authority applies");
     assert_eq!(tunnel.preset_id, "tiny-enclosed");
     assert_eq!(tunnel.grid, 0);
     assert_eq!(tunnel.output_hash, "1471496d88d70647");
@@ -619,8 +622,8 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
         Some("create")
     );
 
-    let fps_restarted = restart_fps_runtime_session(handle, fps_read.session_epoch)
-        .expect("fps session restarts");
+    let fps_restarted =
+        restart_fps_runtime_session(handle, fps_read.session_epoch).expect("fps session restarts");
     assert_eq!(fps_restarted.session_epoch, fps_read.session_epoch + 1);
     assert_eq!(fps_restarted.lifecycle_status.state, "active");
 
@@ -638,6 +641,44 @@ fn native_bridge_stateful_smoke_uses_bounded_operations() {
     unload_project_bundle(handle).expect("ProjectBundle unload reaches Rust authority");
     let status = get_project_bundle_composition_status(handle).expect("composition reads");
     assert_eq!(status.loaded_project_bundle, None);
+}
+
+#[test]
+fn native_fps_scene_reference_drift_is_rejected_without_session_replacement() {
+    let handle = initialize_engine(91).expect("engine initializes");
+    let loaded = load_fps_runtime_session(
+        handle,
+        "custom-demo".into(),
+        native_fps_scene_document_json(),
+        native_fps_bootstrap_registry_json(),
+        native_fps_definitions(75),
+        "[]".into(),
+    )
+    .expect("baseline FPS session loads");
+    let invalid_scene = native_fps_scene_document_json().replacen(
+        "\"spawnMarkerId\":null",
+        "\"spawnMarkerId\":\"spawn.scene-invented\"",
+        1,
+    );
+
+    let error = match load_fps_runtime_session(
+        handle,
+        "custom-demo".into(),
+        invalid_scene,
+        native_fps_bootstrap_registry_json(),
+        native_fps_definitions(33),
+        "[]".into(),
+    ) {
+        Ok(_) => panic!("scene must not authorize its own spawn-marker reference"),
+        Err(error) => error,
+    };
+    assert!(error.reason.contains("UnknownSpawnMarker"));
+
+    let after = read_fps_runtime_session(handle).expect("prior FPS session remains readable");
+    assert_eq!(after.session_epoch, loaded.session_epoch);
+    assert_eq!(after.entity_hash, loaded.entity_hash);
+    assert_eq!(after.health_hash, loaded.health_hash);
+    assert_eq!(after.replay_hash, loaded.replay_hash);
 }
 
 #[test]

@@ -6,6 +6,7 @@ import type {
 } from './facade-lifecycle.js';
 import type { RuntimeSessionEcrpRenderTargetIdentity } from './ecrp-render-target.js';
 import type { ProjectBundleLoadRequest } from './transport-contracts.js';
+import type { FpsBootstrapResolutionRegistry } from './transport-contracts.js';
 
 export type RuntimeSessionEcrpCapabilityKind =
   | 'transform'
@@ -132,6 +133,7 @@ export type RuntimeSessionEcrpProjectDiagnosticCode =
   | 'duplicatePlacement'
   | 'emptyEntityDefinitionList'
   | 'invalidGameRuleModuleManifest'
+  | 'invalidBootstrapResolutionRegistry'
   | 'invalidCapability'
   | 'missingCapability'
   | 'missingEntityDefinition'
@@ -212,6 +214,7 @@ export interface RuntimeSessionEcrpProjectLoadInput {
     readonly project: RuntimeSessionProjectIdentity;
     readonly runtimeRequest: ProjectBundleLoadRequest;
   };
+  readonly bootstrapResolutionRegistry: FpsBootstrapResolutionRegistry;
   readonly entityDefinitions: readonly RuntimeSessionEcrpEntityDefinition[];
   readonly sceneDocument: FlatSceneDocument;
   readonly gameRuleModules?: readonly GameRuleModuleManifest[];
