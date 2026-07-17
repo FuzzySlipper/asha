@@ -151,6 +151,75 @@ fn map_scene_error(error: &SceneValidationError) -> DiagnosticReport {
             RemedyAction::Inspect,
             "fix the typed light fields or use scene schema/authoring format version 2",
         )),
+        SceneValidationError::DuplicateEntityInstanceId { node, instance_id } => {
+            DiagnosticReport::new(
+                DiagnosticCode::DuplicateSceneEntityInstanceId,
+                format!("entity-instance:{instance_id}"),
+                DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+                format!(
+                    "scene node {} reuses durable entity-instance id `{instance_id}`",
+                    node.raw()
+                ),
+            )
+            .with_remedy(SuggestedRemedy::new(
+                RemedyAction::FixReference,
+                "give each authored entity placement a unique durable instance id",
+            ))
+        }
+        SceneValidationError::InvalidEntityInstance { node, reason } => DiagnosticReport::new(
+            DiagnosticCode::InvalidSceneEntityInstance,
+            format!("node:{}", node.raw()),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!(
+                "scene node {} has an invalid entity-instance binding: {reason}",
+                node.raw()
+            ),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::Inspect,
+            "fix the stored entity definition or prefab instance binding",
+        )),
+        SceneValidationError::DuplicateBootstrapNode { node } => DiagnosticReport::new(
+            DiagnosticCode::DuplicateSceneBootstrap,
+            format!("node:{}", node.raw()),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!(
+                "scene node {} duplicates the scene-wide bootstrap binding",
+                node.raw()
+            ),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::FixReference,
+            "retain exactly one scene-wide bootstrap node",
+        )),
+        SceneValidationError::InvalidBootstrap { node, reason } => DiagnosticReport::new(
+            DiagnosticCode::InvalidSceneBootstrap,
+            format!("node:{}", node.raw()),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!(
+                "scene node {} has an invalid bootstrap binding: {reason}",
+                node.raw()
+            ),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::Inspect,
+            "fix the root bootstrap generator and catalog bindings",
+        )),
+        SceneValidationError::DuplicateCatalogBinding { node, binding_id } => {
+            DiagnosticReport::new(
+                DiagnosticCode::DuplicateSceneCatalogBinding,
+                format!("catalog-binding:{binding_id}"),
+                DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+                format!(
+                    "scene node {} reuses bootstrap catalog binding id `{binding_id}`",
+                    node.raw()
+                ),
+            )
+            .with_remedy(SuggestedRemedy::new(
+                RemedyAction::FixReference,
+                "give each bootstrap catalog input a unique binding id",
+            ))
+        }
     }
 }
 
@@ -250,5 +319,58 @@ mod tests {
             missing.source.asset_id.as_deref(),
             Some("mesh/belt-straight")
         );
+    }
+
+    #[test]
+    fn entity_and_bootstrap_errors_have_stable_scene_diagnostics() {
+        let cases = [
+            (
+                SceneValidationError::DuplicateEntityInstanceId {
+                    node: SceneNodeId::new(7),
+                    instance_id: "actor/player".into(),
+                },
+                DiagnosticCode::DuplicateSceneEntityInstanceId,
+                "entity-instance:actor/player",
+            ),
+            (
+                SceneValidationError::InvalidEntityInstance {
+                    node: SceneNodeId::new(8),
+                    reason: "invalid-instance-id".into(),
+                },
+                DiagnosticCode::InvalidSceneEntityInstance,
+                "node:8",
+            ),
+            (
+                SceneValidationError::DuplicateBootstrapNode {
+                    node: SceneNodeId::new(9),
+                },
+                DiagnosticCode::DuplicateSceneBootstrap,
+                "node:9",
+            ),
+            (
+                SceneValidationError::InvalidBootstrap {
+                    node: SceneNodeId::new(10),
+                    reason: "bootstrap-must-be-root".into(),
+                },
+                DiagnosticCode::InvalidSceneBootstrap,
+                "node:10",
+            ),
+            (
+                SceneValidationError::DuplicateCatalogBinding {
+                    node: SceneNodeId::new(11),
+                    binding_id: "materials".into(),
+                },
+                DiagnosticCode::DuplicateSceneCatalogBinding,
+                "catalog-binding:materials",
+            ),
+        ];
+
+        for (error, expected_code, expected_reference) in cases {
+            let report = map_scene_error(&error);
+            assert_eq!(report.code, expected_code);
+            assert_eq!(report.scope, protocol_diagnostics::DiagnosticScope::Scene);
+            assert_eq!(report.reference, expected_reference);
+            assert!(report.source.scene_node_id.is_some());
+        }
     }
 }

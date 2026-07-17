@@ -151,6 +151,16 @@ pub enum DiagnosticCode {
     SceneAssetMissing,
     /// A scene node references an asset of the wrong kind for its slot.
     SceneAssetWrongKind,
+    /// Two entity-instance nodes claim the same durable instance identity.
+    DuplicateSceneEntityInstanceId,
+    /// An entity-instance node carries malformed stored binding data.
+    InvalidSceneEntityInstance,
+    /// More than one scene-wide bootstrap node was authored.
+    DuplicateSceneBootstrap,
+    /// A scene bootstrap node is malformed or placed spatially.
+    InvalidSceneBootstrap,
+    /// Two scene bootstrap catalog inputs share one binding identity.
+    DuplicateSceneCatalogBinding,
     // ── Asset catalog ──
     /// Two catalog entries share a stable asset id.
     DuplicateAssetId,
@@ -205,6 +215,11 @@ impl DiagnosticCode {
             DiagnosticCode::InvalidSceneTransform => "invalidSceneTransform",
             DiagnosticCode::SceneAssetMissing => "sceneAssetMissing",
             DiagnosticCode::SceneAssetWrongKind => "sceneAssetWrongKind",
+            DiagnosticCode::DuplicateSceneEntityInstanceId => "duplicateSceneEntityInstanceId",
+            DiagnosticCode::InvalidSceneEntityInstance => "invalidSceneEntityInstance",
+            DiagnosticCode::DuplicateSceneBootstrap => "duplicateSceneBootstrap",
+            DiagnosticCode::InvalidSceneBootstrap => "invalidSceneBootstrap",
+            DiagnosticCode::DuplicateSceneCatalogBinding => "duplicateSceneCatalogBinding",
             DiagnosticCode::DuplicateAssetId => "duplicateAssetId",
             DiagnosticCode::CatalogStructuralError => "catalogStructuralError",
             DiagnosticCode::MissingAsset => "missingAsset",
@@ -233,7 +248,12 @@ impl DiagnosticCode {
             | DiagnosticCode::SceneParentCycle
             | DiagnosticCode::InvalidSceneTransform
             | DiagnosticCode::SceneAssetMissing
-            | DiagnosticCode::SceneAssetWrongKind => DiagnosticScope::Scene,
+            | DiagnosticCode::SceneAssetWrongKind
+            | DiagnosticCode::DuplicateSceneEntityInstanceId
+            | DiagnosticCode::InvalidSceneEntityInstance
+            | DiagnosticCode::DuplicateSceneBootstrap
+            | DiagnosticCode::InvalidSceneBootstrap
+            | DiagnosticCode::DuplicateSceneCatalogBinding => DiagnosticScope::Scene,
             DiagnosticCode::DuplicateAssetId
             | DiagnosticCode::CatalogStructuralError
             | DiagnosticCode::MissingAsset
@@ -266,6 +286,11 @@ impl DiagnosticCode {
             | DiagnosticCode::InvalidSceneTransform
             | DiagnosticCode::SceneAssetMissing
             | DiagnosticCode::SceneAssetWrongKind
+            | DiagnosticCode::DuplicateSceneEntityInstanceId
+            | DiagnosticCode::InvalidSceneEntityInstance
+            | DiagnosticCode::DuplicateSceneBootstrap
+            | DiagnosticCode::InvalidSceneBootstrap
+            | DiagnosticCode::DuplicateSceneCatalogBinding
             | DiagnosticCode::DuplicateAssetId
             | DiagnosticCode::CatalogStructuralError
             | DiagnosticCode::MissingAsset
@@ -297,6 +322,11 @@ pub const DIAGNOSTIC_CODES: &[&str] = &[
     "invalidSceneTransform",
     "sceneAssetMissing",
     "sceneAssetWrongKind",
+    "duplicateSceneEntityInstanceId",
+    "invalidSceneEntityInstance",
+    "duplicateSceneBootstrap",
+    "invalidSceneBootstrap",
+    "duplicateSceneCatalogBinding",
     "duplicateAssetId",
     "catalogStructuralError",
     "missingAsset",
@@ -325,6 +355,11 @@ pub const ALL_DIAGNOSTIC_CODES: &[DiagnosticCode] = &[
     DiagnosticCode::InvalidSceneTransform,
     DiagnosticCode::SceneAssetMissing,
     DiagnosticCode::SceneAssetWrongKind,
+    DiagnosticCode::DuplicateSceneEntityInstanceId,
+    DiagnosticCode::InvalidSceneEntityInstance,
+    DiagnosticCode::DuplicateSceneBootstrap,
+    DiagnosticCode::InvalidSceneBootstrap,
+    DiagnosticCode::DuplicateSceneCatalogBinding,
     DiagnosticCode::DuplicateAssetId,
     DiagnosticCode::CatalogStructuralError,
     DiagnosticCode::MissingAsset,
