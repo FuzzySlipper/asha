@@ -62,7 +62,7 @@ void test('classifies bad versions and unsupported devtools endpoints', () => {
   assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === 'unsupported_endpoint'), true);
 });
 
-void test('manifest accepts selected native backend mode with public proof refs', () => {
+void test('manifest preserves optional legacy proof refs for a selected native backend', () => {
   const manifest = fixture('asha.game.toml')
     .replace('backend_mode = "reference"', 'backend_mode = "native"')
     .replace('backend_profile = "reference"', 'backend_profile = "native.napi.launcher.v1"')
@@ -76,7 +76,22 @@ void test('manifest accepts selected native backend mode with public proof refs'
   assert.deepEqual(result.manifest.runtime.backendProofRefs, ['proof:dev-authority-smoke']);
 });
 
-void test('manifest fails closed on unsupported or unproved backend modes', () => {
+void test('manifest accepts native provider selection without legacy proof refs', () => {
+  const manifest = fixture('asha.game.toml')
+    .replace('backend_mode = "reference"', 'backend_mode = "native"')
+    .replace('backend_profile = "reference"', 'backend_profile = "native.napi.launcher.v1"')
+    .replace('\nbackend_proof_refs = []', '');
+  const result = parseAshaGameManifestToml(manifest);
+  assert.equal(result.ok, true);
+  if (!result.ok) {
+    throw new Error('native backend manifest should not require proof-shaped admission metadata');
+  }
+  assert.equal(result.manifest.runtime.backendMode, 'native');
+  assert.equal(result.manifest.runtime.backendProfile, 'native.napi.launcher.v1');
+  assert.deepEqual(result.manifest.runtime.backendProofRefs, []);
+});
+
+void test('manifest fails closed on unsupported backend modes', () => {
   const wasm = parseAshaGameManifestToml(
     fixture('asha.game.toml').replace('backend_mode = "reference"', 'backend_mode = "wasm"'),
   );
@@ -86,16 +101,6 @@ void test('manifest fails closed on unsupported or unproved backend modes', () =
     true,
   );
 
-  const nativeMissingProof = parseAshaGameManifestToml(
-    fixture('asha.game.toml')
-      .replace('backend_mode = "reference"', 'backend_mode = "native"')
-      .replace('backend_profile = "reference"', 'backend_profile = "native.napi.launcher.v1"'),
-  );
-  assert.equal(nativeMissingProof.ok, false);
-  assert.equal(
-    !nativeMissingProof.ok && nativeMissingProof.diagnostics.some((diagnostic) => diagnostic.code === 'missing_backend_ref' && diagnostic.path === 'runtime.backend_proof_refs'),
-    true,
-  );
 });
 
 void test('manifest rejects private transport hints in backend selection', () => {

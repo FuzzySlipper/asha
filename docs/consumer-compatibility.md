@@ -749,6 +749,9 @@ Consumer behavior:
 - `asha-testing` uses it for synthetic conformance/proof workflows.
 - Demo may use it for human-facing project workspace setup and owns the resulting visible acceptance.
 - Manifest validation rejects private transport hints, ASHA internals, generated paths, and unsupported backend/profile claims.
+- Native manifests select a public backend profile; the legacy
+  `backend_proof_refs` list is optional compatibility metadata and is not a
+  product-admission or delivery-proof gate.
 - Prefab helpers expose explicit draft create/replace/delete/instantiate
   commands, browser/selection/role/binding/configuration readouts, and canonical
   source serialization. The public

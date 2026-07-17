@@ -67,7 +67,7 @@ function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestVali
       wasmOrNativeEntry: getString(document, 'runtime', 'wasm_or_native_entry', diagnostics),
       backendMode: getBackendMode(document, diagnostics),
       backendProfile: getString(document, 'runtime', 'backend_profile', diagnostics),
-      backendProofRefs: getStringArray(document, 'runtime', 'backend_proof_refs', diagnostics),
+      backendProofRefs: getOptionalStringArray(document, 'runtime', 'backend_proof_refs', diagnostics),
     },
     studio: {
       workspaceMode: getBoolean(document, 'studio', 'workspace_mode', diagnostics),
@@ -210,7 +210,7 @@ function isSameOrChildPath(candidate: string, root: string): boolean {
 }
 
 function validateBackendMode(manifest: AshaGameManifest, diagnostics: AshaGameManifestDiagnostic[]): void {
-  const { backendMode, backendProfile, backendProofRefs, wasmOrNativeEntry } = manifest.runtime;
+  const { backendMode, backendProfile, wasmOrNativeEntry } = manifest.runtime;
   if (containsPrivateTransportHint(wasmOrNativeEntry)) {
     diagnostics.push(diag('private_transport_hint', 'runtime.wasm_or_native_entry', 'runtime entry must point at a public launcher/facade entry, not a raw private transport'));
   }
@@ -226,9 +226,6 @@ function validateBackendMode(manifest: AshaGameManifest, diagnostics: AshaGameMa
   if (backendMode === 'native') {
     if (backendProfile.length === 0 || backendProfile === 'reference') {
       diagnostics.push(diag('missing_backend_ref', 'runtime.backend_profile', 'native backend mode requires a selected backend profile id'));
-    }
-    if (backendProofRefs.length === 0) {
-      diagnostics.push(diag('missing_backend_ref', 'runtime.backend_proof_refs', 'native backend mode requires at least one public proof/evidence ref'));
     }
     return;
   }
@@ -257,6 +254,23 @@ function getStringArray(document: TomlDocument, section: string, key: string, di
   const value = document[section]?.[key];
   if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
     diagnostics.push(diag('missing_required_field', `${section}.${key}`, 'expected a string array field'));
+    return [];
+  }
+  return value;
+}
+
+function getOptionalStringArray(
+  document: TomlDocument,
+  section: string,
+  key: string,
+  diagnostics: AshaGameManifestDiagnostic[],
+): readonly string[] {
+  const value = document[section]?.[key];
+  if (value === undefined) {
+    return [];
+  }
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    diagnostics.push(diag('missing_required_field', `${section}.${key}`, 'expected a string array field when provided'));
     return [];
   }
   return value;
