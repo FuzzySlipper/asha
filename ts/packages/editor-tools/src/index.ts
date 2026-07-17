@@ -18,7 +18,6 @@ export * from './resolved-input.js';
 export * from './camera-navigation.js';
 export * from './transform-manipulator.js';
 export * from './spatial-grid.js';
-
 // Proposal-only generic entity authoring controls with Rust validation feedback (#2485).
 export * from './entity-authoring.js';
 

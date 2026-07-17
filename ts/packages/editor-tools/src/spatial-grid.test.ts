@@ -32,7 +32,7 @@ const fixture = JSON.parse(readFileSync(new URL(
   readonly cases: readonly FixtureCase[];
 };
 
-test('public TypeScript grid math matches the Rust-owned conformance fixture', () => {
+void test('public TypeScript grid math matches the Rust-owned conformance fixture', () => {
   assert.equal(fixture.coordinateSystem, 'rightHandedYUp');
   for (const entry of fixture.cases) {
     const spec: SpatialGridSpec = {
@@ -51,7 +51,7 @@ test('public TypeScript grid math matches the Rust-owned conformance fixture', (
   }
 });
 
-test('default editor grid is an XZ projection in the mandated Y-up world', () => {
+void test('default editor grid is an XZ projection in the mandated Y-up world', () => {
   assert.equal(validateEditorGridDescriptor(DEFAULT_EDITOR_GRID_DESCRIPTOR), DEFAULT_EDITOR_GRID_DESCRIPTOR);
   assert.equal(DEFAULT_EDITOR_GRID_DESCRIPTOR.grid.coordinateSystem, 'rightHandedYUp');
   assert.equal(DEFAULT_EDITOR_GRID_DESCRIPTOR.plane, 'xz');
