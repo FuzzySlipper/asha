@@ -20,7 +20,16 @@ pub enum SceneEntityReference {
     Prefab {
         prefab_id: u64,
         variant_id: Option<String>,
+        /// Deterministic input to prefab expansion. This is authored placement
+        /// data, not a runtime allocation id.
+        instantiation_seed: u64,
     },
+}
+
+/// One typed scene marker. The containing node transform is its only pose.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneMarker {
+    pub marker_id: String,
 }
 
 /// One authored runtime entity/prefab placement carried by a scene node. The
@@ -79,6 +88,8 @@ pub enum SceneNodeKind {
     VoxelVolume(AssetReference),
     /// Renderer-neutral authored light; pose comes from the node transform.
     Light(SceneLight),
+    /// Typed spatial marker used by stored instance and gameplay references.
+    Marker(SceneMarker),
     /// A stored EntityDefinition or prefab instance placement.
     EntityInstance(SceneEntityInstance),
     /// Explicit scene-wide generator/catalog inputs. Must be a root with an
@@ -95,6 +106,7 @@ impl SceneNodeKind {
             SceneNodeKind::Sprite(_) => Some(AssetKind::Sprite),
             SceneNodeKind::VoxelVolume(_) => Some(AssetKind::VoxelVolume),
             SceneNodeKind::Light(_)
+            | SceneNodeKind::Marker(_)
             | SceneNodeKind::EntityInstance(_)
             | SceneNodeKind::Bootstrap(_) => None,
         }
@@ -105,6 +117,7 @@ impl SceneNodeKind {
         match self {
             SceneNodeKind::EmptyGroup
             | SceneNodeKind::Light(_)
+            | SceneNodeKind::Marker(_)
             | SceneNodeKind::EntityInstance(_)
             | SceneNodeKind::Bootstrap(_) => None,
             SceneNodeKind::StaticMesh(a)
@@ -121,6 +134,7 @@ impl SceneNodeKind {
             SceneNodeKind::Sprite(_) => "sprite",
             SceneNodeKind::VoxelVolume(_) => "voxelVolume",
             SceneNodeKind::Light(_) => "light",
+            SceneNodeKind::Marker(_) => "marker",
             SceneNodeKind::EntityInstance(_) => "entityInstance",
             SceneNodeKind::Bootstrap(_) => "bootstrap",
         }

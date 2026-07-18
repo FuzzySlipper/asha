@@ -71,6 +71,7 @@ fn registry(display_name: &str) -> ValidatedPrefabRegistry {
         parts: Vec::new(),
         part_roles: Vec::new(),
         variant: Some(PrefabVariantDelta {
+            variant_id: "damaged".into(),
             base: PrefabId::new(10),
             removed_roles: Vec::new(),
             overrides: vec![PrefabOverride {
@@ -88,6 +89,7 @@ fn registry(display_name: &str) -> ValidatedPrefabRegistry {
         parts: Vec::new(),
         part_roles: Vec::new(),
         variant: Some(PrefabVariantDelta {
+            variant_id: "body-only".into(),
             base: PrefabId::new(10),
             removed_roles: vec!["weapon/muzzle".to_owned(), "weapon/output".to_owned()],
             overrides: Vec::new(),

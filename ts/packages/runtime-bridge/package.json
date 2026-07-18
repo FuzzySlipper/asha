@@ -23,7 +23,7 @@
     "compatibility": {
       "version": "runtime-bridge.v0",
       "metadataFile": "compatibility.json",
-      "changelog": "docs/consumer-compatibility.md#runtime-bridge-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#runtime-bridge-compatibility-log"
     }
   },
   "type": "module",

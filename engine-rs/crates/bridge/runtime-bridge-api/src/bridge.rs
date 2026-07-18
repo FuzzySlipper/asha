@@ -272,6 +272,21 @@ pub trait RuntimeBridge {
         &self,
         request: SceneDocumentAuthoringRequestDto,
     ) -> BridgeResult<SceneDocumentAuthoringResultDto>;
+    /// Strictly decode and validate one closed set of durable project-content documents.
+    fn decode_project_content(
+        &self,
+        request: ProjectContentDecodeRequestDto,
+    ) -> BridgeResult<ProjectContentCodecResultDto>;
+    /// Validate and canonically encode a typed project-content document set.
+    fn encode_project_content(
+        &self,
+        request: ProjectContentEncodeRequestDto,
+    ) -> BridgeResult<ProjectContentCodecResultDto>;
+    /// Apply one typed compare-and-swap edit and return host-write candidates.
+    fn apply_project_content_authoring(
+        &mut self,
+        request: ProjectContentAuthoringRequestDto,
+    ) -> BridgeResult<ProjectContentAuthoringResultDto>;
     /// Read the canonical authored scene hierarchy without exposing mutable state.
     fn read_scene_object_snapshot(&self) -> BridgeResult<SceneObjectSnapshotDto>;
     /// Apply one hash-guarded authored scene hierarchy command through Rust authority.

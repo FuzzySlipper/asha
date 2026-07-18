@@ -12,6 +12,9 @@ handwritten semantic exports. Quarantined compatibility wiring is explicit.
 | `read_workspace_authoring_projection` | `workspace_authoring` | stable | `protocol_project_bundle::WorkspaceAuthoringProjectionRequest` | `protocol_project_bundle::WorkspaceAuthoringProjectionReceipt` | `RuntimeBridgeError` |
 | `confirm_workspace_authoring_stored` | `workspace_authoring` | stable | `protocol_project_bundle::WorkspaceAuthoringStoredConfirmationRequest` | `protocol_project_bundle::WorkspaceAuthoringStoredConfirmationReceipt` | `RuntimeBridgeError` |
 | `close_workspace_authoring` | `workspace_authoring` | stable | `protocol_project_bundle::WorkspaceAuthoringCloseRequest` | `protocol_project_bundle::WorkspaceAuthoringCloseReceipt` | `RuntimeBridgeError` |
+| `decode_project_content` | `workspace_authoring` | stable | `protocol_project_content::ProjectContentDecodeRequest` | `protocol_project_content::ProjectContentCodecResult` | `RuntimeBridgeError` |
+| `encode_project_content` | `workspace_authoring` | stable | `protocol_project_content::ProjectContentEncodeRequest` | `protocol_project_content::ProjectContentCodecResult` | `RuntimeBridgeError` |
+| `apply_project_content_authoring` | `workspace_authoring` | stable | `protocol_project_content::ProjectContentAuthoringRequest` | `protocol_project_content::ProjectContentAuthoringResult` | `RuntimeBridgeError` |
 | `step_simulation` | `time_simulation` | stable | `protocol_runtime::StepInputEnvelope` | `protocol_runtime::StepResult` | `RuntimeBridgeError` |
 | `apply_time_control_command` | `time_simulation` | stable | `protocol_time_control::TimeControlCommand` | `protocol_time_control::TimeControlReceipt` | `RuntimeBridgeError` |
 | `read_time_control_state` | `time_simulation` | stable | `Unit` | `protocol_time_control::TimeControlState` | `RuntimeBridgeError` |

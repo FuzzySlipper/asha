@@ -34,6 +34,8 @@ export * from './scene.js';
 
 export * from './projectBundle.js';
 
+export * from './projectContent.js';
+
 export * from './assets.js';
 
 export * from './diagnostics.js';

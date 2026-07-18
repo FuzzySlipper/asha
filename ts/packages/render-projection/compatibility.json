@@ -5,8 +5,8 @@
   "compatibilityVersion": "render-projection.v0",
   "status": "unstable-local-path",
   "sourceOfTruth": "ts/packages/render-projection/src/index.ts plus generated @asha/contracts render DTOs",
-  "changelog": "docs/consumer-compatibility.md#render-projection-compatibility-log",
-  "migrationNoteTemplate": "docs/consumer-compatibility.md#migration-note-template",
+  "changelog": "docs/topics/consumer/consumer-compatibility.md#render-projection-compatibility-log",
+  "migrationNoteTemplate": "docs/topics/consumer/consumer-compatibility.md#migration-note-template",
   "failClosedPolicy": "Consumers must fail closed on unsupported render diff operations, unknown handles, malformed mesh payloads, or missing renderer bindings.",
   "pinningGuidance": "Record ASHA git commit plus render-projection.v0 in downstream conformance artifacts.",
   "breakingChangeRequires": [

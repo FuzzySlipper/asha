@@ -248,6 +248,21 @@ downstream product is delivered.
 
 ## Generated contract compatibility log
 
+### `project-content.v1` — canonical non-scene authoring
+
+Task #5946 adds the generated `projectContent` module and extends scene,
+catalog, prefab, gameplay-binding, and diagnostic contracts used by canonical
+project authoring. `SceneDocument` schema/authoring format 4 adds typed marker
+nodes and prefab instantiation seeds. Prefab variants now require a stable
+`variantId`; gameplay triggers and configuration overrides target stable scene
+`instanceId` values rather than caller-created runtime ids.
+
+Consumers must regenerate/rebuild contracts and migrate authored scenes and
+prefab registries together. Provider configuration schemas are supplied as
+read-only `ProjectContentReferenceContext.configurationSchemas`; stored
+gameplay documents may not define their own schema. Unknown fields, unresolved
+named variants, and old runtime-id trigger targets fail closed.
+
 ### `render-material-descriptor.v2` — typed feedback parameters
 
 Surface: `@asha/contracts` render and asset DTOs. Change type: additive wire
@@ -548,6 +563,18 @@ Required evidence:
 Fail-closed expectation:
 - Consumers reject missing/unknown movement modes and do not preserve the former implicit behavior with local pose mutation.
 
+## Runtime session compatibility log
+
+### `runtime-session.v0` — workspace project-content authoring
+
+Task #5946 adds `decodeProjectContent`, `encodeProjectContent`, and
+`applyProjectContentAuthoring` to `WorkspaceAuthoringFacade`. The methods are
+available only while the distinct authoring workspace is open. Mutations carry
+workspace id, generation, working revision, and content-set hash guards; an
+accepted Rust result becomes the only candidate eligible for trusted-host
+stored confirmation. This is additive to runtime-session v0, but consumers
+must rebuild against the matching generated contract and bridge versions.
+
 ## Runtime bridge compatibility log
 
 ### `runtime-bridge.v0` — initial local-path facade boundary
@@ -572,6 +599,13 @@ Breaking facade/operation changes require a migration note using the template be
 
 Additive notes under `runtime-bridge.v0`:
 
+- #5946 adds stable generated `decode_project_content`,
+  `encode_project_content`, and `apply_project_content_authoring` operations to
+  the workspace-authoring capability. Native input/output validation is fully
+  generated, Rust owns strict decode/reference validation/canonical encoding,
+  and successful edits bind the save candidate to the authoring workspace
+  revision. Native addon, contracts, runtime-session, and runtime-bridge
+  packages must be rebuilt together.
 - #5755 adds generated native wire descriptors and runtime validation without changing facade method signatures. Every native input is checked before invocation and every output before consumer delivery; Rust JSON entrypoints also enforce operation byte limits and exact decoded shapes. Native failures now carry a bounded structured envelope, while `RuntimeBridgeError.kind` and its existing message prefix remain compatible and gain operation/path/retryability/details/provenance fields. Consumers should continue switching on `kind`, may display the new diagnostic context, and must not parse prose or import the raw addon. Native addon and bridge packages must be rebuilt together.
 - #5604 adds generated first-person/orbit/top-down controller state, revision-guarded mode/navigation receipts, and stable `apply_camera_mode_command`, `apply_camera_navigation_input`, and `read_camera_controller_state` operations through native and RuntimeSession. Rust owns accepted pivot, distance/height, angles, terrain clearance, pose, revision, and hashes. `BrowserInputHost` adds normalized wheel delivery plus a consuming `cameraNavigation` context, and `ResolvedCameraNavigationConsumer` sequences it with camera authority so FPS and pivot controllers cannot run together. `@asha/renderer-host` may sample receipt endpoints for disposable linear or smooth-step display, but interpolation never becomes authority or replay truth. The compatibility marker remains `runtime-bridge.v0` because the operations and named actions are additive; native addon and bridge packages must be rebuilt together.
 - #5613 adds generated Session time-control contracts plus stable `apply_time_control_command` / `read_time_control_state` bridge operations and matching `RuntimeSessionFacade` methods. Rust owns pause, resume, bounded wall-clock cadence multipliers, and exact paused steps. HUD pause/resume intents and resolved named-input actions map to the same generated commands; headless callers use the same facade. Paused simulation leaves projection/inspection reads live, exact stepping remains paused, and speed never scales deterministic tick delta or replay state. The native `stepSimulation` result now carries its authoritative returned tick as well as diff count so paused transports cannot falsely report advancement. The compatibility marker remains `runtime-bridge.v0` because the public additions are additive; native addon and bridge packages must be rebuilt together.

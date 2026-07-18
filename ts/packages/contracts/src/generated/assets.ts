@@ -79,6 +79,54 @@ export interface Catalog {
   readonly entries: readonly CatalogEntry[];
 }
 
+// Exact version requirement retained by the durable catalog codec.
+export type StoredAssetVersionRequirement =
+  | { readonly req: 'any' }
+  | { readonly req: 'exact'; readonly value: number }
+  | { readonly req: 'atLeast'; readonly value: number };
+
+export interface StoredAssetReference {
+  readonly id: string;
+  readonly version: StoredAssetVersionRequirement;
+  readonly hash: string | null;
+}
+
+export interface StoredMaterialAuthority {
+  readonly solid: boolean;
+  readonly collidable: boolean;
+  readonly occludes: boolean;
+  readonly structuralClass: string;
+}
+
+export interface StoredMaterialStyle {
+  readonly color: Rgba;
+  readonly texture: StoredAssetReference | null;
+  readonly roughness: number;
+  readonly textureTint: Rgba;
+  readonly emissionColor: Rgba;
+  readonly emissive: number;
+  readonly uvStrategy: string;
+}
+
+export interface StoredMaterialDefinition {
+  readonly authority: StoredMaterialAuthority;
+  readonly style: StoredMaterialStyle;
+}
+
+export interface StoredCatalogEntry {
+  readonly id: string;
+  readonly version: number;
+  readonly hash: string | null;
+  readonly sourcePath: string | null;
+  readonly label: string | null;
+  readonly dependencies: readonly StoredAssetReference[];
+  readonly material: StoredMaterialDefinition | null;
+}
+
+export interface StoredAssetCatalog {
+  readonly entries: readonly StoredCatalogEntry[];
+}
+
 // One classified catalog-validation failure on the public border.
 export interface CatalogValidationError {
   readonly code: CatalogValidationCode;

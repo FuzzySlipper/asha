@@ -250,7 +250,6 @@ export const CUSTOM_WIRE_SCHEMAS: Readonly<Record<string, CustomWireSchema>> = {
       schemaVersion: NON_NEGATIVE_INTEGER,
       entityDefinitionIds: STRING_ARRAY,
       prefabIds: array(NON_NEGATIVE_INTEGER),
-      spawnMarkerIds: STRING_ARRAY,
       generatorPresets: array(object({ providerId: STRING, presetId: STRING })),
       catalogIds: STRING_ARRAY,
     }),

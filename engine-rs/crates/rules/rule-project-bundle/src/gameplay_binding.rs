@@ -52,6 +52,7 @@ const GAMEPLAY_MODULE_SESSION_SNAPSHOT_VERSION: u32 = 2;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GameplayBindingEntityTargets {
     definitions: BTreeMap<String, BTreeSet<EntityId>>,
+    prefab_instances: BTreeMap<String, PrefabInstanceId>,
 }
 
 impl GameplayBindingEntityTargets {
@@ -65,6 +66,22 @@ impl GameplayBindingEntityTargets {
             .or_default()
             .insert(entity);
         self
+    }
+
+    /// Bind one stable scene instance identity to the numeric runtime prefab
+    /// instance allocated during bootstrap.
+    pub fn bind_prefab_instance(
+        &mut self,
+        scene_instance_id: impl Into<String>,
+        instance: PrefabInstanceId,
+    ) -> &mut Self {
+        self.prefab_instances
+            .insert(scene_instance_id.into(), instance);
+        self
+    }
+
+    fn prefab_instance(&self, scene_instance_id: &str) -> Option<PrefabInstanceId> {
+        self.prefab_instances.get(scene_instance_id).copied()
     }
 
     fn entities(&self, stable_id: &str) -> impl Iterator<Item = EntityId> + '_ {
@@ -562,6 +579,7 @@ fn resolve_bindings(
         &indexed_bindings,
         &configurations,
         bundle,
+        entity_targets,
         &mut diagnostics,
     );
     if !diagnostics.is_empty() {
@@ -841,6 +859,7 @@ fn validate_overrides<'a>(
     indexed_bindings: &BTreeMap<String, &'a GameplayModuleBinding>,
     configurations: &BTreeMap<String, &'a GameplayModuleConfiguration>,
     bundle: &ProjectBundleLoadResult,
+    entity_targets: &GameplayBindingEntityTargets,
     diagnostics: &mut Vec<GameplayModuleBindingDiagnostic>,
 ) -> OverrideIndex<'a> {
     let mut indexed = BTreeMap::new();
@@ -854,11 +873,19 @@ fn validate_overrides<'a>(
             ));
             continue;
         };
-        let Some(instance) = bundle.prefab_instances.instance(layer.prefab_instance) else {
+        let Some(prefab_instance) = entity_targets.prefab_instance(&layer.scene_instance_id) else {
             diagnostics.push(diag(
                 GameplayModuleBindingDiagnosticCode::InvalidOverride,
-                format!("{path}.prefabInstance"),
-                "override references an unknown prefab instance",
+                format!("{path}.sceneInstanceId"),
+                "override references an unknown scene prefab instance",
+            ));
+            continue;
+        };
+        let Some(instance) = bundle.prefab_instances.instance(prefab_instance) else {
+            diagnostics.push(diag(
+                GameplayModuleBindingDiagnosticCode::InvalidOverride,
+                format!("{path}.sceneInstanceId"),
+                "scene instance did not resolve to a live prefab instance",
             ));
             continue;
         };
@@ -885,7 +912,7 @@ fn validate_overrides<'a>(
             }
         }
         if indexed
-            .insert((layer.binding_id.clone(), layer.prefab_instance), layer)
+            .insert((layer.binding_id.clone(), prefab_instance), layer)
             .is_some()
         {
             diagnostics.push(diag(

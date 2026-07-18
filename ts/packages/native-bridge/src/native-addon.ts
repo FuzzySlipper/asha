@@ -309,6 +309,9 @@ interface NativeAddonBindings {
   decodeSceneDocument(handle: number, requestJson: string): string;
   encodeSceneDocument(handle: number, requestJson: string): string;
   applySceneDocumentAuthoring(handle: number, requestJson: string): string;
+  decodeProjectContent(handle: number, requestJson: string): string;
+  encodeProjectContent(handle: number, requestJson: string): string;
+  applyProjectContentAuthoring(handle: number, requestJson: string): string;
   readSceneObjectSnapshot(handle: number): string;
   applySceneObjectCommand(handle: number, requestJson: string): string;
   applyGeneratedTunnelToRuntimeWorld(

@@ -26,7 +26,23 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
         variant_coverage_key("scene", "SceneLight", "directional"),
         variant_coverage_key("scene", "SceneLight", "point"),
         variant_coverage_key("scene", "SceneLight", "spot"),
+        interface_coverage_key("scene", "SceneMarker"),
+        variant_coverage_key("scene", "SceneNodeKind", "marker"),
     ]);
+}
+
+#[test]
+fn stored_scene_marker_samples_match_generated_ir_shape() {
+    let scene = module("scene");
+    let marker = json!({ "markerId": "spawn.player" });
+    compare_object_to_interface(&scene, "SceneMarker", &marker).unwrap();
+    compare_object_to_variant(
+        &scene,
+        "SceneNodeKind",
+        "marker",
+        &json!({ "kind": "marker", "markerId": "spawn.player" }),
+    )
+    .unwrap();
 }
 
 /// The scene vocabulary and durable document shapes must come through the

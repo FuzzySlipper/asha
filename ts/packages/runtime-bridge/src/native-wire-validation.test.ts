@@ -71,6 +71,27 @@ void test('generated native input contracts reject scalar and tagged-union drift
     'invalid_input',
     'unknown_field',
   );
+  assertWireRejection(
+    () => validateOperationInput('decode_project_content', {
+      sources: [],
+      references: {
+        scenes: [],
+        configurationSchemas: [{
+          schemaId: 'fixture.schema.v1',
+          providerId: 'provider.fixture',
+          contract: { namespace: 'fixture', name: 'configuration', version: 1, schemaHash: 'fnv1a64:fixture' },
+          codecId: 'asha.project-configuration.canonical-json.v1',
+          fields: [{
+            fieldId: 'amount', label: 'Amount', valueKind: 'integer', required: true,
+            referenceKind: null, integerMin: 0, integerMax: 10, numberMin: null, numberMax: null,
+            browserValidated: true,
+          }],
+        }],
+      },
+    }),
+    'invalid_input',
+    'unknown_field',
+  );
 });
 
 void test('public native facade carries one bounded stored-scene command and consumes Rust output', () => {
@@ -177,6 +198,21 @@ void test('operation limits and tampered native responses reject with typed evid
   );
   assertWireRejection(
     () => parseOperationOutput('step_simulation', '{"tick":1,"diffCount":4,"extra":true}'),
+    'internal',
+    'unknown_field',
+  );
+  assertWireRejection(
+    () => parseOperationOutput('decode_project_content', JSON.stringify({
+      accepted: true,
+      documents: [],
+      canonicalFiles: [{
+        documentId: 'fixture.json', kind: 'entityDefinition', canonicalJson: '{}',
+        contentHash: 'fnv1a64:fixture', browserAccepted: true,
+      }],
+      setHash: 'fnv1a64:fixture',
+      fieldMetadata: [],
+      diagnostics: [],
+    })),
     'internal',
     'unknown_field',
   );

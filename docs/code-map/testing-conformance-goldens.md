@@ -26,8 +26,8 @@ smoke outputs, and CI gates.
 - [harness/goldens](../../harness/goldens)
 - [harness/public-surface](../../harness/public-surface)
 - [harness/depgraph](../../harness/depgraph)
-- [replay-model.md](../replay-model.md)
-- [determinism.md](../determinism.md)
+- [replay-model.md](../topics/authority/replay-model.md)
+- [determinism.md](../topics/authority/determinism.md)
 
 ## Public Downstream Surfaces
 

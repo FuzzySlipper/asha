@@ -121,7 +121,7 @@
         "WeaponEffectHookRequest",
         "GameExtensionProposal"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-game-rule-extension-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-game-rule-extension-compatibility-log"
     },
     {
       "crate": "asha-gameplay-module-conformance",
@@ -155,7 +155,7 @@
         "GameplayModuleConformanceReport",
         "run_gameplay_module_conformance"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-gameplay-module-conformance-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-gameplay-module-conformance-compatibility-log"
     },
     {
       "crate": "asha-gameplay-module-sdk",
@@ -202,7 +202,7 @@
         "GameplayModuleActions",
         "GameplayStaticModuleProvider"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-gameplay-module-sdk-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-gameplay-module-sdk-compatibility-log"
     },
     {
       "crate": "asha-gameplay-runtime-host",
@@ -262,7 +262,7 @@
         "GameplayRuntimeSchedulerReadout",
         "GameplaySchedulerCommand"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-gameplay-runtime-host-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-gameplay-runtime-host-compatibility-log"
     },
     {
       "crate": "asha-runtime-session-composition",
@@ -309,7 +309,7 @@
         "ComposedRuntimeSessionReadout",
         "RuntimeBridge"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-runtime-session-composition-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-runtime-session-composition-compatibility-log"
     },
     {
       "crate": "asha-native-runtime-provider",
@@ -338,7 +338,7 @@
         "install_native_engine_bridge_factory",
         "native_provider_module_init"
       ],
-      "changelog": "docs/consumer-compatibility.md#rust-native-runtime-provider-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#rust-native-runtime-provider-compatibility-log"
     }
   ]
 }

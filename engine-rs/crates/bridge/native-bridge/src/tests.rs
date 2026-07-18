@@ -228,7 +228,7 @@ fn native_fps_scene_document_json() -> String {
 }
 
 fn native_fps_bootstrap_registry_json() -> String {
-    r#"{"schemaVersion":1,"entityDefinitionIds":["actor/custom-player","actor/custom-enemy"],"prefabIds":[],"spawnMarkerIds":[],"generatorPresets":[],"catalogIds":[]}"#
+    r#"{"schemaVersion":1,"entityDefinitionIds":["actor/custom-player","actor/custom-enemy"],"prefabIds":[],"generatorPresets":[],"catalogIds":[]}"#
         .to_string()
 }
 

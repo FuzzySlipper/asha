@@ -770,14 +770,14 @@ pub struct FpsBootstrapGeneratorPresetIdentity {
 /// The scene contains references; this registry contains the independently
 /// validated identities those references are allowed to resolve to. Keeping
 /// both in the public request prevents a scene from authorizing its own
-/// provider, catalog, prefab, or spawn-marker references.
+/// provider, catalog, or prefab references. Marker identity is self-contained
+/// scene content and is derived from typed marker nodes during validation.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FpsBootstrapResolutionRegistry {
     pub schema_version: u32,
     pub entity_definition_ids: Vec<String>,
     pub prefab_ids: Vec<u64>,
-    pub spawn_marker_ids: Vec<String>,
     pub generator_presets: Vec<FpsBootstrapGeneratorPresetIdentity>,
     pub catalog_ids: Vec<String>,
 }

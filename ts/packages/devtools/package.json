@@ -18,7 +18,7 @@
   "compatibility": {
     "surface": "@asha/devtools",
     "metadataFile": "compatibility.json",
-    "changelog": "docs/consumer-compatibility.md#devtools-protocol-compatibility-log"
+    "changelog": "docs/topics/consumer/consumer-compatibility.md#devtools-protocol-compatibility-log"
   },
   "dependencies": {
     "@asha/contracts": "workspace:*",

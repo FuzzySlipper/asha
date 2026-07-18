@@ -1,6 +1,11 @@
 import type {
   CommandBatch,
   CommandResult,
+  ProjectContentAuthoringRequest,
+  ProjectContentAuthoringResult,
+  ProjectContentCodecResult,
+  ProjectContentDecodeRequest,
+  ProjectContentEncodeRequest,
   RenderFrameDiff,
   VoxelInstancePickRequest,
   VoxelInstancePickResult,
@@ -164,6 +169,11 @@ export interface WorkspaceAuthoringFacade extends WorkspaceAuthoringVoxelOperati
   ): VoxelProjectionBindingReceipt;
   pickVoxelInstance(input: WorkspaceVoxelInstancePickInput): VoxelInstancePickResult;
   submitCommands(batch: CommandBatch): CommandResult;
+  decodeProjectContent(input: ProjectContentDecodeRequest): ProjectContentCodecResult;
+  encodeProjectContent(input: ProjectContentEncodeRequest): ProjectContentCodecResult;
+  applyProjectContentAuthoring(
+    input: ProjectContentAuthoringRequest,
+  ): ProjectContentAuthoringResult;
   confirmStored(
     input: WorkspaceAuthoringStoredConfirmationInput,
   ): WorkspaceAuthoringStoredConfirmationReceipt;

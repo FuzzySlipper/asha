@@ -183,11 +183,11 @@ export interface ProjectBundleManifest {
 }
 
 // Durable schema for semantic trigger roles authored with a ProjectBundle.
-export const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION = 1;
+export const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION = 2;
 
 export interface GameplayTriggerDefinition {
   readonly schemaVersion: number;
-  readonly entity: number;
+  readonly sceneInstanceId: string;
   readonly scope: string;
   readonly tags: readonly string[];
 }
@@ -239,6 +239,7 @@ export interface PrefabOverride {
 }
 
 export interface PrefabVariantDelta {
+  readonly variantId: string;
   readonly base: PrefabId;
   readonly removedRoles: readonly string[];
   readonly overrides: readonly PrefabOverride[];

@@ -6,9 +6,9 @@
 #![forbid(unsafe_code)]
 
 pub use gameplay_runtime_host::{
-    BundleArtifacts, EntityId, GameplayBindingEntityTargets, GameplayDecisionMoment,
-    GameplayDecisionReceipt, GameplayDecisionStatus, GameplayOperationWorkspace,
-    GameplayRuntimeDecisionOwner, GameplayRuntimeDecisionOwnerOutput,
+    BootstrapResolutionContext, BundleArtifacts, EntityId, GameplayBindingEntityTargets,
+    GameplayDecisionMoment, GameplayDecisionReceipt, GameplayDecisionStatus,
+    GameplayOperationWorkspace, GameplayRuntimeDecisionOwner, GameplayRuntimeDecisionOwnerOutput,
     GameplayRuntimeDeclaredReadPlan, GameplayRuntimePrefabBootstrap, GameplayRuntimePrefabCatalog,
     GameplayRuntimePrefabOverride, GameplayRuntimePrefabPlacement,
     GameplayRuntimePrefabPlacementOrigin, GameplayRuntimePrefabTransform,

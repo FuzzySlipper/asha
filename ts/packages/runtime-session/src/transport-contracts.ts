@@ -114,7 +114,6 @@ export interface FpsBootstrapResolutionRegistry {
   readonly schemaVersion: 1;
   readonly entityDefinitionIds: readonly string[];
   readonly prefabIds: readonly number[];
-  readonly spawnMarkerIds: readonly string[];
   readonly generatorPresets: readonly FpsBootstrapGeneratorPresetIdentity[];
   readonly catalogIds: readonly string[];
 }

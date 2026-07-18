@@ -554,6 +554,9 @@ function isSceneNodeKind(value: unknown): boolean {
   if (value.kind === 'light') {
     return hasExactKeys(value, ['kind', 'sceneLight']) && isSceneLight(value['sceneLight']);
   }
+  if (value.kind === 'marker') {
+    return hasExactKeys(value, ['kind', 'markerId']) && isString(value['markerId']);
+  }
   if (value.kind === 'entityInstance') {
     return hasExactKeys(value, ['kind', 'instance'])
       && isPlainObject(value.instance)

@@ -39,6 +39,11 @@ import type {
   SceneDocumentAuthoringResult,
   SceneDocumentDecodeRequest,
   SceneDocumentEncodeRequest,
+  ProjectContentAuthoringRequest,
+  ProjectContentAuthoringResult,
+  ProjectContentCodecResult,
+  ProjectContentDecodeRequest,
+  ProjectContentEncodeRequest,
   ScreenPointToPickRayRequest,
   VoxelCoord,
   VoxelConversionApplyRequest,
@@ -1315,6 +1320,32 @@ export class MockRuntimeBridge implements RuntimeBridge {
     return this.#unsupportedAfterInit(
       'applySceneDocumentAuthoring',
       'Stored scene authoring transactions require Rust authority',
+    );
+  }
+
+  decodeProjectContent(_request: ProjectContentDecodeRequest): ProjectContentCodecResult {
+    void _request;
+    return this.#unsupportedAfterInit(
+      'decodeProjectContent',
+      'Canonical project-content decoding requires Rust authority',
+    );
+  }
+
+  encodeProjectContent(_request: ProjectContentEncodeRequest): ProjectContentCodecResult {
+    void _request;
+    return this.#unsupportedAfterInit(
+      'encodeProjectContent',
+      'Canonical project-content encoding requires Rust authority',
+    );
+  }
+
+  applyProjectContentAuthoring(
+    _request: ProjectContentAuthoringRequest,
+  ): ProjectContentAuthoringResult {
+    void _request;
+    return this.#unsupportedAfterInit(
+      'applyProjectContentAuthoring',
+      'Project-content authoring transactions require Rust authority',
     );
   }
 

@@ -15,7 +15,7 @@
     "compatibility": {
       "version": "render-projection.v0",
       "metadataFile": "compatibility.json",
-      "changelog": "docs/consumer-compatibility.md#render-projection-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#render-projection-compatibility-log"
     }
   },
   "scripts": {

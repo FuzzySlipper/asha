@@ -39,6 +39,8 @@ pub struct GameplayRuntimePrefabBootstrap {
 #[serde(rename_all = "camelCase")]
 pub struct GameplayRuntimePrefabPlacement {
     pub command_id: String,
+    /// Stable scene-authored identity used by configuration overrides.
+    pub scene_instance_id: String,
     pub origin: GameplayRuntimePrefabPlacementOrigin,
     pub instance: u64,
     pub prefab: u64,
@@ -151,7 +153,13 @@ pub struct GameplayRuntimePrefabRoleReadout {
 pub(crate) fn apply_prefab_bootstrap(
     bundle: &mut ProjectBundleLoadResult,
     bootstrap: GameplayRuntimePrefabBootstrap,
-) -> Result<svc_serialization::ValidatedPrefabRegistry, GameplayRuntimeHostError> {
+) -> Result<
+    (
+        svc_serialization::ValidatedPrefabRegistry,
+        Vec<(String, PrefabInstanceId)>,
+    ),
+    GameplayRuntimeHostError,
+> {
     let validation_context = PrefabRegistryValidationContext {
         asset_ids: bootstrap
             .catalog
@@ -168,7 +176,17 @@ pub(crate) fn apply_prefab_bootstrap(
         .map_err(|error| GameplayRuntimeHostError::Prefab(error.to_string()))?;
     let catalog = PrefabInstantiationCatalog::from(&validation_context);
     let entities = bundle.runtime_entities.get_or_insert_with(EntityStore::new);
+    let mut scene_instances = Vec::with_capacity(bootstrap.placements.len());
+    let mut stable_ids = BTreeSet::new();
     for placement in bootstrap.placements {
+        if placement.scene_instance_id.trim().is_empty()
+            || !stable_ids.insert(placement.scene_instance_id.clone())
+        {
+            return Err(GameplayRuntimeHostError::Prefab(
+                "prefab placements require non-empty unique sceneInstanceId values".to_owned(),
+            ));
+        }
+        let runtime_instance = PrefabInstanceId::new(placement.instance);
         bundle
             .prefab_instances
             .instantiate(
@@ -179,7 +197,7 @@ pub(crate) fn apply_prefab_bootstrap(
                     command_id: placement.command_id,
                     origin: placement.origin.into(),
                     record: PrefabInstanceRecord {
-                        instance: PrefabInstanceId::new(placement.instance),
+                        instance: runtime_instance,
                         prefab: PrefabId::new(placement.prefab),
                         seed: placement.seed,
                         transform: placement.transform.into(),
@@ -188,8 +206,9 @@ pub(crate) fn apply_prefab_bootstrap(
                 },
             )
             .map_err(|error| GameplayRuntimeHostError::Prefab(error.to_string()))?;
+        scene_instances.push((placement.scene_instance_id, runtime_instance));
     }
-    Ok(registry)
+    Ok((registry, scene_instances))
 }
 
 pub(crate) fn prefab_readout(bundle: &ProjectBundleLoadResult) -> GameplayRuntimePrefabReadout {
@@ -329,7 +348,10 @@ mod tests {
         GameplayTriggerDefinition, LoadPlan, LoadStep, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
     };
     use core_ids::{EntityId, PrefabId, PrefabInstanceId, RuntimeSessionId, SceneId, SceneNodeId};
-    use core_scene::{encode, SceneMetadata, SceneNode, SceneNodeKind, SceneTree};
+    use core_scene::{
+        encode, SceneEntityInstance, SceneEntityReference, SceneMetadata, SceneNode, SceneNodeKind,
+        SceneTree,
+    };
     use gameplay_module_sdk::*;
     use rule_gameplay_fabric::gameplay_payload_hash;
 
@@ -488,15 +510,21 @@ mod tests {
     fn prefab_project_input() -> GameplayRuntimeProjectInput {
         let scene = SceneTree {
             id: SceneId::new(44),
-            schema_version: 1,
+            schema_version: 4,
             metadata: SceneMetadata {
                 name: Some("public-prefab-host".to_owned()),
-                authoring_format_version: 1,
+                authoring_format_version: 4,
             },
             dependencies: Vec::new(),
             roots: vec![SceneNode::leaf(
-                SceneNodeId::new(1),
-                SceneNodeKind::EmptyGroup,
+                SceneNodeId::new(900),
+                SceneNodeKind::EntityInstance(SceneEntityInstance {
+                    instance_id: "fixture.console.trigger".to_owned(),
+                    reference: SceneEntityReference::EntityDefinition {
+                        stable_id: "fixture/console-trigger".to_owned(),
+                    },
+                    spawn_marker_id: None,
+                }),
             )],
         };
         let mut composition = GameplayStaticCompositionBuilder::new();
@@ -526,6 +554,10 @@ mod tests {
             artifacts: BundleArtifacts::new()
                 .with_artifact("assets/lock.json", "{\"entries\":[]}")
                 .with_artifact("scene/scene.json", encode(&scene.to_flat())),
+            bootstrap_resolution: core_scene::BootstrapResolutionContext {
+                entity_definition_ids: ["fixture/console-trigger".to_owned()].into_iter().collect(),
+                ..Default::default()
+            },
             composition: composition.build().unwrap(),
             composition_requirement: None,
             bindings: GameplayModuleBindingRegistryBuilder::new().build(),
@@ -590,6 +622,7 @@ mod tests {
             placements: vec![
                 GameplayRuntimePrefabPlacement {
                     command_id: "place-console-authored".to_owned(),
+                    scene_instance_id: "fixture.console.blue".to_owned(),
                     origin: GameplayRuntimePrefabPlacementOrigin::Authored,
                     instance: 700,
                     prefab: 70,
@@ -602,6 +635,7 @@ mod tests {
                 },
                 GameplayRuntimePrefabPlacement {
                     command_id: "place-console-player".to_owned(),
+                    scene_instance_id: "fixture.console.red".to_owned(),
                     origin: GameplayRuntimePrefabPlacementOrigin::Player,
                     instance: 701,
                     prefab: 70,
@@ -628,11 +662,11 @@ mod tests {
             entity: EntityId::new(900),
             translation: [0.0, 0.0, 0.0],
             half_extents: [0.5, 0.5, 0.5],
-            static_collider: true,
+            static_collider: false,
         }];
         input.triggers = vec![GameplayTriggerDefinition {
             schema_version: GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
-            entity: 900,
+            scene_instance_id: "fixture.console.trigger".to_owned(),
             scope: "zone.console".to_owned(),
             tags: vec!["console".to_owned()],
         }];

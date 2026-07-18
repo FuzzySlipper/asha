@@ -136,6 +136,8 @@ mod tests {
     use crate::source as model;
     use serde_json::{json, Value};
     use std::collections::{BTreeMap, BTreeSet};
+    #[path = "assets_tests.rs"]
+    mod assets_tests;
     #[path = "camera_controller_tests.rs"]
     mod camera_controller_tests;
     #[path = "entity_authoring_activation_tests.rs"]
@@ -150,6 +152,8 @@ mod tests {
     mod presentation_tests;
     #[path = "project_bundle_tests.rs"]
     mod project_bundle_tests;
+    #[path = "project_content_tests.rs"]
+    mod project_content_tests;
     #[path = "render_tests.rs"]
     mod render_tests;
     #[path = "scene_tests.rs"]
@@ -191,6 +195,7 @@ mod tests {
                 format!("{OUTPUT_DIR}/gameExtension.ts"),
                 format!("{OUTPUT_DIR}/scene.ts"),
                 format!("{OUTPUT_DIR}/projectBundle.ts"),
+                format!("{OUTPUT_DIR}/projectContent.ts"),
                 format!("{OUTPUT_DIR}/assets.ts"),
                 format!("{OUTPUT_DIR}/diagnostics.ts"),
                 format!("{OUTPUT_DIR}/policyView.ts"),
@@ -486,6 +491,8 @@ mod tests {
         entity_authoring_activation_tests::extend_round_trip_coverage(&mut coverage);
         presentation_tests::extend_round_trip_coverage(&mut coverage);
         project_bundle_tests::extend_round_trip_coverage(&mut coverage);
+        project_content_tests::extend_round_trip_coverage(&mut coverage);
+        assets_tests::extend_round_trip_coverage(&mut coverage);
         telemetry_tests::extend_round_trip_coverage(&mut coverage);
         input_tests::extend_round_trip_coverage(&mut coverage);
         camera_controller_tests::extend_round_trip_coverage(&mut coverage);

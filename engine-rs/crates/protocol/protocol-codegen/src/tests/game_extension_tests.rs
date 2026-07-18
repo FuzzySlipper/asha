@@ -114,7 +114,7 @@ fn game_extension_family_emits_vocab_and_shapes() {
 
 #[test]
 fn gameplay_module_binding_serialization_matches_ir_shape() {
-    use core_ids::{PrefabId, PrefabInstanceId};
+    use core_ids::PrefabId;
     use protocol_diagnostics::DiagnosticSeverity;
     use protocol_game_extension::*;
     use protocol_project_bundle::PrefabPartReference;
@@ -182,7 +182,7 @@ fn gameplay_module_binding_serialization_matches_ir_shape() {
     };
     let override_layer = GameplayModuleBindingOverride {
         binding_id: binding.binding_id.clone(),
-        prefab_instance: PrefabInstanceId::new(8),
+        scene_instance_id: "fixture.prefab.instance".to_owned(),
         configuration_id: None,
         enabled: Some(false),
     };

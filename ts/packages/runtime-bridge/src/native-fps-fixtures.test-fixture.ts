@@ -48,7 +48,6 @@ export function fpsLoadRequest(): FpsRuntimeSessionLoadRequest {
       schemaVersion: 1,
       entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
       prefabIds: [],
-      spawnMarkerIds: [],
       generatorPresets: [],
       catalogIds: [],
     },

@@ -42,6 +42,7 @@ PROTOCOL_WIRE_MODULES = {
     "protocol_input": "input",
     "protocol_presentation": "presentation",
     "protocol_project_bundle": "projectBundle",
+    "protocol_project_content": "projectContent",
     "protocol_render": "render",
     "protocol_scene": "scene",
     "protocol_time_control": "timeControl",
@@ -61,6 +62,11 @@ CONTRACT_WIRE_MODULES = {
     "WorkspaceAuthoringStoredConfirmationReceipt": "projectBundle",
     "WorkspaceAuthoringCloseRequest": "projectBundle",
     "WorkspaceAuthoringCloseReceipt": "projectBundle",
+    "ProjectContentDecodeRequest": "projectContent",
+    "ProjectContentEncodeRequest": "projectContent",
+    "ProjectContentAuthoringRequest": "projectContent",
+    "ProjectContentCodecResult": "projectContent",
+    "ProjectContentAuthoringResult": "projectContent",
 }
 
 

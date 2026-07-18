@@ -151,6 +151,64 @@ pub struct Catalog {
     pub entries: Vec<CatalogEntry>,
 }
 
+// ── Durable stored catalog authoring DTOs ──────────────────────────────────
+
+/// Exact version requirement retained by the durable catalog codec.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoredAssetVersionRequirement {
+    Any,
+    Exact { value: u32 },
+    AtLeast { value: u32 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredAssetReference {
+    pub id: String,
+    pub version: StoredAssetVersionRequirement,
+    pub hash: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredMaterialAuthority {
+    pub solid: bool,
+    pub collidable: bool,
+    pub occludes: bool,
+    pub structural_class: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredMaterialStyle {
+    pub color: Rgba,
+    pub texture: Option<StoredAssetReference>,
+    pub roughness: f32,
+    pub texture_tint: Rgba,
+    pub emission_color: Rgba,
+    pub emissive: f32,
+    pub uv_strategy: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredMaterialDefinition {
+    pub authority: StoredMaterialAuthority,
+    pub style: StoredMaterialStyle,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredCatalogEntry {
+    pub id: String,
+    pub version: u32,
+    pub hash: Option<String>,
+    pub source_path: Option<String>,
+    pub label: Option<String>,
+    pub dependencies: Vec<StoredAssetReference>,
+    pub material: Option<StoredMaterialDefinition>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct StoredAssetCatalog {
+    pub entries: Vec<StoredCatalogEntry>,
+}
+
 /// One classified catalog-validation failure on the public border.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogValidationError {

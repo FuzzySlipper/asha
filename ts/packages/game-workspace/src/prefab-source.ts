@@ -585,6 +585,7 @@ function decodeSource(value: unknown, path: string): PrefabPartSource {
 function decodeVariant(value: unknown, path: string): PrefabVariantDelta {
   const record = sourceRecord(value, path);
   return {
+    variantId: sourceString(field(record, 'variantId', path), `${path}.variantId`),
     base: prefabId(sourceId(field(record, 'base', path), `${path}.base`)),
     removedRoles: sourceArray(field(record, 'removedRoles', path), `${path}.removedRoles`)
       .map((role, index) => sourceString(role, `${path}.removedRoles[${index}]`)),

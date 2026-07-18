@@ -1092,6 +1092,43 @@ impl RuntimeBridge for EngineBridge {
         self.apply_scene_document_authoring_authority(request)
     }
 
+    fn decode_project_content(
+        &self,
+        request: ProjectContentDecodeRequestDto,
+    ) -> BridgeResult<ProjectContentCodecResultDto> {
+        self.require_runtime_or_workspace_authoring("decode_project_content")?;
+        Ok(svc_project_content::decode_project_content(request))
+    }
+
+    fn encode_project_content(
+        &self,
+        request: ProjectContentEncodeRequestDto,
+    ) -> BridgeResult<ProjectContentCodecResultDto> {
+        self.require_runtime_or_workspace_authoring("encode_project_content")?;
+        Ok(svc_project_content::encode_project_content(request))
+    }
+
+    fn apply_project_content_authoring(
+        &mut self,
+        request: ProjectContentAuthoringRequestDto,
+    ) -> BridgeResult<ProjectContentAuthoringResultDto> {
+        self.require_runtime_or_workspace_authoring("apply_project_content_authoring")?;
+        self.require_workspace_authoring_revision(
+            "apply_project_content_authoring",
+            &request.expected_workspace_id,
+            request.expected_generation,
+            request.expected_working_revision,
+        )?;
+        let result = svc_project_content::apply_project_content_authoring(request);
+        if result.accepted {
+            self.record_workspace_authoring_mutation();
+            if let Some(set_hash) = result.set_hash.clone() {
+                self.remember_workspace_authoring_save_candidate(set_hash);
+            }
+        }
+        Ok(result)
+    }
+
     fn read_scene_object_snapshot(&self) -> BridgeResult<SceneObjectSnapshotDto> {
         self.read_scene_object_snapshot_authority()
     }

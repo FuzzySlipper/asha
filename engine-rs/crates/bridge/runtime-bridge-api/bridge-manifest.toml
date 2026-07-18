@@ -121,7 +121,7 @@ initialization = "createsEngine"
 project_bundle = "ownsLoadUnload"
 snapshot_hash = "workspaceAuthoringAuthority"
 resource_lifetime = "session"
-operations = ["open_workspace_authoring", "read_workspace_authoring_state", "read_workspace_authoring_projection", "confirm_workspace_authoring_stored", "close_workspace_authoring"]
+operations = ["open_workspace_authoring", "read_workspace_authoring_state", "read_workspace_authoring_projection", "decode_project_content", "encode_project_content", "apply_project_content_authoring", "confirm_workspace_authoring_stored", "close_workspace_authoring"]
 
 [[capability]]
 id = "bundle_lifecycle"
@@ -203,6 +203,36 @@ errors = "RuntimeBridgeError"
 summary = "Close one bound workspace-authoring generation, rejecting unsaved work unless discard is explicit."
 facade_input = "contracts::WorkspaceAuthoringCloseRequest"
 facade_output = "contracts::WorkspaceAuthoringCloseReceipt"
+
+[[operation]]
+name = "decode_project_content"
+surface = "stable"
+input = "protocol_project_content::ProjectContentDecodeRequest"
+output = "protocol_project_content::ProjectContentCodecResult"
+errors = "RuntimeBridgeError"
+summary = "Strictly decode, cross-validate, and canonicalize a closed set of durable non-scene project content through Rust workspace authority."
+facade_input = "contracts::ProjectContentDecodeRequest"
+facade_output = "contracts::ProjectContentCodecResult"
+
+[[operation]]
+name = "encode_project_content"
+surface = "stable"
+input = "protocol_project_content::ProjectContentEncodeRequest"
+output = "protocol_project_content::ProjectContentCodecResult"
+errors = "RuntimeBridgeError"
+summary = "Validate and canonically encode typed project-content documents and their actual scene reference context through Rust workspace authority."
+facade_input = "contracts::ProjectContentEncodeRequest"
+facade_output = "contracts::ProjectContentCodecResult"
+
+[[operation]]
+name = "apply_project_content_authoring"
+surface = "stable"
+input = "protocol_project_content::ProjectContentAuthoringRequest"
+output = "protocol_project_content::ProjectContentAuthoringResult"
+errors = "RuntimeBridgeError"
+summary = "Apply one closed typed compare-and-swap project-content edit and return canonical trusted-host file candidates only after Rust acceptance."
+facade_input = "contracts::ProjectContentAuthoringRequest"
+facade_output = "contracts::ProjectContentAuthoringResult"
 
 [[operation]]
 name = "step_simulation"

@@ -497,6 +497,7 @@ impl ScenePresentationProjector {
             SceneNodeKind::Sprite(a) => a.id().as_str().to_string(),
             SceneNodeKind::EmptyGroup
             | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::Marker(_)
             | SceneNodeKind::EntityInstance(_)
             | SceneNodeKind::Bootstrap(_) => return None,
             SceneNodeKind::Light(_) => unreachable!("lights return above"),
@@ -555,6 +556,7 @@ impl ScenePresentationProjector {
             // ADR-0007 mesh-payload path, not this scene projection.
             SceneNodeKind::EmptyGroup
             | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::Marker(_)
             | SceneNodeKind::EntityInstance(_)
             | SceneNodeKind::Bootstrap(_) => None,
             SceneNodeKind::Light(_) => unreachable!("lights return above"),

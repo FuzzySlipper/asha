@@ -27,8 +27,8 @@ runtime CapabilityState, policy bindings, catalogs, and game-rule substrate.
 - [engine-rs/crates/services/svc-game-rules](../../engine-rs/crates/services/svc-game-rules)
 - [engine-rs/crates/rules/rule-game-modifier](../../engine-rs/crates/rules/rule-game-modifier)
 - [ts/packages/catalog-core](../../ts/packages/catalog-core)
-- [entity-definition-schema.md](../entity-definition-schema.md)
-- [game-rules-substrate-architecture.md](../game-rules-substrate-architecture.md)
+- [entity-definition-schema.md](../topics/authority/entity-definition-schema.md)
+- [combat-authority-substrate.md](../topics/authority/combat-authority-substrate.md)
 
 ## Public Downstream Surfaces
 
@@ -62,7 +62,7 @@ runtime CapabilityState, policy bindings, catalogs, and game-rule substrate.
 ## Follow-up Routing
 
 - ECRP vocabulary or owner-matrix changes: route through Den guidance and
-  [ecrp-capability-rule-ownership.md](../ecrp-capability-rule-ownership.md).
+  [ecrp-capability-rule-ownership.md](../topics/authority/ecrp-capability-rule-ownership.md).
 - Generic reusable rules: tag `game-rules`, `rust-state`, `rust-service`, or
   `rust-rule`.
 - Downstream-specific catalogs or actions: route to the game repo after upstream

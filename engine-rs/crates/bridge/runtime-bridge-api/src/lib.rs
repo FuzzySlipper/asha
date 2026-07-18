@@ -90,6 +90,7 @@ pub use protocol_presentation::{
     TelemetryOverlayDiagnosticCode, TelemetryOverlayHandle, TelemetryOverlayPatch,
     TelemetryOverlayProjectionOp, TelemetryOverlayReadout, RUNTIME_PROJECTION_SCHEMA_VERSION,
 };
+pub use protocol_project_content::*;
 pub(crate) use protocol_render::{
     MeshAttribute, MeshAttributeKind, MeshAttributeName, MeshBoundsDescriptor, MeshBufferLayout,
     MeshCollisionPolicy, MeshGroupDescriptor, MeshIndexWidth, MeshMaterialSlot,

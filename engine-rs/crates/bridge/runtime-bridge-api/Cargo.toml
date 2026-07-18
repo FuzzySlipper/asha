@@ -25,6 +25,7 @@ core-catalog = { path = "../../state/core-catalog" }
 core-scene = { path = "../../state/core-scene" }
 protocol-scene = { path = "../../protocol/protocol-scene" }
 protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
+protocol-project-content = { path = "../../protocol/protocol-project-content" }
 protocol-view = { path = "../../protocol/protocol-view" }
 protocol-assets = { path = "../../protocol/protocol-assets" }
 protocol-render = { path = "../../protocol/protocol-render" }
@@ -49,6 +50,7 @@ svc-volume      = { path = "../../services/svc-volume" }
 svc-mesh        = { path = "../../services/svc-mesh" }
 svc-mesh-import = { path = "../../services/svc-mesh-import" }
 svc-serialization = { path = "../../services/svc-serialization" }
+svc-project-content = { path = "../../services/svc-project-content" }
 svc-pathfinding = { path = "../../services/svc-pathfinding" }
 svc-voxel-asset = { path = "../../services/svc-voxel-asset" }
 svc-voxel-annotation = { path = "../../services/svc-voxel-annotation" }

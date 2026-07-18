@@ -296,7 +296,6 @@ pub(super) fn fps_load_request(enemy_health: u32) -> FpsRuntimeSessionLoadReques
                 "actor/custom-enemy".to_string(),
             ],
             prefab_ids: Vec::new(),
-            spawn_marker_ids: Vec::new(),
             generator_presets: Vec::new(),
             catalog_ids: Vec::new(),
         },

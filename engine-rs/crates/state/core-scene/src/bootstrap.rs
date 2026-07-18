@@ -31,7 +31,7 @@ use crate::SceneTransform;
 /// The scene schema version this bootstrap understands. A real migration policy
 /// (scene-capability-01, "Decisions to make") is future work; for now an
 /// unsupported version fails closed rather than guessing.
-pub const SUPPORTED_SCHEMA_VERSION: u32 = 3;
+pub const SUPPORTED_SCHEMA_VERSION: u32 = 4;
 
 /// The default first entity id allocated to scene-sourced entities.
 pub const DEFAULT_BASE_ENTITY_ID: EntityId = EntityId::new(1);
@@ -67,7 +67,6 @@ pub enum BootstrapError {
 pub struct BootstrapResolutionContext {
     pub entity_definition_ids: BTreeSet<String>,
     pub prefab_ids: BTreeSet<u64>,
-    pub spawn_marker_ids: BTreeSet<String>,
     pub generator_presets: BTreeSet<(String, String)>,
     pub catalog_ids: BTreeSet<String>,
 }
@@ -253,7 +252,7 @@ impl BootstrapPlan {
             }
         }
 
-        let world_transforms = authored_world_transforms(&doc);
+        let world_transforms = authored_runtime_transforms(&doc);
         let resolved_instances = doc
             .nodes
             .iter()
@@ -308,7 +307,7 @@ impl BootstrapPlan {
     pub fn apply(&self) -> (SpatialSessionState, BootstrapRecord) {
         let mut world = SpatialSessionState::empty(self.runtime_session_id);
         // `allocations` is parallel to `doc.nodes` (both canonical order).
-        let world_transforms = authored_world_transforms(&self.doc);
+        let world_transforms = authored_runtime_transforms(&self.doc);
         for (alloc, rec) in self.allocations.iter().zip(self.doc.nodes.iter()) {
             debug_assert_eq!(alloc.node, rec.id);
             let inserted = world.insert_scene_entity(
@@ -374,6 +373,16 @@ fn resolve_references(
     context: &BootstrapResolutionContext,
 ) -> Vec<BootstrapReferenceError> {
     let mut errors = Vec::new();
+    let marker_ids = doc
+        .nodes
+        .iter()
+        .filter_map(|record| {
+            let SceneNodeKind::Marker(marker) = &record.kind else {
+                return None;
+            };
+            Some(marker.marker_id.as_str())
+        })
+        .collect::<BTreeSet<_>>();
     for record in &doc.nodes {
         match &record.kind {
             SceneNodeKind::EntityInstance(instance) => {
@@ -396,7 +405,7 @@ fn resolve_references(
                     }
                 }
                 if let Some(marker_id) = &instance.spawn_marker_id {
-                    if !context.spawn_marker_ids.contains(marker_id) {
+                    if !marker_ids.contains(marker_id.as_str()) {
                         errors.push(BootstrapReferenceError::UnknownSpawnMarker {
                             node: record.id,
                             marker_id: marker_id.clone(),
@@ -431,6 +440,7 @@ fn resolve_references(
             | SceneNodeKind::StaticMesh(_)
             | SceneNodeKind::Sprite(_)
             | SceneNodeKind::VoxelVolume(_)
+            | SceneNodeKind::Marker(_)
             | SceneNodeKind::Light(_) => {}
         }
     }
@@ -459,6 +469,36 @@ fn authored_world_transforms(doc: &FlatSceneDocument) -> BTreeMap<u64, SceneTran
         result.insert(record.id.raw(), world);
     }
     result
+}
+
+/// Initial runtime placement derives from the ordinary composed node transform,
+/// except a marker-bound entity treats its own local transform as an offset from
+/// the referenced marker pose. Marker identity and pose therefore cannot drift
+/// into a second caller-supplied registry.
+fn authored_runtime_transforms(doc: &FlatSceneDocument) -> BTreeMap<u64, SceneTransform> {
+    let mut transforms = authored_world_transforms(doc);
+    let markers = doc
+        .nodes
+        .iter()
+        .filter_map(|record| {
+            let SceneNodeKind::Marker(marker) = &record.kind else {
+                return None;
+            };
+            Some((marker.marker_id.as_str(), transforms[&record.id.raw()]))
+        })
+        .collect::<BTreeMap<_, _>>();
+    for record in &doc.nodes {
+        let SceneNodeKind::EntityInstance(instance) = &record.kind else {
+            continue;
+        };
+        let Some(marker_id) = instance.spawn_marker_id.as_deref() else {
+            continue;
+        };
+        if let Some(marker_transform) = markers.get(marker_id) {
+            transforms.insert(record.id.raw(), marker_transform.compose(record.transform));
+        }
+    }
+    transforms
 }
 
 fn hash_bytes(bytes: &[u8]) -> u64 {

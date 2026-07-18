@@ -4,7 +4,7 @@
 //! They do not register TypeScript callbacks, dispatch handlers, or grant
 //! mutation authority.
 
-use core_ids::{EntityId, PrefabId, PrefabInstanceId};
+use core_ids::{EntityId, PrefabId};
 use protocol_diagnostics::DiagnosticSeverity;
 pub use protocol_project_bundle::PrefabPartReference;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -140,7 +140,7 @@ impl GameplayEventPhase {
 /// Open, immutable namespaced contract identity. New downstream meanings do
 /// not extend an engine enum; they add another validated value of this shape.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayContractRef {
     pub namespace: String,
     pub name: String,
@@ -155,7 +155,7 @@ impl GameplayContractRef {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayModuleRef {
     pub module_id: String,
     pub namespace: String,
@@ -169,7 +169,7 @@ pub struct GameplayModuleRef {
 /// Durable authored configuration bytes. These bytes seed module state once;
 /// they are not live gameplay authority after activation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayModuleConfiguration {
     pub configuration_id: String,
     pub module: GameplayModuleRef,
@@ -185,7 +185,8 @@ pub struct GameplayModuleConfiguration {
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
-    rename_all_fields = "camelCase"
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
 )]
 pub enum GameplayModuleBindingTarget {
     Session,
@@ -205,7 +206,7 @@ pub enum GameplayModuleBindingTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayModuleBinding {
     pub binding_id: String,
     pub module_id: String,
@@ -220,14 +221,13 @@ pub struct GameplayModuleBinding {
 /// A prefab-instance layer may replace configuration and/or eligibility for one
 /// stored binding without mutating the prefab definition or base binding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayModuleBindingOverride {
     pub binding_id: String,
-    #[serde(
-        serialize_with = "serialize_prefab_instance_id",
-        deserialize_with = "deserialize_prefab_instance_id"
-    )]
-    pub prefab_instance: PrefabInstanceId,
+    /// Stable `SceneEntityInstance.instanceId` selected by authored content.
+    /// Runtime numeric prefab-instance ids are resolved during bootstrap and
+    /// never cross the durable ProjectBundle boundary.
+    pub scene_instance_id: String,
     pub configuration_id: Option<String>,
     pub enabled: Option<bool>,
 }
@@ -246,22 +246,8 @@ where
     u64::deserialize(deserializer).map(PrefabId::new)
 }
 
-fn serialize_prefab_instance_id<S>(id: &PrefabInstanceId, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_u64(id.raw())
-}
-
-fn deserialize_prefab_instance_id<'de, D>(deserializer: D) -> Result<PrefabInstanceId, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    u64::deserialize(deserializer).map(PrefabInstanceId::new)
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayModuleBindingRegistry {
     pub schema_version: u32,
     pub configurations: Vec<GameplayModuleConfiguration>,
@@ -559,7 +545,7 @@ pub struct GameplayProposalEnvelope {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayReadViewRequirement {
     pub view: GameplayContractRef,
     pub provider_id: String,

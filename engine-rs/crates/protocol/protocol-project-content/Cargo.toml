@@ -1,0 +1,16 @@
+[package]
+name = "protocol-project-content"
+version.workspace = true
+edition.workspace = true
+
+[lints]
+workspace = true
+
+# Closed, typed border for durable non-scene project content. Authority and
+# codecs live in svc-project-content; this crate only names wire shapes.
+[dependencies]
+protocol-assets = { path = "../protocol-assets" }
+protocol-entity-authoring = { path = "../protocol-entity-authoring" }
+protocol-game-extension = { path = "../protocol-game-extension" }
+protocol-project-bundle = { path = "../protocol-project-bundle" }
+protocol-scene = { path = "../protocol-scene" }

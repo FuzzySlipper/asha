@@ -40,6 +40,7 @@
       "parts": [],
       "schemaVersion": 1,
       "variant": {
+        "variantId": "invalid-alias-removal",
         "base": 7,
         "overrides": [
           {

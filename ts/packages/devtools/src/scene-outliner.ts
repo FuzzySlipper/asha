@@ -258,6 +258,7 @@ function assetOf(kind: SceneNodeKind): AssetReference | null {
       return kind.asset;
     case 'emptyGroup':
     case 'light':
+    case 'marker':
     case 'entityInstance':
     case 'bootstrap':
       return null;

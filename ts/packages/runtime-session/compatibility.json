@@ -4,12 +4,12 @@
   "compatibilityVersion": "runtime-session.v0",
   "packageVersion": "0.1.0",
   "sourceOfTruth": "ts/packages/runtime-session/src/index.ts",
-  "changelog": "docs/consumer-compatibility.md#runtime-session-compatibility-log",
-  "migrationNoteTemplate": "docs/consumer-compatibility.md#breaking-change-migration-note-template",
+  "changelog": "docs/topics/consumer/consumer-compatibility.md#runtime-session-compatibility-log",
+  "migrationNoteTemplate": "docs/topics/consumer/consumer-compatibility.md#migration-note-template",
   "failClosedPolicy": "Consumers import RuntimeSession facade contracts, semantic readouts, and proposal shapes from this package root only. Concrete bridge-backed construction routes through @asha/runtime-bridge rather than private transports or local authority.",
   "pinningGuidance": "Consumer evidence should record runtime-session.v0 plus the engine commit that provided the package.",
   "breakingChangeRequires": [
-    "update docs/consumer-compatibility.md",
+    "update docs/topics/consumer/consumer-compatibility.md",
     "update harness/public-surface/ts-packages.json",
     "run package-root consumer compatibility checks",
     "coordinate concrete @asha/runtime-bridge adapter compatibility notes"

@@ -587,6 +587,9 @@ impl EngineBridge {
                         core_scene::SceneNodeKind::Light(light) => {
                             SceneNodeKindDto::Light(Self::scene_light_dto(light))
                         }
+                        core_scene::SceneNodeKind::Marker(marker) => SceneNodeKindDto::Marker {
+                            marker_id: marker.marker_id,
+                        },
                         core_scene::SceneNodeKind::EntityInstance(instance) => {
                             SceneNodeKindDto::EntityInstance {
                                 instance: SceneEntityInstanceDto {
@@ -600,9 +603,11 @@ impl EngineBridge {
                                         core_scene::SceneEntityReference::Prefab {
                                             prefab_id,
                                             variant_id,
+                                            instantiation_seed,
                                         } => SceneEntityReferenceDto::Prefab {
                                             prefab_id,
                                             variant_id,
+                                            instantiation_seed,
                                         },
                                     },
                                     spawn_marker_id: instance.spawn_marker_id,
@@ -648,20 +653,20 @@ impl EngineBridge {
     fn scene_codec_result(document: core_scene::FlatSceneDocument) -> SceneDocumentCodecResultDto {
         let document = document.canonical();
         let mut diagnostics = Vec::new();
-        if !(1..=3).contains(&document.schema_version) {
+        if !(1..=4).contains(&document.schema_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedSchema,
                 message: format!(
-                    "scene schema version {} is unsupported; expected 1, 2, or 3",
+                    "scene schema version {} is unsupported; expected 1, 2, 3, or 4",
                     document.schema_version
                 ),
             });
         }
-        if !(1..=3).contains(&document.metadata.authoring_format_version) {
+        if !(1..=4).contains(&document.metadata.authoring_format_version) {
             diagnostics.push(SceneDocumentCodecDiagnosticDto {
                 code: SceneDocumentCodecDiagnosticCode::UnsupportedAuthoringFormat,
                 message: format!(
-                    "scene authoring format version {} is unsupported; expected 1, 2, or 3",
+                    "scene authoring format version {} is unsupported; expected 1, 2, 3, or 4",
                     document.metadata.authoring_format_version
                 ),
             });
@@ -739,6 +744,9 @@ impl EngineBridge {
             SceneNodeKindDto::Light(light) => {
                 core_scene::SceneNodeKind::Light(Self::scene_light_from_dto(light))
             }
+            SceneNodeKindDto::Marker { marker_id } => {
+                core_scene::SceneNodeKind::Marker(core_scene::SceneMarker { marker_id })
+            }
             SceneNodeKindDto::EntityInstance { instance } => {
                 core_scene::SceneNodeKind::EntityInstance(core_scene::SceneEntityInstance {
                     instance_id: instance.instance_id,
@@ -749,9 +757,11 @@ impl EngineBridge {
                         SceneEntityReferenceDto::Prefab {
                             prefab_id,
                             variant_id,
+                            instantiation_seed,
                         } => core_scene::SceneEntityReference::Prefab {
                             prefab_id,
                             variant_id,
+                            instantiation_seed,
                         },
                     },
                     spawn_marker_id: instance.spawn_marker_id,
@@ -1067,6 +1077,16 @@ impl EngineBridge {
                 dto.code = SceneValidationCode::InvalidLight;
                 dto.node = Some(node);
                 dto.light_reason = Some(reason.label().to_string());
+            }
+            core_scene::SceneValidationError::DuplicateMarkerId { node, marker_id } => {
+                dto.code = SceneValidationCode::DuplicateMarkerId;
+                dto.node = Some(node);
+                dto.detail_reason = Some(marker_id);
+            }
+            core_scene::SceneValidationError::InvalidMarker { node, reason } => {
+                dto.code = SceneValidationCode::InvalidMarker;
+                dto.node = Some(node);
+                dto.detail_reason = Some(reason);
             }
             core_scene::SceneValidationError::DuplicateEntityInstanceId { node, instance_id } => {
                 dto.code = SceneValidationCode::DuplicateEntityInstanceId;

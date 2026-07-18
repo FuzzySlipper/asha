@@ -90,3 +90,45 @@ fn lock_drift_matches_committed_golden() {
         "lock drift report drifted; regenerate with `cargo run -p core-catalog --example dump_lock_drift`"
     );
 }
+
+#[test]
+fn decode_rejects_unknown_fields_at_nested_authoring_boundaries() {
+    let root = r#"{"entries":[],"browserAccepted":true}"#;
+    assert!(decode(root)
+        .unwrap_err()
+        .to_string()
+        .contains("unknown field `browserAccepted`"));
+
+    let nested = r#"{
+      "entries": [{
+        "id": "material/reference-wall",
+        "version": 1,
+        "hash": null,
+        "sourcePath": null,
+        "label": null,
+        "dependencies": [],
+        "material": {
+          "authority": {
+            "solid": true,
+            "collidable": true,
+            "occludes": true,
+            "structuralClass": "structural",
+            "rendererOwnsCollision": true
+          },
+          "style": {
+            "color": [1, 1, 1, 1],
+            "texture": null,
+            "textureTint": [1, 1, 1, 1],
+            "emissionColor": [0, 0, 0, 1],
+            "roughness": 1,
+            "emissive": 0,
+            "uvStrategy": "flat"
+          }
+        }
+      }]
+    }"#;
+    assert!(decode(nested)
+        .unwrap_err()
+        .to_string()
+        .contains("unknown field `rendererOwnsCollision`"));
+}

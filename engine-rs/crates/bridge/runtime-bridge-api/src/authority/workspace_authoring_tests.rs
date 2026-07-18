@@ -277,3 +277,91 @@ fn stored_confirmation_consumes_only_the_current_rust_save_candidate() {
     assert_eq!(replayed.kind, RuntimeBridgeErrorKind::InvalidInput);
     assert!(!bridge.read_workspace_authoring_state().unwrap().dirty);
 }
+
+#[test]
+fn project_content_authoring_is_revision_bound_and_promotes_only_the_rust_candidate() {
+    let mut bridge = EngineBridge::new();
+    let opened = bridge
+        .open_workspace_authoring(open_request("workspace.project-content"))
+        .unwrap();
+    let decoded = bridge
+        .decode_project_content(ProjectContentDecodeRequestDto {
+            sources: vec![ProjectContentSourceDto {
+                document_id: "entities/fixture.json".to_owned(),
+                kind: ProjectContentDocumentKind::EntityDefinition,
+                source_text: r#"{
+                    "kind":"EntityDefinition",
+                    "stableId":"fixture.entity",
+                    "displayName":"Fixture Entity",
+                    "source":{"projectBundle":"fixture","relativePath":"entities/fixture.json"},
+                    "tags":[],"metadata":[],"capabilities":[]
+                }"#
+                .to_owned(),
+            }],
+            references: ProjectContentReferenceContextDto::default(),
+        })
+        .unwrap();
+    assert!(decoded.accepted, "{:?}", decoded.diagnostics);
+    let expected_set_hash = decoded.set_hash.clone().unwrap();
+    let mut changed = decoded.documents[0].clone();
+    let ProjectContentDocumentDto::EntityDefinition { definition, .. } = &mut changed else {
+        panic!("fixture decoded as wrong document kind");
+    };
+    definition.display_name = "Changed Fixture Entity".to_owned();
+
+    let accepted = bridge
+        .apply_project_content_authoring(ProjectContentAuthoringRequestDto {
+            expected_workspace_id: "workspace.project-content".to_owned(),
+            expected_generation: opened.identity.generation,
+            expected_working_revision: 0,
+            expected_set_hash,
+            current_documents: decoded.documents,
+            references: ProjectContentReferenceContextDto::default(),
+            command: ProjectContentAuthoringCommandDto::Upsert { document: changed },
+        })
+        .unwrap();
+    assert!(accepted.accepted, "{:?}", accepted.diagnostics);
+    assert_eq!(
+        bridge
+            .read_workspace_authoring_state()
+            .unwrap()
+            .working_revision,
+        1
+    );
+    let candidate_hash = accepted.set_hash.clone().unwrap();
+
+    let stale = bridge
+        .apply_project_content_authoring(ProjectContentAuthoringRequestDto {
+            expected_workspace_id: "workspace.project-content".to_owned(),
+            expected_generation: opened.identity.generation,
+            expected_working_revision: 0,
+            expected_set_hash: candidate_hash.clone(),
+            current_documents: accepted.documents.clone(),
+            references: ProjectContentReferenceContextDto::default(),
+            command: ProjectContentAuthoringCommandDto::Delete {
+                document_id: "entities/fixture.json".to_owned(),
+                document_kind: ProjectContentDocumentKind::EntityDefinition,
+            },
+        })
+        .unwrap_err();
+    assert_eq!(stale.kind, RuntimeBridgeErrorKind::StaleAuthoritySnapshot);
+    assert_eq!(
+        bridge
+            .read_workspace_authoring_state()
+            .unwrap()
+            .working_revision,
+        1
+    );
+
+    let stored = bridge
+        .confirm_workspace_authoring_stored(WorkspaceAuthoringStoredConfirmationRequest {
+            expected_workspace_id: "workspace.project-content".to_owned(),
+            expected_generation: opened.identity.generation,
+            host_path: "/tmp/entities/fixture.json".to_owned(),
+            canonical_json_hash: candidate_hash,
+        })
+        .unwrap();
+    assert_eq!(stored.stored_revision, 1);
+    assert!(stored.accepted);
+    assert!(!bridge.read_workspace_authoring_state().unwrap().dirty);
+}

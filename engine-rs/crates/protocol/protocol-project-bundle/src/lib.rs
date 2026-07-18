@@ -336,13 +336,15 @@ use core_ids::{PrefabId, PrefabInstanceId, PrefabPartId, ProjectId, RuntimeSessi
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// Durable schema for semantic trigger roles authored with a ProjectBundle.
-pub const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION: u32 = 1;
+pub const GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct GameplayTriggerDefinition {
     pub schema_version: u32,
-    pub entity: u64,
+    /// Stable authored SceneEntityInstance identity. Runtime EntityId allocation
+    /// is resolved from the validated scene bootstrap record.
+    pub scene_instance_id: String,
     pub scope: String,
     pub tags: Vec<String>,
 }
@@ -530,6 +532,9 @@ pub struct PrefabOverride {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrefabVariantDelta {
+    /// Stable authored key used by scene documents and Studio. The enclosing
+    /// definition's numeric `PrefabId` remains the runtime authority key.
+    pub variant_id: String,
     pub base: PrefabId,
     pub removed_roles: Vec<String>,
     pub overrides: Vec<PrefabOverride>,
@@ -562,7 +567,7 @@ pub struct PrefabInstanceRecord {
 
 /// Durable selector used by declared reads and authored module bindings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PrefabPartReference {
     #[serde(
         serialize_with = "serialize_prefab_id",

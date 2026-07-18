@@ -322,6 +322,27 @@ impl EngineBridge {
         }
     }
 
+    pub(super) fn require_workspace_authoring_revision(
+        &self,
+        operation: &str,
+        expected_workspace_id: &str,
+        expected_generation: u64,
+        expected_working_revision: u64,
+    ) -> BridgeResult<()> {
+        let authority = self.require_bound_workspace_authoring(
+            operation,
+            expected_workspace_id,
+            expected_generation,
+        )?;
+        if authority.working_revision != expected_working_revision {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::StaleAuthoritySnapshot,
+                format!("{operation} targeted a stale working revision"),
+            ));
+        }
+        Ok(())
+    }
+
     fn require_bound_workspace_authoring(
         &self,
         operation: &str,

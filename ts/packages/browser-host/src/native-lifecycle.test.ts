@@ -22,7 +22,6 @@ const FPS_LOAD_REQUEST: FpsLoadRequest = {
       'actor/native-host-enemy',
     ],
     prefabIds: [],
-    spawnMarkerIds: [],
     generatorPresets: [],
     catalogIds: [],
   },

@@ -151,6 +151,29 @@ fn map_scene_error(error: &SceneValidationError) -> DiagnosticReport {
             RemedyAction::Inspect,
             "fix the typed light fields or use scene schema/authoring format version 2",
         )),
+        SceneValidationError::DuplicateMarkerId { node, marker_id } => DiagnosticReport::new(
+            DiagnosticCode::DuplicateSceneMarkerId,
+            format!("marker:{marker_id}"),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!(
+                "scene node {} reuses durable marker id `{marker_id}`",
+                node.raw()
+            ),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::FixReference,
+            "give each authored scene marker a unique durable marker id",
+        )),
+        SceneValidationError::InvalidMarker { node, reason } => DiagnosticReport::new(
+            DiagnosticCode::InvalidSceneMarker,
+            format!("node:{}", node.raw()),
+            DiagnosticSourceRef::empty().with_scene_node(node.raw()),
+            format!("scene node {} has an invalid marker: {reason}", node.raw()),
+        )
+        .with_remedy(SuggestedRemedy::new(
+            RemedyAction::Inspect,
+            "fix the stored marker id and use scene schema/authoring format version 4",
+        )),
         SceneValidationError::DuplicateEntityInstanceId { node, instance_id } => {
             DiagnosticReport::new(
                 DiagnosticCode::DuplicateSceneEntityInstanceId,

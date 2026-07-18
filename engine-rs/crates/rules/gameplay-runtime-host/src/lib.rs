@@ -60,6 +60,7 @@ use serde::{Deserialize, Serialize};
 // These are deliberately re-exported from the public host altitude. Consumers
 // can execute a normal ProjectBundle load without naming private engine crates.
 pub use core_ids::{EntityId, RuntimeSessionId, SceneId};
+pub use core_scene::BootstrapResolutionContext;
 pub use protocol_project_bundle::{
     GameplayTriggerDefinition, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
 };
@@ -149,6 +150,9 @@ pub struct GameplayRuntimeHostInput {
 pub struct GameplayRuntimeProjectInput {
     pub load_plan: LoadPlan,
     pub artifacts: BundleArtifacts,
+    /// Independently validated external identities for typed scene references.
+    /// Marker identities remain inside the scene and are not supplied here.
+    pub bootstrap_resolution: BootstrapResolutionContext,
     pub composition: GameplayStaticComposition,
     pub composition_requirement: Option<GameplayCompositionRequirement>,
     pub bindings: GameplayModuleBindingRegistry,
@@ -277,8 +281,12 @@ impl GameplayRuntimeHost {
     pub fn activate_project(
         input: GameplayRuntimeProjectInput,
     ) -> Result<Self, GameplayRuntimeHostError> {
-        let bundle = execute_load_plan(&input.load_plan, &input.artifacts)
-            .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
+        let bundle = rule_project_bundle::execute_load_plan_resolved(
+            &input.load_plan,
+            &input.artifacts,
+            &input.bootstrap_resolution,
+        )
+        .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
         Self::activate(GameplayRuntimeHostInput {
             bundle,
             composition: input.composition,
@@ -299,16 +307,25 @@ impl GameplayRuntimeHost {
         input: GameplayRuntimeProjectInput,
         prefabs: GameplayRuntimePrefabBootstrap,
     ) -> Result<Self, GameplayRuntimeHostError> {
-        let mut bundle = execute_load_plan(&input.load_plan, &input.artifacts)
-            .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
-        let prefab_registry = apply_prefab_bootstrap(&mut bundle, prefabs)?;
+        let mut bundle = rule_project_bundle::execute_load_plan_resolved(
+            &input.load_plan,
+            &input.artifacts,
+            &input.bootstrap_resolution,
+        )
+        .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
+        let (prefab_registry, prefab_scene_instances) =
+            apply_prefab_bootstrap(&mut bundle, prefabs)?;
+        let mut entity_targets = input.entity_targets;
+        for (scene_instance_id, instance) in prefab_scene_instances {
+            entity_targets.bind_prefab_instance(scene_instance_id, instance);
+        }
         Self::activate_with_prefab_registry(
             GameplayRuntimeHostInput {
                 bundle,
                 composition: input.composition,
                 composition_requirement: input.composition_requirement,
                 bindings: input.bindings,
-                entity_targets: input.entity_targets,
+                entity_targets,
                 spatial_entities: input.spatial_entities,
                 declared_reads: input.declared_reads,
                 triggers: input.triggers,
@@ -322,8 +339,12 @@ impl GameplayRuntimeHost {
         input: GameplayRuntimeProjectInput,
         snapshot_text: &str,
     ) -> Result<Self, GameplayRuntimeHostError> {
-        let bundle = execute_load_plan(&input.load_plan, &input.artifacts)
-            .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
+        let bundle = rule_project_bundle::execute_load_plan_resolved(
+            &input.load_plan,
+            &input.artifacts,
+            &input.bootstrap_resolution,
+        )
+        .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
         Self::restore(
             GameplayRuntimeHostInput {
                 bundle,
@@ -348,16 +369,25 @@ impl GameplayRuntimeHost {
         prefabs: GameplayRuntimePrefabBootstrap,
         snapshot_text: &str,
     ) -> Result<Self, GameplayRuntimeHostError> {
-        let mut bundle = execute_load_plan(&input.load_plan, &input.artifacts)
-            .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
-        let prefab_registry = apply_prefab_bootstrap(&mut bundle, prefabs)?;
+        let mut bundle = rule_project_bundle::execute_load_plan_resolved(
+            &input.load_plan,
+            &input.artifacts,
+            &input.bootstrap_resolution,
+        )
+        .map_err(|error| GameplayRuntimeHostError::Load(format!("{error:?}")))?;
+        let (prefab_registry, prefab_scene_instances) =
+            apply_prefab_bootstrap(&mut bundle, prefabs)?;
+        let mut entity_targets = input.entity_targets;
+        for (scene_instance_id, instance) in prefab_scene_instances {
+            entity_targets.bind_prefab_instance(scene_instance_id, instance);
+        }
         Self::restore_with_prefab_registry(
             GameplayRuntimeHostInput {
                 bundle,
                 composition: input.composition,
                 composition_requirement: input.composition_requirement,
                 bindings: input.bindings,
-                entity_targets: input.entity_targets,
+                entity_targets,
                 spatial_entities: input.spatial_entities,
                 declared_reads: input.declared_reads,
                 triggers: input.triggers,
@@ -384,6 +414,8 @@ impl GameplayRuntimeHost {
                 &composition_identity,
                 input.composition_requirement.as_ref(),
             )?;
+        let trigger_definitions =
+            resolve_trigger_definitions(&input.bundle, core::mem::take(&mut input.triggers))?;
         let mut session = GameplayBoundProjectBundleSession::activate_with_mode(
             input.bundle,
             input.composition,
@@ -393,7 +425,7 @@ impl GameplayRuntimeHost {
         )?;
         compatibility_diagnostics
             .extend(session.activation.compatibility_diagnostics.iter().cloned());
-        session.install_trigger_definitions(resolve_trigger_definitions(input.triggers)?)?;
+        session.install_trigger_definitions(trigger_definitions)?;
         validate_scheduler_definition(session.registry(), &input.scheduler)?;
         let scheduler = input.scheduler.build();
         Ok(Self {
@@ -447,6 +479,8 @@ impl GameplayRuntimeHost {
                     .to_owned(),
             ));
         }
+        let trigger_definitions =
+            resolve_trigger_definitions(&input.bundle, core::mem::take(&mut input.triggers))?;
         let session = GameplayBoundProjectBundleSession::restore_with_mode(
             input.bundle,
             input.composition,
@@ -458,16 +492,14 @@ impl GameplayRuntimeHost {
         compatibility_diagnostics
             .extend(session.activation.compatibility_diagnostics.iter().cloned());
         validate_scheduler_definition(session.registry(), &input.scheduler)?;
-        let expected_triggers = rule_trigger_volume::TriggerVolumeRule::new(
-            resolve_trigger_definitions(input.triggers)?,
-        )
-        .map_err(|error| {
-            GameplayRuntimeHostError::Activation(GameplayBindingActivationError::Trigger(
-                error.diagnostics,
-            ))
-        })?
-        .snapshot()
-        .definitions;
+        let expected_triggers = rule_trigger_volume::TriggerVolumeRule::new(trigger_definitions)
+            .map_err(|error| {
+                GameplayRuntimeHostError::Activation(GameplayBindingActivationError::Trigger(
+                    error.diagnostics,
+                ))
+            })?
+            .snapshot()
+            .definitions;
         if session.trigger_rule().snapshot().definitions != expected_triggers {
             return Err(GameplayRuntimeHostError::Snapshot(
                 "authored trigger definitions do not match the saved host".to_owned(),
@@ -1441,6 +1473,7 @@ fn prepare_runtime_entities(
 }
 
 fn resolve_trigger_definitions(
+    bundle: &ProjectBundleLoadResult,
     definitions: Vec<GameplayTriggerDefinition>,
 ) -> Result<Vec<rule_trigger_volume::KinematicTriggerDefinition>, GameplayRuntimeHostError> {
     definitions
@@ -1449,11 +1482,53 @@ fn resolve_trigger_definitions(
             if definition.schema_version != GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION {
                 return Err(GameplayRuntimeHostError::Snapshot(format!(
                     "trigger {} uses unsupported schema version {}",
-                    definition.entity, definition.schema_version
+                    definition.scene_instance_id, definition.schema_version
+                )));
+            }
+            let resolved = bundle
+                .bootstrap
+                .resolved_instances
+                .iter()
+                .find(|instance| instance.instance_id == definition.scene_instance_id)
+                .ok_or_else(|| {
+                    GameplayRuntimeHostError::Snapshot(format!(
+                        "trigger target scene instance {} does not resolve",
+                        definition.scene_instance_id
+                    ))
+                })?;
+            let entities = bundle
+                .runtime_entities
+                .as_ref()
+                .ok_or(GameplayRuntimeHostError::MissingEntityAuthority)?;
+            let bounds = entities.bounds(resolved.entity).ok_or_else(|| {
+                GameplayRuntimeHostError::Snapshot(format!(
+                    "trigger target scene instance {} has no collision bounds",
+                    definition.scene_instance_id
+                ))
+            })?;
+            if bounds.bounds.min.x >= bounds.bounds.max.x
+                || bounds.bounds.min.y >= bounds.bounds.max.y
+                || bounds.bounds.min.z >= bounds.bounds.max.z
+            {
+                return Err(GameplayRuntimeHostError::Snapshot(format!(
+                    "trigger target scene instance {} has unusable collision bounds",
+                    definition.scene_instance_id
+                )));
+            }
+            let collision = entities.collision(resolved.entity).ok_or_else(|| {
+                GameplayRuntimeHostError::Snapshot(format!(
+                    "trigger target scene instance {} has no collision capability",
+                    definition.scene_instance_id
+                ))
+            })?;
+            if collision.static_collider {
+                return Err(GameplayRuntimeHostError::Snapshot(format!(
+                    "trigger target scene instance {} must use a non-static collision body",
+                    definition.scene_instance_id
                 )));
             }
             Ok(rule_trigger_volume::KinematicTriggerDefinition::new(
-                EntityId::new(definition.entity),
+                resolved.entity,
                 definition.scope,
                 definition.tags,
             ))
@@ -1522,7 +1597,10 @@ mod tests {
     use super::*;
     use core_entity::{Aabb, EntityLifecycleCommand, EntitySource};
     use core_ids::SceneNodeId;
-    use core_scene::{encode, SceneMetadata, SceneNode, SceneNodeKind, SceneTree};
+    use core_scene::{
+        encode, SceneEntityInstance, SceneEntityReference, SceneMetadata, SceneNode, SceneNodeKind,
+        SceneTree,
+    };
     use gameplay_module_sdk::*;
     use protocol_game_extension::{
         GameplayInvocationReadRequirement, GameplayModuleBinding, GameplayModuleBindingTarget,
@@ -2172,16 +2250,34 @@ mod tests {
     pub(super) fn bundle() -> ProjectBundleLoadResult {
         let scene = SceneTree {
             id: SceneId::new(1),
-            schema_version: 1,
+            schema_version: 4,
             metadata: SceneMetadata {
                 name: Some("host-fixture".to_owned()),
-                authoring_format_version: 1,
+                authoring_format_version: 4,
             },
             dependencies: Vec::new(),
-            roots: vec![SceneNode::leaf(
-                SceneNodeId::new(1),
-                SceneNodeKind::EmptyGroup,
-            )],
+            roots: vec![
+                SceneNode::leaf(
+                    SceneNodeId::new(10),
+                    SceneNodeKind::EntityInstance(SceneEntityInstance {
+                        instance_id: "fixture.host.trigger".to_owned(),
+                        reference: SceneEntityReference::EntityDefinition {
+                            stable_id: "fixture/host-trigger".to_owned(),
+                        },
+                        spawn_marker_id: None,
+                    }),
+                ),
+                SceneNode::leaf(
+                    SceneNodeId::new(20),
+                    SceneNodeKind::EntityInstance(SceneEntityInstance {
+                        instance_id: "fixture.host.subject".to_owned(),
+                        reference: SceneEntityReference::EntityDefinition {
+                            stable_id: "fixture/host-subject".to_owned(),
+                        },
+                        spawn_marker_id: None,
+                    }),
+                ),
+            ],
         };
         let plan = LoadPlan {
             steps: vec![
@@ -2207,7 +2303,16 @@ mod tests {
         let artifacts = BundleArtifacts::new()
             .with_artifact("assets/lock.json", "{ \"entries\": [] }\n")
             .with_artifact("scene/scene.json", encode(&scene.to_flat()));
-        execute_load_plan(&plan, &artifacts).unwrap()
+        let resolution = core_scene::BootstrapResolutionContext {
+            entity_definition_ids: [
+                "fixture/host-trigger".to_owned(),
+                "fixture/host-subject".to_owned(),
+            ]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        rule_project_bundle::execute_load_plan_resolved(&plan, &artifacts, &resolution).unwrap()
     }
 
     pub(super) fn create_spatial(

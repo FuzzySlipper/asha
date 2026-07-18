@@ -8,7 +8,7 @@
 
 import type { EntityId } from './ids.js';
 import type { DiagnosticSeverity } from './diagnostics.js';
-import type { PrefabId, PrefabInstanceId, PrefabPartReference } from './projectBundle.js';
+import type { PrefabId, PrefabPartReference } from './projectBundle.js';
 
 export type GameExtensionHookKind = 'weaponEffect' | 'interactionEffect' | 'spawnCondition';
 
@@ -159,7 +159,7 @@ export interface GameplayModuleBinding {
 // A prefab-instance layer may replace configuration and/or eligibility for one stored binding without mutating the prefab definition or base binding.
 export interface GameplayModuleBindingOverride {
   readonly bindingId: string;
-  readonly prefabInstance: PrefabInstanceId;
+  readonly sceneInstanceId: string;
   readonly configurationId: string | null;
   readonly enabled: boolean | null;
 }

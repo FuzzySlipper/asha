@@ -190,6 +190,10 @@ function describeValidationError(error: SceneValidationError): string {
       return `node ${error.node as number} expected ${error.expectedKind}, found ${error.actualKind}`;
     case 'invalid-light':
       return `node ${error.node as number} has an invalid light${error.lightReason ? ` (${error.lightReason})` : ''}`;
+    case 'duplicate-marker-id':
+      return `node ${error.node as number} duplicates marker ${error.instanceId}`;
+    case 'invalid-marker':
+      return `node ${error.node as number} has an invalid marker${error.detailReason ? ` (${error.detailReason})` : ''}`;
     case 'duplicate-entity-instance-id':
       return `node ${error.node as number} duplicates entity instance ${error.instanceId}`;
     case 'invalid-entity-instance':

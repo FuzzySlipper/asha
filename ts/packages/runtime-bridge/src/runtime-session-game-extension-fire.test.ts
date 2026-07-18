@@ -196,7 +196,6 @@ function ecrpProjectLoadInput() {
       schemaVersion: 1 as const,
       entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
       prefabIds: [],
-      spawnMarkerIds: [],
       generatorPresets: [],
       catalogIds: [],
     },

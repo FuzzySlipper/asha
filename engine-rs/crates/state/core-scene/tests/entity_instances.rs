@@ -7,8 +7,8 @@ use core_scene::{
     decode, encode, validate, BootstrapError, BootstrapPlan, BootstrapReferenceError,
     BootstrapResolutionContext, FlatSceneDocument, NodeMetadata, SceneBootstrapBindings,
     SceneCatalogBinding, SceneDecodeError, SceneEntityInstance, SceneEntityReference,
-    SceneGeneratorBinding, SceneMetadata, SceneNodeKind, SceneNodeRecord, SceneTransform,
-    SceneValidationError,
+    SceneGeneratorBinding, SceneMarker, SceneMetadata, SceneNodeKind, SceneNodeRecord,
+    SceneTransform, SceneValidationError,
 };
 
 fn node(id: u64, parent: Option<u64>, kind: SceneNodeKind) -> SceneNodeRecord {
@@ -37,12 +37,33 @@ fn canonical_instance_scene() -> FlatSceneDocument {
         }),
     );
     player.transform.translation = Vec3::new(1.0, 2.0, 3.0);
+    let mut player_marker = node(
+        15,
+        None,
+        SceneNodeKind::Marker(SceneMarker {
+            marker_id: "spawn.player.start".into(),
+        }),
+    );
+    player_marker.transform.translation = Vec3::new(100.0, 0.0, 0.0);
+    let console = node(
+        30,
+        None,
+        SceneNodeKind::EntityInstance(SceneEntityInstance {
+            instance_id: "instance.console.blue".into(),
+            reference: SceneEntityReference::Prefab {
+                prefab_id: 70,
+                variant_id: Some("blue".into()),
+                instantiation_seed: 41,
+            },
+            spawn_marker_id: None,
+        }),
+    );
     FlatSceneDocument {
         id: SceneId::new(4103),
-        schema_version: 3,
+        schema_version: 4,
         metadata: SceneMetadata {
             name: Some("Generated tunnel room".into()),
-            authoring_format_version: 3,
+            authoring_format_version: 4,
         },
         dependencies: vec![],
         nodes: vec![
@@ -71,7 +92,9 @@ fn canonical_instance_scene() -> FlatSceneDocument {
                     ],
                 }),
             ),
+            player_marker,
             root,
+            console,
         ],
     }
 }
@@ -79,8 +102,7 @@ fn canonical_instance_scene() -> FlatSceneDocument {
 fn resolution_context() -> BootstrapResolutionContext {
     BootstrapResolutionContext {
         entity_definition_ids: BTreeSet::from(["actor/demo-player".into()]),
-        prefab_ids: BTreeSet::new(),
-        spawn_marker_ids: BTreeSet::from(["spawn.player.start".into()]),
+        prefab_ids: BTreeSet::from([70]),
         generator_presets: BTreeSet::from([(
             "asha.generated-tunnel".into(),
             "tiny-enclosed".into(),
@@ -98,12 +120,12 @@ fn committed_fixture() -> String {
         .ancestors()
         .find(|ancestor| ancestor.join("engine-rs").is_dir() && ancestor.join("harness").is_dir())
         .expect("repo root");
-    std::fs::read_to_string(repo_root.join("harness/fixtures/scenes/entity-instance-v3.json"))
-        .expect("read entity-instance-v3.json")
+    std::fs::read_to_string(repo_root.join("harness/fixtures/scenes/entity-instance-v4.json"))
+        .expect("read entity-instance-v4.json")
 }
 
 #[test]
-fn schema_three_entity_instances_round_trip_canonically() {
+fn schema_four_markers_and_seeded_entity_instances_round_trip_canonically() {
     let source = encode(&canonical_instance_scene());
     assert_eq!(
         source,
@@ -114,6 +136,7 @@ fn schema_three_entity_instances_round_trip_canonically() {
     assert!(validate(&decoded).is_ok());
     assert_eq!(encode(&decoded), source);
     assert!(source.contains("\"kind\": \"entityInstance\""));
+    assert!(source.contains("\"instantiationSeed\": 41"));
     assert!(source.contains("\"kind\": \"bootstrap\""));
     assert!(source.find("\"materials\"").unwrap() < source.find("\"spawns\"").unwrap());
 }
@@ -132,10 +155,16 @@ fn resolved_bootstrap_is_atomic_and_retains_local_and_world_placement() {
         Err(BootstrapError::ResolutionContextRequired)
     );
 
-    let mut incomplete = resolution_context();
-    incomplete.spawn_marker_ids.clear();
-    let error = BootstrapPlan::prepare_resolved(&doc, RuntimeSessionId::new(7), &incomplete)
-        .expect_err("unresolved marker rejects before state creation");
+    let mut missing_marker = doc.clone();
+    missing_marker
+        .nodes
+        .retain(|record| !matches!(record.kind, SceneNodeKind::Marker(_)));
+    let error = BootstrapPlan::prepare_resolved(
+        &missing_marker,
+        RuntimeSessionId::new(7),
+        &resolution_context(),
+    )
+    .expect_err("unresolved marker rejects before state creation");
     assert!(matches!(
         error,
         BootstrapError::UnresolvedReferences { errors }
@@ -155,14 +184,14 @@ fn resolved_bootstrap_is_atomic_and_retains_local_and_world_placement() {
     );
     assert_eq!(
         instance.world_transform.translation,
-        Vec3::new(11.0, 2.0, 3.0)
+        Vec3::new(101.0, 2.0, 3.0)
     );
 
     let (world, record) = plan.apply();
     assert_eq!(record.resolved_instances, plan.resolved_instances());
     assert_eq!(
         world.transform(instance.entity).unwrap().translation,
-        Vec3::new(11.0, 2.0, 3.0)
+        Vec3::new(101.0, 2.0, 3.0)
     );
     assert_ne!(record.scene_content_hash.0, 0);
     assert_eq!(
@@ -200,6 +229,7 @@ fn duplicate_instance_and_catalog_bindings_are_classified() {
             reference: SceneEntityReference::Prefab {
                 prefab_id: 70,
                 variant_id: Some("red".into()),
+                instantiation_seed: 19,
             },
             spawn_marker_id: None,
         }),

@@ -179,6 +179,9 @@
         "open_workspace_authoring",
         "read_workspace_authoring_state",
         "read_workspace_authoring_projection",
+        "decode_project_content",
+        "encode_project_content",
+        "apply_project_content_authoring",
         "confirm_workspace_authoring_stored",
         "close_workspace_authoring"
       ]
@@ -355,6 +358,78 @@
       "outputWire": {
         "owner": "generated",
         "name": "projectBundle.WorkspaceAuthoringCloseReceipt",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "decode_project_content",
+      "facadeMethod": "decodeProjectContent",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_content::ProjectContentDecodeRequest",
+      "output": "protocol_project_content::ProjectContentCodecResult",
+      "facadeInput": "contracts::ProjectContentDecodeRequest",
+      "facadeOutput": "contracts::ProjectContentCodecResult",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentDecodeRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentCodecResult",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "encode_project_content",
+      "facadeMethod": "encodeProjectContent",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_content::ProjectContentEncodeRequest",
+      "output": "protocol_project_content::ProjectContentCodecResult",
+      "facadeInput": "contracts::ProjectContentEncodeRequest",
+      "facadeOutput": "contracts::ProjectContentCodecResult",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentEncodeRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentCodecResult",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "apply_project_content_authoring",
+      "facadeMethod": "applyProjectContentAuthoring",
+      "capability": "workspace_authoring",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_project_content::ProjectContentAuthoringRequest",
+      "output": "protocol_project_content::ProjectContentAuthoringResult",
+      "facadeInput": "contracts::ProjectContentAuthoringRequest",
+      "facadeOutput": "contracts::ProjectContentAuthoringResult",
+      "inputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentAuthoringRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "generated",
+        "name": "projectContent.ProjectContentAuthoringResult",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

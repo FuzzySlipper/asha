@@ -37,8 +37,9 @@ pub use durability::{
 };
 pub use gameplay_binding::*;
 pub use load::{
-    execute_load_plan, execute_load_plan_with, ArtifactSource, BundleArtifacts, LoadExecutionError,
-    ProjectBundleLoadResult, ProjectBundlePrefabError, ProjectBundleStage, StageOutcome,
+    execute_load_plan, execute_load_plan_resolved, execute_load_plan_with, ArtifactSource,
+    BundleArtifacts, LoadExecutionError, ProjectBundleLoadResult, ProjectBundlePrefabError,
+    ProjectBundleStage, StageOutcome,
 };
 pub use prefab_instance::{
     InstantiatePrefabCommand, PrefabInstanceAuthority, PrefabInstanceSnapshot,

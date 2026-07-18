@@ -22,8 +22,8 @@ use core_entity::{decode_snapshot, EntityStore, SnapshotDecodeError};
 use core_ids::SceneId;
 use core_scene::{
     bootstrap_scene, decode as decode_scene, validate as validate_scene, BootstrapError,
-    BootstrapRecord, FlatSceneDocument, SceneDecodeError, SceneValidationReport,
-    SpatialSessionHash, SpatialSessionState,
+    BootstrapPlan, BootstrapRecord, BootstrapResolutionContext, FlatSceneDocument,
+    SceneDecodeError, SceneValidationReport, SpatialSessionHash, SpatialSessionState,
 };
 use core_space::{ChunkCoord, VoxelGridSpec};
 use protocol_voxel_annotation::{
@@ -411,6 +411,25 @@ pub fn execute_load_plan(
     plan: &LoadPlan,
     artifacts: &dyn ArtifactSource,
 ) -> Result<ProjectBundleLoadResult, LoadExecutionError> {
+    execute_load_plan_internal(plan, artifacts, None)
+}
+
+/// Execute a ProjectBundle whose scene carries typed stored references. The
+/// immutable registry contains only independently validated external ids;
+/// marker ids are always derived from the SceneDocument itself.
+pub fn execute_load_plan_resolved(
+    plan: &LoadPlan,
+    artifacts: &dyn ArtifactSource,
+    resolution: &BootstrapResolutionContext,
+) -> Result<ProjectBundleLoadResult, LoadExecutionError> {
+    execute_load_plan_internal(plan, artifacts, Some(resolution))
+}
+
+fn execute_load_plan_internal(
+    plan: &LoadPlan,
+    artifacts: &dyn ArtifactSource,
+    resolution: Option<&BootstrapResolutionContext>,
+) -> Result<ProjectBundleLoadResult, LoadExecutionError> {
     // 1. Enforce stage order + mandatory stages *before* executing anything.
     plan.verify_order()
         .map_err(LoadExecutionError::PlanInvalid)?;
@@ -545,8 +564,14 @@ pub fn execute_load_plan(
                         found: doc.id,
                     });
                 }
-                let (state, record) = bootstrap_scene(doc, *runtime_session)
-                    .map_err(LoadExecutionError::Bootstrap)?;
+                let (state, record) = match resolution {
+                    Some(resolution) => {
+                        BootstrapPlan::prepare_resolved(doc, *runtime_session, resolution)
+                            .map(|plan| plan.apply())
+                    }
+                    None => bootstrap_scene(doc, *runtime_session),
+                }
+                .map_err(LoadExecutionError::Bootstrap)?;
                 stages.push(StageOutcome {
                     stage: LoadStage::Bootstrap,
                     detail: format!(

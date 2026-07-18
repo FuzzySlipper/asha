@@ -75,6 +75,7 @@ pub fn load_prefab_registry(
 fn decode_prefab_registry(input: &str) -> Result<PrefabRegistry, PrefabRegistryDecodeError> {
     let value: Value = serde_json::from_str(input)
         .map_err(|error| PrefabRegistryDecodeError::Json(error.to_string()))?;
+    require_keys(&value, "prefab registry", &["schemaVersion", "definitions"])?;
     let definitions = array(field(&value, "definitions")?, "definitions")?
         .iter()
         .map(decode_definition)
@@ -100,6 +101,18 @@ fn encode_definition(definition: &PrefabDefinition) -> Value {
 }
 
 fn decode_definition(value: &Value) -> Result<PrefabDefinition, PrefabRegistryDecodeError> {
+    require_keys(
+        value,
+        "prefab definition",
+        &[
+            "id",
+            "schemaVersion",
+            "displayName",
+            "parts",
+            "partRoles",
+            "variant",
+        ],
+    )?;
     let parts = array(field(value, "parts")?, "parts")?
         .iter()
         .map(decode_part)
@@ -107,6 +120,7 @@ fn decode_definition(value: &Value) -> Result<PrefabDefinition, PrefabRegistryDe
     let part_roles = array(field(value, "partRoles")?, "partRoles")?
         .iter()
         .map(|binding| {
+            require_keys(binding, "prefab part role", &["role", "part"])?;
             Ok(PrefabPartRoleBinding {
                 role: string_field(binding, "role")?,
                 part: PrefabPartId::new(u64_field(binding, "part")?),
@@ -139,6 +153,18 @@ fn encode_part(part: &PrefabPart) -> Value {
 }
 
 fn decode_part(value: &Value) -> Result<PrefabPart, PrefabRegistryDecodeError> {
+    require_keys(
+        value,
+        "prefab part",
+        &[
+            "id",
+            "namespace",
+            "displayName",
+            "parent",
+            "transform",
+            "source",
+        ],
+    )?;
     Ok(PrefabPart {
         id: PrefabPartId::new(u64_field(value, "id")?),
         namespace: string_field(value, "namespace")?,
@@ -163,21 +189,35 @@ fn encode_source(source: &PrefabPartSource) -> Value {
 
 fn decode_source(value: &Value) -> Result<PrefabPartSource, PrefabRegistryDecodeError> {
     match string_field(value, "kind")?.as_str() {
-        "scene" => Ok(PrefabPartSource::Scene {
-            asset: string_field(value, "asset")?,
-        }),
-        "entityDefinition" => Ok(PrefabPartSource::EntityDefinition {
-            stable_id: string_field(value, "stableId")?,
-        }),
-        "voxelObject" => Ok(PrefabPartSource::VoxelObject {
-            asset: string_field(value, "asset")?,
-        }),
+        "scene" => {
+            require_keys(value, "scene prefab source", &["kind", "asset"])?;
+            Ok(PrefabPartSource::Scene {
+                asset: string_field(value, "asset")?,
+            })
+        }
+        "entityDefinition" => {
+            require_keys(
+                value,
+                "entity-definition prefab source",
+                &["kind", "stableId"],
+            )?;
+            Ok(PrefabPartSource::EntityDefinition {
+                stable_id: string_field(value, "stableId")?,
+            })
+        }
+        "voxelObject" => {
+            require_keys(value, "voxel-object prefab source", &["kind", "asset"])?;
+            Ok(PrefabPartSource::VoxelObject {
+                asset: string_field(value, "asset")?,
+            })
+        }
         other => Err(PrefabRegistryDecodeError::UnknownSourceKind(other.into())),
     }
 }
 
 fn encode_variant(variant: &PrefabVariantDelta) -> Value {
     json!({
+        "variantId": variant.variant_id,
         "base": variant.base.raw(),
         "removedRoles": variant.removed_roles,
         "overrides": variant.overrides.iter().map(encode_override).collect::<Vec<_>>(),
@@ -185,7 +225,13 @@ fn encode_variant(variant: &PrefabVariantDelta) -> Value {
 }
 
 fn decode_variant(value: &Value) -> Result<PrefabVariantDelta, PrefabRegistryDecodeError> {
+    require_keys(
+        value,
+        "prefab variant",
+        &["variantId", "base", "removedRoles", "overrides"],
+    )?;
     Ok(PrefabVariantDelta {
+        variant_id: string_field(value, "variantId")?,
         base: PrefabId::new(u64_field(value, "base")?),
         removed_roles: string_array(field(value, "removedRoles")?, "removedRoles")?,
         overrides: array(field(value, "overrides")?, "overrides")?
@@ -222,24 +268,56 @@ fn encode_override(item: &PrefabOverride) -> Value {
 }
 
 fn decode_override(value: &Value) -> Result<PrefabOverride, PrefabRegistryDecodeError> {
+    require_keys(value, "prefab override", &["targetRole", "value"])?;
     let encoded_value = field(value, "value")?;
     let field_name = string_field(encoded_value, "field")?;
     let override_value = match field_name.as_str() {
-        "transform" => PrefabOverrideValue::Transform {
-            transform: decode_transform(field(encoded_value, "transform")?)?,
-        },
-        "entityDefinition" => PrefabOverrideValue::EntityDefinition {
-            stable_id: string_field(encoded_value, "stableId")?,
-        },
-        "asset" => PrefabOverrideValue::Asset {
-            asset: string_field(encoded_value, "asset")?,
-        },
-        "material" => PrefabOverrideValue::Material {
-            asset: string_field(encoded_value, "asset")?,
-        },
-        "activation" => PrefabOverrideValue::Activation {
-            active: bool_field(encoded_value, "active")?,
-        },
+        "transform" => {
+            require_keys(
+                encoded_value,
+                "transform override value",
+                &["field", "transform"],
+            )?;
+            PrefabOverrideValue::Transform {
+                transform: decode_transform(field(encoded_value, "transform")?)?,
+            }
+        }
+        "entityDefinition" => {
+            require_keys(
+                encoded_value,
+                "entity-definition override value",
+                &["field", "stableId"],
+            )?;
+            PrefabOverrideValue::EntityDefinition {
+                stable_id: string_field(encoded_value, "stableId")?,
+            }
+        }
+        "asset" => {
+            require_keys(encoded_value, "asset override value", &["field", "asset"])?;
+            PrefabOverrideValue::Asset {
+                asset: string_field(encoded_value, "asset")?,
+            }
+        }
+        "material" => {
+            require_keys(
+                encoded_value,
+                "material override value",
+                &["field", "asset"],
+            )?;
+            PrefabOverrideValue::Material {
+                asset: string_field(encoded_value, "asset")?,
+            }
+        }
+        "activation" => {
+            require_keys(
+                encoded_value,
+                "activation override value",
+                &["field", "active"],
+            )?;
+            PrefabOverrideValue::Activation {
+                active: bool_field(encoded_value, "active")?,
+            }
+        }
         other => {
             return Err(PrefabRegistryDecodeError::UnknownOverrideField(
                 other.into(),
@@ -261,6 +339,11 @@ fn encode_transform(transform: PrefabTransform) -> Value {
 }
 
 fn decode_transform(value: &Value) -> Result<PrefabTransform, PrefabRegistryDecodeError> {
+    require_keys(
+        value,
+        "prefab transform",
+        &["translation", "rotation", "scale"],
+    )?;
     Ok(PrefabTransform {
         translation: f32_array::<3>(field(value, "translation")?, "translation")?,
         rotation: f32_array::<4>(field(value, "rotation")?, "rotation")?,
@@ -272,6 +355,24 @@ fn field<'a>(value: &'a Value, key: &str) -> Result<&'a Value, PrefabRegistryDec
     value
         .get(key)
         .ok_or_else(|| PrefabRegistryDecodeError::Field(format!("missing field `{key}`")))
+}
+
+fn require_keys(
+    value: &Value,
+    label: &str,
+    allowed: &[&str],
+) -> Result<(), PrefabRegistryDecodeError> {
+    let object = value
+        .as_object()
+        .ok_or_else(|| PrefabRegistryDecodeError::Field(format!("{label} must be an object")))?;
+    for key in object.keys() {
+        if !allowed.contains(&key.as_str()) {
+            return Err(PrefabRegistryDecodeError::Field(format!(
+                "unknown field `{key}` in {label}"
+            )));
+        }
+    }
+    Ok(())
 }
 
 fn string_field(value: &Value, key: &str) -> Result<String, PrefabRegistryDecodeError> {
@@ -424,6 +525,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: "lit".to_owned(),
                 base: PrefabId::new(7),
                 removed_roles: vec![],
                 overrides: vec![
@@ -475,5 +577,20 @@ mod tests {
         let invalid = r#"{"schemaVersion":99,"definitions":[]}"#;
         let error = load_prefab_registry(invalid, &context).unwrap_err();
         assert!(matches!(error, PrefabRegistryLoadError::Validation(_)));
+    }
+
+    #[test]
+    fn load_boundary_rejects_unknown_fields_before_validation() {
+        let context = PrefabRegistryValidationContext {
+            asset_ids: BTreeSet::new(),
+            entity_definition_ids: ["fixture.root".to_string()].into_iter().collect(),
+        };
+        let validated = ValidatedPrefabRegistry::new(registry(), &context).unwrap();
+        let mut encoded: Value = serde_json::from_str(&encode_prefab_registry(&validated)).unwrap();
+        encoded["definitions"][0]["parts"][0]["source"]["browserAccepted"] = Value::Bool(true);
+        let error = load_prefab_registry(&encoded.to_string(), &context).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("unknown field `browserAccepted`"));
     }
 }

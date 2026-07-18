@@ -36,6 +36,11 @@ import type {
   SceneDocumentAuthoringResult,
   SceneDocumentDecodeRequest,
   SceneDocumentEncodeRequest,
+  ProjectContentAuthoringRequest,
+  ProjectContentAuthoringResult,
+  ProjectContentCodecResult,
+  ProjectContentDecodeRequest,
+  ProjectContentEncodeRequest,
   VoxelConversionApplyRequest,
   VoxelConversionEvidenceRef,
   VoxelConversionMeshAssetRegistrationRequest,
@@ -583,10 +588,6 @@ function nativeBootstrapResolutionRegistry(
     registry.entityDefinitionIds,
     'bootstrapResolutionRegistry.entityDefinitionIds',
   );
-  const spawnMarkerIds = uniqueStrings(
-    registry.spawnMarkerIds,
-    'bootstrapResolutionRegistry.spawnMarkerIds',
-  );
   const catalogIds = uniqueStrings(registry.catalogIds, 'bootstrapResolutionRegistry.catalogIds');
   const prefabIds = registry.prefabIds.map((prefabId, index) => {
     nonNegativeSafeInteger(prefabId, `bootstrapResolutionRegistry.prefabIds[${index}]`);
@@ -622,7 +623,6 @@ function nativeBootstrapResolutionRegistry(
     schemaVersion: 1,
     entityDefinitionIds,
     prefabIds,
-    spawnMarkerIds,
     generatorPresets,
     catalogIds,
   } as const;
@@ -1129,6 +1129,40 @@ export class NativeRuntimeBridge implements RuntimeBridge {
     const handle = this.#requireHandle('applySceneDocumentAuthoring');
     const payload = callNative(() => this.#addon.applySceneDocumentAuthoring(handle, JSON.stringify(request)));
     return parseNativeJson<SceneDocumentAuthoringResult>(payload, 'scene document authoring result');
+  }
+
+  decodeProjectContent(request: ProjectContentDecodeRequest): ProjectContentCodecResult {
+    const handle = this.#requireHandle('decodeProjectContent');
+    const payload = callNative(() => this.#addon.decodeProjectContent(handle, JSON.stringify(request)));
+    return parseGeneratedOperationOutput<ProjectContentCodecResult>(
+      'decode_project_content',
+      'projectContent.ProjectContentCodecResult',
+      payload,
+    );
+  }
+
+  encodeProjectContent(request: ProjectContentEncodeRequest): ProjectContentCodecResult {
+    const handle = this.#requireHandle('encodeProjectContent');
+    const payload = callNative(() => this.#addon.encodeProjectContent(handle, JSON.stringify(request)));
+    return parseGeneratedOperationOutput<ProjectContentCodecResult>(
+      'encode_project_content',
+      'projectContent.ProjectContentCodecResult',
+      payload,
+    );
+  }
+
+  applyProjectContentAuthoring(
+    request: ProjectContentAuthoringRequest,
+  ): ProjectContentAuthoringResult {
+    const handle = this.#requireHandle('applyProjectContentAuthoring');
+    const payload = callNative(() =>
+      this.#addon.applyProjectContentAuthoring(handle, JSON.stringify(request)),
+    );
+    return parseGeneratedOperationOutput<ProjectContentAuthoringResult>(
+      'apply_project_content_authoring',
+      'projectContent.ProjectContentAuthoringResult',
+      payload,
+    );
   }
 
   readSceneObjectSnapshot(): SceneObjectSnapshot {

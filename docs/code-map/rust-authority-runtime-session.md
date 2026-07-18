@@ -30,8 +30,8 @@ projections.
 - [engine-rs/crates/services](../../engine-rs/crates/services)
 - [engine-rs/crates/rules](../../engine-rs/crates/rules)
 - [engine-rs/crates/sim](../../engine-rs/crates/sim)
-- [runtime-session-facade.md](../runtime-session-facade.md)
-- [ecrp-runtime-session-readout.md](../ecrp-runtime-session-readout.md)
+- [runtime-session-facade.md](../topics/authority/runtime-session-facade.md)
+- [ecrp-runtime-session-readout.md](../topics/authority/ecrp-runtime-session-readout.md)
 
 ## Public Downstream Surfaces
 

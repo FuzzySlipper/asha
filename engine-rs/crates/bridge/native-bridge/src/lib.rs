@@ -50,6 +50,7 @@ mod generated_tunnel;
 mod input_session;
 mod particle_projection;
 mod presentation_operation;
+mod project_content;
 mod render_projection;
 #[cfg(test)]
 mod resource_limit_tests;
@@ -94,6 +95,9 @@ pub use input_session::{
     replay_resolved_input_action, submit_raw_input,
 };
 use presentation_operation::NativePresentationOp;
+pub use project_content::{
+    apply_project_content_authoring, decode_project_content, encode_project_content,
+};
 pub use render_projection::read_render_diffs;
 pub use scene_preview::{
     apply_scene_document_authoring, apply_scene_object_command, decode_scene_document,

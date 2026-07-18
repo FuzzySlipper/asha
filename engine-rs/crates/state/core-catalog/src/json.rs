@@ -204,6 +204,7 @@ impl std::error::Error for CatalogDecodeError {}
 /// Decode authored catalog JSON. Not validated; call [`crate::validate`].
 pub fn decode(input: &str) -> Result<Catalog, CatalogDecodeError> {
     let json = Json::parse(input).map_err(CatalogDecodeError::Json)?;
+    require_keys(&json, "catalog", &["entries"])?;
     let arr = field(&json, "entries")?
         .as_array()
         .ok_or_else(|| CatalogDecodeError::Field("entries must be an array".into()))?;
@@ -215,6 +216,19 @@ pub fn decode(input: &str) -> Result<Catalog, CatalogDecodeError> {
 }
 
 fn decode_entry(j: &Json) -> Result<CatalogEntry, CatalogDecodeError> {
+    require_keys(
+        j,
+        "catalog entry",
+        &[
+            "id",
+            "version",
+            "hash",
+            "sourcePath",
+            "label",
+            "dependencies",
+            "material",
+        ],
+    )?;
     let id = asset_id(&req_str(j, "id")?)?;
     let version = field_u64(j, "version")? as u32;
     let hash = decode_opt_hash(j.get("hash"))?;
@@ -245,6 +259,7 @@ fn decode_entry(j: &Json) -> Result<CatalogEntry, CatalogDecodeError> {
 }
 
 fn decode_ref(j: &Json) -> Result<AssetReference, CatalogDecodeError> {
+    require_keys(j, "asset reference", &["id", "version", "hash"])?;
     let id = asset_id(
         j.get("id")
             .and_then(Json::as_str)
@@ -253,6 +268,7 @@ fn decode_ref(j: &Json) -> Result<AssetReference, CatalogDecodeError> {
     let version = match j.get("version") {
         None | Some(Json::Null) => AssetVersionReq::Any,
         Some(v) => {
+            require_keys(v, "asset version", &["req", "value"])?;
             let req = v
                 .get("req")
                 .and_then(Json::as_str)
@@ -275,7 +291,13 @@ fn decode_ref(j: &Json) -> Result<AssetReference, CatalogDecodeError> {
 }
 
 fn decode_material(j: &Json) -> Result<MaterialDef, CatalogDecodeError> {
+    require_keys(j, "material", &["authority", "style"])?;
     let a = field(j, "authority")?;
+    require_keys(
+        a,
+        "material authority",
+        &["solid", "collidable", "occludes", "structuralClass"],
+    )?;
     let authority = MaterialAuthority {
         solid: field_bool(a, "solid")?,
         collidable: field_bool(a, "collidable")?,
@@ -293,6 +315,19 @@ fn decode_material(j: &Json) -> Result<MaterialDef, CatalogDecodeError> {
         },
     };
     let s = field(j, "style")?;
+    require_keys(
+        s,
+        "material style",
+        &[
+            "color",
+            "texture",
+            "textureTint",
+            "emissionColor",
+            "roughness",
+            "emissive",
+            "uvStrategy",
+        ],
+    )?;
     let color = decode_rgba(field(s, "color")?)?;
     let texture = match s.get("texture") {
         None | Some(Json::Null) => None,
@@ -416,6 +451,28 @@ fn num(j: &Json) -> Result<f32, CatalogDecodeError> {
         Json::Num(n) => Ok(*n as f32),
         _ => Err(CatalogDecodeError::Field("expected a number".into())),
     }
+}
+
+fn require_keys(j: &Json, label: &str, allowed: &[&str]) -> Result<(), CatalogDecodeError> {
+    let Json::Obj(entries) = j else {
+        return Err(CatalogDecodeError::Field(format!(
+            "{label} must be an object"
+        )));
+    };
+    let mut seen = std::collections::BTreeSet::new();
+    for (key, _) in entries {
+        if !allowed.contains(&key.as_str()) {
+            return Err(CatalogDecodeError::Field(format!(
+                "unknown field `{key}` in {label}"
+            )));
+        }
+        if !seen.insert(key.as_str()) {
+            return Err(CatalogDecodeError::Field(format!(
+                "duplicate field `{key}` in {label}"
+            )));
+        }
+    }
+    Ok(())
 }
 
 // ── Minimal JSON value + parser (std-only) ────────────────────────────────────

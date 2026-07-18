@@ -123,7 +123,7 @@ export interface AshaPrefabBindingReadout {
   readonly role: string | null;
   readonly enabled: boolean;
   readonly instanceOverrides: readonly {
-    readonly instance: PrefabInstanceId;
+    readonly sceneInstanceId: string;
     readonly configurationId: string | null;
     readonly enabled: boolean | null;
   }[];
@@ -299,7 +299,7 @@ export function readAshaPrefabAuthoring(state: AshaPrefabAuthoringState): AshaPr
         instanceOverrides: bindings.overrides
           .filter((override) => override.bindingId === binding.bindingId)
           .map((override) => ({
-            instance: override.prefabInstance,
+            sceneInstanceId: override.sceneInstanceId,
             configurationId: override.configurationId,
             enabled: override.enabled,
           })),

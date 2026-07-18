@@ -79,7 +79,6 @@ function ecrpProjectLoadInput() {
       schemaVersion: 1 as const,
       entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
       prefabIds: [],
-      spawnMarkerIds: ['spawn.player.custom', 'spawn.enemy.custom'],
       generatorPresets: [],
       catalogIds: [],
     },
@@ -570,7 +569,6 @@ void test('Rust-backed RuntimeSession routes ECRP load, primary fire, and restar
     schemaVersion: 1,
     entityDefinitionIds: ['actor/custom-player', 'actor/custom-enemy'],
     prefabIds: [],
-    spawnMarkerIds: ['spawn.player.custom', 'spawn.enemy.custom'],
     generatorPresets: [],
     catalogIds: [],
   });

@@ -10,6 +10,7 @@ workspace = true
 core-entity = { path = "../../state/core-entity" }
 core-ids = { path = "../../foundation/core-ids" }
 core-math = { path = "../../foundation/core-math" }
+core-scene = { path = "../../state/core-scene" }
 gameplay-module-sdk = { path = "../gameplay-module-sdk" }
 protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
 protocol-diagnostics = { path = "../../protocol/protocol-diagnostics" }
@@ -26,4 +27,3 @@ svc-gameplay-fabric = { path = "../../services/svc-gameplay-fabric" }
 svc-entity-authoring = { path = "../../services/svc-entity-authoring" }
 
 [dev-dependencies]
-core-scene = { path = "../../state/core-scene" }

@@ -107,6 +107,7 @@ function assetForKind(kind: SceneNodeKind): AssetReference | null {
   switch (kind.kind) {
     case 'emptyGroup':
     case 'light':
+    case 'marker':
     case 'entityInstance':
     case 'bootstrap':
       return null;

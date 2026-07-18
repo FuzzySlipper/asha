@@ -12,6 +12,13 @@ import type {
   WorkspaceVoxelProjectionBindingInput,
 } from '@asha/runtime-session';
 import type { VoxelProjectionBindingReceipt } from '@asha/contracts';
+import type {
+  ProjectContentAuthoringRequest,
+  ProjectContentAuthoringResult,
+  ProjectContentCodecResult,
+  ProjectContentDecodeRequest,
+  ProjectContentEncodeRequest,
+} from '@asha/contracts';
 import {
   RuntimeBridgeError,
   frameCursor,
@@ -104,6 +111,27 @@ export class RustBackedWorkspaceAuthoringFacade implements WorkspaceAuthoringFac
     });
     this.#nextProjectionCursor = projection.nextCursor;
     return projection;
+  }
+
+  decodeProjectContent(input: ProjectContentDecodeRequest): ProjectContentCodecResult {
+    this.#requireOpen('decodeProjectContent');
+    return this.#bridge.decodeProjectContent(input);
+  }
+
+  encodeProjectContent(input: ProjectContentEncodeRequest): ProjectContentCodecResult {
+    this.#requireOpen('encodeProjectContent');
+    return this.#bridge.encodeProjectContent(input);
+  }
+
+  applyProjectContentAuthoring(
+    input: ProjectContentAuthoringRequest,
+  ): ProjectContentAuthoringResult {
+    this.#requireOpen('applyProjectContentAuthoring');
+    const result = this.#bridge.applyProjectContentAuthoring(input);
+    if (result.accepted) {
+      this.#refreshAfterMutation();
+    }
+    return result;
   }
 
   configureVoxelProjectionInstances(

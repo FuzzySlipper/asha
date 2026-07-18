@@ -4,8 +4,8 @@
   "compatibilityVersion": "browser-host.v0",
   "packageVersion": "0.1.0",
   "sourceOfTruth": "ts/packages/browser-host/src/index.ts plus @asha/runtime-bridge native provider contract",
-  "changelog": "docs/consumer-compatibility.md#browser-host-compatibility-log",
-  "migrationNoteTemplate": "docs/consumer-compatibility.md#migration-note-template",
+  "changelog": "docs/topics/consumer/consumer-compatibility.md#browser-host-compatibility-log",
+  "migrationNoteTemplate": "docs/topics/consumer/consumer-compatibility.md#migration-note-template",
   "failClosedPolicy": "Consumers must stop on a missing, spoofed, stale, or disconnected native Rust RuntimeBridge provider. Each served browser page receives a cryptographically opaque host-issued Session capability and isolated RuntimeBridge cells; missing, malformed, unissued, forged, or retired capabilities fail closed before invocation or retirement. Project switch disconnects the old cell and requests a fresh cell from the same standard provider; explicit disconnect, page close, and host shutdown release cells through the typed lifecycle. Statically linked gameplay modules are part of that cell; no second gameplay host is accepted. The browser host must install globalThis.ashaRuntimeBridge before downstream app boot and must not fall back to reference/mock authority.",
   "pinningGuidance": "Record ASHA git commit, browser-host.v0, runtime-bridge.v0, and the standard asha.runtime_bridge.native_rust_provider.v1 provider kind in Demo or Studio browser-host evidence until registry/version publishing exists.",
   "breakingChangeRequires": [

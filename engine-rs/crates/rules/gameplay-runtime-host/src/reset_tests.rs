@@ -37,7 +37,7 @@ fn runtime_reset_checkpoint_clears_decision_evidence_and_reopens_identity_space(
 #[test]
 fn public_height_host_binds_actor_pose_to_trigger_authority_and_snapshot() {
     let mut bundle = bundle();
-    create_spatial(&mut bundle, EntityId::new(10), 0.0, true);
+    create_spatial(&mut bundle, EntityId::new(10), 0.0, false);
     create_spatial(&mut bundle, EntityId::new(20), 2.0, false);
     let mut composition = GameplayStaticCompositionBuilder::new();
     composition.include_standard_owner_events();
@@ -52,7 +52,7 @@ fn public_height_host_binds_actor_pose_to_trigger_authority_and_snapshot() {
         declared_reads: Vec::new(),
         triggers: vec![GameplayTriggerDefinition {
             schema_version: GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
-            entity: 10,
+            scene_instance_id: "fixture.host.trigger".to_owned(),
             scope: "zone.host".to_owned(),
             tags: vec!["door".to_owned()],
         }],

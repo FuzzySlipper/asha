@@ -29,8 +29,8 @@ renderer packages display those projections without owning authority.
 - [ts/packages/render-projection](../../ts/packages/render-projection)
 - [ts/packages/renderer-host](../../ts/packages/renderer-host)
 - [ts/packages/renderer-three](../../ts/packages/renderer-three)
-- [render-protocol.md](../render-protocol.md)
-- [static-room-render-path.md](../static-room-render-path.md)
+- [render-protocol.md](../topics/projection/render-protocol.md)
+- [static-room-render-path.md](../topics/projection/static-room-render-path.md)
 
 ## Public Downstream Surfaces
 

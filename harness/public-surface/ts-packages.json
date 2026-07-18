@@ -152,7 +152,7 @@
       "intendedConsumerRole": "Generated semantic DTO/type border for consumers.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio", "downstream-authoring"],
       "compatibilityMarker": "contracts.v0",
-      "changelog": "docs/consumer-compatibility.md#generated-contract-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#generated-contract-compatibility-log"
     },
     {
       "package": "@asha/browser-host",
@@ -161,7 +161,7 @@
       "intendedConsumerRole": "Browser/dev host command, isolated Session lifecycle, and provider boot surface for ASHA Game Projects and Studio native-authority workflows.",
       "allowedConsumerRoles": ["asha-demo", "asha-studio"],
       "compatibilityMarker": "browser-host.v0",
-      "changelog": "docs/consumer-compatibility.md#browser-host-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#browser-host-compatibility-log"
     },
     {
       "package": "@asha/runtime-bridge",
@@ -171,7 +171,7 @@
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio", "downstream-authoring"],
       "allowedExportSubpaths": ["./reference"],
       "compatibilityMarker": "runtime-bridge.v0",
-      "changelog": "docs/consumer-compatibility.md#runtime-bridge-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#runtime-bridge-compatibility-log"
     },
     {
       "package": "@asha/runtime-session",
@@ -180,7 +180,7 @@
       "intendedConsumerRole": "Transport-neutral RuntimeSession semantic readouts, proposal envelopes, and domain helper projections consumed through the package root.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio", "downstream-authoring"],
       "compatibilityMarker": "runtime-session.v0",
-      "changelog": "docs/consumer-compatibility.md#runtime-session-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#runtime-session-compatibility-log"
     },
     {
       "package": "@asha/command-registry",
@@ -189,7 +189,7 @@
       "intendedConsumerRole": "Studio command/evidence metadata registry consumed through the root barrel.",
       "allowedConsumerRoles": ["asha-studio", "asha-demo"],
       "compatibilityMarker": "command-registry.v0",
-      "changelog": "docs/consumer-compatibility.md#command-registry-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#command-registry-compatibility-log"
     },
     {
       "package": "@asha/devtools",
@@ -198,7 +198,7 @@
       "intendedConsumerRole": "Observational attach/readout protocol for Studio and testing harnesses.",
       "allowedConsumerRoles": ["asha-testing", "asha-studio"],
       "compatibilityMarker": "devtools-protocol.v0",
-      "changelog": "docs/consumer-compatibility.md#devtools-protocol-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#devtools-protocol-compatibility-log"
     },
     {
       "package": "@asha/editor-tools",
@@ -206,7 +206,7 @@
       "ownershipKey": "ts/packages/editor-tools",
       "intendedConsumerRole": "Editor-local state helpers for Studio/tooling; not authority.",
       "allowedConsumerRoles": ["asha-studio"],
-      "changelog": "docs/consumer-compatibility.md#editor-tools-unstable-status"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#editor-tools-unstable-status"
     },
     {
       "package": "@asha/game-workspace",
@@ -215,7 +215,7 @@
       "intendedConsumerRole": "Typed game/workspace manifest validation plus atomic unknown-to-typed prefab source decoding, non-authoritative prefab draft commands, browser/selection readouts, placement records, and canonical source serialization for consumer repos.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio", "downstream-authoring"],
       "compatibilityMarker": "game-workspace.v0",
-      "changelog": "docs/consumer-compatibility.md#game-workspace-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#game-workspace-compatibility-log"
     },
     {
       "package": "@asha/renderer-three",
@@ -224,7 +224,7 @@
       "intendedConsumerRole": "Three.js render-diff backend implementation for engine smoke/testing; demos should use @asha/renderer-host.",
       "allowedConsumerRoles": ["asha-testing"],
       "allowedExportSubpaths": ["./backend"],
-      "changelog": "docs/consumer-compatibility.md#renderer-three-unstable-status"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#renderer-three-unstable-status"
     },
     {
       "package": "@asha/renderer-host",
@@ -233,7 +233,7 @@
       "intendedConsumerRole": "Backend-neutral browser render surface, editor viewport, and generated audio, billboard, particle, and live telemetry projection hosts; concrete renderer packages stay behind this facade.",
       "allowedConsumerRoles": ["asha-demo", "asha-studio"],
       "compatibilityMarker": "renderer-host.v1",
-      "changelog": "docs/consumer-compatibility.md#renderer-host-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#renderer-host-compatibility-log"
     },
     {
       "package": "@asha/render-projection",
@@ -242,7 +242,7 @@
       "intendedConsumerRole": "Renderer-neutral retained render-diff application model for Studio/demo renderer bindings.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
       "compatibilityMarker": "render-projection.v0",
-      "changelog": "docs/consumer-compatibility.md#render-projection-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#render-projection-compatibility-log"
     },
     {
       "package": "@asha/app",
@@ -257,7 +257,7 @@
       "ownershipKey": "ts/packages/catalog-core",
       "intendedConsumerRole": "Typed gameplay preset/catalog validation surface for consumer-owned tuning data; not runtime authority.",
       "allowedConsumerRoles": ["asha-testing", "asha-demo", "asha-studio"],
-      "changelog": "docs/consumer-compatibility.md#catalog-core-unstable-status"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#catalog-core-unstable-status"
     },
     {
       "package": "@asha/catalog-examples",
@@ -328,7 +328,7 @@
       "ownershipKey": "ts/packages/ui-dom",
       "intendedConsumerRole": "Render-agnostic UI projection/control descriptors for HUD/menu and engine-owned UI surfaces; not authority.",
       "allowedConsumerRoles": ["asha-demo", "asha-studio"],
-      "changelog": "docs/consumer-compatibility.md#ui-dom-unstable-status"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#ui-dom-unstable-status"
     },
     {
       "package": "@asha/wasm-replay-bridge",

@@ -12,7 +12,7 @@ Source metadata:
 
 ## Rust Crates By Lane
 
-### contract-steward (22)
+### contract-steward (23)
 
 - [`protocol-assets`](../../engine-rs/crates/protocol/protocol-assets/Cargo.toml) — active
 - [`protocol-codegen`](../../engine-rs/crates/protocol/protocol-codegen/Cargo.toml) — active
@@ -25,6 +25,7 @@ Source metadata:
 - [`protocol-policy-view`](../../engine-rs/crates/protocol/protocol-policy-view/Cargo.toml) — active
 - [`protocol-presentation`](../../engine-rs/crates/protocol/protocol-presentation/Cargo.toml) — active
 - [`protocol-project-bundle`](../../engine-rs/crates/protocol/protocol-project-bundle/Cargo.toml) — active
+- [`protocol-project-content`](../../engine-rs/crates/protocol/protocol-project-content/Cargo.toml) — active
 - [`protocol-render`](../../engine-rs/crates/protocol/protocol-render/Cargo.toml) — active
 - [`protocol-replay`](../../engine-rs/crates/protocol/protocol-replay/Cargo.toml) — active
 - [`protocol-scene`](../../engine-rs/crates/protocol/protocol-scene/Cargo.toml) — active
@@ -80,7 +81,7 @@ Source metadata:
 - [`rule-trigger-volume`](../../engine-rs/crates/rules/rule-trigger-volume/Cargo.toml) — active
 - [`rule-voxel-edit`](../../engine-rs/crates/rules/rule-voxel-edit/Cargo.toml) — active
 
-### rust-service (18)
+### rust-service (19)
 
 - [`svc-collision`](../../engine-rs/crates/services/svc-collision/Cargo.toml) — active
 - [`svc-combat`](../../engine-rs/crates/services/svc-combat/Cargo.toml) — active
@@ -93,6 +94,7 @@ Source metadata:
 - [`svc-pathfinding`](../../engine-rs/crates/services/svc-pathfinding/Cargo.toml) — active
 - [`svc-physics`](../../engine-rs/crates/services/svc-physics/Cargo.toml) — active
 - [`svc-policy-view`](../../engine-rs/crates/services/svc-policy-view/Cargo.toml) — active
+- [`svc-project-content`](../../engine-rs/crates/services/svc-project-content/Cargo.toml) — active
 - [`svc-rng`](../../engine-rs/crates/services/svc-rng/Cargo.toml) — active
 - [`svc-serialization`](../../engine-rs/crates/services/svc-serialization/Cargo.toml) — active
 - [`svc-spatial`](../../engine-rs/crates/services/svc-spatial/Cargo.toml) — active
@@ -221,6 +223,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `apply_gameplay_prefab_part_interaction` — stable; output `protocol_runtime::GameplayPrefabPartInteractionReceipt`
 - `apply_generated_tunnel_to_runtime_world` — stable; output `protocol_view::GeneratedTunnelRuntimeApplyReceipt`
 - `apply_input_context_command` — stable; output `protocol_input::InputContextChangeReceipt`
+- `apply_project_content_authoring` — stable; output `protocol_project_content::ProjectContentAuthoringResult`
 - `apply_scene_document_authoring` — stable; output `protocol_scene::SceneDocumentAuthoringResult`
 - `apply_scene_object_command` — stable; output `protocol_scene::SceneObjectCommandResult`
 - `apply_time_control_command` — stable; output `protocol_time_control::TimeControlReceipt`
@@ -232,7 +235,9 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 - `configure_voxel_projection_instances` — stable; output `protocol_voxel::VoxelProjectionBindingReceipt`
 - `confirm_workspace_authoring_stored` — stable; output `protocol_project_bundle::WorkspaceAuthoringStoredConfirmationReceipt`
 - `create_camera` — stable; output `protocol_view::CameraSnapshot`
+- `decode_project_content` — stable; output `protocol_project_content::ProjectContentCodecResult`
 - `decode_scene_document` — stable; output `protocol_scene::SceneDocumentCodecResult`
+- `encode_project_content` — stable; output `protocol_project_content::ProjectContentCodecResult`
 - `encode_scene_document` — stable; output `protocol_scene::SceneDocumentCodecResult`
 - `export_voxel_annotation_layer` — stable; output `protocol_voxel_annotation::VoxelAnnotationLayerExportReceipt`
 - `export_voxel_conversion_evidence` — stable; output `protocol_voxel_conversion::VoxelConversionEvidenceRef[]`
@@ -299,22 +304,22 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Assignment And Dependency Pressure
 
-Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cache/output.
+Committed path classes: 741 source; 26 generated source; 518 other; 0 build/cache/output.
 
 ### Rust actual and allowed edges
 
 | Cell | Actual edges / allowed edges | Fan in/out | Cycle risk | Public consumers |
 |---|---|---:|---|---|
 | `asset-import` (rust-tools) | actual: `core-assets`, `core-catalog`, `core-error`, `core-ids`, `protocol-render`<br>allowed: `core-assets`, `core-catalog`, `core-error`, `core-ids`, `protocol-render` | 0/5 | none | none |
-| `core-assets` (rust-foundation) | actual: none<br>allowed: none | 17/0 | none | `asset-import`, `core-catalog`, `core-entity`, `core-scene`, `protocol-assets`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics`, `svc-entity-authoring`, `svc-policy-view`, `svc-serialization`, `svc-voxel-annotation`, `svc-voxel-asset` |
-| `core-catalog` (rust-state) | actual: `core-assets`, `core-voxel`<br>allowed: `core-assets`, `core-voxel` | 7/2 | none | `asset-import`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `runtime-bridge-api`, `scene-diagnostics` |
+| `core-assets` (rust-foundation) | actual: none<br>allowed: none | 18/0 | none | `asset-import`, `core-catalog`, `core-entity`, `core-scene`, `protocol-assets`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics`, `svc-entity-authoring`, `svc-policy-view`, `svc-project-content`, `svc-serialization`, `svc-voxel-annotation`, `svc-voxel-asset` |
+| `core-catalog` (rust-state) | actual: `core-assets`, `core-voxel`<br>allowed: `core-assets`, `core-voxel` | 8/2 | none | `asset-import`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `runtime-bridge-api`, `scene-diagnostics`, `svc-project-content` |
 | `core-collections` (rust-foundation) | actual: none<br>allowed: none | 0/0 | none | none |
 | `core-commands` (rust-state) | actual: `core-ids`, `core-space`, `core-voxel`<br>allowed: `core-error`, `core-ids`, `core-space`, `core-state`, `core-voxel` | 9/3 | none | `protocol-replay`, `protocol-script`, `rule-process`, `rule-voxel-edit`, `runtime-bridge-api`, `sim-kernel`, `sim-replay`, `sim-runner`, `sim-validator` |
 | `core-entity` (rust-state) | actual: `core-assets`, `core-error`, `core-ids`, `core-math`<br>allowed: `core-assets`, `core-error`, `core-ids`, `core-math` | 12/4 | none | `core-scene`, `gameplay-runtime-host`, `rule-gameplay-fabric`, `rule-lifecycle`, `rule-project-bundle`, `rule-relationship`, `rule-trigger-volume`, `runtime-bridge-api`, `scene-diagnostics`, `state-inspector`, `svc-entity-authoring`, `svc-policy-view` |
 | `core-error` (rust-foundation) | actual: none<br>allowed: none | 10/0 | none | `asset-import`, `core-entity`, `core-game-rules`, `core-scene`, `rule-process`, `rule-relationship`, `rule-state-machine`, `runtime-bridge-api`, `svc-physics`, `svc-serialization` |
 | `core-events` (rust-state) | actual: `core-ids`, `core-space`, `core-voxel`<br>allowed: `core-error`, `core-ids`, `core-space`, `core-state`, `core-voxel` | 14/3 | none | `protocol-replay`, `rule-gameplay-fabric`, `rule-process`, `rule-project-bundle`, `rule-state-machine`, `rule-voxel-edit`, `scene-diagnostics`, `sim-applier`, `sim-kernel`, `sim-replay`, `sim-runner`, `sim-validator`, `svc-levelgen`, `voxel-diagnostics` |
 | `core-game-rules` (rust-state) | actual: `core-error`, `core-ids`, `core-time`<br>allowed: `core-error`, `core-ids`, `core-time` | 3/3 | none | `rule-game-modifier`, `rule-gameplay-fabric`, `svc-game-rules` |
-| `core-ids` (rust-foundation) | actual: none<br>allowed: none | 49/0 | none | `asset-import`, `core-commands`, `core-entity`, `core-events`, `core-game-rules`, `core-scene`, `core-snapshot`, `core-state`, `game-rule-extension`, `gameplay-module-sdk`, `gameplay-runtime-host`, `native-bridge`, `protocol-assets`, `protocol-codegen`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `render-animation`, `render-bridge`, `render-debug`, `rule-animation-controller`, `rule-game-modifier`, `rule-gameplay-fabric`, `rule-lifecycle`, `rule-process`, `rule-project-bundle`, `rule-relationship`, `rule-state-machine`, `rule-trigger-volume`, `runtime-bridge-api`, `scene-diagnostics`, `sim-applier`, `sim-kernel`, `sim-replay`, `sim-runner`, `sim-validator`, `svc-combat`, `svc-entity-authoring`, `svc-game-rules`, `svc-policy-view`, `svc-serialization` |
+| `core-ids` (rust-foundation) | actual: none<br>allowed: none | 50/0 | none | `asset-import`, `core-commands`, `core-entity`, `core-events`, `core-game-rules`, `core-scene`, `core-snapshot`, `core-state`, `game-rule-extension`, `gameplay-module-sdk`, `gameplay-runtime-host`, `native-bridge`, `protocol-assets`, `protocol-codegen`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `render-animation`, `render-bridge`, `render-debug`, `rule-animation-controller`, `rule-game-modifier`, `rule-gameplay-fabric`, `rule-lifecycle`, `rule-process`, `rule-project-bundle`, `rule-relationship`, `rule-state-machine`, `rule-trigger-volume`, `runtime-bridge-api`, `scene-diagnostics`, `sim-applier`, `sim-kernel`, `sim-replay`, `sim-runner`, `sim-validator`, `svc-combat`, `svc-entity-authoring`, `svc-game-rules`, `svc-policy-view`, `svc-project-content`, `svc-serialization` |
 | `core-math` (rust-foundation) | actual: none<br>allowed: none | 15/0 | none | `core-entity`, `core-scene`, `gameplay-runtime-host`, `native-bridge`, `render-bridge`, `rule-gameplay-fabric`, `rule-project-bundle`, `rule-trigger-volume`, `rule-voxel-edit`, `runtime-bridge-api`, `scene-diagnostics`, `svc-entity-authoring`, `svc-pathfinding`, `svc-physics`, `svc-policy-view` |
 | `core-scene` (rust-state) | actual: `core-assets`, `core-entity`, `core-error`, `core-ids`, `core-math`<br>allowed: `core-assets`, `core-entity`, `core-error`, `core-ids`, `core-math` | 7/5 | none | `gameplay-runtime-host`, `render-bridge`, `rule-project-bundle`, `rule-voxel-edit`, `runtime-bridge-api`, `scene-diagnostics`, `svc-serialization` |
 | `core-snapshot` (rust-state) | actual: `core-ids`, `core-state`<br>allowed: `core-error`, `core-events`, `core-ids`, `core-state` | 1/2 | none | `sim-runner` |
@@ -327,21 +332,22 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `gameplay-module-sdk` (rust-rule) | actual: `core-ids`, `core-time`, `game-rule-extension`, `protocol-game-extension`, `rule-gameplay-fabric`, `svc-gameplay-fabric`, `svc-rng`<br>allowed: `core-ids`, `core-time`, `game-rule-extension`, `protocol-game-extension`, `rule-gameplay-fabric`, `svc-gameplay-fabric`, `svc-rng` | 2/7 | none | `gameplay-runtime-host`, `rule-project-bundle`, `role:asha-demo`, `role:asha-testing`, `role:asha-rulebench` |
 | `gameplay-runtime-host` (rust-rule) | actual: `core-entity`, `core-ids`, `core-math`, `core-scene`, `gameplay-module-sdk`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `rule-gameplay-fabric`, `rule-project-bundle`, `rule-scheduler`, `rule-trigger-volume`, `svc-entity-authoring`, `svc-gameplay-fabric`, `svc-serialization`<br>allowed: `core-entity`, `core-ids`, `core-math`, `core-scene`, `gameplay-module-sdk`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `rule-gameplay-fabric`, `rule-project-bundle`, `rule-scheduler`, `rule-trigger-volume`, `svc-entity-authoring`, `svc-gameplay-fabric`, `svc-serialization` | 1/16 | none | `runtime-bridge-api`, `role:asha-demo`, `role:asha-testing`, `role:asha-rulebench` |
 | `native-bridge` (rust-bridge) | actual: `core-ids`, `core-math`, `core-space`, `core-voxel`, `protocol-assets`, `protocol-diagnostics`, `protocol-game-extension`, `protocol-render`, `protocol-scene`, `protocol-view`, `render-bridge`, `runtime-bridge-api`<br>allowed: `core-ids`, `core-math`, `core-space`, `core-voxel`, `protocol-assets`, `protocol-diagnostics`, `protocol-game-extension`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `protocol-view`, `render-bridge`, `runtime-bridge-api`, `sim-runner` | 0/12 | none | `role:asha-demo`, `role:asha-testing`, `role:asha-rulebench` |
-| `protocol-assets` (contract-steward) | actual: `core-assets`, `core-ids`<br>allowed: `core-assets`, `core-ids` | 4/2 | none | `native-bridge`, `protocol-codegen`, `protocol-render`, `runtime-bridge-api` |
-| `protocol-codegen` (contract-steward) | actual: `core-ids`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-input`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-telemetry`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`<br>allowed: `core-ids`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-input`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `protocol-telemetry`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history` | 1/21 | none | `protocol-dump` |
+| `protocol-assets` (contract-steward) | actual: `core-assets`, `core-ids`<br>allowed: `core-assets`, `core-ids` | 6/2 | none | `native-bridge`, `protocol-codegen`, `protocol-project-content`, `protocol-render`, `runtime-bridge-api`, `svc-project-content` |
+| `protocol-codegen` (contract-steward) | actual: `core-ids`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-input`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-project-content`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-telemetry`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`<br>allowed: `core-ids`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-ids`, `protocol-input`, `protocol-policy-view`, `protocol-presentation`, `protocol-project-bundle`, `protocol-project-content`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `protocol-telemetry`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history` | 1/22 | none | `protocol-dump` |
 | `protocol-diagnostics` (contract-steward) | actual: none<br>allowed: none | 18/0 | none | `game-rule-extension`, `gameplay-runtime-host`, `native-bridge`, `protocol-codegen`, `protocol-game-extension`, `protocol-game-rules`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics`, `svc-game-rules`, `svc-gameplay-fabric`, `svc-voxel-annotation`, `svc-voxel-asset`, `svc-voxel-conversion` |
 | `protocol-dump` (rust-tools) | actual: `protocol-codegen`<br>allowed: `protocol-codegen`, `protocol-ids`, `protocol-render`, `protocol-replay`, `protocol-script` | 0/1 | none | none |
-| `protocol-entity-authoring` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 5/1 | none | `gameplay-runtime-host`, `protocol-codegen`, `rule-lifecycle`, `runtime-bridge-api`, `svc-entity-authoring` |
-| `protocol-game-extension` (contract-steward) | actual: `core-ids`, `protocol-diagnostics`, `protocol-project-bundle`<br>allowed: `core-ids`, `protocol-diagnostics`, `protocol-project-bundle` | 11/3 | none | `game-rule-extension`, `gameplay-module-sdk`, `gameplay-runtime-host`, `native-bridge`, `protocol-codegen`, `rule-gameplay-fabric`, `rule-lifecycle`, `rule-project-bundle`, `rule-scheduler`, `runtime-bridge-api`, `svc-gameplay-fabric` |
+| `protocol-entity-authoring` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 7/1 | none | `gameplay-runtime-host`, `protocol-codegen`, `protocol-project-content`, `rule-lifecycle`, `runtime-bridge-api`, `svc-entity-authoring`, `svc-project-content` |
+| `protocol-game-extension` (contract-steward) | actual: `core-ids`, `protocol-diagnostics`, `protocol-project-bundle`<br>allowed: `core-ids`, `protocol-diagnostics`, `protocol-project-bundle` | 13/3 | none | `game-rule-extension`, `gameplay-module-sdk`, `gameplay-runtime-host`, `native-bridge`, `protocol-codegen`, `protocol-project-content`, `rule-gameplay-fabric`, `rule-lifecycle`, `rule-project-bundle`, `rule-scheduler`, `runtime-bridge-api`, `svc-gameplay-fabric`, `svc-project-content` |
 | `protocol-game-rules` (contract-steward) | actual: `core-ids`, `protocol-diagnostics`<br>allowed: `core-ids`, `protocol-diagnostics` | 6/2 | none | `protocol-codegen`, `rule-game-modifier`, `rule-gameplay-fabric`, `rule-lifecycle`, `runtime-bridge-api`, `svc-game-rules` |
 | `protocol-ids` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 1/1 | none | `protocol-codegen` |
 | `protocol-input` (contract-steward) | actual: none<br>allowed: none | 3/0 | none | `protocol-codegen`, `rule-input`, `runtime-bridge-api` |
 | `protocol-policy-view` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 2/1 | none | `protocol-codegen`, `svc-policy-view` |
 | `protocol-presentation` (contract-steward) | actual: `core-ids`, `protocol-render`, `protocol-scene`<br>allowed: `core-ids`, `protocol-render`, `protocol-scene` | 7/3 | none | `protocol-codegen`, `render-animation`, `render-audio`, `render-billboard`, `render-particle`, `render-telemetry-overlay`, `runtime-bridge-api` |
-| `protocol-project-bundle` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 5/1 | none | `gameplay-runtime-host`, `protocol-codegen`, `protocol-game-extension`, `rule-gameplay-fabric`, `runtime-bridge-api` |
+| `protocol-project-bundle` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 7/1 | none | `gameplay-runtime-host`, `protocol-codegen`, `protocol-game-extension`, `protocol-project-content`, `rule-gameplay-fabric`, `runtime-bridge-api`, `svc-project-content` |
+| `protocol-project-content` (contract-steward) | actual: `protocol-assets`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `protocol-scene`<br>allowed: `protocol-assets`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `protocol-scene` | 3/5 | none | `protocol-codegen`, `runtime-bridge-api`, `svc-project-content` |
 | `protocol-render` (contract-steward) | actual: `core-ids`, `protocol-assets`<br>allowed: `core-error`, `core-ids`, `protocol-assets` | 9/2 | none | `asset-import`, `native-bridge`, `protocol-codegen`, `protocol-presentation`, `render-animation`, `render-audio`, `render-bridge`, `render-debug`, `runtime-bridge-api` |
 | `protocol-replay` (contract-steward) | actual: `core-commands`, `core-events`, `core-ids`<br>allowed: `core-commands`, `core-error`, `core-events`, `core-ids` | 2/3 | none | `protocol-codegen`, `sim-replay` |
-| `protocol-scene` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 4/1 | none | `native-bridge`, `protocol-codegen`, `protocol-presentation`, `runtime-bridge-api` |
+| `protocol-scene` (contract-steward) | actual: `core-ids`<br>allowed: `core-ids` | 6/1 | none | `native-bridge`, `protocol-codegen`, `protocol-presentation`, `protocol-project-content`, `runtime-bridge-api`, `svc-project-content` |
 | `protocol-script` (contract-steward) | actual: `core-commands`, `core-ids`<br>allowed: `core-commands`, `core-error`, `core-ids`, `core-state` | 0/2 | none | none |
 | `protocol-telemetry` (contract-steward) | actual: none<br>allowed: `core-ids` | 1/0 | none | `protocol-codegen` |
 | `protocol-time-control` (contract-steward) | actual: none<br>allowed: none | 2/0 | none | `protocol-codegen`, `runtime-bridge-api` |
@@ -370,7 +376,7 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `rule-state-machine` (rust-rule) | actual: `core-error`, `core-events`, `core-ids`<br>allowed: `core-commands`, `core-error`, `core-events`, `core-ids`, `core-state` | 2/3 | none | `rule-animation-controller`, `rule-gameplay-fabric` |
 | `rule-trigger-volume` (rust-rule) | actual: `core-entity`, `core-ids`, `core-math`<br>allowed: `core-entity`, `core-ids`, `core-math` | 3/3 | none | `gameplay-runtime-host`, `rule-gameplay-fabric`, `rule-project-bundle` |
 | `rule-voxel-edit` (rust-rule) | actual: `core-commands`, `core-events`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `svc-collision`, `svc-spatial`, `svc-volume`<br>allowed: `core-commands`, `core-events`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `svc-collision`, `svc-spatial`, `svc-volume` | 5/9 | none | `fixture-maker`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics`, `voxel-diagnostics` |
-| `runtime-bridge-api` (rust-bridge) | actual: `core-assets`, `core-catalog`, `core-commands`, `core-entity`, `core-error`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `game-rule-extension`, `gameplay-runtime-host`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-input`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-scene`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`, `render-animation`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `render-telemetry-overlay`, `rule-animation-controller`, `rule-gameplay-fabric`, `rule-input`, `rule-lifecycle`, `rule-voxel-edit`, `sim-runner`, `svc-collision`, `svc-combat`, `svc-game-rules`, `svc-levelgen`, `svc-mesh`, `svc-mesh-import`, `svc-pathfinding`, `svc-serialization`, `svc-spatial`, `svc-volume`, `svc-voxel-annotation`, `svc-voxel-asset`, `svc-voxel-conversion`<br>allowed: `core-assets`, `core-catalog`, `core-commands`, `core-entity`, `core-error`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `game-rule-extension`, `gameplay-runtime-host`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-input`, `protocol-presentation`, `protocol-project-bundle`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`, `render-animation`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `render-telemetry-overlay`, `rule-animation-controller`, `rule-gameplay-fabric`, `rule-input`, `rule-lifecycle`, `rule-voxel-edit`, `sim-runner`, `svc-collision`, `svc-combat`, `svc-game-rules`, `svc-levelgen`, `svc-mesh`, `svc-mesh-import`, `svc-pathfinding`, `svc-serialization`, `svc-spatial`, `svc-volume`, `svc-voxel-annotation`, `svc-voxel-asset`, `svc-voxel-conversion` | 1/53 | none | `native-bridge`, `role:asha-demo`, `role:asha-testing`, `role:asha-rulebench` |
+| `runtime-bridge-api` (rust-bridge) | actual: `core-assets`, `core-catalog`, `core-commands`, `core-entity`, `core-error`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `game-rule-extension`, `gameplay-runtime-host`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-input`, `protocol-presentation`, `protocol-project-bundle`, `protocol-project-content`, `protocol-render`, `protocol-scene`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`, `render-animation`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `render-telemetry-overlay`, `rule-animation-controller`, `rule-gameplay-fabric`, `rule-input`, `rule-lifecycle`, `rule-voxel-edit`, `sim-runner`, `svc-collision`, `svc-combat`, `svc-game-rules`, `svc-levelgen`, `svc-mesh`, `svc-mesh-import`, `svc-pathfinding`, `svc-project-content`, `svc-serialization`, `svc-spatial`, `svc-volume`, `svc-voxel-annotation`, `svc-voxel-asset`, `svc-voxel-conversion`<br>allowed: `core-assets`, `core-catalog`, `core-commands`, `core-entity`, `core-error`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `game-rule-extension`, `gameplay-runtime-host`, `protocol-assets`, `protocol-diagnostics`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-game-rules`, `protocol-input`, `protocol-presentation`, `protocol-project-bundle`, `protocol-project-content`, `protocol-render`, `protocol-replay`, `protocol-scene`, `protocol-script`, `protocol-time-control`, `protocol-view`, `protocol-voxel-annotation`, `protocol-voxel-asset`, `protocol-voxel-conversion`, `protocol-voxel-edit-history`, `render-animation`, `render-audio`, `render-billboard`, `render-bridge`, `render-particle`, `render-telemetry-overlay`, `rule-animation-controller`, `rule-gameplay-fabric`, `rule-input`, `rule-lifecycle`, `rule-voxel-edit`, `sim-runner`, `svc-collision`, `svc-combat`, `svc-game-rules`, `svc-levelgen`, `svc-mesh`, `svc-mesh-import`, `svc-pathfinding`, `svc-project-content`, `svc-serialization`, `svc-spatial`, `svc-volume`, `svc-voxel-annotation`, `svc-voxel-asset`, `svc-voxel-conversion` | 1/55 | none | `native-bridge`, `role:asha-demo`, `role:asha-testing`, `role:asha-rulebench` |
 | `scene-diagnostics` (rust-tools) | actual: `core-assets`, `core-catalog`, `core-entity`, `core-events`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `protocol-diagnostics`, `rule-project-bundle`, `rule-voxel-edit`, `svc-serialization`, `svc-spatial`, `svc-volume`<br>allowed: `core-assets`, `core-catalog`, `core-entity`, `core-events`, `core-ids`, `core-math`, `core-scene`, `core-space`, `core-voxel`, `protocol-diagnostics`, `rule-project-bundle`, `rule-voxel-edit`, `svc-serialization`, `svc-spatial`, `svc-volume` | 0/15 | none | none |
 | `sim-applier` (rust-state) | actual: `core-events`, `core-ids`, `core-state`<br>allowed: `core-error`, `core-events`, `core-ids`, `core-state` | 1/3 | none | `sim-runner` |
 | `sim-kernel` (rust-state) | actual: `core-commands`, `core-events`, `core-ids`, `core-state`<br>allowed: `core-commands`, `core-error`, `core-events`, `core-ids`, `core-state` | 1/4 | none | `sim-runner` |
@@ -381,7 +387,7 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `state-inspector` (rust-tools) | actual: `core-entity`<br>allowed: `core-entity`, `core-snapshot`, `core-state` | 0/1 | none | none |
 | `svc-collision` (rust-service) | actual: `core-space`, `core-voxel`, `svc-spatial`, `svc-volume`<br>allowed: `core-error`, `core-ids`, `core-math`, `core-space`, `core-voxel`, `svc-spatial`, `svc-volume` | 7/4 | none | `fixture-maker`, `rule-lifecycle`, `rule-voxel-edit`, `runtime-bridge-api`, `svc-combat`, `svc-levelgen`, `voxel-diagnostics` |
 | `svc-combat` (rust-service) | actual: `core-ids`, `core-space`, `svc-collision`, `svc-levelgen`<br>allowed: `core-ids`, `core-space`, `svc-collision`, `svc-levelgen` | 3/4 | none | `rule-gameplay-fabric`, `rule-lifecycle`, `runtime-bridge-api` |
-| `svc-entity-authoring` (rust-service) | actual: `core-assets`, `core-entity`, `core-ids`, `core-math`, `protocol-entity-authoring`<br>allowed: `core-assets`, `core-entity`, `core-ids`, `core-math`, `protocol-entity-authoring` | 2/5 | none | `gameplay-runtime-host`, `rule-lifecycle` |
+| `svc-entity-authoring` (rust-service) | actual: `core-assets`, `core-entity`, `core-ids`, `core-math`, `protocol-entity-authoring`<br>allowed: `core-assets`, `core-entity`, `core-ids`, `core-math`, `protocol-entity-authoring` | 3/5 | none | `gameplay-runtime-host`, `rule-lifecycle`, `svc-project-content` |
 | `svc-game-rules` (rust-service) | actual: `core-game-rules`, `core-ids`, `core-time`, `protocol-diagnostics`, `protocol-game-rules`<br>allowed: `core-game-rules`, `core-ids`, `core-time`, `protocol-diagnostics`, `protocol-game-rules` | 4/5 | none | `rule-game-modifier`, `rule-gameplay-fabric`, `rule-lifecycle`, `runtime-bridge-api` |
 | `svc-gameplay-fabric` (rust-service) | actual: `protocol-diagnostics`, `protocol-game-extension`<br>allowed: `protocol-diagnostics`, `protocol-game-extension` | 5/2 | none | `gameplay-module-sdk`, `gameplay-runtime-host`, `rule-gameplay-fabric`, `rule-project-bundle`, `rule-scheduler` |
 | `svc-levelgen` (rust-service) | actual: `core-events`, `core-space`, `core-voxel`, `svc-collision`, `svc-rng`, `svc-spatial`, `svc-volume`<br>allowed: `core-events`, `core-space`, `core-voxel`, `svc-collision`, `svc-rng`, `svc-spatial`, `svc-volume` | 5/7 | none | `render-bridge`, `rule-lifecycle`, `runtime-bridge-api`, `svc-combat`, `svc-pathfinding` |
@@ -390,8 +396,9 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `svc-pathfinding` (rust-service) | actual: `core-math`, `core-space`, `core-voxel`, `svc-levelgen`, `svc-spatial`, `svc-volume`<br>allowed: `core-math`, `core-space`, `core-voxel`, `svc-levelgen`, `svc-spatial`, `svc-volume` | 2/6 | none | `rule-lifecycle`, `runtime-bridge-api` |
 | `svc-physics` (rust-service) | actual: `core-error`, `core-math`, `core-time`<br>allowed: `core-error`, `core-ids`, `core-math`, `core-time`, `svc-spatial` | 0/3 | none | none |
 | `svc-policy-view` (rust-service) | actual: `core-assets`, `core-entity`, `core-ids`, `core-math`, `protocol-policy-view`<br>allowed: `core-assets`, `core-entity`, `core-error`, `core-ids`, `core-math`, `protocol-policy-view` | 0/5 | none | none |
+| `svc-project-content` (rust-service) | actual: `core-assets`, `core-catalog`, `core-ids`, `protocol-assets`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `protocol-project-content`, `protocol-scene`, `svc-entity-authoring`, `svc-serialization`<br>allowed: `core-assets`, `core-catalog`, `core-ids`, `protocol-assets`, `protocol-entity-authoring`, `protocol-game-extension`, `protocol-project-bundle`, `protocol-project-content`, `protocol-scene`, `svc-entity-authoring`, `svc-serialization` | 1/11 | none | `runtime-bridge-api` |
 | `svc-rng` (rust-service) | actual: none<br>allowed: `core-error`, `core-ids` | 2/0 | none | `gameplay-module-sdk`, `svc-levelgen` |
-| `svc-serialization` (rust-service) | actual: `core-assets`, `core-error`, `core-ids`, `core-scene`<br>allowed: `core-assets`, `core-error`, `core-ids`, `core-scene` | 6/4 | none | `fixture-maker`, `gameplay-runtime-host`, `rule-gameplay-fabric`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics` |
+| `svc-serialization` (rust-service) | actual: `core-assets`, `core-error`, `core-ids`, `core-scene`<br>allowed: `core-assets`, `core-error`, `core-ids`, `core-scene` | 7/4 | none | `fixture-maker`, `gameplay-runtime-host`, `rule-gameplay-fabric`, `rule-project-bundle`, `runtime-bridge-api`, `scene-diagnostics`, `svc-project-content` |
 | `svc-spatial` (rust-service) | actual: `core-space`, `core-voxel`, `svc-volume`<br>allowed: `core-error`, `core-ids`, `core-math`, `core-space`, `core-voxel`, `svc-volume` | 11/3 | none | `fixture-maker`, `render-bridge`, `rule-project-bundle`, `rule-voxel-edit`, `runtime-bridge-api`, `scene-diagnostics`, `svc-collision`, `svc-levelgen`, `svc-mesh`, `svc-pathfinding`, `voxel-diagnostics` |
 | `svc-volume` (rust-service) | actual: `core-space`, `core-voxel`<br>allowed: `core-error`, `core-ids`, `core-math`, `core-space`, `core-voxel` | 12/2 | none | `fixture-maker`, `render-bridge`, `rule-project-bundle`, `rule-voxel-edit`, `runtime-bridge-api`, `scene-diagnostics`, `svc-collision`, `svc-levelgen`, `svc-mesh`, `svc-pathfinding`, `svc-spatial`, `voxel-diagnostics` |
 | `svc-voxel-annotation` (rust-service) | actual: `core-assets`, `protocol-diagnostics`, `protocol-voxel-annotation`<br>allowed: `core-assets`, `protocol-diagnostics`, `protocol-voxel-annotation` | 2/3 | none | `rule-project-bundle`, `runtime-bridge-api` |
@@ -433,8 +440,9 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 
 | Source | Lines / warning / cap | Owner | Review by |
 |---|---:|---|---|
-| `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1600 / 1400 / 1600 | rust-render | global policy |
-| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 3036 / 2950 / 3036 | rust-rule | 2026-09-15 |
+| `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 3141 / 2950 / 3036 | rust-rule | 2026-09-15 |
+| `ts/packages/runtime-bridge/src/mock.ts` | 1637 / 1580 / 1620 | ts-shell | 2026-10-15 |
+| `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1608 / 1400 / 1600 | rust-render | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/observe.rs` | 1622 / 1580 / 1622 | rust-rule | 2026-10-15 |
 | `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1600 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-voxel-conversion/src/lib.rs` | 2064 / 2000 / 2064 | rust-service | 2026-09-15 |
@@ -448,19 +456,19 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `ts/packages/script-host/src/index.ts` | 133 / 115 / 133 | ts-policy | 2026-10-15 |
 | `ts/packages/script-sdk/src/index.ts` | 207 / 180 / 207 | ts-policy | 2026-10-15 |
 | `ts/packages/wasm-replay-bridge/src/index.ts` | 190 / 170 / 190 | ts-shell | 2026-10-15 |
+| `engine-rs/crates/protocol/protocol-codegen/src/lib.rs` | 1598 / 1560 / 1601 | contract-steward | 2026-10-15 |
 | `ts/packages/renderer-three/src/three-renderer.ts` | 1593 / 1400 / 1600 | ts-shell | global policy |
-| `ts/packages/runtime-bridge/src/mock.ts` | 1606 / 1580 / 1620 | ts-shell | 2026-10-15 |
-| `engine-rs/crates/protocol/protocol-codegen/src/lib.rs` | 1582 / 1560 / 1601 | contract-steward | 2026-10-15 |
-| `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1573 / 1400 / 1600 | ts-shell | global policy |
-| `ts/packages/runtime-bridge/src/runtime-session.test.ts` | 1572 / 1400 / 1600 | ts-shell | global policy |
-| `engine-rs/crates/protocol/protocol-render/src/lib.rs` | 1907 / 1880 / 1941 | contract-steward | 2026-10-15 |
+| `ts/packages/runtime-bridge/src/runtime-session.test.ts` | 1584 / 1400 / 1600 | ts-shell | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1582 / 1400 / 1600 | rust-bridge | global policy |
+| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1707 / 1680 / 1728 | ts-shell | 2026-09-15 |
+| `engine-rs/crates/protocol/protocol-render/src/lib.rs` | 1913 / 1880 / 1941 | contract-steward | 2026-10-15 |
+| `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1575 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/history.rs` | 1571 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-animation-controller/src/lib.rs` | 1565 / 1400 / 1600 | rust-rule | global policy |
-| `ts/packages/runtime-bridge/src/native-fail-closed.test.ts` | 1687 / 1680 / 1728 | ts-shell | 2026-09-15 |
+| `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1559 / 1400 / 1600 | contract-steward | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1555 / 1400 / 1600 | rust-rule | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1575 / 1570 / 1621 | rust-bridge | 2026-10-15 |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs` | 1554 / 1400 / 1600 | rust-bridge | global policy |
-| `engine-rs/crates/protocol/protocol-codegen/src/source.rs` | 1541 / 1400 / 1600 | contract-steward | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1532 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/voxel_assets.rs` | 1531 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/lib.rs` | 1510 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-entity-authoring/src/lib.rs` | 1508 / 1400 / 1600 | rust-service | global policy |
@@ -468,6 +476,7 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 | `engine-rs/crates/rules/rule-input/src/lib.rs` | 1485 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs` | 1481 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-pathfinding/src/lib.rs` | 1444 / 1400 / 1600 | rust-service | global policy |
+| `engine-rs/crates/bridge/native-bridge/src/scene_preview.rs` | 1434 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/tests/observe.rs` | 1431 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-gameplay-fabric/src/registry.rs` | 1411 / 1400 / 1600 | rust-service | global policy |
 
@@ -475,7 +484,7 @@ Committed path classes: 733 source; 26 generated source; 502 other; 0 build/cach
 
 Counts include committed non-output paths only; ambient worktree files do not alter this inventory.
 
-### harness/fixtures (38 groups)
+### harness/fixtures (39 groups)
 
 - [`harness/fixtures/asset-catalog`](../../harness/fixtures/asset-catalog) — 4 files
 - [`harness/fixtures/asset-import`](../../harness/fixtures/asset-import) — 4 files
@@ -504,9 +513,10 @@ Counts include committed non-output paths only; ambient worktree files do not al
 - [`harness/fixtures/render-diffs`](../../harness/fixtures/render-diffs) — 16 files
 - [`harness/fixtures/render-projection`](../../harness/fixtures/render-projection) — 1 files
 - [`harness/fixtures/replays`](../../harness/fixtures/replays) — 1 files
-- [`harness/fixtures/scenes`](../../harness/fixtures/scenes) — 5 files
+- [`harness/fixtures/scenes`](../../harness/fixtures/scenes) — 6 files
 - [`harness/fixtures/session-state`](../../harness/fixtures/session-state) — 3 files
 - [`harness/fixtures/smoke`](../../harness/fixtures/smoke) — 2 files
+- [`harness/fixtures/spatial-grid`](../../harness/fixtures/spatial-grid) — 1 files
 - [`harness/fixtures/states`](../../harness/fixtures/states) — 1 files
 - [`harness/fixtures/voxel-conversion`](../../harness/fixtures/voxel-conversion) — 3 files
 - [`harness/fixtures/voxel-diagnostics`](../../harness/fixtures/voxel-diagnostics) — 1 files

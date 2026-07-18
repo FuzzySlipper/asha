@@ -15,7 +15,7 @@
     "compatibility": {
       "version": "renderer-host.v1",
       "metadataFile": "compatibility.json",
-      "changelog": "docs/consumer-compatibility.md#renderer-host-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#renderer-host-compatibility-log"
     }
   },
   "scripts": {

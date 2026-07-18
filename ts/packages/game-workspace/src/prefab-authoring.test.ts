@@ -104,7 +104,7 @@ function bindings(): GameplayModuleBindingRegistry {
     }],
     overrides: [{
       bindingId: 'console.sensor.binding',
-      prefabInstance: prefabInstanceId(701),
+      sceneInstanceId: 'demo.console.red',
       configurationId: 'console.red',
       enabled: null,
     }],
@@ -162,6 +162,7 @@ void test('public prefab authoring creates edits places and inspects a multi-par
     ['console/body.entityDefinition'],
   ]);
   assert.equal(readout.bindings[0]?.role, 'interaction/sensor');
+  assert.equal(readout.bindings[0]?.instanceOverrides[0]?.sceneInstanceId, 'demo.console.red');
   assert.equal(readout.bindings[0]?.instanceOverrides[0]?.configurationId, 'console.red');
   assert.deepEqual(readout.configurations.map((configuration) => configuration.configurationId), ['console.blue', 'console.red']);
   assert.deepEqual(readout.nonClaims, ['nestedPrefabs', 'propagatingDefinitionEdits', 'runtimeAuthority']);
@@ -204,6 +205,7 @@ void test('whole-registry draft validation resolves variant bases and rejects du
     parts: [],
     partRoles: [],
     variant: {
+      variantId: 'interaction-console.alt',
       base: prefab,
       removedRoles: [],
       overrides: [],

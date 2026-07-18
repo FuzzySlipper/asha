@@ -552,7 +552,7 @@ enum SceneDocumentAuthoringCommandJson {
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct SceneDocumentJson {
+pub(crate) struct SceneDocumentJson {
     schema_version: u32,
     id: u64,
     metadata: SceneMetadataJson,
@@ -648,6 +648,9 @@ enum SceneKindJson {
     Light {
         scene_light: SceneLightJson,
     },
+    Marker {
+        marker_id: String,
+    },
     EntityInstance {
         instance: SceneEntityInstanceJson,
     },
@@ -678,6 +681,7 @@ enum SceneEntityReferenceJson {
     Prefab {
         prefab_id: u64,
         variant_id: Option<String>,
+        instantiation_seed: u64,
     },
 }
 
@@ -873,6 +877,7 @@ impl SceneRecordJson {
                 SceneKindJson::Light { scene_light } => {
                     SceneNodeKindDto::Light(scene_light.protocol())
                 }
+                SceneKindJson::Marker { marker_id } => SceneNodeKindDto::Marker { marker_id },
                 SceneKindJson::EntityInstance { instance } => SceneNodeKindDto::EntityInstance {
                     instance: SceneEntityInstanceDto {
                         instance_id: instance.instance_id,
@@ -883,9 +888,11 @@ impl SceneRecordJson {
                             SceneEntityReferenceJson::Prefab {
                                 prefab_id,
                                 variant_id,
+                                instantiation_seed,
                             } => SceneEntityReferenceDto::Prefab {
                                 prefab_id,
                                 variant_id,
+                                instantiation_seed,
                             },
                         },
                         spawn_marker_id: instance.spawn_marker_id,
@@ -917,7 +924,7 @@ impl SceneRecordJson {
 }
 
 impl SceneDocumentJson {
-    fn protocol(self) -> FlatSceneDocumentDto {
+    pub(crate) fn protocol(self) -> FlatSceneDocumentDto {
         FlatSceneDocumentDto {
             schema_version: self.schema_version,
             id: SceneId::new(self.id),
@@ -1135,7 +1142,7 @@ fn scene_light_json(light: &SceneLightDto) -> Value {
     }
 }
 
-fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value {
+pub(crate) fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value {
     json!({
         "schemaVersion": document.schema_version,
         "id": document.id.raw(),
@@ -1151,13 +1158,14 @@ fn scene_document_json(document: &protocol_scene::FlatSceneDocumentDto) -> Value
                 SceneNodeKindDto::Sprite(asset) => json!({ "kind": "sprite", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::VoxelVolume(asset) => json!({ "kind": "voxelVolume", "asset": scene_asset_json(asset) }),
                 SceneNodeKindDto::Light(light) => json!({ "kind": "light", "sceneLight": scene_light_json(light) }),
+                SceneNodeKindDto::Marker { marker_id } => json!({ "kind": "marker", "markerId": marker_id }),
                 SceneNodeKindDto::EntityInstance { instance } => json!({
                     "kind": "entityInstance",
                     "instance": {
                         "instanceId": instance.instance_id,
                         "reference": match &instance.reference {
                             SceneEntityReferenceDto::EntityDefinition { stable_id } => json!({ "kind": "entityDefinition", "stableId": stable_id }),
-                            SceneEntityReferenceDto::Prefab { prefab_id, variant_id } => json!({ "kind": "prefab", "prefabId": prefab_id, "variantId": variant_id }),
+                            SceneEntityReferenceDto::Prefab { prefab_id, variant_id, instantiation_seed } => json!({ "kind": "prefab", "prefabId": prefab_id, "variantId": variant_id, "instantiationSeed": instantiation_seed }),
                         },
                         "spawnMarkerId": instance.spawn_marker_id,
                     },

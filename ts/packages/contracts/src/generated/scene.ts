@@ -26,10 +26,10 @@ export type SceneNodeId = number & { readonly __brand: 'SceneNodeId' };
 export const sceneNodeId = (raw: number): SceneNodeId => raw as SceneNodeId;
 
 // The scene-node kind tag as a closed enum with a stable string form.
-export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume' | 'light' | 'entityInstance' | 'bootstrap';
+export type SceneNodeKindTag = 'emptyGroup' | 'staticMesh' | 'sprite' | 'voxelVolume' | 'light' | 'marker' | 'entityInstance' | 'bootstrap';
 
 // Stable classified scene-validation codes. Mirrors `core_scene::SceneValidationError::label`; the string form is a contract.
-export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch' | 'invalid-light' | 'duplicate-entity-instance-id' | 'invalid-entity-instance' | 'duplicate-bootstrap-node' | 'invalid-bootstrap' | 'duplicate-catalog-binding';
+export type SceneValidationCode = 'duplicate-node-id' | 'unknown-parent' | 'cycle' | 'invalid-transform' | 'asset-kind-mismatch' | 'invalid-light' | 'duplicate-marker-id' | 'invalid-marker' | 'duplicate-entity-instance-id' | 'invalid-entity-instance' | 'duplicate-bootstrap-node' | 'invalid-bootstrap' | 'duplicate-catalog-binding';
 
 // Stable scene-object command rejection codes. Mirrors `core_scene::SceneObjectCommandRejection::label`; the string form is a contract.
 export type SceneObjectCommandRejectionCode = 'stale-scene-object-snapshot' | 'invalid-scene-before-command' | 'invalid-scene-after-command' | 'missing-scene-object' | 'duplicate-scene-object' | 'missing-scene-object-parent' | 'scene-object-self-parent' | 'blank-scene-object-label' | 'invalid-scene-object-kind' | 'invalid-scene-object-transform' | 'readonly-scene-object-transform';
@@ -73,13 +73,18 @@ export type SceneLight =
 // Stored target resolved by one authored runtime instance placement.
 export type SceneEntityReference =
   | { readonly kind: 'entityDefinition'; readonly stableId: string }
-  | { readonly kind: 'prefab'; readonly prefabId: number; readonly variantId: string | null };
+  | { readonly kind: 'prefab'; readonly prefabId: number; readonly variantId: string | null; readonly instantiationSeed: number };
 
 // Renderer-neutral stored runtime instance intent. Hierarchy and local pose remain on the containing [`SceneNodeRecordDto`].
 export interface SceneEntityInstance {
   readonly instanceId: string;
   readonly reference: SceneEntityReference;
   readonly spawnMarkerId: string | null;
+}
+
+// Standalone marker metadata retained for consumers that inspect marker fields outside the flattened scene-node discriminated union.
+export interface SceneMarker {
+  readonly markerId: string;
 }
 
 // Generic procedural generator input for one scene bootstrap.
@@ -109,6 +114,7 @@ export type SceneNodeKind =
   | { readonly kind: 'sprite'; readonly asset: AssetReference }
   | { readonly kind: 'voxelVolume'; readonly asset: AssetReference }
   | { readonly kind: 'light'; readonly sceneLight: SceneLight }
+  | { readonly kind: 'marker'; readonly markerId: string }
   | { readonly kind: 'entityInstance'; readonly instance: SceneEntityInstance }
   | { readonly kind: 'bootstrap'; readonly bindings: SceneBootstrapBindings };
 

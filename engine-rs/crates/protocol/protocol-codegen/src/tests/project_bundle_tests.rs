@@ -86,13 +86,13 @@ fn project_bundle_family_emits_vocab_and_shapes() {
 fn gameplay_trigger_definition_serialization_matches_ir_shape() {
     let trigger = protocol_project_bundle::GameplayTriggerDefinition {
         schema_version: protocol_project_bundle::GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
-        entity: 10,
+        scene_instance_id: "instance.zone.exit".to_owned(),
         scope: "zone.exit".to_owned(),
         tags: vec!["door".to_owned(), "exit".to_owned()],
     };
     let value = serde_json::to_value(&trigger).unwrap();
-    assert_eq!(value["schemaVersion"], 1);
-    assert_eq!(value["entity"], 10);
+    assert_eq!(value["schemaVersion"], 2);
+    assert_eq!(value["sceneInstanceId"], "instance.zone.exit");
     assert_eq!(value["scope"], "zone.exit");
     assert_eq!(value["tags"], serde_json::json!(["door", "exit"]));
     assert_eq!(

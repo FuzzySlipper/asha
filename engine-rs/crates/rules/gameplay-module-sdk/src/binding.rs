@@ -46,8 +46,8 @@ impl GameplayModuleBindingRegistryBuilder {
         self.bindings
             .sort_by(|left, right| left.binding_id.cmp(&right.binding_id));
         self.overrides.sort_by(|left, right| {
-            (left.binding_id.as_str(), left.prefab_instance.raw())
-                .cmp(&(right.binding_id.as_str(), right.prefab_instance.raw()))
+            (left.binding_id.as_str(), left.scene_instance_id.as_str())
+                .cmp(&(right.binding_id.as_str(), right.scene_instance_id.as_str()))
         });
         let mut registry = GameplayModuleBindingRegistry {
             schema_version: GAMEPLAY_MODULE_BINDING_SCHEMA_VERSION,

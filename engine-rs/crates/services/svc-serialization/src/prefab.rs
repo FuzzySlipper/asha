@@ -98,6 +98,8 @@ pub struct PrefabOverride {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PrefabVariantDelta {
+    /// Stable authored key used to select this variant from a base prefab.
+    pub variant_id: String,
     pub base: PrefabId,
     pub removed_roles: Vec<String>,
     pub overrides: Vec<PrefabOverride>,
@@ -186,6 +188,8 @@ pub enum PrefabDiagnosticCode {
     DuplicatePartRole,
     DanglingPartRole,
     MissingBasePrefab,
+    InvalidVariantId,
+    DuplicateVariantId,
     VariantCycle,
     VariantDepthExceeded,
     VariantDefinesParts,
@@ -218,6 +222,8 @@ impl PrefabDiagnosticCode {
             Self::DuplicatePartRole => "duplicatePartRole",
             Self::DanglingPartRole => "danglingPartRole",
             Self::MissingBasePrefab => "missingBasePrefab",
+            Self::InvalidVariantId => "invalidVariantId",
+            Self::DuplicateVariantId => "duplicateVariantId",
             Self::VariantCycle => "variantCycle",
             Self::VariantDepthExceeded => "variantDepthExceeded",
             Self::VariantDefinesParts => "variantDefinesParts",
@@ -520,11 +526,33 @@ fn validate_variants(
     context: &PrefabRegistryValidationContext,
     report: &mut PrefabValidationReport,
 ) {
+    let mut variant_ids_by_base = BTreeMap::<PrefabId, BTreeSet<&str>>::new();
     for definition in definitions.values() {
         let Some(variant) = &definition.variant else {
             continue;
         };
         let path = format!("prefab[{}].variant", definition.id.raw());
+        if !is_scoped_key(&variant.variant_id) {
+            report.push(
+                PrefabDiagnosticCode::InvalidVariantId,
+                format!("{path}.variantId"),
+                "variant id must be slash-scoped lowercase kebab-case",
+            );
+        } else if !variant_ids_by_base
+            .entry(variant.base)
+            .or_default()
+            .insert(variant.variant_id.as_str())
+        {
+            report.push(
+                PrefabDiagnosticCode::DuplicateVariantId,
+                format!("{path}.variantId"),
+                format!(
+                    "duplicate variant id `{}` for base prefab {}",
+                    variant.variant_id,
+                    variant.base.raw()
+                ),
+            );
+        }
         let Some(base) = definitions.get(&variant.base).copied() else {
             report.push(
                 PrefabDiagnosticCode::MissingBasePrefab,
@@ -862,6 +890,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: "damaged".into(),
                 base: base.id,
                 removed_roles: vec!["gameplay-root".into()],
                 overrides: vec![PrefabOverride {
@@ -895,6 +924,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: "damaged".into(),
                 base: base.id,
                 removed_roles: vec![],
                 overrides: vec![
@@ -927,6 +957,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: "damaged".into(),
                 base: base.id,
                 removed_roles: vec![],
                 overrides: vec![PrefabOverride {
@@ -964,6 +995,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: "damaged".into(),
                 base: base.id,
                 removed_roles: vec!["gameplay-root".into()],
                 overrides: vec![PrefabOverride {
@@ -996,6 +1028,7 @@ mod tests {
             parts: vec![],
             part_roles: vec![],
             variant: Some(PrefabVariantDelta {
+                variant_id: format!("variant-{id}"),
                 base: PrefabId::new(base),
                 removed_roles: vec![],
                 overrides: vec![],

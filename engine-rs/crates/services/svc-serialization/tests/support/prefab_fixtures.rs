@@ -85,6 +85,7 @@ pub fn alias_removal_registry() -> PrefabRegistry {
                 parts: vec![],
                 part_roles: vec![],
                 variant: Some(PrefabVariantDelta {
+                    variant_id: "damaged".into(),
                     base: PrefabId::new(7),
                     removed_roles: vec!["gameplay-root".into()],
                     overrides: vec![PrefabOverride {

@@ -14,8 +14,8 @@ use core_math::Vec3;
 
 use crate::document::{
     FlatSceneDocument, NodeMetadata, SceneBootstrapBindings, SceneCatalogBinding,
-    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMetadata, SceneNodeKind,
-    SceneNodeRecord,
+    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMarker, SceneMetadata,
+    SceneNodeKind, SceneNodeRecord,
 };
 use crate::transform::{Quat, SceneTransform};
 use crate::{SceneLight, SceneLightShadowIntent};
@@ -115,6 +115,10 @@ fn encode_kind(out: &mut String, kind: &SceneNodeKind) {
         out.push_str(", \"sceneLight\": ");
         encode_light(out, light);
     }
+    if let SceneNodeKind::Marker(marker) = kind {
+        out.push_str(", \"markerId\": ");
+        encode_opt_str(out, Some(&marker.marker_id));
+    }
     if let SceneNodeKind::EntityInstance(instance) = kind {
         out.push_str(", \"instance\": ");
         encode_entity_instance(out, instance);
@@ -139,11 +143,13 @@ fn encode_entity_instance(out: &mut String, instance: &SceneEntityInstance) {
         SceneEntityReference::Prefab {
             prefab_id,
             variant_id,
+            instantiation_seed,
         } => {
             out.push_str(&format!(
                 "{{ \"kind\": \"prefab\", \"prefabId\": {prefab_id}, \"variantId\": "
             ));
             encode_opt_str(out, variant_id.as_deref());
+            out.push_str(&format!(", \"instantiationSeed\": {instantiation_seed}"));
             out.push_str(" }");
         }
     }
@@ -494,6 +500,12 @@ fn decode_kind(j: &Json) -> Result<SceneNodeKind, SceneDecodeError> {
             require_keys(j, &["kind", "sceneLight"], "light kind")?;
             Ok(SceneNodeKind::Light(decode_light(field(j, "sceneLight")?)?))
         }
+        "marker" => {
+            require_keys(j, &["kind", "markerId"], "marker kind")?;
+            Ok(SceneNodeKind::Marker(SceneMarker {
+                marker_id: field_str(j, "markerId")?,
+            }))
+        }
         "entityInstance" => {
             require_keys(j, &["kind", "instance"], "entityInstance kind")?;
             Ok(SceneNodeKind::EntityInstance(decode_entity_instance(
@@ -534,12 +546,13 @@ fn decode_entity_instance(j: &Json) -> Result<SceneEntityInstance, SceneDecodeEr
         "prefab" => {
             require_keys(
                 reference_json,
-                &["kind", "prefabId", "variantId"],
+                &["kind", "prefabId", "variantId", "instantiationSeed"],
                 "prefab reference",
             )?;
             SceneEntityReference::Prefab {
                 prefab_id: field_u64(reference_json, "prefabId")?,
                 variant_id: opt_str(reference_json, "variantId")?,
+                instantiation_seed: field_u64(reference_json, "instantiationSeed")?,
             }
         }
         other => return Err(SceneDecodeError::UnknownKind(other.to_string())),

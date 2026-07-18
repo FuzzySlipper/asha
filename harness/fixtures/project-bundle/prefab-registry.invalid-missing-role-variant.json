@@ -30,6 +30,7 @@
       "parts": [],
       "schemaVersion": 1,
       "variant": {
+        "variantId": "invalid-missing-role",
         "base": 7,
         "overrides": [
           {

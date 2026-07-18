@@ -35,6 +35,24 @@ pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
         8388608,
         8388608,
     ),
+    (
+        "decode_project_content",
+        "decodeProjectContent",
+        8388608,
+        8388608,
+    ),
+    (
+        "encode_project_content",
+        "encodeProjectContent",
+        8388608,
+        8388608,
+    ),
+    (
+        "apply_project_content_authoring",
+        "applyProjectContentAuthoring",
+        8388608,
+        8388608,
+    ),
     ("step_simulation", "stepSimulation", 8388608, 8388608),
     (
         "apply_time_control_command",

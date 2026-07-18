@@ -42,6 +42,13 @@ pub enum SceneValidationError {
         node: SceneNodeId,
         reason: SceneLightInvalid,
     },
+    /// Two marker nodes share one durable marker identity.
+    DuplicateMarkerId {
+        node: SceneNodeId,
+        marker_id: String,
+    },
+    /// A marker node carries malformed typed identity or an old schema.
+    InvalidMarker { node: SceneNodeId, reason: String },
     /// Two authored runtime placements share one durable instance identity.
     DuplicateEntityInstanceId {
         node: SceneNodeId,
@@ -70,6 +77,8 @@ impl SceneValidationError {
             SceneValidationError::InvalidTransform { .. } => "invalid-transform",
             SceneValidationError::AssetKindMismatch { .. } => "asset-kind-mismatch",
             SceneValidationError::InvalidLight { .. } => "invalid-light",
+            SceneValidationError::DuplicateMarkerId { .. } => "duplicate-marker-id",
+            SceneValidationError::InvalidMarker { .. } => "invalid-marker",
             SceneValidationError::DuplicateEntityInstanceId { .. } => {
                 "duplicate-entity-instance-id"
             }
@@ -98,6 +107,7 @@ impl SceneValidationReport {
 pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
     let mut errors = Vec::new();
     let mut instance_ids = HashSet::new();
+    let mut marker_ids = HashSet::new();
     let mut bootstrap_seen = false;
 
     // 1. Duplicate stable ids. `known` is the set of all ids present (used by the
@@ -155,6 +165,25 @@ pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
             }
         }
         match &rec.kind {
+            SceneNodeKind::Marker(marker) => {
+                if doc.schema_version < 4 || doc.metadata.authoring_format_version < 4 {
+                    errors.push(SceneValidationError::InvalidMarker {
+                        node: rec.id,
+                        reason: "requires-schema-4".into(),
+                    });
+                }
+                if !valid_stable_id(&marker.marker_id) {
+                    errors.push(SceneValidationError::InvalidMarker {
+                        node: rec.id,
+                        reason: "invalid-marker-id".into(),
+                    });
+                } else if !marker_ids.insert(marker.marker_id.clone()) {
+                    errors.push(SceneValidationError::DuplicateMarkerId {
+                        node: rec.id,
+                        marker_id: marker.marker_id.clone(),
+                    });
+                }
+            }
             SceneNodeKind::EntityInstance(instance) => {
                 if doc.schema_version < 3 || doc.metadata.authoring_format_version < 3 {
                     errors.push(SceneValidationError::InvalidEntityInstance {
@@ -185,7 +214,14 @@ pub fn validate(doc: &FlatSceneDocument) -> SceneValidationReport {
                     crate::document::SceneEntityReference::Prefab {
                         prefab_id,
                         variant_id,
+                        ..
                     } => {
+                        if doc.schema_version < 4 || doc.metadata.authoring_format_version < 4 {
+                            errors.push(SceneValidationError::InvalidEntityInstance {
+                                node: rec.id,
+                                reason: "prefab-instantiation-seed-requires-schema-4".into(),
+                            });
+                        }
                         if *prefab_id == 0 {
                             errors.push(SceneValidationError::InvalidEntityInstance {
                                 node: rec.id,

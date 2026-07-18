@@ -2,8 +2,8 @@
 
 use asha_gameplay_module_sdk::*;
 use asha_runtime_session_composition::{
-    BundleArtifacts, EngineBridge, GameplayBindingEntityTargets, GameplayRuntimePrefabBootstrap,
-    GameplayRuntimePrefabCatalog, GameplayRuntimePrefabPlacement,
+    BootstrapResolutionContext, BundleArtifacts, EngineBridge, GameplayBindingEntityTargets,
+    GameplayRuntimePrefabBootstrap, GameplayRuntimePrefabCatalog, GameplayRuntimePrefabPlacement,
     GameplayRuntimePrefabPlacementOrigin, GameplayRuntimePrefabTransform,
     GameplayRuntimeProjectInput, GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
     GameplayTriggerDefinition, LoadPlan, LoadStep, RuntimeSessionId, SceneId,
@@ -603,12 +603,12 @@ pub fn primary_fire_runtime_host_project_input() -> GameplayRuntimeProjectInput 
         ],
     };
     let scene = r#"{
-  "schemaVersion": 1,
+  "schemaVersion": 4,
   "id": 1,
-  "metadata": { "name": "primary-fire-provider", "authoringFormatVersion": 1 },
+  "metadata": { "name": "primary-fire-provider", "authoringFormatVersion": 4 },
   "dependencies": [],
   "nodes": [
-    { "id": 1, "parent": null, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } }
+    { "id": 10, "parent": null, "childOrder": 0, "label": "Primary fire trigger", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "entityInstance", "instance": { "instanceId": "fixture.primary-fire.trigger", "reference": { "kind": "entityDefinition", "stableId": "fixture/primary-fire-trigger" }, "spawnMarkerId": null } } }
   ]
 }"#;
     let artifacts = BundleArtifacts::new()
@@ -617,6 +617,12 @@ pub fn primary_fire_runtime_host_project_input() -> GameplayRuntimeProjectInput 
     GameplayRuntimeProjectInput {
         load_plan: plan,
         artifacts,
+        bootstrap_resolution: BootstrapResolutionContext {
+            entity_definition_ids: ["fixture/primary-fire-trigger".to_owned()]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        },
         composition: primary_fire_composition(),
         composition_requirement: None,
         bindings: GameplayModuleBindingRegistryBuilder::new().build(),
@@ -630,7 +636,7 @@ pub fn primary_fire_runtime_host_project_input() -> GameplayRuntimeProjectInput 
         declared_reads: primary_fire_topology().declared_reads().to_vec(),
         triggers: vec![GameplayTriggerDefinition {
             schema_version: GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
-            entity: 10,
+            scene_instance_id: "fixture.primary-fire.trigger".to_owned(),
             scope: "fixture.primary-fire".to_owned(),
             tags: vec!["fixture".to_owned()],
         }],
@@ -704,6 +710,7 @@ pub fn composed_runtime_prefab_bootstrap() -> GameplayRuntimePrefabBootstrap {
         },
         placements: vec![GameplayRuntimePrefabPlacement {
             command_id: "place-composed-interaction-target".to_owned(),
+            scene_instance_id: "fixture.composed.interaction-target".to_owned(),
             origin: GameplayRuntimePrefabPlacementOrigin::Authored,
             instance: 700,
             prefab: 70,
@@ -1179,12 +1186,13 @@ mod tests {
             ],
         };
         let scene = r#"{
-  "schemaVersion": 1,
+  "schemaVersion": 4,
   "id": 1,
-  "metadata": { "name": "downstream-host", "authoringFormatVersion": 1 },
+  "metadata": { "name": "downstream-host", "authoringFormatVersion": 4 },
   "dependencies": [],
   "nodes": [
-    { "id": 1, "parent": null, "childOrder": 0, "label": null, "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "emptyGroup" } }
+    { "id": 10, "parent": null, "childOrder": 0, "label": "Exit trigger", "tags": [], "transform": { "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "entityInstance", "instance": { "instanceId": "fixture.exit.trigger", "reference": { "kind": "entityDefinition", "stableId": "fixture/exit-trigger" }, "spawnMarkerId": null } } },
+    { "id": 20, "parent": null, "childOrder": 1, "label": "Moving subject", "tags": [], "transform": { "translation": [2, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }, "kind": { "kind": "entityInstance", "instance": { "instanceId": "fixture.moving.subject", "reference": { "kind": "entityDefinition", "stableId": "fixture/moving-subject" }, "spawnMarkerId": null } } }
   ]
 }"#;
         let artifacts = BundleArtifacts::new()
@@ -1193,6 +1201,15 @@ mod tests {
         GameplayRuntimeProjectInput {
             load_plan: plan,
             artifacts,
+            bootstrap_resolution: BootstrapResolutionContext {
+                entity_definition_ids: [
+                    "fixture/exit-trigger".to_owned(),
+                    "fixture/moving-subject".to_owned(),
+                ]
+                .into_iter()
+                .collect(),
+                ..Default::default()
+            },
             composition: composition(multiplier),
             composition_requirement: None,
             bindings: binding_registry(multiplier),
@@ -1214,7 +1231,7 @@ mod tests {
             declared_reads: pulse_topology().declared_reads().to_vec(),
             triggers: vec![GameplayTriggerDefinition {
                 schema_version: GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
-                entity: 10,
+                scene_instance_id: "fixture.exit.trigger".to_owned(),
                 scope: "zone.exit".to_owned(),
                 tags: vec!["door".to_owned(), "exit".to_owned()],
             }],
@@ -1240,7 +1257,6 @@ mod tests {
                     "actor/composed-enemy".to_owned(),
                 ],
                 prefab_ids: Vec::new(),
-                spawn_marker_ids: Vec::new(),
                 generator_presets: Vec::new(),
                 catalog_ids: Vec::new(),
             },

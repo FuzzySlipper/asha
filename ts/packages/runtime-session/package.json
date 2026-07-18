@@ -14,7 +14,7 @@
     "compatibility": {
       "version": "runtime-session.v0",
       "metadataFile": "compatibility.json",
-      "changelog": "docs/consumer-compatibility.md#runtime-session-compatibility-log"
+      "changelog": "docs/topics/consumer/consumer-compatibility.md#runtime-session-compatibility-log"
     }
   },
   "type": "module",

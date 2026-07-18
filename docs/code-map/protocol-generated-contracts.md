@@ -23,14 +23,14 @@ to generated outputs are forbidden.
 - [engine-rs/crates/protocol](../../engine-rs/crates/protocol)
 - [engine-rs/crates/protocol/protocol-codegen](../../engine-rs/crates/protocol/protocol-codegen)
 - [ts/packages/contracts](../../ts/packages/contracts)
-- [contract-governance.md](../contract-governance.md)
-- [consumer-compatibility.md](../consumer-compatibility.md)
+- [contract-governance.md](../topics/contracts/contract-governance.md)
+- [consumer-compatibility.md](../topics/consumer/consumer-compatibility.md)
 
 ## Public Downstream Surfaces
 
 - `@asha/contracts` package root.
 - Contract compatibility metadata recorded in
-  [consumer-compatibility.md](../consumer-compatibility.md).
+  [consumer-compatibility.md](../topics/consumer/consumer-compatibility.md).
 - Public package status in
   [ts-packages.json](../../harness/public-surface/ts-packages.json).
 

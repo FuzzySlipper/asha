@@ -15,7 +15,6 @@ impl EngineBridge {
 
         let entity_definition_ids =
             unique_identifier_set("entityDefinitionIds", &registry.entity_definition_ids)?;
-        let spawn_marker_ids = unique_identifier_set("spawnMarkerIds", &registry.spawn_marker_ids)?;
         let catalog_ids = unique_identifier_set("catalogIds", &registry.catalog_ids)?;
 
         let mut prefab_ids = BTreeSet::new();
@@ -54,7 +53,6 @@ impl EngineBridge {
         Ok(core_scene::BootstrapResolutionContext {
             entity_definition_ids,
             prefab_ids,
-            spawn_marker_ids,
             generator_presets,
             catalog_ids,
         })

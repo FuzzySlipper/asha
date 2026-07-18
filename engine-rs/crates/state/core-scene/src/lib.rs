@@ -58,8 +58,8 @@ pub use bootstrap::{
 };
 pub use document::{
     FlatSceneDocument, NodeMetadata, SceneBootstrapBindings, SceneCatalogBinding,
-    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMetadata, SceneNode,
-    SceneNodeKind, SceneNodeRecord, SceneTree,
+    SceneEntityInstance, SceneEntityReference, SceneGeneratorBinding, SceneMarker, SceneMetadata,
+    SceneNode, SceneNodeKind, SceneNodeRecord, SceneTree,
 };
 pub use json::{decode, encode, SceneDecodeError};
 pub use light::{SceneLight, SceneLightInvalid, SceneLightShadowIntent};

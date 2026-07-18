@@ -151,6 +151,10 @@ pub enum DiagnosticCode {
     SceneAssetMissing,
     /// A scene node references an asset of the wrong kind for its slot.
     SceneAssetWrongKind,
+    /// Two marker nodes claim the same durable marker identity.
+    DuplicateSceneMarkerId,
+    /// A marker node carries malformed stored identity data.
+    InvalidSceneMarker,
     /// Two entity-instance nodes claim the same durable instance identity.
     DuplicateSceneEntityInstanceId,
     /// An entity-instance node carries malformed stored binding data.
@@ -215,6 +219,8 @@ impl DiagnosticCode {
             DiagnosticCode::InvalidSceneTransform => "invalidSceneTransform",
             DiagnosticCode::SceneAssetMissing => "sceneAssetMissing",
             DiagnosticCode::SceneAssetWrongKind => "sceneAssetWrongKind",
+            DiagnosticCode::DuplicateSceneMarkerId => "duplicateSceneMarkerId",
+            DiagnosticCode::InvalidSceneMarker => "invalidSceneMarker",
             DiagnosticCode::DuplicateSceneEntityInstanceId => "duplicateSceneEntityInstanceId",
             DiagnosticCode::InvalidSceneEntityInstance => "invalidSceneEntityInstance",
             DiagnosticCode::DuplicateSceneBootstrap => "duplicateSceneBootstrap",
@@ -249,6 +255,8 @@ impl DiagnosticCode {
             | DiagnosticCode::InvalidSceneTransform
             | DiagnosticCode::SceneAssetMissing
             | DiagnosticCode::SceneAssetWrongKind
+            | DiagnosticCode::DuplicateSceneMarkerId
+            | DiagnosticCode::InvalidSceneMarker
             | DiagnosticCode::DuplicateSceneEntityInstanceId
             | DiagnosticCode::InvalidSceneEntityInstance
             | DiagnosticCode::DuplicateSceneBootstrap
@@ -286,6 +294,8 @@ impl DiagnosticCode {
             | DiagnosticCode::InvalidSceneTransform
             | DiagnosticCode::SceneAssetMissing
             | DiagnosticCode::SceneAssetWrongKind
+            | DiagnosticCode::DuplicateSceneMarkerId
+            | DiagnosticCode::InvalidSceneMarker
             | DiagnosticCode::DuplicateSceneEntityInstanceId
             | DiagnosticCode::InvalidSceneEntityInstance
             | DiagnosticCode::DuplicateSceneBootstrap
@@ -322,6 +332,8 @@ pub const DIAGNOSTIC_CODES: &[&str] = &[
     "invalidSceneTransform",
     "sceneAssetMissing",
     "sceneAssetWrongKind",
+    "duplicateSceneMarkerId",
+    "invalidSceneMarker",
     "duplicateSceneEntityInstanceId",
     "invalidSceneEntityInstance",
     "duplicateSceneBootstrap",
@@ -355,6 +367,8 @@ pub const ALL_DIAGNOSTIC_CODES: &[DiagnosticCode] = &[
     DiagnosticCode::InvalidSceneTransform,
     DiagnosticCode::SceneAssetMissing,
     DiagnosticCode::SceneAssetWrongKind,
+    DiagnosticCode::DuplicateSceneMarkerId,
+    DiagnosticCode::InvalidSceneMarker,
     DiagnosticCode::DuplicateSceneEntityInstanceId,
     DiagnosticCode::InvalidSceneEntityInstance,
     DiagnosticCode::DuplicateSceneBootstrap,

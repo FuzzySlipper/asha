@@ -563,6 +563,7 @@ dependencies = [
  "protocol-policy-view",
  "protocol-presentation",
  "protocol-project-bundle",
+ "protocol-project-content",
  "protocol-render",
  "protocol-replay",
  "protocol-scene",
@@ -659,6 +660,17 @@ version = "0.1.0"
 dependencies = [
  "core-ids",
  "serde",
+]
+
+[[package]]
+name = "protocol-project-content"
+version = "0.1.0"
+dependencies = [
+ "protocol-assets",
+ "protocol-entity-authoring",
+ "protocol-game-extension",
+ "protocol-project-bundle",
+ "protocol-scene",
 ]
 
 [[package]]
@@ -1052,6 +1064,7 @@ dependencies = [
  "protocol-input",
  "protocol-presentation",
  "protocol-project-bundle",
+ "protocol-project-content",
  "protocol-render",
  "protocol-scene",
  "protocol-time-control",
@@ -1081,6 +1094,7 @@ dependencies = [
  "svc-mesh",
  "svc-mesh-import",
  "svc-pathfinding",
+ "svc-project-content",
  "svc-serialization",
  "svc-spatial",
  "svc-volume",
@@ -1404,6 +1418,25 @@ dependencies = [
  "core-ids",
  "core-math",
  "protocol-policy-view",
+]
+
+[[package]]
+name = "svc-project-content"
+version = "0.1.0"
+dependencies = [
+ "core-assets",
+ "core-catalog",
+ "core-ids",
+ "protocol-assets",
+ "protocol-entity-authoring",
+ "protocol-game-extension",
+ "protocol-project-bundle",
+ "protocol-project-content",
+ "protocol-scene",
+ "serde",
+ "serde_json",
+ "svc-entity-authoring",
+ "svc-serialization",
 ]
 
 [[package]]

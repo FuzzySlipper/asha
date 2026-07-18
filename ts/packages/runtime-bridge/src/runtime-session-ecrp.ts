@@ -46,10 +46,6 @@ export function defaultRuntimeSessionEcrpProjectLoadInput(
         'actor/generated-tunnel-enemy',
       ],
       prefabIds: [],
-      spawnMarkerIds: [
-        'spawn.player.start',
-        'spawn.enemy.primary',
-      ],
       generatorPresets: [],
       catalogIds: [],
     },
@@ -149,11 +145,11 @@ export function defaultRuntimeSessionEcrpProjectLoadInput(
 
 function defaultRuntimeSessionSceneDocument(id: number): FlatSceneDocument {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     id: sceneId(id),
     metadata: {
       name: 'RuntimeSession default scene',
-      authoringFormatVersion: 3,
+      authoringFormatVersion: 4,
     },
     dependencies: [],
     nodes: [
@@ -163,7 +159,7 @@ function defaultRuntimeSessionSceneDocument(id: number): FlatSceneDocument {
         instanceId: 'actor.demo-player.instance',
         definitionId: 'actor/demo-player',
         spawnMarkerId: 'spawn.player.start',
-        translation: [0, 1.62, 0],
+        translation: [0, 0, 0],
         rotation: [0, 0, 0, 1],
       }),
       runtimeEntitySceneNode({
@@ -172,10 +168,29 @@ function defaultRuntimeSessionSceneDocument(id: number): FlatSceneDocument {
         instanceId: 'actor.generated-tunnel-enemy.instance',
         definitionId: 'actor/generated-tunnel-enemy',
         spawnMarkerId: 'spawn.enemy.primary',
-        translation: [0, 1.1, -3.5],
-        rotation: [0, 1, 0, 0],
+        translation: [0, 0, 0],
+        rotation: [0, 0, 0, 1],
       }),
+      runtimeMarkerSceneNode(30, 'spawn.player.start', [0, 1.62, 0], [0, 0, 0, 1]),
+      runtimeMarkerSceneNode(40, 'spawn.enemy.primary', [0, 1.1, -3.5], [0, 1, 0, 0]),
     ],
+  };
+}
+
+function runtimeMarkerSceneNode(
+  id: number,
+  markerId: string,
+  translation: readonly [number, number, number],
+  rotation: readonly [number, number, number, number],
+): SceneNodeRecord {
+  return {
+    id: sceneNodeId(id),
+    parent: null,
+    childOrder: id,
+    label: markerId,
+    tags: [],
+    transform: { translation, rotation, scale: [1, 1, 1] },
+    kind: { kind: 'marker', markerId },
   };
 }
 
@@ -337,7 +352,6 @@ function validateBootstrapResolutionRegistry(
 
   const identifierLists = [
     ['entityDefinitionIds', value.entityDefinitionIds],
-    ['spawnMarkerIds', value.spawnMarkerIds],
     ['catalogIds', value.catalogIds],
   ] as const;
   for (const [field, identifiers] of identifierLists) {
@@ -562,6 +576,11 @@ function isVec3(value: readonly number[] | undefined): value is readonly [number
 export function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectState {
   const definitions = new Map(input.entityDefinitions.map((definition) => [definition.stableId, definition]));
   const worldTransforms = sceneWorldTransforms(input.sceneDocument);
+  const markerTransforms = new Map(
+    input.sceneDocument.nodes.flatMap((node) => node.kind.kind === 'marker'
+      ? [[node.kind.markerId, worldTransforms.get(node.id) ?? node.transform] as const]
+      : []),
+  );
   const entities = input.sceneDocument.nodes.flatMap((placement) => {
     if (placement.kind.kind !== 'entityInstance' || placement.kind.instance.reference.kind !== 'entityDefinition') {
       return [];
@@ -570,11 +589,17 @@ export function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput)
     if (definition === undefined) {
       return [];
     }
+    const authoredWorldTransform = worldTransforms.get(placement.id) ?? placement.transform;
+    const spawnMarkerTransform = placement.kind.instance.spawnMarkerId === null
+      ? undefined
+      : markerTransforms.get(placement.kind.instance.spawnMarkerId);
     return {
       entity: placement.id,
       instanceId: placement.kind.instance.instanceId,
       spawnMarkerId: placement.kind.instance.spawnMarkerId,
-      worldTransform: worldTransforms.get(placement.id) ?? placement.transform,
+      worldTransform: spawnMarkerTransform === undefined
+        ? authoredWorldTransform
+        : composeSceneTransform(spawnMarkerTransform, placement.transform),
       definition,
       role: inferRuntimeRole(definition),
     };

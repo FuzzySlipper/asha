@@ -28,7 +28,7 @@ WASM replay bridge, and fail-closed runtime operation exposure.
 - [ts/packages/runtime-bridge](../../ts/packages/runtime-bridge)
 - [ts/packages/native-bridge](../../ts/packages/native-bridge)
 - [ts/packages/wasm-replay-bridge](../../ts/packages/wasm-replay-bridge)
-- [runtime-bridge-boundary.md](../runtime-bridge-boundary.md)
+- [runtime-bridge-boundary.md](../topics/bridge/runtime-bridge-boundary.md)
 
 ## Public Downstream Surfaces
 

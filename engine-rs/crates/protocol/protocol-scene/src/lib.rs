@@ -46,6 +46,7 @@ pub const SCENE_NODE_KIND_TAGS: &[&str] = &[
     "sprite",
     "voxelVolume",
     "light",
+    "marker",
     "entityInstance",
     "bootstrap",
 ];
@@ -59,6 +60,8 @@ pub const SCENE_VALIDATION_CODES: &[&str] = &[
     "invalid-transform",
     "asset-kind-mismatch",
     "invalid-light",
+    "duplicate-marker-id",
+    "invalid-marker",
     "duplicate-entity-instance-id",
     "invalid-entity-instance",
     "duplicate-bootstrap-node",
@@ -140,6 +143,7 @@ pub enum SceneNodeKindTag {
     Sprite,
     VoxelVolume,
     Light,
+    Marker,
     EntityInstance,
     Bootstrap,
 }
@@ -153,6 +157,7 @@ impl SceneNodeKindTag {
             SceneNodeKindTag::Sprite => "sprite",
             SceneNodeKindTag::VoxelVolume => "voxelVolume",
             SceneNodeKindTag::Light => "light",
+            SceneNodeKindTag::Marker => "marker",
             SceneNodeKindTag::EntityInstance => "entityInstance",
             SceneNodeKindTag::Bootstrap => "bootstrap",
         }
@@ -174,6 +179,7 @@ pub const ALL_SCENE_NODE_KIND_TAGS: &[SceneNodeKindTag] = &[
     SceneNodeKindTag::Sprite,
     SceneNodeKindTag::VoxelVolume,
     SceneNodeKindTag::Light,
+    SceneNodeKindTag::Marker,
     SceneNodeKindTag::EntityInstance,
     SceneNodeKindTag::Bootstrap,
 ];
@@ -187,6 +193,8 @@ pub enum SceneValidationCode {
     InvalidTransform,
     AssetKindMismatch,
     InvalidLight,
+    DuplicateMarkerId,
+    InvalidMarker,
     DuplicateEntityInstanceId,
     InvalidEntityInstance,
     DuplicateBootstrapNode,
@@ -204,6 +212,8 @@ impl SceneValidationCode {
             SceneValidationCode::InvalidTransform => "invalid-transform",
             SceneValidationCode::AssetKindMismatch => "asset-kind-mismatch",
             SceneValidationCode::InvalidLight => "invalid-light",
+            SceneValidationCode::DuplicateMarkerId => "duplicate-marker-id",
+            SceneValidationCode::InvalidMarker => "invalid-marker",
             SceneValidationCode::DuplicateEntityInstanceId => "duplicate-entity-instance-id",
             SceneValidationCode::InvalidEntityInstance => "invalid-entity-instance",
             SceneValidationCode::DuplicateBootstrapNode => "duplicate-bootstrap-node",
@@ -221,6 +231,8 @@ pub const ALL_SCENE_VALIDATION_CODES: &[SceneValidationCode] = &[
     SceneValidationCode::InvalidTransform,
     SceneValidationCode::AssetKindMismatch,
     SceneValidationCode::InvalidLight,
+    SceneValidationCode::DuplicateMarkerId,
+    SceneValidationCode::InvalidMarker,
     SceneValidationCode::DuplicateEntityInstanceId,
     SceneValidationCode::InvalidEntityInstance,
     SceneValidationCode::DuplicateBootstrapNode,
@@ -423,7 +435,15 @@ pub enum SceneEntityReferenceDto {
     Prefab {
         prefab_id: u64,
         variant_id: Option<String>,
+        instantiation_seed: u64,
     },
+}
+
+/// Standalone marker metadata retained for consumers that inspect marker
+/// fields outside the flattened scene-node discriminated union.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SceneMarkerDto {
+    pub marker_id: String,
 }
 
 /// Renderer-neutral stored runtime instance intent. Hierarchy and local pose
@@ -468,6 +488,7 @@ pub enum SceneNodeKindDto {
     Sprite(AssetReferenceDto),
     VoxelVolume(AssetReferenceDto),
     Light(SceneLightDto),
+    Marker { marker_id: String },
     EntityInstance { instance: SceneEntityInstanceDto },
     Bootstrap { bindings: SceneBootstrapBindingsDto },
 }
@@ -481,6 +502,7 @@ impl SceneNodeKindDto {
             SceneNodeKindDto::Sprite(_) => SceneNodeKindTag::Sprite,
             SceneNodeKindDto::VoxelVolume(_) => SceneNodeKindTag::VoxelVolume,
             SceneNodeKindDto::Light(_) => SceneNodeKindTag::Light,
+            SceneNodeKindDto::Marker { .. } => SceneNodeKindTag::Marker,
             SceneNodeKindDto::EntityInstance { .. } => SceneNodeKindTag::EntityInstance,
             SceneNodeKindDto::Bootstrap { .. } => SceneNodeKindTag::Bootstrap,
         }
@@ -491,6 +513,7 @@ impl SceneNodeKindDto {
         match self {
             SceneNodeKindDto::EmptyGroup
             | SceneNodeKindDto::Light(_)
+            | SceneNodeKindDto::Marker { .. }
             | SceneNodeKindDto::EntityInstance { .. }
             | SceneNodeKindDto::Bootstrap { .. } => None,
             SceneNodeKindDto::StaticMesh(a)

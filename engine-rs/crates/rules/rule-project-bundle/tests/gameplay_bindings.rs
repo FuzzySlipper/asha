@@ -471,7 +471,7 @@ fn bindings() -> GameplayModuleBindingRegistry {
         ],
         overrides: vec![GameplayModuleBindingOverride {
             binding_id: "muzzle-counter".to_owned(),
-            prefab_instance: PrefabInstanceId::new(20),
+            scene_instance_id: "fixture.turret.20".to_owned(),
             configuration_id: Some("turret-20".to_owned()),
             enabled: None,
         }],
@@ -479,6 +479,12 @@ fn bindings() -> GameplayModuleBindingRegistry {
     };
     registry.registry_hash = gameplay_module_binding_registry_hash(&registry);
     registry
+}
+
+fn binding_targets() -> GameplayBindingEntityTargets {
+    let mut targets = GameplayBindingEntityTargets::new();
+    targets.bind_prefab_instance("fixture.turret.20", PrefabInstanceId::new(20));
+    targets
 }
 
 #[test]
@@ -489,7 +495,7 @@ fn bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authori
         bundle.clone(),
         composition(),
         bindings.clone(),
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
     )
     .unwrap();
     assert_eq!(session.activation.readouts.len(), 3);
@@ -591,7 +597,7 @@ fn bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authori
         bundle,
         composition(),
         bindings,
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
         &artifact.text,
     )
     .unwrap();
@@ -628,7 +634,7 @@ fn runtime_session_reconciles_persists_and_restores_trigger_overlap_authority() 
         bundle.clone(),
         composition(),
         registry.clone(),
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
     )
     .unwrap();
     session
@@ -659,7 +665,7 @@ fn runtime_session_reconciles_persists_and_restores_trigger_overlap_authority() 
         bundle,
         composition(),
         registry,
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
         &artifact.text,
     )
     .unwrap();
@@ -697,7 +703,7 @@ fn provenance_drift_warns_in_compatible_mode_and_rejects_in_exact_mode() {
         bundle.clone(),
         composition(),
         drifted.clone(),
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
     )
     .unwrap();
     assert!(compatible
@@ -710,7 +716,7 @@ fn provenance_drift_warns_in_compatible_mode_and_rejects_in_exact_mode() {
         bundle.clone(),
         composition(),
         drifted,
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
         GameplayCompositionLoadMode::Exact,
     )
     .err()
@@ -726,7 +732,7 @@ fn provenance_drift_warns_in_compatible_mode_and_rejects_in_exact_mode() {
         bundle.clone(),
         composition(),
         bindings.clone(),
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
     )
     .unwrap();
     let artifact = session.compose_gameplay_session_snapshot().unwrap();
@@ -737,7 +743,7 @@ fn provenance_drift_warns_in_compatible_mode_and_rejects_in_exact_mode() {
             bundle,
             composition(),
             bindings,
-            &GameplayBindingEntityTargets::new(),
+            &binding_targets(),
             &serde_json::to_string(&stored).unwrap(),
         ),
         Err(GameplayBindingActivationError::Snapshot(_))
@@ -754,7 +760,7 @@ fn assert_binding_diagnostic(
         bundle.clone(),
         composition(),
         bindings,
-        &GameplayBindingEntityTargets::new(),
+        &binding_targets(),
     )
     .err()
     .expect("invalid binding must not construct a Session");
@@ -824,7 +830,7 @@ fn stale_contracts_foreign_modules_bad_roles_reads_outputs_and_overrides_reject(
     );
 
     let mut malformed_override = bindings();
-    malformed_override.overrides[0].prefab_instance = PrefabInstanceId::new(999);
+    malformed_override.overrides[0].scene_instance_id = "fixture.unknown".to_owned();
     assert_binding_diagnostic(
         &bundle,
         malformed_override,

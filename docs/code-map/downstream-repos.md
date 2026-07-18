@@ -20,9 +20,9 @@ moving downstream planning truth into this engine repository.
 
 ## Primary Paths
 
-- [repo-family-deployment.md](../repo-family-deployment.md)
-- [consumer-compatibility.md](../consumer-compatibility.md)
-- [game-agent-code-organization.md](../game-agent-code-organization.md)
+- [repo-family-deployment.md](../topics/consumer/repo-family-deployment.md)
+- [consumer-compatibility.md](../topics/consumer/consumer-compatibility.md)
+- [game-agent-code-organization.md](../topics/consumer/game-agent-code-organization.md)
 - [harness/public-surface/ts-packages.json](../../harness/public-surface/ts-packages.json)
 - [harness/public-surface/rust-crates.json](../../harness/public-surface/rust-crates.json)
 - [pack-public-artifacts.mjs](../../ts/scripts/pack-public-artifacts.mjs)
@@ -57,7 +57,7 @@ moving downstream planning truth into this engine repository.
 
 - [harness/public-surface/check-public-boundary.py](../../harness/public-surface/check-public-boundary.py)
 - [harness/fixtures/smoke](../../harness/fixtures/smoke)
-- [docs/consumer-compatibility.md](../consumer-compatibility.md)
+- [consumer compatibility](../topics/consumer/consumer-compatibility.md)
 
 Generated smoke reports are emitted under `harness/smoke-out/`; that directory
 is local output and is intentionally not a checked-in Atlas link target.
