@@ -995,6 +995,7 @@ impl RuntimeBridge for EngineBridge {
         let receipt = self.unload_voxel_volume_asset_authority(request)?;
         if receipt.unloaded {
             self.record_workspace_authoring_mutation();
+            self.clear_workspace_authoring_loaded_assets();
         }
         Ok(receipt)
     }

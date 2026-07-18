@@ -313,8 +313,13 @@ impl EngineBridge {
                 .expect("workspace authoring revision overflow is unreachable in one process");
             authority.pending_save_candidate = None;
             authority.pending_procedural_environment = None;
-            authority.loaded_voxel_assets.clear();
             self.projection.voxel_instance_binding = None;
+        }
+    }
+
+    pub(super) fn clear_workspace_authoring_loaded_assets(&mut self) {
+        if let Some(authority) = self.workspace_authoring.as_mut().filter(|value| value.open) {
+            authority.loaded_voxel_assets.clear();
         }
     }
 

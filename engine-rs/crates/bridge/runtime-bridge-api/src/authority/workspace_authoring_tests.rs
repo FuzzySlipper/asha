@@ -680,12 +680,23 @@ fn reopened_procedural_environment_replaces_from_loaded_asset_provenance() {
         1
     );
 
+    // An unrelated scene/content mutation advances the same authoring cell but
+    // does not unload the canonical asset that was explicitly loaded into it.
+    bridge.record_workspace_authoring_mutation();
+    assert_eq!(
+        bridge
+            .read_workspace_authoring_state()
+            .unwrap()
+            .working_revision,
+        2
+    );
+
     let mut changed_seed = procedural_request(
         "workspace.procedural-reopen",
         opened.identity.generation,
         scene_hash.clone(),
     );
-    changed_seed.expected_working_revision = 1;
+    changed_seed.expected_working_revision = 2;
     changed_seed.seed = 43;
     let changed = bridge.preview_procedural_environment(changed_seed).unwrap();
     assert!(changed.accepted, "{:?}", changed.diagnostics);
@@ -703,7 +714,7 @@ fn reopened_procedural_environment_replaces_from_loaded_asset_provenance() {
         opened.identity.generation,
         scene_hash,
     );
-    replacement.expected_working_revision = 1;
+    replacement.expected_working_revision = 2;
     let preview = bridge.preview_procedural_environment(replacement).unwrap();
     assert!(preview.accepted, "{:?}", preview.diagnostics);
     let scene = preview.candidate.expect("replacement candidate").scene;
