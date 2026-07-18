@@ -78,6 +78,16 @@ void test('authoring write target resolver accepts normalized scene catalog and 
     throw new Error('asset authoring path should resolve');
   }
   assert.equal(asset.format, 'inline-asset-json.v1');
+
+  const voxelAsset = resolveAshaAuthoringWriteTarget(manifest, {
+    operationKind: 'authoring.asset.save_source',
+    relativePath: 'assets/voxels/generated-tunnel.avxl.json',
+  });
+  assert.equal(voxelAsset.ok, true);
+  if (!voxelAsset.ok) {
+    throw new Error('voxel asset authoring path should resolve');
+  }
+  assert.equal(voxelAsset.allowedRoot, 'assets');
 });
 
 void test('authoring write target resolver fails closed on disallowed paths and hatches', () => {
@@ -110,6 +120,17 @@ void test('authoring write target resolver fails closed on disallowed paths and 
   assert.equal(wrongExtension.ok, false);
   assert.equal(
     !wrongExtension.ok && wrongExtension.diagnostics.some((diagnostic) => diagnostic.code === 'invalid_extension'),
+    true,
+  );
+
+  const voxelOutsideAssetRoot = resolveAshaAuthoringWriteTarget(manifest, {
+    operationKind: 'authoring.asset.save_source',
+    relativePath: 'scenes/generated-tunnel.avxl.json',
+  });
+  assert.equal(voxelOutsideAssetRoot.ok, false);
+  assert.equal(
+    !voxelOutsideAssetRoot.ok
+      && voxelOutsideAssetRoot.diagnostics.some((diagnostic) => diagnostic.code === 'disallowed_path'),
     true,
   );
 

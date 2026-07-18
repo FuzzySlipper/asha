@@ -244,9 +244,14 @@ function validateAuthoringExtension(
       normalizedPath.endsWith('.mesh.json')
       || normalizedPath.endsWith('.material.json')
       || normalizedPath.endsWith('.texture.json')
+      || normalizedPath.endsWith('.avxl.json')
     )
   ) {
-    diagnostics.push(authoringDiag('invalid_extension', 'relativePath', 'asset authoring saves must target *.mesh.json, *.material.json, or *.texture.json'));
+    diagnostics.push(authoringDiag(
+      'invalid_extension',
+      'relativePath',
+      'asset authoring saves must target *.mesh.json, *.material.json, *.texture.json, or *.avxl.json',
+    ));
   }
 }
 
