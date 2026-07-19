@@ -201,6 +201,9 @@ impl LoadPlan {
                 .into_iter()
                 .next();
 
+        let entry_scene = manifest
+            .entry_scene()
+            .expect("validated manifest has a declared entry scene");
         let mut steps = vec![
             LoadStep::ValidateVersions {
                 bundle_schema_version: manifest.bundle_schema_version,
@@ -211,14 +214,21 @@ impl LoadPlan {
                 asset_count: manifest.asset_lock.asset_count,
             },
             LoadStep::LoadSceneDocument {
-                artifact: manifest.scene.artifact.clone(),
-                scene: manifest.scene.id,
+                artifact: entry_scene.artifact.clone(),
+                scene: entry_scene.id,
             },
-            LoadStep::GenerateTerrain {
-                seed: manifest.generator.seed,
-                version: manifest.generator.version,
-                params: manifest.generator.params.clone(),
-            },
+        ];
+        // Generation is optional authoring provenance. Legacy v1 loads retain
+        // the diagnostic/replay step, while ordinary materialized v2 projects
+        // proceed directly from stored scene/resource artifacts.
+        if let Some(provenance) = &manifest.generation_provenance {
+            steps.push(LoadStep::GenerateTerrain {
+                seed: provenance.seed,
+                version: provenance.version,
+                params: provenance.params.clone(),
+            });
+        }
+        steps.extend([
             LoadStep::ApplyVoxelEdits {
                 edit_logs,
                 snapshots,
@@ -228,10 +238,10 @@ impl LoadPlan {
                 artifacts: voxel_annotations,
             },
             LoadStep::BootstrapScene {
-                scene: manifest.scene.id,
+                scene: entry_scene.id,
                 runtime_session: RuntimeSessionId::new(manifest.project.id.raw()),
             },
-        ];
+        ]);
         if let Some(artifact) = session_state_snapshot {
             steps.push(LoadStep::RestoreSessionState { artifact });
         }

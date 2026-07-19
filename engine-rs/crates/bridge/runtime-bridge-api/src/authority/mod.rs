@@ -269,7 +269,8 @@ pub struct EngineBridge {
 }
 
 /// The bundle schema and protocol versions this engine bridge understands.
-const ENGINE_SUPPORTED_VERSION: u32 = 1;
+const ENGINE_SUPPORTED_BUNDLE_VERSION: u32 = svc_serialization::BUNDLE_SCHEMA_VERSION;
+const ENGINE_SUPPORTED_PROTOCOL_VERSION: u32 = svc_serialization::SUPPORTED_PROTOCOL_VERSION;
 const BUILT_IN_GAME_RULE_MODULE_ID: &str = "asha.engine.primary_fire_damage_modifier";
 #[cfg(test)]
 const BUILT_IN_GAME_RULE_MODULE_VERSION: &str = "0.1.0";

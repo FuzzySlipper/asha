@@ -33,12 +33,13 @@ import {
 
 function manifest(): GeneratedProjectBundleManifest {
   return {
-    bundleSchemaVersion: 1,
+    bundleSchemaVersion: 2,
     protocolVersion: 1,
     project: { id: projectId(7), name: 'fixture-project' },
-    scene: { id: sceneId(1001), schemaVersion: 1, artifact: 'scene.json' },
+    entryScene: sceneId(1001),
+    scenes: [{ id: sceneId(1001), schemaVersion: 1, artifact: 'scene.json' }],
     assetLock: { artifact: 'lock.json', assetCount: 4 },
-    generator: { seed: 42, version: 3, params: 'flat' },
+    generationProvenance: { provider: 'asha.environment.test', seed: 42, version: 3, params: 'flat' },
     artifacts: [
       { path: 'scene.json', class: 'durable', role: 'sceneDocument', contentHash: 'h1' },
       { path: 'lock.json', class: 'durable', role: 'assetLock', contentHash: 'h2' },
@@ -52,6 +53,7 @@ void test('buildManifestModel classifies artifacts and counts by class', () => {
   const model = buildManifestModel(manifest());
   assert.equal(model.projectBundleId, 7);
   assert.equal(model.sceneId, 1001);
+  assert.equal(model.sceneCount, 1);
   assert.equal(model.assetCount, 4);
   assert.deepEqual(model.classCounts, { durable: 2, generated: 1, cache: 1 });
   // Durable artifacts both have hashes; nothing flagged.
@@ -211,7 +213,7 @@ function loadedBridge(): RuntimeBridge {
 }
 
 void test('buildProjectBundleLoadRequest derives a typed facade request from the manifest', () => {
-  assert.deepEqual(buildProjectBundleLoadRequest(manifest()), { bundleSchemaVersion: 1, protocolVersion: 1, sceneId: 1001 });
+  assert.deepEqual(buildProjectBundleLoadRequest(manifest()), { bundleSchemaVersion: 2, protocolVersion: 1, sceneId: 1001 });
 });
 
 void test('submitProjectBundleLoad goes through the facade and returns the composition status', () => {

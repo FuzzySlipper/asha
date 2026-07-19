@@ -502,8 +502,8 @@ impl EngineBridge {
         Self::validate_nonempty(&request.authoring_id, "authoringId")?;
         Self::validate_nonempty(&request.project.game_id, "project.gameId")?;
         Self::validate_nonempty(&request.project.workspace_id, "project.workspaceId")?;
-        if request.project_bundle.bundle_schema_version != ENGINE_SUPPORTED_VERSION
-            || request.project_bundle.protocol_version != ENGINE_SUPPORTED_VERSION
+        if request.project_bundle.bundle_schema_version > ENGINE_SUPPORTED_BUNDLE_VERSION
+            || request.project_bundle.protocol_version > ENGINE_SUPPORTED_PROTOCOL_VERSION
         {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,

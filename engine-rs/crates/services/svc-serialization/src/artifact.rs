@@ -54,8 +54,8 @@ impl ArtifactClass {
     }
 }
 
-/// What an artifact *is*. Stable string-tagged so future roles extend cleanly via
-/// [`ArtifactRole::Other`] without breaking older readers.
+/// What an artifact *is*. Stable string-tagged so the manifest, rather than a
+/// host-side path convention, owns the complete runtime source closure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ArtifactRole {
     /// The flat canonical scene document (`core-scene`).
@@ -64,6 +64,20 @@ pub enum ArtifactRole {
     AssetLock,
     /// Durable reusable prefab definitions and their stable local part roles.
     PrefabRegistry,
+    /// One typed ProjectContent document. The document body carries its closed
+    /// kind and stable document id; the manifest only owns closure membership.
+    ProjectContent,
+    /// Durable stored EntityDefinition catalog input.
+    EntityDefinitionCatalog,
+    /// Durable stored material/catalog input.
+    MaterialCatalog,
+    /// A canonical stored voxel-volume resource used by authority, collision,
+    /// and render projection.
+    VoxelVolumeAsset,
+    /// A future-extensible typed resource family. On disk this is encoded as
+    /// `resource:<kind>`; unlike [`ArtifactRole::Other`], it is explicitly part
+    /// of the understood resource namespace and may participate in a v2 load.
+    Resource(String),
     /// A persisted current-authority session-state snapshot.
     SessionStateSnapshot,
     /// A voxel chunk snapshot (`rule-voxel-edit` persistence).
@@ -91,6 +105,11 @@ impl ArtifactRole {
             ArtifactRole::SceneDocument => "sceneDocument",
             ArtifactRole::AssetLock => "assetLock",
             ArtifactRole::PrefabRegistry => "prefabRegistry",
+            ArtifactRole::ProjectContent => "projectContent",
+            ArtifactRole::EntityDefinitionCatalog => "entityDefinitionCatalog",
+            ArtifactRole::MaterialCatalog => "materialCatalog",
+            ArtifactRole::VoxelVolumeAsset => "voxelVolumeAsset",
+            ArtifactRole::Resource(kind) => kind,
             ArtifactRole::SessionStateSnapshot => "sessionStateSnapshot",
             ArtifactRole::VoxelChunkSnapshot => "voxelChunkSnapshot",
             ArtifactRole::VoxelEditLog => "voxelEditLog",
@@ -109,6 +128,10 @@ impl ArtifactRole {
             "sceneDocument" => ArtifactRole::SceneDocument,
             "assetLock" => ArtifactRole::AssetLock,
             "prefabRegistry" => ArtifactRole::PrefabRegistry,
+            "projectContent" => ArtifactRole::ProjectContent,
+            "entityDefinitionCatalog" => ArtifactRole::EntityDefinitionCatalog,
+            "materialCatalog" => ArtifactRole::MaterialCatalog,
+            "voxelVolumeAsset" => ArtifactRole::VoxelVolumeAsset,
             "sessionStateSnapshot" => ArtifactRole::SessionStateSnapshot,
             "voxelChunkSnapshot" => ArtifactRole::VoxelChunkSnapshot,
             "voxelEditLog" => ArtifactRole::VoxelEditLog,
@@ -117,7 +140,25 @@ impl ArtifactRole {
             "replayRecord" => ArtifactRole::ReplayRecord,
             "generatedMetadata" => ArtifactRole::GeneratedMetadata,
             "cache" => ArtifactRole::Cache,
+            other if other.starts_with("resource:") && other.len() > "resource:".len() => {
+                ArtifactRole::Resource(other.to_string())
+            }
             other => ArtifactRole::Other(other.to_string()),
+        }
+    }
+
+    /// Whether this role names a manifest-understood runtime input rather than
+    /// an opaque legacy extension.
+    pub fn is_known_runtime_role(&self) -> bool {
+        match self {
+            ArtifactRole::Other(_) => false,
+            ArtifactRole::Resource(tag) => tag.strip_prefix("resource:").is_some_and(|kind| {
+                !kind.is_empty()
+                    && kind
+                        .chars()
+                        .all(|character| character.is_ascii_alphanumeric() || character == '-')
+            }),
+            _ => true,
         }
     }
 }

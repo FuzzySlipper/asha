@@ -1599,7 +1599,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
     const sceneId = nonNegativeSafeInteger(request.sceneId, 'sceneId');
     // Fail closed on a newer bundle; the prior loaded world is left untouched
     // (we only set #loadedProjectBundle on success — the staged commit/swap).
-    if (bundleSchemaVersion > 1 || protocolVersion > 1) {
+    if (bundleSchemaVersion > 2 || protocolVersion > 1) {
       throw new RuntimeBridgeError(
         'invalid_input',
         `unsupported bundle schema ${bundleSchemaVersion} / protocol ${protocolVersion}`,

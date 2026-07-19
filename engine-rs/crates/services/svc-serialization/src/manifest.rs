@@ -1,8 +1,8 @@
 //! The project-bundle manifest (scene-capability-02, subtask #2318).
 //!
 //! The manifest is the single inspectable index of a project bundle: it records the
-//! bundle/protocol schema versions, the project/scene identity, the asset lock, the
-//! terrain generator metadata, and the classified artifact table. It is canonical
+//! bundle/protocol schema versions, project and entry-scene identity, the asset
+//! lock, optional authoring provenance, and the classified artifact table. It is canonical
 //! for the *directory* layout; a future `.asha` archive is only a transport
 //! wrapper around the same files (see crate docs).
 //!
@@ -15,17 +15,25 @@ use crate::artifact::{ArtifactClass, ArtifactEntry};
 use crate::hash::BundleHash;
 
 /// The bundle-manifest schema version this build writes/understands.
-pub const BUNDLE_SCHEMA_VERSION: u32 = 1;
+pub const BUNDLE_SCHEMA_VERSION: u32 = 2;
+
+/// Old single-scene manifests remain a deliberately bounded read compatibility
+/// surface. Decoding migrates them into the v2 in-memory shape; canonical writes
+/// always use [`BUNDLE_SCHEMA_VERSION`].
+pub const LEGACY_BUNDLE_SCHEMA_VERSION: u32 = 1;
 
 /// The generated-contract protocol version this build is compatible with. A real
 /// `protocol-codegen`-sourced value (scene-capability-02, "Decisions to make") is
 /// future work; pinned here so manifests already carry the field.
 pub const SUPPORTED_PROTOCOL_VERSION: u32 = 1;
 
-/// Terrain generation metadata. Durable and compact: current chunk state can be
-/// regenerated from `seed` + `version` + `params`.
+/// Authoring-only procedural generation provenance. Runtime admission never
+/// resolves or invokes this provider: materialized scene/resource artifacts are
+/// the runtime source of truth.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratorMetadata {
+    /// Stable provider identity retained for inspection and later re-authoring.
+    pub provider: String,
     pub seed: u64,
     pub version: u32,
     /// Opaque, deterministic params identity (e.g. a hash/name of the param set).
@@ -64,9 +72,15 @@ pub struct ProjectBundleManifest {
     pub bundle_schema_version: u32,
     pub protocol_version: u32,
     pub project: ProjectSection,
-    pub scene: SceneSection,
+    /// Scene selected for initial runtime activation.
+    pub entry_scene: SceneId,
+    /// Every stored scene in the runtime closure. Canonical order is scene id,
+    /// then artifact path.
+    pub scenes: Vec<SceneSection>,
     pub asset_lock: AssetLockSection,
-    pub generator: GeneratorMetadata,
+    /// Optional authoring provenance. It is hashed and persisted, but is never a
+    /// load-plan prerequisite.
+    pub generation_provenance: Option<GeneratorMetadata>,
     /// The classified artifact table. Canonicalized (sorted by path) by
     /// [`ProjectBundleManifest::canonical`].
     pub artifacts: Vec<ArtifactEntry>,
@@ -86,6 +100,21 @@ pub enum ManifestError {
     MissingArtifact { role: String, path: String },
     /// A durable artifact has no content hash (durable artifacts must be hashed).
     DurableMissingHash { path: String },
+    /// A load-required v2 artifact has no content hash.
+    LoadRequiredMissingHash { path: String },
+    /// An artifact path is not a canonical safe bundle-relative path.
+    InvalidArtifactPath { path: String },
+    /// Two scene sections share a stable scene id.
+    DuplicateScene { scene: u64 },
+    /// The entry scene is not present in `scenes`.
+    MissingEntryScene { scene: u64 },
+    /// A scene section points at a non-scene or non-durable artifact.
+    SceneArtifactMismatch { scene: u64, path: String },
+    /// A scene-document artifact is not owned by any scene section.
+    UnreferencedSceneArtifact { path: String },
+    /// A v2 manifest used an opaque legacy role instead of a known role or the
+    /// `resource:<kind>` extension namespace.
+    UnknownArtifactRole { role: String, path: String },
     /// More than one artifact claims a singleton ProjectBundle role.
     DuplicateArtifactRole { role: String },
     /// An artifact role was stored with a durability class that cannot preserve it.
@@ -116,6 +145,29 @@ impl core::fmt::Display for ManifestError {
             ManifestError::DurableMissingHash { path } => {
                 write!(f, "durable artifact `{path}` has no content hash")
             }
+            ManifestError::LoadRequiredMissingHash { path } => {
+                write!(f, "load-required artifact `{path}` has no content hash")
+            }
+            ManifestError::InvalidArtifactPath { path } => {
+                write!(f, "artifact path `{path}` is not a canonical bundle-relative path")
+            }
+            ManifestError::DuplicateScene { scene } => {
+                write!(f, "duplicate scene id `{scene}`")
+            }
+            ManifestError::MissingEntryScene { scene } => {
+                write!(f, "entry scene `{scene}` is not declared in scenes")
+            }
+            ManifestError::SceneArtifactMismatch { scene, path } => write!(
+                f,
+                "scene `{scene}` references `{path}`, which is not a durable sceneDocument artifact"
+            ),
+            ManifestError::UnreferencedSceneArtifact { path } => {
+                write!(f, "sceneDocument artifact `{path}` has no scene section")
+            }
+            ManifestError::UnknownArtifactRole { role, path } => write!(
+                f,
+                "artifact `{path}` uses unknown v2 role `{role}`; use a known role or resource:<kind>"
+            ),
             ManifestError::DuplicateArtifactRole { role } => {
                 write!(f, "multiple artifacts claim singleton role `{role}`")
             }
@@ -134,11 +186,26 @@ impl core::fmt::Display for ManifestError {
 impl std::error::Error for ManifestError {}
 
 impl ProjectBundleManifest {
-    /// A copy with the artifact table sorted by path (deterministic on-disk order).
+    /// A v2 copy with scene and artifact tables in deterministic order. This is
+    /// also the explicit in-memory migration used by canonical writes.
     pub fn canonical(&self) -> ProjectBundleManifest {
         let mut m = self.clone();
+        m.bundle_schema_version = BUNDLE_SCHEMA_VERSION;
+        m.scenes.sort_by(|left, right| {
+            left.id
+                .raw()
+                .cmp(&right.id.raw())
+                .then_with(|| left.artifact.cmp(&right.artifact))
+        });
         m.artifacts.sort_by(|a, b| a.path.cmp(&b.path));
         m
+    }
+
+    /// The scene selected for initial activation.
+    pub fn entry_scene(&self) -> Option<&SceneSection> {
+        self.scenes
+            .iter()
+            .find(|scene| scene.id == self.entry_scene)
     }
 
     /// Find an artifact by bundle-relative path.
@@ -163,9 +230,14 @@ impl ProjectBundleManifest {
             });
         }
 
-        // Unique paths + durable artifacts must carry a hash.
+        // Unique canonical paths + load-required artifacts must carry a hash.
         let mut seen: Vec<&str> = Vec::with_capacity(self.artifacts.len());
         for a in &self.artifacts {
+            if !is_canonical_relative_path(&a.path) {
+                return Err(ManifestError::InvalidArtifactPath {
+                    path: a.path.clone(),
+                });
+            }
             if seen.contains(&a.path.as_str()) {
                 return Err(ManifestError::DuplicateArtifact {
                     path: a.path.clone(),
@@ -177,31 +249,122 @@ impl ProjectBundleManifest {
                     path: a.path.clone(),
                 });
             }
-        }
-
-        let prefab_registries: Vec<&ArtifactEntry> = self
-            .artifacts
-            .iter()
-            .filter(|artifact| artifact.role == crate::ArtifactRole::PrefabRegistry)
-            .collect();
-        if prefab_registries.len() > 1 {
-            return Err(ManifestError::DuplicateArtifactRole {
-                role: crate::ArtifactRole::PrefabRegistry.tag().to_string(),
-            });
-        }
-        if let Some(prefab_registry) = prefab_registries.first() {
-            if prefab_registry.class != ArtifactClass::Durable {
+            if self.bundle_schema_version >= BUNDLE_SCHEMA_VERSION
+                && a.class.is_load_required()
+                && a.content_hash.is_none()
+            {
+                return Err(ManifestError::LoadRequiredMissingHash {
+                    path: a.path.clone(),
+                });
+            }
+            if self.bundle_schema_version >= BUNDLE_SCHEMA_VERSION
+                && !a.role.is_known_runtime_role()
+            {
+                return Err(ManifestError::UnknownArtifactRole {
+                    role: a.role.tag().to_string(),
+                    path: a.path.clone(),
+                });
+            }
+            if self.bundle_schema_version >= BUNDLE_SCHEMA_VERSION
+                && !role_accepts_class(&a.role, a.class)
+            {
                 return Err(ManifestError::ArtifactClassMismatch {
-                    path: prefab_registry.path.clone(),
-                    expected: ArtifactClass::Durable.tag().to_string(),
-                    found: prefab_registry.class.tag().to_string(),
+                    path: a.path.clone(),
+                    expected: expected_classes(&a.role).to_string(),
+                    found: a.class.tag().to_string(),
                 });
             }
         }
 
-        // Required sections must point at present artifacts.
-        self.require(&self.scene.artifact, "scene")?;
+        let mut scene_ids = Vec::with_capacity(self.scenes.len());
+        let mut scene_artifacts = Vec::with_capacity(self.scenes.len());
+        for scene in &self.scenes {
+            if scene_ids.contains(&scene.id.raw()) {
+                return Err(ManifestError::DuplicateScene {
+                    scene: scene.id.raw(),
+                });
+            }
+            scene_ids.push(scene.id.raw());
+            if scene_artifacts.contains(&scene.artifact.as_str()) {
+                return Err(ManifestError::SceneArtifactMismatch {
+                    scene: scene.id.raw(),
+                    path: scene.artifact.clone(),
+                });
+            }
+            scene_artifacts.push(scene.artifact.as_str());
+            let Some(artifact) = self.artifact(&scene.artifact) else {
+                return Err(ManifestError::MissingArtifact {
+                    role: "scene".to_string(),
+                    path: scene.artifact.clone(),
+                });
+            };
+            if artifact.role != crate::ArtifactRole::SceneDocument
+                || artifact.class != ArtifactClass::Durable
+            {
+                return Err(ManifestError::SceneArtifactMismatch {
+                    scene: scene.id.raw(),
+                    path: scene.artifact.clone(),
+                });
+            }
+        }
+        if self.entry_scene().is_none() {
+            return Err(ManifestError::MissingEntryScene {
+                scene: self.entry_scene.raw(),
+            });
+        }
+        for artifact in self
+            .artifacts
+            .iter()
+            .filter(|artifact| artifact.role == crate::ArtifactRole::SceneDocument)
+        {
+            if !scene_artifacts.contains(&artifact.path.as_str()) {
+                return Err(ManifestError::UnreferencedSceneArtifact {
+                    path: artifact.path.clone(),
+                });
+            }
+        }
+
+        for singleton_role in [
+            crate::ArtifactRole::AssetLock,
+            crate::ArtifactRole::PrefabRegistry,
+        ] {
+            let matching: Vec<&ArtifactEntry> = self
+                .artifacts
+                .iter()
+                .filter(|artifact| artifact.role == singleton_role)
+                .collect();
+            if matching.len() > 1 {
+                return Err(ManifestError::DuplicateArtifactRole {
+                    role: singleton_role.tag().to_string(),
+                });
+            }
+            if let Some(artifact) = matching.first() {
+                if artifact.class != ArtifactClass::Durable {
+                    return Err(ManifestError::ArtifactClassMismatch {
+                        path: artifact.path.clone(),
+                        expected: ArtifactClass::Durable.tag().to_string(),
+                        found: artifact.class.tag().to_string(),
+                    });
+                }
+            }
+        }
+
+        // Required asset-lock section must point at the matching durable role.
         self.require(&self.asset_lock.artifact, "assetLock")?;
+        let lock = self
+            .artifact(&self.asset_lock.artifact)
+            .expect("require above established asset lock artifact");
+        if lock.role != crate::ArtifactRole::AssetLock || lock.class != ArtifactClass::Durable {
+            return Err(ManifestError::ArtifactClassMismatch {
+                path: lock.path.clone(),
+                expected: format!(
+                    "{}:{}",
+                    ArtifactClass::Durable.tag(),
+                    crate::ArtifactRole::AssetLock.tag()
+                ),
+                found: format!("{}:{}", lock.class.tag(), lock.role.tag()),
+            });
+        }
         Ok(())
     }
 
@@ -243,17 +406,35 @@ impl ProjectBundleManifest {
     pub fn durable_hash(&self) -> BundleHash {
         let mut s = String::new();
         s.push_str(&format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}|{}\n",
-            self.bundle_schema_version,
+            "{}|{}|{}|{}|{}|{}\n",
+            BUNDLE_SCHEMA_VERSION,
             self.protocol_version,
             self.project.id.raw(),
-            self.scene.id.raw(),
-            self.scene.schema_version,
+            self.project.name.as_deref().unwrap_or_default(),
             self.asset_lock.asset_count,
-            self.generator.seed,
-            self.generator.version,
-            self.generator.params,
+            self.entry_scene.raw(),
         ));
+        let mut scenes = self.scenes.clone();
+        scenes.sort_by(|left, right| {
+            left.id
+                .raw()
+                .cmp(&right.id.raw())
+                .then_with(|| left.artifact.cmp(&right.artifact))
+        });
+        for scene in scenes {
+            s.push_str(&format!(
+                "scene:{}:{}:{}\n",
+                scene.id.raw(),
+                scene.schema_version,
+                scene.artifact
+            ));
+        }
+        if let Some(provenance) = &self.generation_provenance {
+            s.push_str(&format!(
+                "generation:{}:{}:{}:{}\n",
+                provenance.provider, provenance.seed, provenance.version, provenance.params
+            ));
+        }
         // Sorted, cache-excluded artifact identities.
         let mut rows: Vec<String> = self
             .artifacts
@@ -261,9 +442,10 @@ impl ProjectBundleManifest {
             .filter(|a| a.class != ArtifactClass::Cache)
             .map(|a| {
                 format!(
-                    "{}:{}:{}",
+                    "{}:{}:{}:{}",
                     a.path,
                     a.class.tag(),
+                    a.role.tag(),
                     a.content_hash.map(|h| h.to_hex()).unwrap_or_default(),
                 )
             })
@@ -274,6 +456,53 @@ impl ProjectBundleManifest {
             s.push('\n');
         }
         BundleHash::of_str(&s)
+    }
+}
+
+fn is_canonical_relative_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.starts_with('/')
+        && !path.ends_with('/')
+        && !path.contains('\\')
+        && path
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
+}
+
+fn role_accepts_class(role: &crate::ArtifactRole, class: ArtifactClass) -> bool {
+    use crate::ArtifactRole;
+    match role {
+        ArtifactRole::SceneDocument
+        | ArtifactRole::AssetLock
+        | ArtifactRole::PrefabRegistry
+        | ArtifactRole::ProjectContent
+        | ArtifactRole::EntityDefinitionCatalog
+        | ArtifactRole::MaterialCatalog
+        | ArtifactRole::VoxelVolumeAsset
+        | ArtifactRole::SessionStateSnapshot
+        | ArtifactRole::VoxelEditLog
+        | ArtifactRole::VoxelEditHistory
+        | ArtifactRole::VoxelAnnotationLayer
+        | ArtifactRole::ReplayRecord => class == ArtifactClass::Durable,
+        ArtifactRole::VoxelChunkSnapshot
+        | ArtifactRole::GeneratedMetadata
+        | ArtifactRole::Resource(_) => {
+            matches!(class, ArtifactClass::Durable | ArtifactClass::Generated)
+        }
+        ArtifactRole::Cache => class == ArtifactClass::Cache,
+        ArtifactRole::Other(_) => true,
+    }
+}
+
+fn expected_classes(role: &crate::ArtifactRole) -> &'static str {
+    use crate::ArtifactRole;
+    match role {
+        ArtifactRole::VoxelChunkSnapshot
+        | ArtifactRole::GeneratedMetadata
+        | ArtifactRole::Resource(_) => "durable|generated",
+        ArtifactRole::Cache => "cache",
+        ArtifactRole::Other(_) => "legacy",
+        _ => "durable",
     }
 }
 

@@ -6,8 +6,8 @@ impl EngineBridge {
         request: ProjectBundleLoadRequest,
     ) -> BridgeResult<CompositionStatus> {
         // Fail closed on a newer bundle; the prior loaded ProjectBundle is left untouched.
-        if request.bundle_schema_version > ENGINE_SUPPORTED_VERSION
-            || request.protocol_version > ENGINE_SUPPORTED_VERSION
+        if request.bundle_schema_version > ENGINE_SUPPORTED_BUNDLE_VERSION
+            || request.protocol_version > ENGINE_SUPPORTED_PROTOCOL_VERSION
         {
             return Err(RuntimeBridgeError::new(
                 RuntimeBridgeErrorKind::InvalidInput,

@@ -25,7 +25,7 @@ export const prefabInstanceId = (raw: number): PrefabInstanceId => raw as Prefab
 export type ArtifactClass = 'durable' | 'generated' | 'cache';
 
 // The artifact roles this build names. The wire role is an open string (unknown roles are carried verbatim by `svc_serialization::ArtifactRole::Other`), so the border types the field as `string`; this table is the *known* vocabulary for routing/display. Mirrors `svc_serialization::ArtifactRole::tag`.
-export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'prefabRegistry' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'voxelEditHistory' | 'voxelAnnotationLayer' | 'replayRecord' | 'generatedMetadata' | 'cache';
+export type KnownArtifactRole = 'sceneDocument' | 'assetLock' | 'prefabRegistry' | 'projectContent' | 'entityDefinitionCatalog' | 'materialCatalog' | 'voxelVolumeAsset' | 'sessionStateSnapshot' | 'voxelChunkSnapshot' | 'voxelEditLog' | 'voxelEditHistory' | 'voxelAnnotationLayer' | 'replayRecord' | 'generatedMetadata' | 'cache';
 
 // One ordered stage of an authority load.
 export type LoadStage = 'versions' | 'assetLock' | 'sceneDocument' | 'terrainGeneration' | 'voxelEdits' | 'voxelAnnotations' | 'bootstrap' | 'sessionStateSnapshot' | 'finalValidation';
@@ -147,6 +147,7 @@ export interface ArtifactEntry {
 
 // Terrain generator provenance.
 export interface GeneratorMetadata {
+  readonly provider: string;
   readonly seed: number;
   readonly version: number;
   readonly params: string;
@@ -176,9 +177,10 @@ export interface ProjectBundleManifest {
   readonly bundleSchemaVersion: number;
   readonly protocolVersion: number;
   readonly project: ProjectSection;
-  readonly scene: SceneSection;
+  readonly entryScene: SceneId;
+  readonly scenes: readonly SceneSection[];
   readonly assetLock: AssetLockSection;
-  readonly generator: GeneratorMetadata;
+  readonly generationProvenance: GeneratorMetadata | null;
   readonly artifacts: readonly ArtifactEntry[];
 }
 

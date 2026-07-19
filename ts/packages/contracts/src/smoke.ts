@@ -299,12 +299,13 @@ const bootstrap: BootstrapRecord = {
 // This is the "TS can display a manifest from a Rust-produced fixture" proof for
 // #2366: read-only, no authority to load or mutate the bundle.
 const manifest: ProjectBundleManifest = {
-  bundleSchemaVersion: 1,
+  bundleSchemaVersion: 2,
   protocolVersion: 1,
   project: { id: projectId(7), name: 'sample-project' },
-  scene: { id: sceneId(100), schemaVersion: 1, artifact: 'scene/scene.json' },
+  entryScene: sceneId(100),
+  scenes: [{ id: sceneId(100), schemaVersion: 1, artifact: 'scene/scene.json' }],
   assetLock: { artifact: 'assets/lock.json', assetCount: 1 },
-  generator: { seed: 42, version: 1, params: 'default' },
+  generationProvenance: { provider: 'asha.environment.sample', seed: 42, version: 1, params: 'default' },
   artifacts: [
     { path: 'assets/lock.json', class: 'durable', role: 'assetLock', contentHash: '422f72d827e3137c' },
     { path: 'cache/mesh_0_0_0.bin', class: 'cache', role: 'cache', contentHash: null },
@@ -315,7 +316,7 @@ const manifest: ProjectBundleManifest = {
 // An ordered load plan, displayed the way a devtools timeline would render it.
 const loadPlan: LoadPlan = {
   steps: [
-    { step: 'validateVersions', bundleSchemaVersion: 1, protocolVersion: 1 },
+    { step: 'validateVersions', bundleSchemaVersion: 2, protocolVersion: 1 },
     { step: 'loadAssetLock', artifact: 'assets/lock.json', assetCount: 1 },
     { step: 'loadSceneDocument', artifact: 'scene/scene.json', scene: sceneId(100) },
     {

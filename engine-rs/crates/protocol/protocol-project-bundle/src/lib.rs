@@ -194,6 +194,10 @@ pub const KNOWN_ARTIFACT_ROLES: &[&str] = &[
     "sceneDocument",
     "assetLock",
     "prefabRegistry",
+    "projectContent",
+    "entityDefinitionCatalog",
+    "materialCatalog",
+    "voxelVolumeAsset",
     "sessionStateSnapshot",
     "voxelChunkSnapshot",
     "voxelEditLog",
@@ -290,6 +294,13 @@ pub const MANIFEST_ERROR_CODES: &[&str] = &[
     "duplicateArtifact",
     "missingArtifact",
     "durableMissingHash",
+    "loadRequiredMissingHash",
+    "invalidArtifactPath",
+    "duplicateScene",
+    "missingEntryScene",
+    "sceneArtifactMismatch",
+    "unreferencedSceneArtifact",
+    "unknownArtifactRole",
     "duplicateArtifactRole",
     "artifactClassMismatch",
 ];
@@ -373,9 +384,11 @@ pub struct ArtifactEntry {
     pub content_hash: Option<String>,
 }
 
-/// Terrain generator provenance.
+/// Optional authoring-only procedural generation provenance. Runtime admission
+/// consumes the materialized scene and resource artifacts, never this provider.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratorMetadata {
+    pub provider: String,
     pub seed: u64,
     pub version: u32,
     pub params: String,
@@ -409,9 +422,10 @@ pub struct ProjectBundleManifest {
     pub bundle_schema_version: u32,
     pub protocol_version: u32,
     pub project: ProjectSection,
-    pub scene: SceneSection,
+    pub entry_scene: SceneId,
+    pub scenes: Vec<SceneSection>,
     pub asset_lock: AssetLockSection,
-    pub generator: GeneratorMetadata,
+    pub generation_provenance: Option<GeneratorMetadata>,
     pub artifacts: Vec<ArtifactEntry>,
 }
 

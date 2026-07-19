@@ -17,20 +17,22 @@ pub fn sample_manifest() -> ProjectBundleManifest {
             id: ProjectId::new(7),
             name: Some("sample-project".into()),
         },
-        scene: SceneSection {
+        entry_scene: SceneId::new(100),
+        scenes: vec![SceneSection {
             id: SceneId::new(100),
             schema_version: 1,
             artifact: "scene/scene.json".into(),
-        },
+        }],
         asset_lock: AssetLockSection {
             artifact: "assets/lock.json".into(),
             asset_count: 1,
         },
-        generator: GeneratorMetadata {
+        generation_provenance: Some(GeneratorMetadata {
+            provider: "asha.environment.sample".into(),
             seed: 42,
             version: 1,
             params: "default".into(),
-        },
+        }),
         artifacts: vec![
             ArtifactEntry::durable(
                 "scene/scene.json",

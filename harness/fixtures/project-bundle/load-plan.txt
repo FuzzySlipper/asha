@@ -1,4 +1,4 @@
-0 versions schema=1 protocol=1
+0 versions schema=2 protocol=1
 1 assetLock assets/lock.json assets=1
 2 sceneDocument scene/scene.json scene=100
 3 terrainGeneration seed=42 version=1 params=default

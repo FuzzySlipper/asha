@@ -40,6 +40,11 @@ fn map_manifest_error(err: &ManifestError) -> DiagnosticReport {
         ManifestError::DuplicateArtifact { path }
         | ManifestError::MissingArtifact { path, .. }
         | ManifestError::DurableMissingHash { path }
+        | ManifestError::LoadRequiredMissingHash { path }
+        | ManifestError::InvalidArtifactPath { path }
+        | ManifestError::SceneArtifactMismatch { path, .. }
+        | ManifestError::UnreferencedSceneArtifact { path }
+        | ManifestError::UnknownArtifactRole { path, .. }
         | ManifestError::ArtifactClassMismatch { path, .. } => DiagnosticReport::new(
             DiagnosticCode::CorruptBundleArtifact,
             path.clone(),
@@ -60,6 +65,18 @@ fn map_manifest_error(err: &ManifestError) -> DiagnosticReport {
             RemedyAction::Inspect,
             "retain one authoritative artifact for the singleton bundle role",
         )),
+        ManifestError::DuplicateScene { scene } | ManifestError::MissingEntryScene { scene } => {
+            DiagnosticReport::new(
+                DiagnosticCode::CorruptBundleArtifact,
+                format!("scene:{scene}"),
+                DiagnosticSourceRef::empty(),
+                message,
+            )
+            .with_remedy(SuggestedRemedy::new(
+                RemedyAction::Inspect,
+                "repair the manifest scene table and explicit entry-scene identity",
+            ))
+        }
     }
 }
 
@@ -206,20 +223,22 @@ mod tests {
                 id: ProjectId::new(1),
                 name: None,
             },
-            scene: SceneSection {
+            entry_scene: SceneId::new(1),
+            scenes: vec![SceneSection {
                 id: SceneId::new(1),
                 schema_version: 1,
                 artifact: "scene/scene.json".to_string(),
-            },
+            }],
             asset_lock: AssetLockSection {
                 artifact: "scene/asset-lock.json".to_string(),
                 asset_count: 0,
             },
-            generator: GeneratorMetadata {
+            generation_provenance: Some(GeneratorMetadata {
+                provider: "asha.environment.test".to_string(),
                 seed: 7,
                 version: 1,
                 params: "p".to_string(),
-            },
+            }),
             artifacts: vec![
                 ArtifactEntry::durable(
                     "scene/scene.json",

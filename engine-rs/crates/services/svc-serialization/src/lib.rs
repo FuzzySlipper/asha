@@ -15,7 +15,7 @@
 //!
 //! * [`ProjectBundleManifest`] — the inspectable directory/manifest index with the
 //!   classified [`ArtifactEntry`] table, bundle/protocol versions, project/scene
-//!   identity, asset lock, and generator metadata. Validation fails **closed** on
+//!   identities, asset lock, and optional authoring provenance. Validation fails **closed** on
 //!   unknown newer versions (subtask #2318).
 //! * [`json`] — std-only canonical manifest encode/decode (subtask #2318).
 //! * [`LoadPlan`] — the deterministic, ordered, typed authority-load sequence with
@@ -48,7 +48,7 @@ pub use json::{decode, encode, ManifestDecodeError};
 pub use load_plan::{LoadPlan, LoadPlanError, LoadStage, LoadStep};
 pub use manifest::{
     AssetLockSection, GeneratorMetadata, ManifestError, ProjectBundleManifest, ProjectSection,
-    SceneSection, BUNDLE_SCHEMA_VERSION, SUPPORTED_PROTOCOL_VERSION,
+    SceneSection, BUNDLE_SCHEMA_VERSION, LEGACY_BUNDLE_SCHEMA_VERSION, SUPPORTED_PROTOCOL_VERSION,
 };
 pub use prefab::{
     validate_prefab_registry, PrefabDefinition, PrefabDiagnostic, PrefabDiagnosticCode,
@@ -79,20 +79,22 @@ mod tests {
                 id: ProjectId::new(7),
                 name: Some("sample-project".into()),
             },
-            scene: SceneSection {
+            entry_scene: SceneId::new(100),
+            scenes: vec![SceneSection {
                 id: SceneId::new(100),
                 schema_version: 1,
                 artifact: "scene/scene.json".into(),
-            },
+            }],
             asset_lock: AssetLockSection {
                 artifact: "assets/lock.json".into(),
                 asset_count: 1,
             },
-            generator: GeneratorMetadata {
+            generation_provenance: Some(GeneratorMetadata {
+                provider: "asha.environment.sample".into(),
                 seed: 42,
                 version: 1,
                 params: "default".into(),
-            },
+            }),
             artifacts: vec![
                 ArtifactEntry::durable(
                     "scene/scene.json",
@@ -204,7 +206,7 @@ mod tests {
     #[test]
     fn missing_scene_artifact_is_rejected() {
         let mut m = sample_manifest();
-        m.scene.artifact = "scene/missing.json".into();
+        m.scenes[0].artifact = "scene/missing.json".into();
         assert!(matches!(
             m.validate(),
             Err(ManifestError::MissingArtifact { .. })
@@ -252,6 +254,173 @@ mod tests {
         assert_eq!(encode(&decoded), encoded);
         assert_eq!(decoded.canonical(), m.canonical());
         assert!(decoded.validate().is_ok());
+    }
+
+    #[test]
+    fn generator_free_multi_scene_voxel_closure_is_canonical() {
+        let mut manifest = sample_manifest();
+        manifest.generation_provenance = None;
+        manifest.scenes.push(SceneSection {
+            id: SceneId::new(101),
+            schema_version: 1,
+            artifact: "scene/secondary.json".into(),
+        });
+        manifest.artifacts.extend([
+            ArtifactEntry::durable(
+                "scene/secondary.json",
+                ArtifactRole::SceneDocument,
+                b"secondary-scene",
+            ),
+            ArtifactEntry::durable(
+                "content/gameplay-module.json",
+                ArtifactRole::ProjectContent,
+                b"project-content",
+            ),
+            ArtifactEntry::durable(
+                "voxel/house.avox.json",
+                ArtifactRole::VoxelVolumeAsset,
+                b"voxel-house",
+            ),
+            ArtifactEntry::durable(
+                "resources/house-albedo.png",
+                ArtifactRole::Resource("resource:texture".into()),
+                b"texture-bytes",
+            ),
+        ]);
+
+        assert_eq!(manifest.validate(), Ok(()));
+        let encoded = encode(&manifest);
+        assert!(encoded.contains("\"generationProvenance\": null"));
+        assert!(encoded.contains("\"entryScene\": 100"));
+        assert_eq!(decode(&encoded).expect("decode"), manifest.canonical());
+
+        let plan = LoadPlan::build(&manifest).expect("generator-free load plan");
+        assert!(!plan
+            .steps
+            .iter()
+            .any(|step| matches!(step, LoadStep::GenerateTerrain { .. })));
+    }
+
+    #[test]
+    fn manifest_scene_table_and_paths_fail_closed() {
+        let mut missing_entry = sample_manifest();
+        missing_entry.entry_scene = SceneId::new(999);
+        assert!(matches!(
+            missing_entry.validate(),
+            Err(ManifestError::MissingEntryScene { scene: 999 })
+        ));
+
+        let mut duplicate_scene = sample_manifest();
+        duplicate_scene.scenes.push(SceneSection {
+            id: SceneId::new(100),
+            schema_version: 1,
+            artifact: "scene/other.json".into(),
+        });
+        duplicate_scene.artifacts.push(ArtifactEntry::durable(
+            "scene/other.json",
+            ArtifactRole::SceneDocument,
+            b"other",
+        ));
+        assert!(matches!(
+            duplicate_scene.validate(),
+            Err(ManifestError::DuplicateScene { scene: 100 })
+        ));
+
+        let mut traversal = sample_manifest();
+        traversal.artifacts[0].path = "../scene.json".into();
+        traversal.scenes[0].artifact = "../scene.json".into();
+        assert!(matches!(
+            traversal.validate(),
+            Err(ManifestError::InvalidArtifactPath { .. })
+        ));
+
+        let mut opaque_role = sample_manifest();
+        opaque_role.artifacts.push(ArtifactEntry::durable(
+            "future/input.bin",
+            ArtifactRole::Other("mysteryInput".into()),
+            b"mystery",
+        ));
+        assert!(matches!(
+            opaque_role.validate(),
+            Err(ManifestError::UnknownArtifactRole { .. })
+        ));
+    }
+
+    #[test]
+    fn durable_hash_covers_path_role_and_scene_linkage() {
+        let manifest = sample_manifest();
+
+        let mut moved = manifest.clone();
+        moved.artifacts[0].path = "scene/moved.json".into();
+        moved.scenes[0].artifact = "scene/moved.json".into();
+        assert_ne!(manifest.durable_hash(), moved.durable_hash());
+
+        let mut changed_role = manifest.clone();
+        changed_role.artifacts[2].role = ArtifactRole::ProjectContent;
+        assert_ne!(manifest.durable_hash(), changed_role.durable_hash());
+
+        let mut changed_entry = manifest.clone();
+        changed_entry.entry_scene = SceneId::new(101);
+        assert_ne!(manifest.durable_hash(), changed_entry.durable_hash());
+
+        let mut added = manifest.clone();
+        added.artifacts.push(ArtifactEntry::durable(
+            "content/added.json",
+            ArtifactRole::ProjectContent,
+            b"added",
+        ));
+        assert_ne!(manifest.durable_hash(), added.durable_hash());
+
+        let mut deleted = manifest.clone();
+        deleted.artifacts.remove(2);
+        assert_ne!(manifest.durable_hash(), deleted.durable_hash());
+    }
+
+    #[test]
+    fn legacy_v1_manifest_migrates_to_v2_and_strict_decode_rejects_unknown_fields() {
+        let legacy = r#"{
+  "bundleSchemaVersion": 1,
+  "protocolVersion": 1,
+  "project": { "id": 7, "name": null },
+  "scene": { "id": 100, "schemaVersion": 1, "artifact": "scene/scene.json" },
+  "assetLock": { "artifact": "assets/lock.json", "assetCount": 0 },
+  "generator": { "seed": 42, "version": 3, "params": "legacy" },
+  "artifacts": [
+    { "path": "scene/scene.json", "class": "durable", "role": "sceneDocument", "contentHash": "1723540f7db7a459" },
+    { "path": "assets/lock.json", "class": "durable", "role": "assetLock", "contentHash": "422f72d827e3137c" }
+  ]
+}"#;
+        let migrated = decode(legacy).expect("v1 compatibility decode");
+        assert_eq!(migrated.bundle_schema_version, BUNDLE_SCHEMA_VERSION);
+        assert_eq!(migrated.entry_scene, SceneId::new(100));
+        assert_eq!(migrated.scenes.len(), 1);
+        assert_eq!(
+            migrated
+                .generation_provenance
+                .as_ref()
+                .expect("legacy provenance")
+                .provider,
+            "legacy.terrain-generator"
+        );
+        assert!(encode(&migrated).contains("\"bundleSchemaVersion\": 2"));
+
+        let with_unknown = legacy.replace(
+            "\"protocolVersion\": 1,",
+            "\"protocolVersion\": 1, \"hostRoleMirror\": {},",
+        );
+        assert!(matches!(
+            decode(&with_unknown),
+            Err(ManifestDecodeError::Field(message)) if message.contains("hostRoleMirror")
+        ));
+
+        let future = legacy.replace("\"bundleSchemaVersion\": 1", "\"bundleSchemaVersion\": 99");
+        assert!(matches!(
+            decode(&future),
+            Err(ManifestDecodeError::UnsupportedSchema {
+                found: 99,
+                supported: BUNDLE_SCHEMA_VERSION
+            })
+        ));
     }
 
     #[test]

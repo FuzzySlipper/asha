@@ -47,6 +47,7 @@ export interface ManifestModel {
   readonly protocolVersion: number;
   readonly projectBundleId: number;
   readonly sceneId: number;
+  readonly sceneCount: number;
   readonly assetCount: number;
   readonly artifacts: readonly ArtifactView[];
   /** Artifact counts grouped by persistence class. */
@@ -70,7 +71,8 @@ export function buildManifestModel(manifest: GeneratedProjectBundleManifest): Ma
     bundleSchemaVersion: manifest.bundleSchemaVersion,
     protocolVersion: manifest.protocolVersion,
     projectBundleId: manifest.project.id as number,
-    sceneId: manifest.scene.id as number,
+    sceneId: manifest.entryScene as number,
+    sceneCount: manifest.scenes.length,
     assetCount: manifest.assetLock.assetCount,
     artifacts,
     classCounts,
@@ -320,7 +322,7 @@ export function buildProjectBundleLoadRequest(manifest: GeneratedProjectBundleMa
   return {
     bundleSchemaVersion: manifest.bundleSchemaVersion,
     protocolVersion: manifest.protocolVersion,
-    sceneId: manifest.scene.id as number,
+    sceneId: manifest.entryScene as number,
   };
 }
 

@@ -12,6 +12,7 @@ use crate::artifact::{ArtifactClass, ArtifactEntry, ArtifactRole};
 use crate::hash::BundleHash;
 use crate::manifest::{
     AssetLockSection, GeneratorMetadata, ProjectBundleManifest, ProjectSection, SceneSection,
+    BUNDLE_SCHEMA_VERSION, LEGACY_BUNDLE_SCHEMA_VERSION,
 };
 
 // ── Encode ──────────────────────────────────────────────────────────────────
@@ -34,13 +35,28 @@ pub fn encode(manifest: &ProjectBundleManifest) -> String {
     encode_opt_str(&mut out, m.project.name.as_deref());
     out.push_str(" },\n");
 
-    out.push_str(&format!(
-        "  \"scene\": {{ \"id\": {}, \"schemaVersion\": {}, \"artifact\": ",
-        m.scene.id.raw(),
-        m.scene.schema_version
-    ));
-    encode_str(&mut out, &m.scene.artifact);
-    out.push_str(" },\n");
+    out.push_str(&format!("  \"entryScene\": {},\n", m.entry_scene.raw()));
+    out.push_str("  \"scenes\": [");
+    if m.scenes.is_empty() {
+        out.push(']');
+    } else {
+        out.push('\n');
+        for (index, scene) in m.scenes.iter().enumerate() {
+            out.push_str(&format!(
+                "    {{ \"id\": {}, \"schemaVersion\": {}, \"artifact\": ",
+                scene.id.raw(),
+                scene.schema_version
+            ));
+            encode_str(&mut out, &scene.artifact);
+            out.push_str(" }");
+            if index + 1 < m.scenes.len() {
+                out.push(',');
+            }
+            out.push('\n');
+        }
+        out.push_str("  ]");
+    }
+    out.push_str(",\n");
 
     out.push_str("  \"assetLock\": { \"artifact\": ");
     encode_str(&mut out, &m.asset_lock.artifact);
@@ -49,12 +65,20 @@ pub fn encode(manifest: &ProjectBundleManifest) -> String {
         m.asset_lock.asset_count
     ));
 
-    out.push_str(&format!(
-        "  \"generator\": {{ \"seed\": {}, \"version\": {}, \"params\": ",
-        m.generator.seed, m.generator.version
-    ));
-    encode_str(&mut out, &m.generator.params);
-    out.push_str(" },\n");
+    out.push_str("  \"generationProvenance\": ");
+    match &m.generation_provenance {
+        Some(provenance) => {
+            out.push_str("{ \"provider\": ");
+            encode_str(&mut out, &provenance.provider);
+            out.push_str(&format!(
+                ", \"seed\": {}, \"version\": {}, \"params\": ",
+                provenance.seed, provenance.version
+            ));
+            encode_str(&mut out, &provenance.params);
+            out.push_str(" },\n");
+        }
+        None => out.push_str("null,\n"),
+    }
 
     out.push_str("  \"artifacts\": [");
     if m.artifacts.is_empty() {
@@ -80,7 +104,8 @@ fn encode_artifact(out: &mut String, a: &ArtifactEntry) {
     out.push_str("{ \"path\": ");
     encode_str(out, &a.path);
     out.push_str(&format!(", \"class\": \"{}\"", a.class.tag()));
-    out.push_str(&format!(", \"role\": \"{}\"", a.role.tag()));
+    out.push_str(", \"role\": ");
+    encode_str(out, a.role.tag());
     out.push_str(", \"contentHash\": ");
     match a.content_hash {
         Some(h) => encode_str(out, &h.to_hex()),
@@ -129,6 +154,9 @@ pub enum ManifestDecodeError {
     UnknownClass(String),
     /// A content-hash string was not 16-digit lowercase hex.
     BadHash(String),
+    /// The JSON names a manifest schema for which this strict codec has no
+    /// understood closed field set.
+    UnsupportedSchema { found: u32, supported: u32 },
 }
 
 impl core::fmt::Display for ManifestDecodeError {
@@ -138,6 +166,10 @@ impl core::fmt::Display for ManifestDecodeError {
             ManifestDecodeError::Field(s) => write!(f, "bad field: {s}"),
             ManifestDecodeError::UnknownClass(s) => write!(f, "unknown artifact class `{s}`"),
             ManifestDecodeError::BadHash(s) => write!(f, "bad content hash `{s}`"),
+            ManifestDecodeError::UnsupportedSchema { found, supported } => write!(
+                f,
+                "unsupported bundle schema version {found}; supported read versions are {LEGACY_BUNDLE_SCHEMA_VERSION}..={supported}"
+            ),
         }
     }
 }
@@ -149,32 +181,79 @@ impl std::error::Error for ManifestDecodeError {}
 pub fn decode(input: &str) -> Result<ProjectBundleManifest, ManifestDecodeError> {
     let json = Json::parse(input).map_err(ManifestDecodeError::Json)?;
     let bundle_schema_version = field_u64(&json, "bundleSchemaVersion")? as u32;
+    match bundle_schema_version {
+        LEGACY_BUNDLE_SCHEMA_VERSION => require_object_fields(
+            &json,
+            &[
+                "bundleSchemaVersion",
+                "protocolVersion",
+                "project",
+                "scene",
+                "assetLock",
+                "generator",
+                "artifacts",
+            ],
+            "manifest",
+        )?,
+        BUNDLE_SCHEMA_VERSION => require_object_fields(
+            &json,
+            &[
+                "bundleSchemaVersion",
+                "protocolVersion",
+                "project",
+                "entryScene",
+                "scenes",
+                "assetLock",
+                "generationProvenance",
+                "artifacts",
+            ],
+            "manifest",
+        )?,
+        _ => {
+            // The strict codec has no closed field set for this version, so it
+            // rejects before attempting to reinterpret any body.
+            return Err(ManifestDecodeError::UnsupportedSchema {
+                found: bundle_schema_version,
+                supported: BUNDLE_SCHEMA_VERSION,
+            });
+        }
+    }
     let protocol_version = field_u64(&json, "protocolVersion")? as u32;
 
     let project_j = field(&json, "project")?;
+    require_object_fields(project_j, &["id", "name"], "project")?;
     let project = ProjectSection {
         id: ProjectId::new(field_u64(project_j, "id")?),
         name: opt_str(project_j, "name")?,
     };
 
-    let scene_j = field(&json, "scene")?;
-    let scene = SceneSection {
-        id: SceneId::new(field_u64(scene_j, "id")?),
-        schema_version: field_u64(scene_j, "schemaVersion")? as u32,
-        artifact: req_str(scene_j, "artifact")?,
-    };
+    let (entry_scene, scenes, generation_provenance) =
+        if bundle_schema_version == LEGACY_BUNDLE_SCHEMA_VERSION {
+            let scene_j = field(&json, "scene")?;
+            let scene = decode_scene(scene_j)?;
+            let generator = decode_legacy_generator(field(&json, "generator")?)?;
+            (scene.id, vec![scene], Some(generator))
+        } else {
+            let entry_scene = SceneId::new(field_u64(&json, "entryScene")?);
+            let scene_values = field(&json, "scenes")?
+                .as_array()
+                .ok_or_else(|| ManifestDecodeError::Field("scenes must be an array".into()))?;
+            let scenes = scene_values
+                .iter()
+                .map(decode_scene)
+                .collect::<Result<Vec<_>, _>>()?;
+            let generation_provenance = match field(&json, "generationProvenance")? {
+                Json::Null => None,
+                value => Some(decode_generation_provenance(value)?),
+            };
+            (entry_scene, scenes, generation_provenance)
+        };
 
     let lock_j = field(&json, "assetLock")?;
+    require_object_fields(lock_j, &["artifact", "assetCount"], "assetLock")?;
     let asset_lock = AssetLockSection {
         artifact: req_str(lock_j, "artifact")?,
         asset_count: field_u64(lock_j, "assetCount")? as u32,
-    };
-
-    let gen_j = field(&json, "generator")?;
-    let generator = GeneratorMetadata {
-        seed: field_u64(gen_j, "seed")?,
-        version: field_u64(gen_j, "version")? as u32,
-        params: req_str(gen_j, "params")?,
     };
 
     let arr = field(&json, "artifacts")?
@@ -186,17 +265,54 @@ pub fn decode(input: &str) -> Result<ProjectBundleManifest, ManifestDecodeError>
     }
 
     Ok(ProjectBundleManifest {
-        bundle_schema_version,
+        // v1 is a read compatibility format; in memory it is migrated and any
+        // subsequent canonical write is v2.
+        bundle_schema_version: BUNDLE_SCHEMA_VERSION,
         protocol_version,
         project,
-        scene,
+        entry_scene,
+        scenes,
         asset_lock,
-        generator,
+        generation_provenance,
         artifacts,
     })
 }
 
+fn decode_scene(j: &Json) -> Result<SceneSection, ManifestDecodeError> {
+    require_object_fields(j, &["id", "schemaVersion", "artifact"], "scene")?;
+    Ok(SceneSection {
+        id: SceneId::new(field_u64(j, "id")?),
+        schema_version: field_u64(j, "schemaVersion")? as u32,
+        artifact: req_str(j, "artifact")?,
+    })
+}
+
+fn decode_legacy_generator(j: &Json) -> Result<GeneratorMetadata, ManifestDecodeError> {
+    require_object_fields(j, &["seed", "version", "params"], "generator")?;
+    Ok(GeneratorMetadata {
+        provider: "legacy.terrain-generator".to_string(),
+        seed: field_u64(j, "seed")?,
+        version: field_u64(j, "version")? as u32,
+        params: req_str(j, "params")?,
+    })
+}
+
+fn decode_generation_provenance(j: &Json) -> Result<GeneratorMetadata, ManifestDecodeError> {
+    require_object_fields(
+        j,
+        &["provider", "seed", "version", "params"],
+        "generationProvenance",
+    )?;
+    Ok(GeneratorMetadata {
+        provider: req_str(j, "provider")?,
+        seed: field_u64(j, "seed")?,
+        version: field_u64(j, "version")? as u32,
+        params: req_str(j, "params")?,
+    })
+}
+
 fn decode_artifact(j: &Json) -> Result<ArtifactEntry, ManifestDecodeError> {
+    require_object_fields(j, &["path", "class", "role", "contentHash"], "artifact")?;
     let path = req_str(j, "path")?;
     let class_tag = req_str(j, "class")?;
     let class =
@@ -219,6 +335,33 @@ fn decode_artifact(j: &Json) -> Result<ArtifactEntry, ManifestDecodeError> {
         role,
         content_hash,
     })
+}
+
+fn require_object_fields(
+    j: &Json,
+    allowed: &[&str],
+    context: &str,
+) -> Result<(), ManifestDecodeError> {
+    let Json::Obj(fields) = j else {
+        return Err(ManifestDecodeError::Field(format!(
+            "{context} must be an object"
+        )));
+    };
+    let mut seen: Vec<&str> = Vec::with_capacity(fields.len());
+    for (key, _) in fields {
+        if seen.contains(&key.as_str()) {
+            return Err(ManifestDecodeError::Field(format!(
+                "duplicate field `{key}` in {context}"
+            )));
+        }
+        seen.push(key);
+        if !allowed.contains(&key.as_str()) {
+            return Err(ManifestDecodeError::Field(format!(
+                "unknown field `{key}` in {context}"
+            )));
+        }
+    }
+    Ok(())
 }
 
 // ── typed-field helpers ───────────────────────────────────────────────────────
