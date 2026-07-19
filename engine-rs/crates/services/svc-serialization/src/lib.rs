@@ -465,8 +465,10 @@ mod tests {
     fn decode_rejects_u32_wraparound_before_manifest_interpretation() {
         let encoded = encode(&sample_manifest());
 
-        let oversized_schema =
-            encoded.replace("\"bundleSchemaVersion\": 2", "\"bundleSchemaVersion\": 4294967298");
+        let oversized_schema = encoded.replace(
+            "\"bundleSchemaVersion\": 2",
+            "\"bundleSchemaVersion\": 4294967298",
+        );
         assert!(matches!(
             decode(&oversized_schema),
             Err(ManifestDecodeError::IntegerOutOfRange {
