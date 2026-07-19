@@ -462,6 +462,59 @@ mod tests {
     }
 
     #[test]
+    fn decode_rejects_u32_wraparound_before_manifest_interpretation() {
+        let encoded = encode(&sample_manifest());
+
+        let oversized_schema =
+            encoded.replace("\"bundleSchemaVersion\": 2", "\"bundleSchemaVersion\": 4294967298");
+        assert!(matches!(
+            decode(&oversized_schema),
+            Err(ManifestDecodeError::IntegerOutOfRange {
+                ref field,
+                found: 4_294_967_298,
+                maximum: u32::MAX,
+            }) if field == "bundleSchemaVersion"
+        ));
+
+        for (original, replacement, expected_field, expected_value) in [
+            (
+                "\"protocolVersion\": 1",
+                "\"protocolVersion\": 4294967297",
+                "protocolVersion",
+                4_294_967_297,
+            ),
+            (
+                "\"schemaVersion\": 1",
+                "\"schemaVersion\": 4294967297",
+                "schemaVersion",
+                4_294_967_297,
+            ),
+            (
+                "\"assetCount\": 1",
+                "\"assetCount\": 4294967296",
+                "assetCount",
+                4_294_967_296,
+            ),
+            (
+                "\"version\": 1",
+                "\"version\": 4294967299",
+                "version",
+                4_294_967_299,
+            ),
+        ] {
+            let oversized = encoded.replacen(original, replacement, 1);
+            assert!(matches!(
+                decode(&oversized),
+                Err(ManifestDecodeError::IntegerOutOfRange {
+                    ref field,
+                    found,
+                    maximum: u32::MAX,
+                }) if field == expected_field && found == expected_value
+            ));
+        }
+    }
+
+    #[test]
     fn load_plan_is_deterministic_and_ordered() {
         let m = sample_manifest();
         let plan = LoadPlan::build(&m).expect("plan");

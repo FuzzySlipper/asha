@@ -154,6 +154,13 @@ pub enum ManifestDecodeError {
     UnknownClass(String),
     /// A content-hash string was not 16-digit lowercase hex.
     BadHash(String),
+    /// A non-negative integer could not be represented by the manifest field's
+    /// declared wire type.
+    IntegerOutOfRange {
+        field: String,
+        found: u64,
+        maximum: u32,
+    },
     /// The JSON names a manifest schema for which this strict codec has no
     /// understood closed field set.
     UnsupportedSchema { found: u32, supported: u32 },
@@ -166,6 +173,14 @@ impl core::fmt::Display for ManifestDecodeError {
             ManifestDecodeError::Field(s) => write!(f, "bad field: {s}"),
             ManifestDecodeError::UnknownClass(s) => write!(f, "unknown artifact class `{s}`"),
             ManifestDecodeError::BadHash(s) => write!(f, "bad content hash `{s}`"),
+            ManifestDecodeError::IntegerOutOfRange {
+                field,
+                found,
+                maximum,
+            } => write!(
+                f,
+                "field `{field}` value {found} exceeds maximum {maximum}"
+            ),
             ManifestDecodeError::UnsupportedSchema { found, supported } => write!(
                 f,
                 "unsupported bundle schema version {found}; supported read versions are {LEGACY_BUNDLE_SCHEMA_VERSION}..={supported}"
@@ -180,7 +195,7 @@ impl std::error::Error for ManifestDecodeError {}
 /// [`ProjectBundleManifest::validate`].
 pub fn decode(input: &str) -> Result<ProjectBundleManifest, ManifestDecodeError> {
     let json = Json::parse(input).map_err(ManifestDecodeError::Json)?;
-    let bundle_schema_version = field_u64(&json, "bundleSchemaVersion")? as u32;
+    let bundle_schema_version = field_u32(&json, "bundleSchemaVersion")?;
     match bundle_schema_version {
         LEGACY_BUNDLE_SCHEMA_VERSION => require_object_fields(
             &json,
@@ -218,7 +233,7 @@ pub fn decode(input: &str) -> Result<ProjectBundleManifest, ManifestDecodeError>
             });
         }
     }
-    let protocol_version = field_u64(&json, "protocolVersion")? as u32;
+    let protocol_version = field_u32(&json, "protocolVersion")?;
 
     let project_j = field(&json, "project")?;
     require_object_fields(project_j, &["id", "name"], "project")?;
@@ -253,7 +268,7 @@ pub fn decode(input: &str) -> Result<ProjectBundleManifest, ManifestDecodeError>
     require_object_fields(lock_j, &["artifact", "assetCount"], "assetLock")?;
     let asset_lock = AssetLockSection {
         artifact: req_str(lock_j, "artifact")?,
-        asset_count: field_u64(lock_j, "assetCount")? as u32,
+        asset_count: field_u32(lock_j, "assetCount")?,
     };
 
     let arr = field(&json, "artifacts")?
@@ -282,7 +297,7 @@ fn decode_scene(j: &Json) -> Result<SceneSection, ManifestDecodeError> {
     require_object_fields(j, &["id", "schemaVersion", "artifact"], "scene")?;
     Ok(SceneSection {
         id: SceneId::new(field_u64(j, "id")?),
-        schema_version: field_u64(j, "schemaVersion")? as u32,
+        schema_version: field_u32(j, "schemaVersion")?,
         artifact: req_str(j, "artifact")?,
     })
 }
@@ -292,7 +307,7 @@ fn decode_legacy_generator(j: &Json) -> Result<GeneratorMetadata, ManifestDecode
     Ok(GeneratorMetadata {
         provider: "legacy.terrain-generator".to_string(),
         seed: field_u64(j, "seed")?,
-        version: field_u64(j, "version")? as u32,
+        version: field_u32(j, "version")?,
         params: req_str(j, "params")?,
     })
 }
@@ -306,7 +321,7 @@ fn decode_generation_provenance(j: &Json) -> Result<GeneratorMetadata, ManifestD
     Ok(GeneratorMetadata {
         provider: req_str(j, "provider")?,
         seed: field_u64(j, "seed")?,
-        version: field_u64(j, "version")? as u32,
+        version: field_u32(j, "version")?,
         params: req_str(j, "params")?,
     })
 }
@@ -374,6 +389,15 @@ fn field<'a>(j: &'a Json, key: &str) -> Result<&'a Json, ManifestDecodeError> {
 fn field_u64(j: &Json, key: &str) -> Result<u64, ManifestDecodeError> {
     field(j, key)?.as_u64().ok_or_else(|| {
         ManifestDecodeError::Field(format!("field `{key}` must be a non-negative integer"))
+    })
+}
+
+fn field_u32(j: &Json, key: &str) -> Result<u32, ManifestDecodeError> {
+    let found = field_u64(j, key)?;
+    u32::try_from(found).map_err(|_| ManifestDecodeError::IntegerOutOfRange {
+        field: key.to_string(),
+        found,
+        maximum: u32::MAX,
     })
 }
 
