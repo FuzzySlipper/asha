@@ -28,7 +28,8 @@
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build",
-    "test": "tsc --build && node --test 'dist/**/*.test.js'"
+    "test": "tsc --build && node --test 'dist/**/*.test.js' && pnpm run test:browser",
+    "test:browser": "node ../../scripts/check-renderer-inspection-browser.mjs"
   },
   "dependencies": {
     "@asha/contracts": "workspace:*",

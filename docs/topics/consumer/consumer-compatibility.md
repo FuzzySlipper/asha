@@ -929,6 +929,15 @@ Additive editor viewport in #5741:
   implementation packages, bare Three.js, raw transports, and private paths.
   Asha Procgen #5980 should preserve its evidence view and mount this helper in a
   separate 3D viewer tab. See `topics/projection/renderer-inspection-surface.md`.
+- #6011 hardens that inspection surface around one captured pointer-event
+  lifecycle and adds focused arrow-key orbit, bounded `+`/`-` and wheel dolly,
+  fail-safe input clearing, and the existing procedural `EditorGridDescriptor`
+  through `initialGrid`, `setGrid`, and `grid`. Readout revisions and the last
+  camera-change kind distinguish pointer orbit, keyboard orbit, movement, zoom,
+  and grid application without implying authority. A real Chromium regression
+  drives browser pointer, keyboard, wheel, scroll-prevention, and grid behavior.
+  This remains additive under `renderer-host.v1` and is the upstream handback for
+  Asha Procgen #5980.
 
 ### `renderer-host.v0` - historical mixed interaction host
 

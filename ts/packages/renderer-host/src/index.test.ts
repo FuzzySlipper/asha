@@ -219,6 +219,11 @@ void test('renderer-host declarations do not expose concrete Three.js backend ty
   assert.match(editorViewportDeclarationText, /stored_editor/);
   assert.match(inspectionSurfaceDeclarationText, /projection_only_inspection/);
   assert.match(inspectionSurfaceDeclarationText, /readonly replaceFrame:/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly setGrid:/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly initialGrid\?: EditorGridDescriptor/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly lastCameraChange: AshaRendererInspectionCameraChange/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly cameraDistance: number/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly grid: EditorGridProjectionReadout \| null/);
   assert.doesNotMatch(inspectionSurfaceDeclarationText, /@asha\/renderer-three/);
   assert.doesNotMatch(inspectionSurfaceDeclarationText, /@asha\/runtime-bridge/);
   assert.doesNotMatch(inspectionSurfaceDeclarationText, /from ['"]three['"]/);

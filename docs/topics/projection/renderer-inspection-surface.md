@@ -26,6 +26,7 @@ import { mountAshaRendererInspectionSurface } from '@asha/renderer-host';
 
 const viewer = await mountAshaRendererInspectionSurface(canvas, {
   autoStart: true,
+  initialGrid: projectGrid,
   controls: {
     initialPosition: [6, 5, 9],
     initialTarget: [0, 1, 0],
@@ -50,11 +51,29 @@ disposal. It reuses the renderer-host stored-camera resolver for the Y-up orbit
 camera. No Studio camera implementation or downstream Three.js code is copied.
 
 Primary-button drag orbits the stored inspection target. WASD moves the camera
-and target together while the canvas has keyboard focus. `resizeToCanvas`
-samples the canvas dimensions, `resize` accepts an explicit bounded size, and a
-browser `ResizeObserver` keeps the surface synchronized when available. `start`,
-`stop`, `renderOnce`, and idempotent `dispose` own the complete render and input
-lifecycle.
+and target together while the canvas has keyboard focus. Focused arrow keys
+orbit independently of pointer input; focused `+`/`-` keys and the mouse wheel
+dolly between configured minimum and maximum distances. Pitch is clamped before
+the camera reaches its Y-up poles. Only mapped controls consumed by the focused
+canvas prevent browser scrolling.
+
+Drag uses one pointer-event stream with pointer identity and capture, so movement
+continues coherently across the canvas boundary until pointer release. Pointer
+cancellation, capture loss, canvas/window blur, page visibility loss, `stop`, and
+`dispose` clear retained input state.
+
+`initialGrid`, `setGrid(descriptor)`, `setGrid(null)`, and `grid()` expose the
+same generated `EditorGridDescriptor` and procedural grid realization used by
+the editor viewport. Grid intent never enters retained scene channels and does
+not become authored or runtime authority. The inspection readout includes the
+current grid plus grid revision, camera distance/revision, last camera-change
+kind, drag state, and focused key sets so downstream smoke checks can distinguish
+pointer orbit, keyboard orbit, movement, zoom, and grid application.
+
+`resizeToCanvas` samples the canvas dimensions, `resize` accepts an explicit
+bounded size, and a browser `ResizeObserver` keeps the surface synchronized when
+available. `start`, `stop`, `renderOnce`, and idempotent `dispose` own the
+complete render and input lifecycle.
 
 ## Consumer boundary
 
@@ -90,6 +109,9 @@ For Procgen task #5980:
    to a downstream renderer or reference runtime.
 5. Dispose the surface when the tab/workbench is destroyed and resize it when
    the viewer panel changes dimensions.
+6. Use `initialGrid` or `setGrid` for the project grid; do not draw a Procgen-local
+   grid. Exercise primary drag, arrow orbit, focused zoom, and grid replacement
+   in the live workbench and record the inspection readout as task evidence.
 
 The surface proves visible realization of Procgen output. It does not claim that
 camera interaction changes the generated artifact or that the inspection frame

@@ -37,6 +37,7 @@ export {
   mountAshaRendererInspectionSurface,
 } from './inspection-surface.js';
 export type {
+  AshaRendererInspectionCameraChange,
   AshaRendererInspectionSurface,
   AshaRendererInspectionSurfaceControlsOptions,
   AshaRendererInspectionSurfaceOptions,

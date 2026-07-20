@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   renderHandle,
+  type EditorGridDescriptor,
   type EditorGridProjectionReadout,
   type RenderFrameDiff,
 } from '@asha/contracts';
@@ -11,21 +12,29 @@ import {
   type AshaRendererEditorViewportBackendPort,
   type AshaRendererEditorViewportSize,
 } from './editor-viewport.js';
-import { createAshaRendererInspectionSurfaceWithViewport } from './inspection-surface.js';
+import {
+  createAshaRendererInspectionSurfaceWithViewport,
+  type AshaRendererInspectionSurfaceControlsOptions,
+} from './inspection-surface.js';
 
-void test('inspection surface owns projection-only mouse orbit and focused WASD movement', () => {
+void test('inspection surface owns coherent pointer orbit plus focused movement orbit and zoom', () => {
   const harness = createInspectionHarness({ autoStart: false });
   const beforeOrbit = harness.surface.camera();
+  const initialRevision = harness.surface.readout().cameraRevision;
 
-  harness.canvas.emit('pointerdown', pointerEvent(0));
+  harness.canvas.emit('pointerdown', pointerEvent({ button: 0, clientX: 100, clientY: 100, pointerId: 7 }));
   assert.equal(harness.surface.readout().dragging, true);
-  harness.document.emit('mousemove', mouseMoveEvent(40, -20));
-  harness.document.emit('pointerup', pointerEvent(0));
+  assert.equal(harness.canvas.hasPointerCapture(7), true);
+  harness.canvas.emit('pointermove', pointerEvent({ buttons: 1, clientX: 140, clientY: 80, pointerId: 7 }));
+  harness.canvas.emit('pointerup', pointerEvent({ button: 0, clientX: 140, clientY: 80, pointerId: 7 }));
 
   const afterOrbit = harness.surface.camera();
   assert.notDeepEqual(afterOrbit.pose.position, beforeOrbit.pose.position);
   assert.notDeepEqual(afterOrbit.basis.forward, beforeOrbit.basis.forward);
   assert.equal(harness.surface.readout().dragging, false);
+  assert.equal(harness.canvas.hasPointerCapture(7), false);
+  assert.equal(harness.surface.readout().lastCameraChange, 'pointer_orbit');
+  assert.ok(harness.surface.readout().cameraRevision > initialRevision);
 
   let beforeMovement = afterOrbit;
   for (const [index, code] of ['KeyW', 'KeyA', 'KeyS', 'KeyD'].entries()) {
@@ -39,9 +48,79 @@ void test('inspection surface owns projection-only mouse orbit and focused WASD 
   }
   assert.deepEqual(harness.surface.readout().pressedMovementKeys, []);
 
+  const beforeKeyboardOrbit = harness.surface.camera();
+  harness.document.emit('keydown', keyboardEvent('ArrowLeft', 'ArrowLeft'));
+  assert.deepEqual(harness.surface.readout().pressedOrbitKeys, ['ArrowLeft']);
+  harness.surface.renderOnce(5000);
+  harness.document.emit('keyup', keyboardEvent('ArrowLeft', 'ArrowLeft'));
+  assert.notDeepEqual(harness.surface.camera().pose.position, beforeKeyboardOrbit.pose.position);
+  assert.equal(harness.surface.readout().lastCameraChange, 'keyboard_orbit');
+  assert.deepEqual(harness.surface.readout().pressedOrbitKeys, []);
+
+  const beforeKeyboardZoom = harness.surface.readout().cameraDistance;
+  harness.document.emit('keydown', keyboardEvent('Equal', '+'));
+  assert.ok(harness.surface.readout().cameraDistance < beforeKeyboardZoom);
+  assert.equal(harness.surface.readout().lastCameraChange, 'keyboard_zoom');
+
+  const beforeWheelZoom = harness.surface.readout().cameraDistance;
+  harness.canvas.emit('wheel', wheelEvent(120));
+  assert.ok(harness.surface.readout().cameraDistance > beforeWheelZoom);
+  assert.equal(harness.surface.readout().lastCameraChange, 'wheel_zoom');
+
   assert.equal(harness.surface.authority, 'projection_only_inspection');
   assert.equal(harness.surface.readout().authority, 'projection_only_inspection');
   assert.equal(harness.surface.readout().camera.source, 'stored_editor');
+});
+
+void test('inspection surface applies replaces and clears the engine procedural grid', () => {
+  const initialGrid = editorGridDescriptor();
+  const harness = createInspectionHarness({ autoStart: false, initialGrid });
+
+  assert.deepEqual(harness.surface.grid()?.descriptor, initialGrid);
+  assert.deepEqual(harness.surface.readout().grid?.descriptor, initialGrid);
+  assert.equal(harness.surface.readout().gridRevision, 1);
+
+  const cleared = harness.surface.setGrid(null);
+  assert.equal(cleared.applied, true);
+  assert.equal(harness.surface.grid(), null);
+  assert.equal(harness.surface.readout().gridRevision, 2);
+
+  const replacement = {
+    ...initialGrid,
+    grid: { ...initialGrid.grid, spacing: [2, 2, 2] as const },
+  };
+  const replaced = harness.surface.setGrid(replacement);
+  assert.equal(replaced.applied, true);
+  assert.deepEqual(harness.surface.readout().grid?.descriptor, replacement);
+  assert.equal(harness.surface.readout().gridRevision, 3);
+});
+
+void test('inspection controls bound pitch and camera distance under repeated focused input', () => {
+  const harness = createInspectionHarness({
+    autoStart: false,
+    controls: {
+      initialPosition: [0, 0, 5],
+      minimumDistance: 2,
+      maximumDistance: 10,
+    },
+  });
+  harness.canvas.focus();
+
+  for (let index = 0; index < 32; index += 1) {
+    harness.document.emit('keydown', keyboardEvent('Equal', '+'));
+  }
+  assert.equal(harness.surface.readout().cameraDistance, 2);
+  for (let index = 0; index < 32; index += 1) {
+    harness.document.emit('keydown', keyboardEvent('Minus', '-'));
+  }
+  assert.equal(harness.surface.readout().cameraDistance, 10);
+
+  harness.document.emit('keydown', keyboardEvent('ArrowUp', 'ArrowUp'));
+  for (let index = 1; index <= 32; index += 1) {
+    harness.surface.renderOnce(index * 100);
+  }
+  harness.document.emit('keyup', keyboardEvent('ArrowUp', 'ArrowUp'));
+  assert.ok(Math.abs(harness.surface.camera().pose.pitchDegrees) <= 85.000_001);
 });
 
 void test('inspection surface retains accepted frames, fails closed on malformed replacement, and owns resize', () => {
@@ -84,14 +163,14 @@ void test('inspection input fail-safes clear latched movement and drag before re
     {
       name: 'pointer cancellation',
       interrupt: (harness: ReturnType<typeof createInspectionHarness>) => {
-        harness.canvas.emit('pointercancel', pointerEvent(0));
+        harness.canvas.emit('pointercancel', pointerEvent({ pointerId: 3 }));
       },
     },
   ] as const;
 
   for (const lifecycleCase of cases) {
     const harness = createInspectionHarness({ autoStart: false });
-    harness.canvas.emit('pointerdown', pointerEvent(0));
+    harness.canvas.emit('pointerdown', pointerEvent({ button: 0, clientX: 10, clientY: 10, pointerId: 3 }));
     harness.document.emit('keydown', keyboardEvent('KeyW'));
     assert.equal(harness.surface.readout().dragging, true, lifecycleCase.name);
     assert.deepEqual(harness.surface.readout().pressedMovementKeys, ['KeyW'], lifecycleCase.name);
@@ -101,7 +180,7 @@ void test('inspection input fail-safes clear latched movement and drag before re
     assert.equal(harness.surface.readout().dragging, false, lifecycleCase.name);
     assert.deepEqual(harness.surface.readout().pressedMovementKeys, [], lifecycleCase.name);
 
-    harness.document.emit('mousemove', mouseMoveEvent(80, 40));
+    harness.canvas.emit('pointermove', pointerEvent({ buttons: 1, clientX: 80, clientY: 40, pointerId: 3 }));
     harness.surface.renderOnce(1000);
     assert.deepEqual(harness.surface.camera(), cameraBeforeInterrupt, lifecycleCase.name);
     harness.surface.dispose();
@@ -115,9 +194,13 @@ void test('inspection surface start stop and disposal release animation input re
 
   harness.animation.runNext(16);
   assert.equal(harness.animation.pendingCount(), 1);
+  harness.canvas.emit('pointerdown', pointerEvent({ button: 0, clientX: 10, clientY: 10, pointerId: 9 }));
+  harness.document.emit('keydown', keyboardEvent('ArrowUp', 'ArrowUp'));
   harness.surface.stop();
   assert.equal(harness.surface.readout().status, 'stopped');
   assert.equal(harness.animation.pendingCount(), 0);
+  assert.equal(harness.surface.readout().dragging, false);
+  assert.deepEqual(harness.surface.readout().pressedOrbitKeys, []);
 
   harness.surface.start();
   assert.equal(harness.surface.readout().status, 'running');
@@ -129,8 +212,8 @@ void test('inspection surface start stop and disposal release animation input re
   assert.equal(harness.backend.disposals, 1);
   assert.equal(harness.resizeObserver.disconnects, 1);
 
-  harness.canvas.emit('pointerdown', pointerEvent(0));
-  harness.document.emit('mousemove', mouseMoveEvent(100, 100));
+  harness.canvas.emit('pointerdown', pointerEvent({ button: 0, clientX: 10, clientY: 10, pointerId: 11 }));
+  harness.canvas.emit('pointermove', pointerEvent({ buttons: 1, clientX: 100, clientY: 100, pointerId: 11 }));
   harness.document.emit('keydown', keyboardEvent('KeyW'));
   harness.surface.renderOnce(1000);
   assert.deepEqual(harness.surface.camera(), cameraBeforeDispose);
@@ -165,7 +248,9 @@ void test('inspection surface rejects a malformed initial frame and disposes the
 
 function createInspectionHarness(options: {
   readonly autoStart: boolean;
+  readonly controls?: AshaRendererInspectionSurfaceControlsOptions;
   readonly frame?: RenderFrameDiff;
+  readonly initialGrid?: EditorGridDescriptor | null;
 }) {
   const backend = new FakeEditorViewportBackend();
   const viewport = createAshaRendererEditorViewportWithBackend(backend, { autoStart: false });
@@ -178,7 +263,9 @@ function createInspectionHarness(options: {
     viewport,
     {
       autoStart: options.autoStart,
+      ...(options.controls === undefined ? {} : { controls: options.controls }),
       ...(options.frame === undefined ? {} : { frame: options.frame }),
+      ...(options.initialGrid === undefined ? {} : { initialGrid: options.initialGrid }),
     },
     inspectionEnvironment(animation, resizeObserver),
   );
@@ -280,6 +367,7 @@ class FakeDocument extends FakeEventSource {
 }
 
 class FakeCanvas extends FakeEventSource {
+  readonly #capturedPointers = new Set<number>();
   clientHeight = 360;
   clientWidth = 640;
   height = 360;
@@ -298,11 +386,34 @@ class FakeCanvas extends FakeEventSource {
   focus(): void {
     this.fakeDocument.activeElement = this as unknown as Element;
   }
+
+  hasPointerCapture(pointerId: number): boolean {
+    return this.#capturedPointers.has(pointerId);
+  }
+
+  releasePointerCapture(pointerId: number): void {
+    this.#capturedPointers.delete(pointerId);
+  }
+
+  setPointerCapture(pointerId: number): void {
+    this.#capturedPointers.add(pointerId);
+  }
 }
 
-function pointerEvent(button: number): PointerEvent {
+function pointerEvent(options: {
+  readonly button?: number;
+  readonly buttons?: number;
+  readonly clientX?: number;
+  readonly clientY?: number;
+  readonly pointerId: number;
+}): PointerEvent {
   return {
-    button,
+    button: options.button ?? -1,
+    buttons: options.buttons ?? 0,
+    clientX: options.clientX ?? 0,
+    clientY: options.clientY ?? 0,
+    isPrimary: true,
+    pointerId: options.pointerId,
     preventDefault: () => undefined,
   } as unknown as PointerEvent;
 }
@@ -311,17 +422,17 @@ function event(): Event {
   return {} as Event;
 }
 
-function mouseMoveEvent(movementX: number, movementY: number): MouseEvent {
+function wheelEvent(deltaY: number): WheelEvent {
   return {
-    movementX,
-    movementY,
+    deltaY,
     preventDefault: () => undefined,
-  } as unknown as MouseEvent;
+  } as unknown as WheelEvent;
 }
 
-function keyboardEvent(code: string): KeyboardEvent {
+function keyboardEvent(code: string, key = code): KeyboardEvent {
   return {
     code,
+    key,
     preventDefault: () => undefined,
   } as unknown as KeyboardEvent;
 }
@@ -330,6 +441,7 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
   readonly frames = new Map<string, RenderFrameDiff>();
   readonly sizes: AshaRendererEditorViewportSize[] = [];
   disposals = 0;
+  grid: EditorGridDescriptor | null = null;
 
   replaceChannel(channel: 'runtime' | 'authored' | 'overlay', frame: RenderFrameDiff): void {
     this.frames.set(channel, structuredClone(frame));
@@ -337,10 +449,17 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
 
   setCamera(): void {}
 
-  setGrid(): void {}
+  setGrid(descriptor: EditorGridDescriptor | null): void {
+    this.grid = descriptor === null ? null : structuredClone(descriptor);
+  }
 
   gridReadout(): EditorGridProjectionReadout | null {
-    return null;
+    return this.grid === null ? null : {
+      descriptor: structuredClone(this.grid),
+      bounds: null,
+      minorLineStep: this.grid.grid.spacing[0],
+      renderedLineCount: 42,
+    };
   }
 
   resize(size: AshaRendererEditorViewportSize): void {
@@ -364,6 +483,30 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
   dispose(): void {
     this.disposals += 1;
   }
+}
+
+function editorGridDescriptor(): EditorGridDescriptor {
+  return {
+    visible: true,
+    grid: {
+      coordinateSystem: 'rightHandedYUp',
+      origin: [0, 0, 0],
+      spacing: [1, 1, 1],
+    },
+    plane: 'xz',
+    snapAnchor: 'boundary',
+    style: {
+      minorColor: [0.2, 0.2, 0.2, 0.5],
+      majorColor: [0.4, 0.4, 0.4, 0.8],
+      xAxisColor: [1, 0, 0, 1],
+      yAxisColor: [0, 1, 0, 1],
+      zAxisColor: [0, 0, 1, 1],
+      majorLineEvery: 10,
+      opacity: 0.8,
+      fadeStart: 20,
+      fadeEnd: 100,
+    },
+  };
 }
 
 function primitiveFrame(handle: number): RenderFrameDiff {

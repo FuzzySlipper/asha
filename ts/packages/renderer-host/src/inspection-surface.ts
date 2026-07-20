@@ -1,23 +1,25 @@
 // Projection-only interactive viewer for downstream visual-authoring tools.
 
 import type {
+  EditorGridDescriptor,
+  EditorGridProjectionReadout,
   PerspectiveProjection,
   RenderFrameDiff,
 } from '@asha/contracts';
-import {
-  mountAshaRendererEditorViewport,
-  type AshaRendererEditorViewport,
-  type AshaRendererEditorViewportBufferSource,
-  type AshaRendererEditorViewportCamera,
-  type AshaRendererEditorViewportChannelReceipt,
-  type AshaRendererEditorViewportPickReceipt,
-  type AshaRendererEditorViewportPickRequest,
-  type AshaRendererEditorViewportSize,
-  type AshaRendererEditorViewportSizeReceipt,
+import type {
+  AshaRendererEditorViewport,
+  AshaRendererEditorViewportBufferSource,
+  AshaRendererEditorViewportCamera,
+  AshaRendererEditorViewportChannelReceipt,
+  AshaRendererEditorViewportGridReceipt,
+  AshaRendererEditorViewportPickReceipt,
+  AshaRendererEditorViewportPickRequest,
+  AshaRendererEditorViewportSize,
+  AshaRendererEditorViewportSizeReceipt,
 } from './editor-viewport.js';
-import {
-  type AshaRendererAnimatedMeshResourceManifest,
-  type AshaRendererAnimatedMeshResourceResolver,
+import type {
+  AshaRendererAnimatedMeshResourceManifest,
+  AshaRendererAnimatedMeshResourceResolver,
 } from './animated-mesh-host.js';
 import { resolveAshaStoredEditorCamera } from './stored-editor-camera.js';
 
@@ -33,6 +35,14 @@ export interface AshaRendererInspectionSurfaceControlsOptions {
   readonly moveSpeed?: number;
   /** Orbit degrees applied per mouse pixel while the primary button is held. */
   readonly orbitDegreesPerPixel?: number;
+  /** Orbit degrees applied per second while a focused arrow key is held. */
+  readonly keyboardOrbitDegreesPerSecond?: number;
+  /** Smallest allowed distance between the inspection camera and its target. */
+  readonly minimumDistance?: number;
+  /** Largest allowed distance between the inspection camera and its target. */
+  readonly maximumDistance?: number;
+  /** Multiplicative camera-distance change for each focused keyboard or wheel step. */
+  readonly zoomFactorPerStep?: number;
   readonly projection?: PerspectiveProjection;
 }
 
@@ -44,11 +54,21 @@ export interface AshaRendererInspectionSurfaceOptions {
   readonly controls?: AshaRendererInspectionSurfaceControlsOptions;
   /** A complete retained projection frame. Later replacements are atomic. */
   readonly frame?: RenderFrameDiff;
+  /** Optional engine-owned procedural editor grid shown with the inspection projection. */
+  readonly initialGrid?: EditorGridDescriptor | null;
   readonly pixelRatio?: number;
   readonly resolveAnimatedMeshResource?: AshaRendererAnimatedMeshResourceResolver;
 }
 
 export type AshaRendererInspectionSurfaceStatus = 'mounted' | 'running' | 'stopped' | 'disposed';
+
+export type AshaRendererInspectionCameraChange =
+  | 'initial_camera'
+  | 'keyboard_movement'
+  | 'keyboard_orbit'
+  | 'keyboard_zoom'
+  | 'pointer_orbit'
+  | 'wheel_zoom';
 
 export interface AshaRendererInspectionSurfaceReadout {
   readonly kind: 'asha_renderer_inspection_surface_readout.v0';
@@ -56,8 +76,14 @@ export interface AshaRendererInspectionSurfaceReadout {
   /** Camera input here is disposable renderer state and never RuntimeSession authority. */
   readonly authority: 'projection_only_inspection';
   readonly camera: AshaRendererEditorViewportCamera;
+  readonly cameraDistance: number;
+  readonly cameraRevision: number;
   readonly dragging: boolean;
+  readonly grid: EditorGridProjectionReadout | null;
+  readonly gridRevision: number;
+  readonly lastCameraChange: AshaRendererInspectionCameraChange;
   readonly pressedMovementKeys: readonly string[];
+  readonly pressedOrbitKeys: readonly string[];
   readonly retainedFrameHash: string;
   readonly retainedOpCount: number;
   readonly status: AshaRendererInspectionSurfaceStatus;
@@ -70,12 +96,14 @@ export interface AshaRendererInspectionSurface {
   readonly canvas: HTMLCanvasElement;
   readonly camera: () => AshaRendererEditorViewportCamera;
   readonly dispose: () => void;
+  readonly grid: () => EditorGridProjectionReadout | null;
   readonly pick: (request: AshaRendererEditorViewportPickRequest) => AshaRendererEditorViewportPickReceipt;
   readonly readout: () => AshaRendererInspectionSurfaceReadout;
   readonly renderOnce: (timeMs?: number) => void;
   readonly replaceFrame: (frame: RenderFrameDiff) => AshaRendererEditorViewportChannelReceipt;
   readonly resize: (size: AshaRendererEditorViewportSize) => AshaRendererEditorViewportSizeReceipt;
   readonly resizeToCanvas: () => AshaRendererEditorViewportSizeReceipt;
+  readonly setGrid: (descriptor: EditorGridDescriptor | null) => AshaRendererEditorViewportGridReceipt;
   readonly start: () => void;
   readonly stop: () => void;
 }
@@ -101,9 +129,14 @@ interface AshaRendererInspectionEnvironment {
 
 interface InspectionControls {
   readonly camera: () => AshaRendererEditorViewportCamera;
+  readonly cameraDistance: () => number;
+  readonly cameraRevision: () => number;
+  readonly clearInputState: () => void;
   readonly dispose: () => void;
   readonly dragging: () => boolean;
+  readonly lastCameraChange: () => AshaRendererInspectionCameraChange;
   readonly pressedMovementKeys: () => readonly string[];
+  readonly pressedOrbitKeys: () => readonly string[];
   readonly update: (deltaSeconds: number) => void;
 }
 
@@ -113,11 +146,13 @@ const DEFAULT_PROJECTION: PerspectiveProjection = {
   far: 1000,
 };
 const MOVEMENT_KEYS = ['KeyA', 'KeyD', 'KeyS', 'KeyW'] as const;
+const ORBIT_KEYS = ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp'] as const;
 
 export async function mountAshaRendererInspectionSurface(
   canvas: HTMLCanvasElement,
   options: AshaRendererInspectionSurfaceOptions = {},
 ): Promise<AshaRendererInspectionSurface> {
+  const { mountAshaRendererEditorViewport } = await import('./editor-viewport.js');
   const viewport = await mountAshaRendererEditorViewport(canvas, {
     autoStart: false,
     ...(options.animatedMeshManifest === undefined
@@ -152,6 +187,7 @@ export function createAshaRendererInspectionSurfaceWithViewport(
 ): AshaRendererInspectionSurface {
   const controls = createInspectionControls(canvas, viewport, options.controls);
   let animationHandle: number | null = null;
+  let gridRevision = 0;
   let lastRenderTimeMs: number | null = null;
   let status: AshaRendererInspectionSurfaceStatus = 'mounted';
 
@@ -193,7 +229,7 @@ export function createAshaRendererInspectionSurfaceWithViewport(
   };
 
   const stop = (): void => {
-    if (status === 'disposed' || status === 'stopped') {
+    if (status === 'disposed') {
       return;
     }
     if (animationHandle !== null) {
@@ -202,10 +238,21 @@ export function createAshaRendererInspectionSurfaceWithViewport(
     }
     status = 'stopped';
     lastRenderTimeMs = null;
+    controls.clearInputState();
   };
 
   const replaceFrame = (frame: RenderFrameDiff): AshaRendererEditorViewportChannelReceipt =>
     viewport.channels.authored.replace(frame);
+
+  const setGrid = (
+    descriptor: EditorGridDescriptor | null,
+  ): AshaRendererEditorViewportGridReceipt => {
+    const receipt = viewport.setGrid(descriptor);
+    if (receipt.applied) {
+      gridRevision += 1;
+    }
+    return receipt;
+  };
 
   try {
     resizeObserver = environment.createResizeObserver(() => {
@@ -214,6 +261,14 @@ export function createAshaRendererInspectionSurfaceWithViewport(
       }
     });
     resizeObserver?.observe(canvas);
+
+    if (options.initialGrid !== undefined) {
+      const initialGridReceipt = setGrid(options.initialGrid);
+      if (!initialGridReceipt.applied) {
+        const diagnostic = initialGridReceipt.diagnostics[0];
+        throw new TypeError(diagnostic?.message ?? 'inspection surface rejected its initial grid');
+      }
+    }
 
     if (options.frame !== undefined) {
       const initialReceipt = replaceFrame(options.frame);
@@ -240,6 +295,7 @@ export function createAshaRendererInspectionSurfaceWithViewport(
     authority: 'projection_only_inspection',
     canvas,
     camera: () => controls.camera(),
+    grid: () => viewport.grid(),
     pick: (request) => viewport.pick(request),
     readout: () => {
       const viewportReadout = viewport.readout();
@@ -249,8 +305,14 @@ export function createAshaRendererInspectionSurfaceWithViewport(
         compatibilityVersion: ASHA_RENDERER_INSPECTION_SURFACE_COMPATIBILITY_VERSION,
         authority: 'projection_only_inspection',
         camera: controls.camera(),
+        cameraDistance: controls.cameraDistance(),
+        cameraRevision: controls.cameraRevision(),
         dragging: controls.dragging(),
+        grid: viewportReadout.grid,
+        gridRevision,
+        lastCameraChange: controls.lastCameraChange(),
         pressedMovementKeys: controls.pressedMovementKeys(),
+        pressedOrbitKeys: controls.pressedOrbitKeys(),
         retainedFrameHash: authored?.hash ?? '',
         retainedOpCount: authored?.retainedOpCount ?? 0,
         status,
@@ -261,6 +323,7 @@ export function createAshaRendererInspectionSurfaceWithViewport(
     replaceFrame,
     resize: (size) => viewport.resize(size),
     resizeToCanvas,
+    setGrid,
     start,
     stop,
     dispose: () => {
@@ -287,21 +350,49 @@ function createInspectionControls(
     options?.orbitDegreesPerPixel ?? 0.24,
     'inspection orbitDegreesPerPixel',
   );
+  const keyboardOrbitDegreesPerSecond = requirePositiveFinite(
+    options?.keyboardOrbitDegreesPerSecond ?? 90,
+    'inspection keyboardOrbitDegreesPerSecond',
+  );
+  const minimumDistance = requirePositiveFinite(
+    options?.minimumDistance ?? 0.1,
+    'inspection minimumDistance',
+  );
+  const maximumDistance = requirePositiveFinite(
+    options?.maximumDistance ?? 10_000,
+    'inspection maximumDistance',
+  );
+  const zoomFactorPerStep = requireUnitInterval(
+    options?.zoomFactorPerStep ?? 0.85,
+    'inspection zoomFactorPerStep',
+  );
+  if (maximumDistance <= minimumDistance) {
+    throw new TypeError('inspection maximumDistance must be greater than minimumDistance');
+  }
   const projection = options?.projection ?? DEFAULT_PROJECTION;
   const initialPosition = options?.initialPosition ?? [4, 4, 8];
   let target: InspectionVector = [...(options?.initialTarget ?? [0, 0, 0])];
   const offset = subtract(initialPosition, target);
-  const distance = vectorLength(offset);
+  let distance = vectorLength(offset);
   if (!allFinite([initialPosition, target]) || distance <= 0.000_001) {
     throw new TypeError('inspection initialPosition and initialTarget must be finite and distinct');
+  }
+  if (distance < minimumDistance || distance > maximumDistance) {
+    throw new TypeError('inspection initial camera distance must be within its configured bounds');
   }
   let yawRadians = Math.atan2(offset[0], offset[2]);
   let pitchRadians = Math.asin(clamp(offset[1] / distance, -1, 1));
   let camera = resolveCamera(positionFromOrbit(target, distance, yawRadians, pitchRadians), target, projection);
-  let dragging = false;
-  const pressedKeys = new Set<string>();
+  let cameraRevision = 0;
+  let lastCameraChange: AshaRendererInspectionCameraChange = 'initial_camera';
+  let activePointerId: number | null = null;
+  let lastPointerPosition: readonly [number, number] | null = null;
+  const pressedMovementKeys = new Set<string>();
+  const pressedOrbitKeys = new Set<string>();
   const ownerDocument = canvas.ownerDocument;
   const ownerWindow = ownerDocument.defaultView;
+  const originalTabIndex = canvas.tabIndex;
+  const originalTouchAction = canvas.style.touchAction;
 
   if (canvas.tabIndex < 0) {
     canvas.tabIndex = 0;
@@ -312,9 +403,11 @@ function createInspectionControls(
     nextTarget: InspectionVector,
     nextYawRadians: number,
     nextPitchRadians: number,
+    nextDistance: number,
+    change: AshaRendererInspectionCameraChange,
   ): boolean => {
     const nextCamera = resolveCamera(
-      positionFromOrbit(nextTarget, distance, nextYawRadians, nextPitchRadians),
+      positionFromOrbit(nextTarget, nextDistance, nextYawRadians, nextPitchRadians),
       nextTarget,
       projection,
     );
@@ -325,53 +418,138 @@ function createInspectionControls(
     target = nextTarget;
     yawRadians = nextYawRadians;
     pitchRadians = nextPitchRadians;
+    distance = nextDistance;
     camera = nextCamera;
+    cameraRevision += 1;
+    lastCameraChange = change;
     return true;
   };
 
+  const clearPointerState = (): void => {
+    const pointerId = activePointerId;
+    activePointerId = null;
+    lastPointerPosition = null;
+    if (pointerId === null) {
+      return;
+    }
+    try {
+      if (canvas.hasPointerCapture(pointerId)) {
+        canvas.releasePointerCapture(pointerId);
+      }
+    } catch {
+      // Capture may already have been released by pointer cancellation or DOM removal.
+    }
+  };
+
+  const clearInputState = (): void => {
+    clearPointerState();
+    pressedMovementKeys.clear();
+    pressedOrbitKeys.clear();
+  };
+
   const onPointerDown = (event: PointerEvent): void => {
-    if (!enabled || event.button !== 0) {
+    if (
+      !enabled
+      || event.button !== 0
+      || event.isPrimary === false
+      || !Number.isFinite(event.clientX)
+      || !Number.isFinite(event.clientY)
+    ) {
       return;
     }
     event.preventDefault();
     canvas.focus({ preventScroll: true });
-    dragging = true;
-  };
-  const onPointerUp = (event: PointerEvent): void => {
-    if (event.button === 0) {
-      dragging = false;
+    clearPointerState();
+    activePointerId = event.pointerId;
+    lastPointerPosition = [event.clientX, event.clientY];
+    try {
+      canvas.setPointerCapture(event.pointerId);
+    } catch {
+      activePointerId = null;
+      lastPointerPosition = null;
     }
   };
-  const onMouseMove = (event: MouseEvent): void => {
-    if (!enabled || !dragging || !Number.isFinite(event.movementX) || !Number.isFinite(event.movementY)) {
+  const onPointerMove = (event: PointerEvent): void => {
+    if (!enabled || activePointerId !== event.pointerId || lastPointerPosition === null) {
+      return;
+    }
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+      return;
+    }
+    const movementX = event.clientX - lastPointerPosition[0];
+    const movementY = event.clientY - lastPointerPosition[1];
+    lastPointerPosition = [event.clientX, event.clientY];
+    if (movementX === 0 && movementY === 0) {
       return;
     }
     event.preventDefault();
-    const nextYawRadians = yawRadians - degreesToRadians(event.movementX * orbitDegreesPerPixel);
+    const nextYawRadians = yawRadians - degreesToRadians(movementX * orbitDegreesPerPixel);
     const nextPitchRadians = clamp(
-      pitchRadians + degreesToRadians(event.movementY * orbitDegreesPerPixel),
+      pitchRadians + degreesToRadians(movementY * orbitDegreesPerPixel),
       degreesToRadians(-85),
       degreesToRadians(85),
     );
-    commitCamera(target, nextYawRadians, nextPitchRadians);
+    commitCamera(target, nextYawRadians, nextPitchRadians, distance, 'pointer_orbit');
+  };
+  const onPointerEnd = (event: PointerEvent): void => {
+    if (activePointerId === event.pointerId) {
+      clearPointerState();
+    }
+  };
+  const onPointerCancel = (event: PointerEvent): void => {
+    if (activePointerId === event.pointerId) {
+      clearInputState();
+    }
+  };
+  const onLostPointerCapture = (event: PointerEvent): void => {
+    if (activePointerId === event.pointerId) {
+      activePointerId = null;
+      lastPointerPosition = null;
+    }
+  };
+  const applyZoom = (
+    factor: number,
+    change: 'keyboard_zoom' | 'wheel_zoom',
+  ): void => {
+    const nextDistance = clamp(distance * factor, minimumDistance, maximumDistance);
+    if (Math.abs(nextDistance - distance) <= 0.000_001) {
+      return;
+    }
+    commitCamera(target, yawRadians, pitchRadians, nextDistance, change);
   };
   const onKeyDown = (event: KeyboardEvent): void => {
-    if (!enabled || ownerDocument.activeElement !== canvas || !isMovementKey(event.code)) {
+    if (!enabled || ownerDocument.activeElement !== canvas) {
       return;
     }
-    event.preventDefault();
-    pressedKeys.add(event.code);
+    if (isMovementKey(event.code)) {
+      event.preventDefault();
+      pressedMovementKeys.add(event.code);
+      return;
+    }
+    if (isOrbitKey(event.code)) {
+      event.preventDefault();
+      pressedOrbitKeys.add(event.code);
+      return;
+    }
+    const zoomDirection = keyboardZoomDirection(event);
+    if (zoomDirection !== null) {
+      event.preventDefault();
+      applyZoom(zoomDirection === 'in' ? zoomFactorPerStep : 1 / zoomFactorPerStep, 'keyboard_zoom');
+    }
   };
   const onKeyUp = (event: KeyboardEvent): void => {
-    if (!isMovementKey(event.code)) {
+    if (isMovementKey(event.code) && pressedMovementKeys.delete(event.code)) {
+      event.preventDefault();
+    } else if (isOrbitKey(event.code) && pressedOrbitKeys.delete(event.code)) {
+      event.preventDefault();
+    }
+  };
+  const onWheel = (event: WheelEvent): void => {
+    if (!enabled || ownerDocument.activeElement !== canvas || !Number.isFinite(event.deltaY) || event.deltaY === 0) {
       return;
     }
     event.preventDefault();
-    pressedKeys.delete(event.code);
-  };
-  const clearInputState = (): void => {
-    dragging = false;
-    pressedKeys.clear();
+    applyZoom(event.deltaY < 0 ? zoomFactorPerStep : 1 / zoomFactorPerStep, 'wheel_zoom');
   };
   const onVisibilityChange = (): void => {
     if (ownerDocument.visibilityState !== 'visible') {
@@ -379,14 +557,18 @@ function createInspectionControls(
     }
   };
 
-  if (!commitCamera(target, yawRadians, pitchRadians)) {
+  if (!commitCamera(target, yawRadians, pitchRadians, distance, 'initial_camera')) {
     throw new TypeError('inspection camera was rejected during mount');
   }
   canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointercancel', clearInputState);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerEnd);
+  canvas.addEventListener('pointercancel', onPointerCancel);
+  canvas.addEventListener('lostpointercapture', onLostPointerCapture);
+  canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('blur', clearInputState);
-  ownerDocument.addEventListener('pointerup', onPointerUp);
-  ownerDocument.addEventListener('mousemove', onMouseMove);
+  ownerDocument.addEventListener('pointerup', onPointerEnd);
+  ownerDocument.addEventListener('pointercancel', onPointerCancel);
   ownerDocument.addEventListener('keydown', onKeyDown);
   ownerDocument.addEventListener('keyup', onKeyUp);
   ownerDocument.addEventListener('visibilitychange', onVisibilityChange);
@@ -394,33 +576,61 @@ function createInspectionControls(
 
   return {
     camera: () => camera,
-    dragging: () => dragging,
-    pressedMovementKeys: () => [...pressedKeys].sort(),
+    cameraDistance: () => distance,
+    cameraRevision: () => cameraRevision,
+    clearInputState,
+    dragging: () => activePointerId !== null,
+    lastCameraChange: () => lastCameraChange,
+    pressedMovementKeys: () => [...pressedMovementKeys].sort(),
+    pressedOrbitKeys: () => [...pressedOrbitKeys].sort(),
     update: (deltaSeconds) => {
-      if (!enabled || pressedKeys.size === 0 || deltaSeconds <= 0) {
+      if (!enabled || deltaSeconds <= 0) {
         return;
       }
-      const forwardAxis = (pressedKeys.has('KeyW') ? 1 : 0) - (pressedKeys.has('KeyS') ? 1 : 0);
-      const rightAxis = (pressedKeys.has('KeyD') ? 1 : 0) - (pressedKeys.has('KeyA') ? 1 : 0);
-      const movement = horizontalMovement(camera, forwardAxis, rightAxis);
-      if (movement === null) {
-        return;
+      const forwardAxis = (pressedMovementKeys.has('KeyW') ? 1 : 0)
+        - (pressedMovementKeys.has('KeyS') ? 1 : 0);
+      const rightAxis = (pressedMovementKeys.has('KeyD') ? 1 : 0)
+        - (pressedMovementKeys.has('KeyA') ? 1 : 0);
+      if (forwardAxis !== 0 || rightAxis !== 0) {
+        const movement = horizontalMovement(camera, forwardAxis, rightAxis);
+        if (movement !== null) {
+          const step = moveSpeed * deltaSeconds;
+          const nextTarget = add(target, scale(movement, step));
+          commitCamera(nextTarget, yawRadians, pitchRadians, distance, 'keyboard_movement');
+        }
       }
-      const step = moveSpeed * deltaSeconds;
-      const nextTarget = add(target, scale(movement, step));
-      commitCamera(nextTarget, yawRadians, pitchRadians);
+      const yawAxis = (pressedOrbitKeys.has('ArrowLeft') ? 1 : 0)
+        - (pressedOrbitKeys.has('ArrowRight') ? 1 : 0);
+      const pitchAxis = (pressedOrbitKeys.has('ArrowUp') ? 1 : 0)
+        - (pressedOrbitKeys.has('ArrowDown') ? 1 : 0);
+      if (yawAxis !== 0 || pitchAxis !== 0) {
+        const orbitStepRadians = degreesToRadians(keyboardOrbitDegreesPerSecond * deltaSeconds);
+        const nextYawRadians = yawRadians + yawAxis * orbitStepRadians;
+        const nextPitchRadians = clamp(
+          pitchRadians + pitchAxis * orbitStepRadians,
+          degreesToRadians(-85),
+          degreesToRadians(85),
+        );
+        commitCamera(target, nextYawRadians, nextPitchRadians, distance, 'keyboard_orbit');
+      }
     },
     dispose: () => {
       canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointercancel', clearInputState);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerEnd);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('lostpointercapture', onLostPointerCapture);
+      canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('blur', clearInputState);
-      ownerDocument.removeEventListener('pointerup', onPointerUp);
-      ownerDocument.removeEventListener('mousemove', onMouseMove);
+      ownerDocument.removeEventListener('pointerup', onPointerEnd);
+      ownerDocument.removeEventListener('pointercancel', onPointerCancel);
       ownerDocument.removeEventListener('keydown', onKeyDown);
       ownerDocument.removeEventListener('keyup', onKeyUp);
       ownerDocument.removeEventListener('visibilitychange', onVisibilityChange);
       ownerWindow?.removeEventListener('blur', clearInputState);
       clearInputState();
+      canvas.tabIndex = originalTabIndex;
+      canvas.style.touchAction = originalTouchAction;
     },
   };
 }
@@ -489,9 +699,30 @@ function isMovementKey(code: string): code is (typeof MOVEMENT_KEYS)[number] {
   return MOVEMENT_KEYS.some((movementKey) => movementKey === code);
 }
 
+function isOrbitKey(code: string): code is (typeof ORBIT_KEYS)[number] {
+  return ORBIT_KEYS.some((orbitKey) => orbitKey === code);
+}
+
+function keyboardZoomDirection(event: KeyboardEvent): 'in' | 'out' | null {
+  if (event.code === 'NumpadAdd' || event.key === '+') {
+    return 'in';
+  }
+  if (event.code === 'Minus' || event.code === 'NumpadSubtract' || event.key === '-') {
+    return 'out';
+  }
+  return null;
+}
+
 function requirePositiveFinite(value: number, label: string): number {
   if (!Number.isFinite(value) || value <= 0) {
     throw new TypeError(`${label} must be finite and positive`);
+  }
+  return value;
+}
+
+function requireUnitInterval(value: number, label: string): number {
+  if (!Number.isFinite(value) || value <= 0 || value >= 1) {
+    throw new TypeError(`${label} must be finite and between zero and one`);
   }
   return value;
 }
