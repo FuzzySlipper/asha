@@ -155,6 +155,11 @@ export function installNativeBrowserHostProvider(
     );
   }
   const nativeModulePath = options.nativeModulePath;
+  if (nativeModulePath !== undefined && nativeModulePath.trim().length === 0) {
+    throw new Error(
+      'ASHA browser host provider nativeModulePath must be a non-empty trusted-host path.',
+    );
+  }
   const createRuntimeBridgeForProvider = nativeModulePath === undefined
     ? options.createRuntimeBridge ?? createNativeRuntimeBridge
     : () => createNativeRuntimeBridge(nativeModulePath);

@@ -94,6 +94,34 @@ void test('browser host accepts exactly one trusted native provider selection me
   );
 });
 
+void test('browser host rejects empty composed provider paths before opening a server', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-empty-provider-'));
+  try {
+    await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA Studio</title>');
+    for (const nativeModulePath of ['', ' \t\n']) {
+      const outcome = await launchNativeBrowserHost({
+        uiRoot: tempRoot,
+        host: '127.0.0.1',
+        port: 0,
+        provider: {
+          globalScope: {},
+          nativeModulePath,
+        },
+      }).then(
+        (host) => ({ host }),
+        (error: unknown) => ({ error }),
+      );
+      if ('host' in outcome) {
+        await outcome.host.close();
+        assert.fail('an empty provider path must reject before the browser server opens');
+      }
+      assert.match(String(outcome.error), /nativeModulePath must be a non-empty trusted-host path/u);
+    }
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 void test('browser host rejects missing and malformed composed provider modules before serving', async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-provider-module-'));
   try {
