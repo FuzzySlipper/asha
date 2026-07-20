@@ -1057,6 +1057,7 @@ fn derive_prefab_bootstrap(
             scene_instance_id: instance.instance_id.clone(),
             origin: GameplayRuntimePrefabPlacementOrigin::Authored,
             instance: instance.node.raw(),
+            authored_prefab: *prefab_id,
             prefab: selected,
             seed: *instantiation_seed,
             transform: GameplayRuntimePrefabTransform {

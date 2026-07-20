@@ -334,8 +334,12 @@ impl GameplayRuntimeHost {
         let (prefab_registry, prefab_scene_instances) =
             apply_prefab_bootstrap(&mut bundle, prefabs)?;
         let mut entity_targets = input.entity_targets;
-        for (scene_instance_id, instance) in prefab_scene_instances {
-            entity_targets.bind_prefab_instance(scene_instance_id, instance);
+        for (scene_instance_id, instance, authored_prefab) in prefab_scene_instances {
+            entity_targets.bind_authored_prefab_instance(
+                scene_instance_id,
+                instance,
+                authored_prefab,
+            );
         }
         Self::activate_with_prefab_registry(
             GameplayRuntimeHostInput {
@@ -396,8 +400,12 @@ impl GameplayRuntimeHost {
         let (prefab_registry, prefab_scene_instances) =
             apply_prefab_bootstrap(&mut bundle, prefabs)?;
         let mut entity_targets = input.entity_targets;
-        for (scene_instance_id, instance) in prefab_scene_instances {
-            entity_targets.bind_prefab_instance(scene_instance_id, instance);
+        for (scene_instance_id, instance, authored_prefab) in prefab_scene_instances {
+            entity_targets.bind_authored_prefab_instance(
+                scene_instance_id,
+                instance,
+                authored_prefab,
+            );
         }
         Self::restore_with_prefab_registry(
             GameplayRuntimeHostInput {

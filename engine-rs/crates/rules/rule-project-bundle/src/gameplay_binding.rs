@@ -52,7 +52,13 @@ const GAMEPLAY_MODULE_SESSION_SNAPSHOT_VERSION: u32 = 2;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct GameplayBindingEntityTargets {
     definitions: BTreeMap<String, BTreeSet<EntityId>>,
-    prefab_instances: BTreeMap<String, PrefabInstanceId>,
+    prefab_instances: BTreeMap<String, GameplayBindingPrefabInstanceTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GameplayBindingPrefabInstanceTarget {
+    instance: PrefabInstanceId,
+    authored_prefab: Option<core_ids::PrefabId>,
 }
 
 impl GameplayBindingEntityTargets {
@@ -75,13 +81,52 @@ impl GameplayBindingEntityTargets {
         scene_instance_id: impl Into<String>,
         instance: PrefabInstanceId,
     ) -> &mut Self {
-        self.prefab_instances
-            .insert(scene_instance_id.into(), instance);
+        self.prefab_instances.insert(
+            scene_instance_id.into(),
+            GameplayBindingPrefabInstanceTarget {
+                instance,
+                authored_prefab: None,
+            },
+        );
         self
     }
 
-    fn prefab_instance(&self, scene_instance_id: &str) -> Option<PrefabInstanceId> {
+    /// Bind the stable scene identity and the base prefab selected by authored
+    /// content. Runtime expansion may instantiate a concrete named-variant
+    /// definition, but gameplay bindings continue to target the stored base.
+    pub fn bind_authored_prefab_instance(
+        &mut self,
+        scene_instance_id: impl Into<String>,
+        instance: PrefabInstanceId,
+        authored_prefab: core_ids::PrefabId,
+    ) -> &mut Self {
+        self.prefab_instances.insert(
+            scene_instance_id.into(),
+            GameplayBindingPrefabInstanceTarget {
+                instance,
+                authored_prefab: Some(authored_prefab),
+            },
+        );
+        self
+    }
+
+    fn prefab_instance(
+        &self,
+        scene_instance_id: &str,
+    ) -> Option<GameplayBindingPrefabInstanceTarget> {
         self.prefab_instances.get(scene_instance_id).copied()
+    }
+
+    fn instance_matches_prefab(
+        &self,
+        instance: PrefabInstanceId,
+        expanded_prefab: core_ids::PrefabId,
+        expected_prefab: core_ids::PrefabId,
+    ) -> bool {
+        expanded_prefab == expected_prefab
+            || self.prefab_instances.values().any(|target| {
+                target.instance == instance && target.authored_prefab == Some(expected_prefab)
+            })
     }
 
     fn entities(&self, stable_id: &str) -> impl Iterator<Item = EntityId> + '_ {
@@ -909,7 +954,7 @@ fn validate_overrides<'a>(
         let Some(binding) = indexed_bindings.get(&layer.binding_id).copied() else {
             continue;
         };
-        let Some(prefab_instance) = entity_targets.prefab_instance(&layer.scene_instance_id) else {
+        let Some(prefab_target) = entity_targets.prefab_instance(&layer.scene_instance_id) else {
             diagnostics.push(diag(
                 GameplayModuleBindingDiagnosticCode::InvalidOverride,
                 format!("{path}.sceneInstanceId"),
@@ -917,6 +962,7 @@ fn validate_overrides<'a>(
             ));
             continue;
         };
+        let prefab_instance = prefab_target.instance;
         let Some(instance) = bundle.prefab_instances.instance(prefab_instance) else {
             diagnostics.push(diag(
                 GameplayModuleBindingDiagnosticCode::InvalidOverride,
@@ -930,7 +976,10 @@ fn validate_overrides<'a>(
             GameplayModuleBindingTarget::PrefabPart { part } => Some(part.prefab),
             _ => None,
         };
-        if target_prefab != Some(instance.record.prefab) {
+        let binding_prefab = prefab_target
+            .authored_prefab
+            .unwrap_or(instance.record.prefab);
+        if target_prefab != Some(binding_prefab) {
             diagnostics.push(diag(
                 GameplayModuleBindingDiagnosticCode::InvalidOverride,
                 path.clone(),
@@ -969,7 +1018,13 @@ fn resolve_target(
         GameplayModuleBindingTarget::Prefab { prefab } => bundle
             .prefab_instances
             .instances()
-            .filter(|instance| instance.record.prefab == *prefab)
+            .filter(|instance| {
+                entity_targets.instance_matches_prefab(
+                    instance.record.instance,
+                    instance.record.prefab,
+                    *prefab,
+                )
+            })
             .map(|instance| EffectiveTarget {
                 scope: GameplayModuleStateScope::PrefabInstance {
                     instance: instance.record.instance.raw(),
@@ -989,10 +1044,16 @@ fn resolve_target(
         GameplayModuleBindingTarget::PrefabPart { part } => bundle
             .prefab_instances
             .instances()
-            .filter(|instance| instance.record.prefab == part.prefab)
+            .filter(|instance| {
+                entity_targets.instance_matches_prefab(
+                    instance.record.instance,
+                    instance.record.prefab,
+                    part.prefab,
+                )
+            })
             .filter_map(|instance| {
                 let stored_part = svc_serialization::PrefabPartReference {
-                    prefab: part.prefab,
+                    prefab: instance.record.prefab,
                     role: part.role.clone(),
                 };
                 bundle

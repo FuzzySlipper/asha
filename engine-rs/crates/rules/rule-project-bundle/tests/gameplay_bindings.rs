@@ -687,6 +687,58 @@ fn binding_targets() -> GameplayBindingEntityTargets {
 }
 
 #[test]
+fn stored_base_prefab_identity_survives_concrete_variant_expansion() {
+    let bundle = loaded_bundle();
+    let mut variant_bindings = bindings();
+    let GameplayModuleBindingTarget::PrefabPart { part } = &mut variant_bindings.bindings[1].target
+    else {
+        panic!("fixture keeps the prefab-part binding in slot one");
+    };
+    part.prefab = PrefabId::new(11);
+    variant_bindings.registry_hash = gameplay_module_binding_registry_hash(&variant_bindings);
+
+    let mut targets = GameplayBindingEntityTargets::new();
+    targets.bind_authored_prefab_instance(
+        "fixture.turret.20",
+        PrefabInstanceId::new(20),
+        PrefabId::new(11),
+    );
+    let session = GameplayBoundProjectBundleSession::activate(
+        bundle.clone(),
+        composition(),
+        variant_bindings.clone(),
+        &targets,
+    )
+    .expect("stored base identity resolves the expanded variant's real part role");
+    assert!(session.activation.readouts.iter().any(|readout| {
+        readout.binding_id == "muzzle-counter"
+            && readout.configuration_id == "turret-20"
+            && readout.active
+    }));
+
+    let mut unrelated = GameplayBindingEntityTargets::new();
+    unrelated.bind_authored_prefab_instance(
+        "fixture.turret.20",
+        PrefabInstanceId::new(20),
+        PrefabId::new(12),
+    );
+    let error = GameplayBoundProjectBundleSession::activate(
+        bundle,
+        composition(),
+        variant_bindings,
+        &unrelated,
+    );
+    let error = match error {
+        Ok(_) => panic!("an unrelated stored prefab cannot borrow the variant instance"),
+        Err(error) => error,
+    };
+    assert!(matches!(
+        error,
+        GameplayBindingActivationError::Invalid { .. }
+    ));
+}
+
+#[test]
 fn bindings_activate_atomic_facets_and_round_trip_against_project_bundle_authority() {
     let bundle = loaded_bundle();
     let bindings = bindings();

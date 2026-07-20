@@ -43,6 +43,9 @@ pub struct GameplayRuntimePrefabPlacement {
     pub scene_instance_id: String,
     pub origin: GameplayRuntimePrefabPlacementOrigin,
     pub instance: u64,
+    /// Base prefab selected by the stored scene reference. `prefab` may name a
+    /// concrete variant definition used for expansion.
+    pub authored_prefab: u64,
     pub prefab: u64,
     pub seed: u64,
     pub transform: GameplayRuntimePrefabTransform,
@@ -156,7 +159,7 @@ pub(crate) fn apply_prefab_bootstrap(
 ) -> Result<
     (
         svc_serialization::ValidatedPrefabRegistry,
-        Vec<(String, PrefabInstanceId)>,
+        Vec<(String, PrefabInstanceId, PrefabId)>,
     ),
     GameplayRuntimeHostError,
 > {
@@ -206,7 +209,11 @@ pub(crate) fn apply_prefab_bootstrap(
                 },
             )
             .map_err(|error| GameplayRuntimeHostError::Prefab(error.to_string()))?;
-        scene_instances.push((placement.scene_instance_id, runtime_instance));
+        scene_instances.push((
+            placement.scene_instance_id,
+            runtime_instance,
+            PrefabId::new(placement.authored_prefab),
+        ));
     }
     Ok((registry, scene_instances))
 }
@@ -625,6 +632,7 @@ mod tests {
                     scene_instance_id: "fixture.console.blue".to_owned(),
                     origin: GameplayRuntimePrefabPlacementOrigin::Authored,
                     instance: 700,
+                    authored_prefab: 70,
                     prefab: 70,
                     seed: 11,
                     transform: GameplayRuntimePrefabTransform::IDENTITY,
@@ -638,6 +646,7 @@ mod tests {
                     scene_instance_id: "fixture.console.red".to_owned(),
                     origin: GameplayRuntimePrefabPlacementOrigin::Player,
                     instance: 701,
+                    authored_prefab: 70,
                     prefab: 70,
                     seed: 12,
                     transform: GameplayRuntimePrefabTransform {
