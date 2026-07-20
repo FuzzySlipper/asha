@@ -213,7 +213,7 @@ pub struct StaticRuntimeSessionBuilder {
 
 struct RestoredCompositionState {
     fps_session: Option<FpsRuntimeSessionState>,
-    fps_seed: Option<FpsRuntimeSessionLoadRequest>,
+    fps_seed: Option<FpsProjectBundleLoadInput>,
     fps_epoch: u64,
     base_entities: EntityStore,
     gameplay_reset_checkpoint: GameplayRuntimeResetCheckpoint,
@@ -480,7 +480,7 @@ pub struct ComposedRuntimeSessionCheckpoint {
     gameplay_snapshot: String,
     gameplay_snapshot_hash: String,
     fps_session: Option<FpsRuntimeSessionState>,
-    fps_seed: Option<FpsRuntimeSessionLoadRequest>,
+    fps_seed: Option<FpsProjectBundleLoadInput>,
     fps_epoch: u64,
     base_entities: EntityStore,
     gameplay_reset_checkpoint: GameplayRuntimeResetCheckpoint,

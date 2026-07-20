@@ -77,10 +77,51 @@ struct EntityDefinitionMetadataWire {
     deny_unknown_fields
 )]
 enum EntityDefinitionCapabilityWire {
-    Transform { transform: TransformWire },
-    Render { visible: bool },
-    Collision { static_collider: bool },
-    Bounds { min: [f32; 3], max: [f32; 3] },
+    Transform {
+        transform: TransformWire,
+    },
+    Render {
+        visible: bool,
+    },
+    Collision {
+        static_collider: bool,
+    },
+    Bounds {
+        min: [f32; 3],
+        max: [f32; 3],
+    },
+    Controller {
+        controller_id: String,
+    },
+    Health {
+        current: u32,
+        max: u32,
+    },
+    WeaponMount {
+        weapon_id: String,
+        damage: u32,
+        range_units: u32,
+        ammo: u32,
+        cooldown_ticks_after_fire: u32,
+    },
+    RenderProjection {
+        projection_id: String,
+        visible: bool,
+    },
+    PolicyBinding {
+        binding_id: String,
+        policy_id: String,
+        view_kind: String,
+        view_version: String,
+        allowed_intents: Vec<String>,
+        runtime_moment: String,
+    },
+    SpawnMarker {
+        marker_id: String,
+    },
+    Faction {
+        faction_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -740,6 +781,51 @@ impl From<EntityDefinitionCapabilityWire> for EntityDefinitionCapability {
                 Self::Collision { static_collider }
             }
             EntityDefinitionCapabilityWire::Bounds { min, max } => Self::Bounds { min, max },
+            EntityDefinitionCapabilityWire::Controller { controller_id } => {
+                Self::Controller { controller_id }
+            }
+            EntityDefinitionCapabilityWire::Health { current, max } => {
+                Self::Health { current, max }
+            }
+            EntityDefinitionCapabilityWire::WeaponMount {
+                weapon_id,
+                damage,
+                range_units,
+                ammo,
+                cooldown_ticks_after_fire,
+            } => Self::WeaponMount {
+                weapon_id,
+                damage,
+                range_units,
+                ammo,
+                cooldown_ticks_after_fire,
+            },
+            EntityDefinitionCapabilityWire::RenderProjection {
+                projection_id,
+                visible,
+            } => Self::RenderProjection {
+                projection_id,
+                visible,
+            },
+            EntityDefinitionCapabilityWire::PolicyBinding {
+                binding_id,
+                policy_id,
+                view_kind,
+                view_version,
+                allowed_intents,
+                runtime_moment,
+            } => Self::PolicyBinding {
+                binding_id,
+                policy_id,
+                view_kind,
+                view_version,
+                allowed_intents,
+                runtime_moment,
+            },
+            EntityDefinitionCapabilityWire::SpawnMarker { marker_id } => {
+                Self::SpawnMarker { marker_id }
+            }
+            EntityDefinitionCapabilityWire::Faction { faction_id } => Self::Faction { faction_id },
         }
     }
 }
@@ -757,6 +843,49 @@ impl TryFrom<EntityDefinitionCapability> for EntityDefinitionCapabilityWire {
                 Self::Collision { static_collider }
             }
             EntityDefinitionCapability::Bounds { min, max } => Self::Bounds { min, max },
+            EntityDefinitionCapability::Controller { controller_id } => {
+                Self::Controller { controller_id }
+            }
+            EntityDefinitionCapability::Health { current, max } => Self::Health { current, max },
+            EntityDefinitionCapability::WeaponMount {
+                weapon_id,
+                damage,
+                range_units,
+                ammo,
+                cooldown_ticks_after_fire,
+            } => Self::WeaponMount {
+                weapon_id,
+                damage,
+                range_units,
+                ammo,
+                cooldown_ticks_after_fire,
+            },
+            EntityDefinitionCapability::RenderProjection {
+                projection_id,
+                visible,
+            } => Self::RenderProjection {
+                projection_id,
+                visible,
+            },
+            EntityDefinitionCapability::PolicyBinding {
+                binding_id,
+                policy_id,
+                view_kind,
+                view_version,
+                allowed_intents,
+                runtime_moment,
+            } => Self::PolicyBinding {
+                binding_id,
+                policy_id,
+                view_kind,
+                view_version,
+                allowed_intents,
+                runtime_moment,
+            },
+            EntityDefinitionCapability::SpawnMarker { marker_id } => {
+                Self::SpawnMarker { marker_id }
+            }
+            EntityDefinitionCapability::Faction { faction_id } => Self::Faction { faction_id },
             EntityDefinitionCapability::Unknown { capability_kind } => {
                 return Err(format!(
                     "unknown entity definition capability `{capability_kind}` cannot be encoded"

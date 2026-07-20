@@ -195,12 +195,13 @@ pub(crate) use render_particle::{ParticleProjectionLimits, ParticleProjector};
 pub(crate) use render_telemetry_overlay::TelemetryOverlayProjector;
 pub(crate) use rule_input::InputSessionResolver;
 pub(crate) use rule_lifecycle::{
-    load_fps_project_bundle_into, FpsEncounterLastTransition,
-    FpsEncounterLifecycleInput as RuleFpsEncounterLifecycleInput, FpsEncounterState,
-    FpsEncounterStatus, FpsEncounterTransitionAction, FpsEncounterTransitionReceipt,
-    FpsLifecycleStatus, FpsPolicyBinding, FpsPrimaryFireAuthorityInput, FpsPrimaryFireReceipt,
-    FpsProjectBundleLoadInput, FpsRenderProjectionState, FpsRuntimeError, FpsRuntimeRole,
-    FpsRuntimeSessionState, FpsStoredEntityDefinition, FpsWeaponMount,
+    load_fps_project_bundle_from_existing_entities, load_fps_project_bundle_into,
+    FpsEncounterLastTransition, FpsEncounterLifecycleInput as RuleFpsEncounterLifecycleInput,
+    FpsEncounterState, FpsEncounterStatus, FpsEncounterTransitionAction,
+    FpsEncounterTransitionReceipt, FpsLifecycleStatus, FpsPolicyBinding,
+    FpsPrimaryFireAuthorityInput, FpsPrimaryFireReceipt, FpsProjectBundleLoadInput,
+    FpsRenderProjectionState, FpsRuntimeError, FpsRuntimeRole, FpsRuntimeSessionState,
+    FpsStoredEntityDefinition, FpsWeaponMount,
 };
 pub use rule_voxel_edit::VoxelEditRejection;
 pub(crate) use sim_runner::{SimulationAuthority, TimeController};

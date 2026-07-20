@@ -105,6 +105,30 @@ pub fn load_runtime_project(handle: i64, request_json: String) -> napi::Result<S
     })
 }
 
+/// Read-only projection of the canonical content and entry scene installed by
+/// `load_runtime_project`. It cannot be replayed as a bootstrap request.
+#[napi]
+pub fn read_active_runtime_project_content(handle: i64) -> napi::Result<String> {
+    with_bridge(handle, |bridge| {
+        let readout = bridge
+            .read_active_runtime_project_content()
+            .map_err(to_napi)?;
+        let value = serde_json::json!({
+            "projectId": readout.project_id,
+            "manifestHash": readout.manifest_hash,
+            "contentSetHash": readout.content_set_hash,
+            "entryScene": crate::scene_preview::scene_document_json(&readout.entry_scene),
+            "content": crate::project_content::codec_result_json(&readout.content)?,
+        });
+        serde_json::to_string(&value).map_err(|error| {
+            to_napi(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                format!("failed to serialize active runtime project content: {error}"),
+            ))
+        })
+    })
+}
+
 /// Explicit lifecycle-bound close for the canonical project runtime path.
 #[napi]
 pub fn close_runtime_project(handle: i64, request_json: String) -> napi::Result<String> {

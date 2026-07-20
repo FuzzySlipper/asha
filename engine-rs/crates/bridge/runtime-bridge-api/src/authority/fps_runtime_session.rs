@@ -112,8 +112,8 @@ impl EngineBridge {
             .static_gameplay_base_entities
             .clone()
             .unwrap_or_default();
-        let loaded =
-            load_fps_project_bundle_into(&mut entities, input).map_err(Self::fps_runtime_error)?;
+        let loaded = load_fps_project_bundle_into(&mut entities, input.clone())
+            .map_err(Self::fps_runtime_error)?;
         if let Some(checkpoint) = self.gameplay.static_gameplay_reset_checkpoint.clone() {
             self.with_static_gameplay_runtime("load_fps_runtime_session", move |host| {
                 host.restore_reset_state(checkpoint)
@@ -123,7 +123,7 @@ impl EngineBridge {
         self.scene.entities = entities;
         self.scene.scene_document = Some(canonical_scene);
         self.gameplay.fps_session = Some(loaded);
-        self.gameplay.fps_seed = Some(request);
+        self.gameplay.fps_seed = Some(input);
         self.gameplay.fps_epoch = self.gameplay.fps_epoch.saturating_add(1);
         self.gameplay.game_rule_modules = game_rule_modules;
         self.reset_presentation_projection();
@@ -402,14 +402,22 @@ impl EngineBridge {
                 "restart_fps_runtime_session called before load_fps_runtime_session",
             )
         })?;
-        let input = Self::convert_fps_load_request(&seed)?;
+        let input = seed;
         let mut entities = self
             .gameplay
             .static_gameplay_base_entities
             .clone()
             .unwrap_or_default();
-        let loaded =
-            load_fps_project_bundle_into(&mut entities, input).map_err(Self::fps_runtime_error)?;
+        let loaded = if input
+            .definitions
+            .iter()
+            .all(|definition| entities.contains(definition.entity))
+        {
+            load_fps_project_bundle_from_existing_entities(&mut entities, input)
+        } else {
+            load_fps_project_bundle_into(&mut entities, input)
+        }
+        .map_err(Self::fps_runtime_error)?;
         if let Some(checkpoint) = self.gameplay.static_gameplay_reset_checkpoint.clone() {
             self.with_static_gameplay_runtime("restart_fps_runtime_session", move |host| {
                 host.restore_reset_state(checkpoint)

@@ -26,6 +26,7 @@ pub enum RuntimeProjectLoadError {
     },
     Admission(gameplay_runtime_host::RuntimeProjectAdmissionReport),
     Activation(gameplay_runtime_host::GameplayRuntimeHostError),
+    Domain(String),
     Resource(String),
 }
 
@@ -62,6 +63,46 @@ impl EngineBridge {
                 voxel_bindings: active.voxel_bindings.clone(),
                 lifecycle: self.runtime_project_lifecycle_version(),
             })
+    }
+
+    pub fn read_active_runtime_project_content_authority(
+        &self,
+    ) -> BridgeResult<ActiveRuntimeProjectContentReadoutDto> {
+        self.require_initialized("read_active_runtime_project_content")?;
+        let active = self.bundle.active_runtime_project.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::NotInitialized,
+                "read_active_runtime_project_content called without an active canonical project",
+            )
+        })?;
+        let host = self.gameplay.static_gameplay_host.as_ref().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "active canonical project is missing its gameplay host",
+            )
+        })?;
+        let content = host
+            .activated_project_content_readout()
+            .cloned()
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::Internal,
+                    "active canonical project is missing its admitted content readout",
+                )
+            })?;
+        let entry_scene = host.activated_entry_scene().ok_or_else(|| {
+            RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "active canonical project is missing its entry scene",
+            )
+        })?;
+        Ok(ActiveRuntimeProjectContentReadoutDto {
+            project_id: active.project_id,
+            manifest_hash: active.manifest_hash.clone(),
+            content_set_hash: active.content_set_hash.clone(),
+            entry_scene: Self::scene_document_dto(entry_scene),
+            content,
+        })
     }
 
     /// Consume the complete admitted source closure and publish a new runtime
@@ -125,6 +166,10 @@ impl EngineBridge {
             .expect("validated activation retains entry scene")
             .clone();
         let voxel_assets = gameplay_host.take_activated_voxel_assets();
+        let fps_seed = Self::convert_runtime_project_fps_seed(
+            gameplay_host.take_activated_runtime_entity_seeds(),
+        )
+        .map_err(|error| RuntimeProjectLoadError::Domain(error.to_string()))?;
 
         let mut staged = EngineBridge::new();
         initialization::initialize(&mut staged, EngineConfig { seed: engine.raw() })
@@ -144,6 +189,17 @@ impl EngineBridge {
         staged.gameplay.static_gameplay_base_entities = Some(staged.scene.entities.clone());
         staged.gameplay.static_gameplay_reset_checkpoint = Some(reset_checkpoint);
         staged.gameplay.static_gameplay_host = Some(gameplay_host);
+        if let Some(seed) = fps_seed {
+            let fps_session = load_fps_project_bundle_from_existing_entities(
+                &mut staged.scene.entities,
+                seed.clone(),
+            )
+            .map_err(|error| RuntimeProjectLoadError::Domain(format!("{error:?}")))?;
+            staged.gameplay.fps_session = Some(fps_session);
+            staged.gameplay.fps_seed = Some(seed);
+            staged.gameplay.fps_epoch = 1;
+            staged.reset_presentation_projection();
+        }
 
         let referenced_voxel_assets = entry_scene
             .nodes

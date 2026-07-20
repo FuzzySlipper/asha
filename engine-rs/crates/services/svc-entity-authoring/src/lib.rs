@@ -340,6 +340,7 @@ pub enum ProjectBundleEntityDefinitionBootstrapDiagnosticCode {
     DuplicateDefinitionStableId,
     DuplicateRuntimeEntity,
     RuntimeEntityAlreadyExists,
+    RuntimeEntityMissing,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -511,7 +512,11 @@ pub fn bootstrap_project_bundle_entity_definitions(
     store: &mut EntityStore,
     request: &ProjectBundleEntityDefinitionBootstrapRequest,
 ) -> ProjectBundleEntityDefinitionBootstrapResult {
-    let diagnostics = validate_project_bundle_bootstrap_request(store, request);
+    let diagnostics = validate_project_bundle_bootstrap_request(
+        store,
+        request,
+        ProjectBundleBootstrapTarget::Create,
+    );
     if !diagnostics.is_empty() {
         return Err(ProjectBundleEntityDefinitionBootstrapError::Invalid { diagnostics });
     }
@@ -554,9 +559,67 @@ pub fn bootstrap_project_bundle_entity_definitions(
     })
 }
 
+/// Bind typed stored definitions to entities already created by canonical
+/// scene/bootstrap admission. This is the canonical RuntimeSession seam: it
+/// validates the same definition batch without allocating a second entity
+/// graph or reapplying base capabilities.
+pub fn bind_project_bundle_entity_definitions(
+    store: &EntityStore,
+    request: &ProjectBundleEntityDefinitionBootstrapRequest,
+) -> ProjectBundleEntityDefinitionBootstrapResult {
+    let diagnostics = validate_project_bundle_bootstrap_request(
+        store,
+        request,
+        ProjectBundleBootstrapTarget::Existing,
+    );
+    if !diagnostics.is_empty() {
+        return Err(ProjectBundleEntityDefinitionBootstrapError::Invalid { diagnostics });
+    }
+    let entity_hash = store.hash();
+    let records = request
+        .entries
+        .iter()
+        .map(|entry| EntityDefinitionBootstrapRecord {
+            stable_id: entry.definition.stable_id.clone(),
+            display_name: entry.definition.display_name.clone(),
+            entity: entry.entity,
+            source: entry.definition.source.clone(),
+            applied_capabilities: entry
+                .definition
+                .capabilities
+                .iter()
+                .filter(|capability| {
+                    matches!(
+                        capability,
+                        EntityDefinitionCapability::Transform { .. }
+                            | EntityDefinitionCapability::Collision { .. }
+                            | EntityDefinitionCapability::Bounds { .. }
+                    )
+                })
+                .map(|capability| capability.kind().to_owned())
+                .collect(),
+            entity_hash,
+            replay_unit_label: "entity_definition.canonical_binding",
+        })
+        .collect();
+    Ok(ProjectBundleEntityDefinitionBootstrapRecord {
+        project_bundle: request.project_bundle.clone(),
+        records,
+        entity_hash,
+        replay_unit_label: "project_bundle.entity_definitions.canonical_binding",
+    })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProjectBundleBootstrapTarget {
+    Create,
+    Existing,
+}
+
 fn validate_project_bundle_bootstrap_request(
     store: &EntityStore,
     request: &ProjectBundleEntityDefinitionBootstrapRequest,
+    target: ProjectBundleBootstrapTarget,
 ) -> Vec<ProjectBundleEntityDefinitionBootstrapDiagnostic> {
     let mut diagnostics = Vec::new();
     if request.project_bundle.trim().is_empty() {
@@ -630,13 +693,23 @@ fn validate_project_bundle_bootstrap_request(
                 Vec::new(),
             ));
         }
-        if store.contains(entry.entity) {
+        if target == ProjectBundleBootstrapTarget::Create && store.contains(entry.entity) {
             diagnostics.push(project_bundle_bootstrap_diag(
                 ProjectBundleEntityDefinitionBootstrapDiagnosticCode::RuntimeEntityAlreadyExists,
                 format!("{entry_path}.entity"),
                 Some(definition.stable_id.clone()),
                 Some(entry.entity),
                 "runtime entity id is already allocated in SessionState",
+                Vec::new(),
+            ));
+        }
+        if target == ProjectBundleBootstrapTarget::Existing && !store.contains(entry.entity) {
+            diagnostics.push(project_bundle_bootstrap_diag(
+                ProjectBundleEntityDefinitionBootstrapDiagnosticCode::RuntimeEntityMissing,
+                format!("{entry_path}.entity"),
+                Some(definition.stable_id.clone()),
+                Some(entry.entity),
+                "canonical runtime entity id is missing from SessionState",
                 Vec::new(),
             ));
         }
@@ -702,6 +775,77 @@ fn validate_entity_definition_capability(
                 ));
             }
         }
+        EntityDefinitionCapability::Controller { controller_id } => {
+            validate_required_capability_id(controller_id, path, "controller id", diagnostics);
+        }
+        EntityDefinitionCapability::Health { current, max } => {
+            if *max == 0 || current > max {
+                diagnostics.push(entity_definition_diag(
+                    EntityDefinitionDiagnosticCode::InvalidInitialValue,
+                    path,
+                    "health requires a non-zero max and current less than or equal to max",
+                ));
+            }
+        }
+        EntityDefinitionCapability::WeaponMount {
+            weapon_id,
+            damage,
+            range_units,
+            ammo: _,
+            cooldown_ticks_after_fire: _,
+        } => {
+            validate_required_capability_id(weapon_id, path, "weapon id", diagnostics);
+            if *damage == 0 || *range_units == 0 {
+                diagnostics.push(entity_definition_diag(
+                    EntityDefinitionDiagnosticCode::InvalidInitialValue,
+                    path,
+                    "weapon mount requires non-zero damage and range",
+                ));
+            }
+        }
+        EntityDefinitionCapability::RenderProjection { projection_id, .. } => {
+            validate_required_capability_id(
+                projection_id,
+                path,
+                "render projection id",
+                diagnostics,
+            );
+        }
+        EntityDefinitionCapability::PolicyBinding {
+            binding_id,
+            policy_id,
+            view_kind,
+            view_version,
+            allowed_intents,
+            runtime_moment,
+        } => {
+            for (label, value) in [
+                ("binding id", binding_id),
+                ("policy id", policy_id),
+                ("view kind", view_kind),
+                ("view version", view_version),
+                ("runtime moment", runtime_moment),
+            ] {
+                validate_required_capability_id(value, path, label, diagnostics);
+            }
+            if allowed_intents.is_empty()
+                || allowed_intents
+                    .iter()
+                    .any(|intent| intent.trim().is_empty())
+            {
+                diagnostics.push(entity_definition_diag(
+                    EntityDefinitionDiagnosticCode::InvalidInitialValue,
+                    path,
+                    "policy binding requires non-empty allowed intent ids",
+                ));
+            }
+        }
+        EntityDefinitionCapability::SpawnMarker { marker_id } => {
+            validate_required_capability_id(marker_id, path, "spawn marker id", diagnostics);
+        }
+        EntityDefinitionCapability::Faction { faction_id } => {
+            validate_required_capability_id(faction_id, path, "faction id", diagnostics);
+        }
         EntityDefinitionCapability::Unknown { capability_kind } => {
             diagnostics.push(entity_definition_diag(
                 EntityDefinitionDiagnosticCode::UnknownCapability,
@@ -709,6 +853,21 @@ fn validate_entity_definition_capability(
                 format!("unknown capability declaration \"{capability_kind}\""),
             ));
         }
+    }
+}
+
+fn validate_required_capability_id(
+    value: &str,
+    path: &str,
+    label: &str,
+    diagnostics: &mut Vec<EntityDefinitionDiagnostic>,
+) {
+    if value.trim().is_empty() {
+        diagnostics.push(entity_definition_diag(
+            EntityDefinitionDiagnosticCode::InvalidInitialValue,
+            path,
+            format!("{label} is required"),
+        ));
     }
 }
 
@@ -731,6 +890,13 @@ fn to_authoring_capability(capability: &EntityDefinitionCapability) -> Option<Au
             min: *min,
             max: *max,
         }),
+        EntityDefinitionCapability::Controller { .. }
+        | EntityDefinitionCapability::Health { .. }
+        | EntityDefinitionCapability::WeaponMount { .. }
+        | EntityDefinitionCapability::RenderProjection { .. }
+        | EntityDefinitionCapability::PolicyBinding { .. }
+        | EntityDefinitionCapability::SpawnMarker { .. }
+        | EntityDefinitionCapability::Faction { .. } => None,
         EntityDefinitionCapability::Unknown { .. } => None,
     }
 }

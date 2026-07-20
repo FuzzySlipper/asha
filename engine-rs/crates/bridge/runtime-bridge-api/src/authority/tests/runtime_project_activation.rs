@@ -1,9 +1,14 @@
 use core_assets::{markers, AssetRef};
 use core_scene::{
-    FlatSceneDocument, NodeMetadata, SceneMetadata, SceneNodeKind, SceneNodeRecord, SceneTransform,
+    FlatSceneDocument, NodeMetadata, SceneEntityInstance, SceneEntityReference, SceneMarker,
+    SceneMetadata, SceneNodeKind, SceneNodeRecord, SceneTransform,
 };
 use gameplay_module_sdk::*;
 use protocol_assets::{StoredAssetCatalog, StoredCatalogEntry};
+use protocol_input::{
+    InputActionDefinition, InputActionPhase, InputBindingRecord, InputContextDefinition,
+    InputValue, InputValueKind, PlatformInputKind, INPUT_BINDING_CATALOG_SCHEMA_VERSION,
+};
 use rule_gameplay_fabric::{SessionTickGameplayPayload, StandardGameplayEventKind};
 
 use super::*;
@@ -12,6 +17,10 @@ const PROJECT_ID: u64 = 311;
 const SCENE_ID: u64 = 912;
 const VOXEL_PATH: &str = "assets/hand-authored-room.avxl.json";
 const CATALOG_PATH: &str = "catalogs/materials.project-content.json";
+const FPS_PROJECT_BUNDLE: &str = "stored-fps-project";
+const PLAYER_DEFINITION_PATH: &str = "entities/demo-player.project-content.json";
+const ENEMY_DEFINITION_PATH: &str = "entities/tunnel-enemy.project-content.json";
+const GAMEPLAY_PATH: &str = "gameplay/fps.project-content.json";
 
 struct TickProbeBehavior;
 
@@ -129,6 +138,227 @@ fn stored_scene(asset_id: &str) -> FlatSceneDocument {
     }
 }
 
+fn stored_fps_scene(asset_id: &str) -> FlatSceneDocument {
+    let mut scene = stored_scene(asset_id);
+    scene.metadata.name = Some("stored FPS project entry".to_owned());
+    scene.nodes.extend([
+        SceneNodeRecord {
+            id: SceneNodeId::new(100),
+            parent: None,
+            child_order: 1,
+            transform: SceneTransform {
+                translation: Vec3::new(0.0, 0.0, -3.5),
+                ..SceneTransform::IDENTITY
+            },
+            kind: SceneNodeKind::Marker(SceneMarker {
+                marker_id: "spawn.enemy.primary".to_owned(),
+            }),
+            metadata: NodeMetadata::default(),
+        },
+        SceneNodeRecord {
+            id: SceneNodeId::new(101),
+            parent: None,
+            child_order: 2,
+            transform: SceneTransform {
+                translation: Vec3::new(0.0, 1.62, 0.0),
+                ..SceneTransform::IDENTITY
+            },
+            kind: SceneNodeKind::EntityInstance(SceneEntityInstance {
+                instance_id: "demo.player".to_owned(),
+                reference: SceneEntityReference::EntityDefinition {
+                    stable_id: "actor/demo-player".to_owned(),
+                },
+                spawn_marker_id: None,
+            }),
+            metadata: NodeMetadata::default(),
+        },
+        SceneNodeRecord {
+            id: SceneNodeId::new(102),
+            parent: None,
+            child_order: 3,
+            transform: SceneTransform {
+                translation: Vec3::new(0.0, 1.1, 0.0),
+                ..SceneTransform::IDENTITY
+            },
+            kind: SceneNodeKind::EntityInstance(SceneEntityInstance {
+                instance_id: "demo.enemy".to_owned(),
+                reference: SceneEntityReference::EntityDefinition {
+                    stable_id: "actor/generated-tunnel-enemy".to_owned(),
+                },
+                spawn_marker_id: Some("spawn.enemy.primary".to_owned()),
+            }),
+            metadata: NodeMetadata::default(),
+        },
+    ]);
+    scene.canonical()
+}
+
+fn stored_fps_definition(
+    stable_id: &str,
+    player: bool,
+    enemy_health: u32,
+    include_player_weapon: bool,
+) -> EntityDefinition {
+    let source_path = if player {
+        PLAYER_DEFINITION_PATH
+    } else {
+        ENEMY_DEFINITION_PATH
+    };
+    let mut capabilities = vec![
+        EntityDefinitionCapability::Transform {
+            transform: AuthoringTransform {
+                translation: [0.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0, 1.0],
+                scale: [1.0, 1.0, 1.0],
+            },
+        },
+        EntityDefinitionCapability::Bounds {
+            min: if player {
+                [-0.5, -1.4, -0.5]
+            } else {
+                [-0.7, -0.9, -0.7]
+            },
+            max: if player {
+                [0.5, 1.4, 0.5]
+            } else {
+                [0.7, 0.9, 0.7]
+            },
+        },
+        EntityDefinitionCapability::Collision {
+            static_collider: false,
+        },
+        EntityDefinitionCapability::Render { visible: true },
+        EntityDefinitionCapability::Health {
+            current: if player { 100 } else { enemy_health },
+            max: if player { 100 } else { enemy_health },
+        },
+        EntityDefinitionCapability::RenderProjection {
+            projection_id: if player {
+                "first_person_camera"
+            } else {
+                "target_cube"
+            }
+            .to_owned(),
+            visible: true,
+        },
+        EntityDefinitionCapability::Faction {
+            faction_id: if player { "player" } else { "hostile" }.to_owned(),
+        },
+    ];
+    if player {
+        capabilities.push(EntityDefinitionCapability::Controller {
+            controller_id: "player_input".to_owned(),
+        });
+        if include_player_weapon {
+            capabilities.push(EntityDefinitionCapability::WeaponMount {
+                weapon_id: "weapon.demo.primary".to_owned(),
+                damage: 40,
+                range_units: 16,
+                ammo: 2,
+                cooldown_ticks_after_fire: 4,
+            });
+        }
+    } else {
+        capabilities.extend([
+            EntityDefinitionCapability::Controller {
+                controller_id: "enemy_policy".to_owned(),
+            },
+            EntityDefinitionCapability::PolicyBinding {
+                binding_id: "actor/generated-tunnel-enemy:policy".to_owned(),
+                policy_id: "policy.enemy.generated_tunnel.v0".to_owned(),
+                view_kind: "runtime_session.fps.policy_view.v0".to_owned(),
+                view_version: "v0".to_owned(),
+                allowed_intents: vec![
+                    "runtime.intent.move_direct_nav.v0".to_owned(),
+                    "runtime.intent.primary_fire.v0".to_owned(),
+                ],
+                runtime_moment: "autonomous_policy_tick".to_owned(),
+            },
+            EntityDefinitionCapability::SpawnMarker {
+                marker_id: "spawn.enemy.primary".to_owned(),
+            },
+        ]);
+    }
+    EntityDefinition {
+        stable_id: stable_id.to_owned(),
+        display_name: if player {
+            "Demo Player"
+        } else {
+            "Tunnel Enemy"
+        }
+        .to_owned(),
+        source: EntityDefinitionSourceTrace {
+            project_bundle: FPS_PROJECT_BUNDLE.to_owned(),
+            relative_path: source_path.to_owned(),
+        },
+        tags: Vec::new(),
+        metadata: Vec::new(),
+        capabilities,
+    }
+}
+
+fn fps_content_artifacts(
+    composition: &GameplayStaticComposition,
+    scene: &FlatSceneDocument,
+    enemy_health: u32,
+    include_player_weapon: bool,
+) -> Vec<(String, Vec<u8>)> {
+    let documents = vec![
+        ProjectContentDocumentDto::EntityDefinition {
+            document_id: PLAYER_DEFINITION_PATH.to_owned(),
+            definition: stored_fps_definition(
+                "actor/demo-player",
+                true,
+                enemy_health,
+                include_player_weapon,
+            ),
+        },
+        ProjectContentDocumentDto::EntityDefinition {
+            document_id: ENEMY_DEFINITION_PATH.to_owned(),
+            definition: stored_fps_definition(
+                "actor/generated-tunnel-enemy",
+                false,
+                enemy_health,
+                include_player_weapon,
+            ),
+        },
+        ProjectContentDocumentDto::GameplayConfiguration {
+            document_id: GAMEPLAY_PATH.to_owned(),
+            document: protocol_project_content::ProjectGameplayConfigurationDocumentDto {
+                schema_version: protocol_project_content::PROJECT_CONTENT_SCHEMA_VERSION,
+                configurations: Vec::new(),
+                bindings: Vec::new(),
+                overrides: Vec::new(),
+                triggers: vec![protocol_project_bundle::GameplayTriggerDefinition {
+                    schema_version:
+                        protocol_project_bundle::GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
+                    scene_instance_id: "demo.enemy".to_owned(),
+                    scope: "encounter.primary".to_owned(),
+                    tags: vec!["enemy".to_owned()],
+                }],
+            },
+        },
+    ];
+    let gameplay = rule_project_bundle::GameplayProjectContentAdmission::new(
+        composition.project_configuration_authority(),
+    );
+    let outcome = svc_project_content::validate_project_content_documents(
+        documents,
+        svc_project_content::ProjectContentValidationContext {
+            scenes: &[svc_project_content::project_scene_document_dto(scene)],
+            gameplay: &gameplay,
+            reference_revision: 0,
+        },
+    );
+    assert!(outcome.result.accepted, "{:?}", outcome.result.diagnostics);
+    outcome
+        .result
+        .canonical_files
+        .into_iter()
+        .map(|file| (file.document_id, file.canonical_json.into_bytes()))
+        .collect()
+}
+
 fn material_catalog_artifact(
     composition: &GameplayStaticComposition,
     asset: &VoxelVolumeAsset,
@@ -170,13 +400,60 @@ fn project_source_batch(
     composition: &GameplayStaticComposition,
     referenced_asset_id: &str,
 ) -> protocol_project_bundle::RuntimeProjectSourceBatch {
+    project_source_batch_for_scene(
+        bridge,
+        composition,
+        stored_scene(referenced_asset_id),
+        Vec::new(),
+    )
+}
+
+fn project_source_batch_for_scene(
+    bridge: &mut EngineBridge,
+    composition: &GameplayStaticComposition,
+    scene: FlatSceneDocument,
+    content_artifacts: Vec<(String, Vec<u8>)>,
+) -> protocol_project_bundle::RuntimeProjectSourceBatch {
     let asset = hand_authored_voxel_volume_asset();
-    let scene_bytes = core_scene::encode(&stored_scene(referenced_asset_id)).into_bytes();
+    let scene_bytes = core_scene::encode(&scene).into_bytes();
     let asset_bytes = svc_voxel_asset::encode_asset(&asset)
         .expect("canonical voxel asset")
         .into_bytes();
     let catalog_bytes = material_catalog_artifact(composition, &asset);
     let lock_bytes = b"asset-lock-v1".to_vec();
+    let mut artifacts = vec![
+        svc_serialization::ArtifactEntry::durable(
+            "assets/lock.json",
+            svc_serialization::ArtifactRole::AssetLock,
+            &lock_bytes,
+        ),
+        svc_serialization::ArtifactEntry::durable(
+            "scenes/entry.scene.json",
+            svc_serialization::ArtifactRole::SceneDocument,
+            &scene_bytes,
+        ),
+        svc_serialization::ArtifactEntry::durable(
+            CATALOG_PATH,
+            svc_serialization::ArtifactRole::MaterialCatalog,
+            &catalog_bytes,
+        ),
+        svc_serialization::ArtifactEntry::durable(
+            VOXEL_PATH,
+            svc_serialization::ArtifactRole::VoxelVolumeAsset,
+            &asset_bytes,
+        ),
+    ];
+    artifacts.extend(content_artifacts.iter().map(|(path, bytes)| {
+        svc_serialization::ArtifactEntry::durable(
+            path,
+            if path == GAMEPLAY_PATH {
+                svc_serialization::ArtifactRole::ProjectContent
+            } else {
+                svc_serialization::ArtifactRole::EntityDefinitionCatalog
+            },
+            bytes,
+        )
+    }));
     let manifest = svc_serialization::ProjectBundleManifest {
         bundle_schema_version: svc_serialization::BUNDLE_SCHEMA_VERSION,
         protocol_version: svc_serialization::SUPPORTED_PROTOCOL_VERSION,
@@ -195,28 +472,7 @@ fn project_source_batch(
             asset_count: 1,
         },
         generation_provenance: None,
-        artifacts: vec![
-            svc_serialization::ArtifactEntry::durable(
-                "assets/lock.json",
-                svc_serialization::ArtifactRole::AssetLock,
-                &lock_bytes,
-            ),
-            svc_serialization::ArtifactEntry::durable(
-                "scenes/entry.scene.json",
-                svc_serialization::ArtifactRole::SceneDocument,
-                &scene_bytes,
-            ),
-            svc_serialization::ArtifactEntry::durable(
-                CATALOG_PATH,
-                svc_serialization::ArtifactRole::MaterialCatalog,
-                &catalog_bytes,
-            ),
-            svc_serialization::ArtifactEntry::durable(
-                VOXEL_PATH,
-                svc_serialization::ArtifactRole::VoxelVolumeAsset,
-                &asset_bytes,
-            ),
-        ],
+        artifacts,
     };
     let manifest_json = svc_serialization::encode(&manifest);
     let transaction = bridge
@@ -225,32 +481,81 @@ fn project_source_batch(
     let staged_asset = bridge
         .stage_runtime_project_source_resource(transaction, VOXEL_PATH, asset_bytes)
         .expect("stage canonical voxel asset");
+    let mut bodies = vec![
+        protocol_project_bundle::ProjectSourceBody::Inline {
+            path: "assets/lock.json".to_owned(),
+            bytes: lock_bytes,
+        },
+        protocol_project_bundle::ProjectSourceBody::Inline {
+            path: "scenes/entry.scene.json".to_owned(),
+            bytes: scene_bytes,
+        },
+        protocol_project_bundle::ProjectSourceBody::Inline {
+            path: CATALOG_PATH.to_owned(),
+            bytes: catalog_bytes,
+        },
+        protocol_project_bundle::ProjectSourceBody::Resource {
+            path: VOXEL_PATH.to_owned(),
+            resource: protocol_project_bundle::StagedProjectResourceRef {
+                handle: staged_asset.handle.raw(),
+                generation: staged_asset.generation,
+                version: staged_asset.version,
+                byte_len: staged_asset.byte_len,
+            },
+        },
+    ];
+    bodies.extend(
+        content_artifacts.into_iter().map(|(path, bytes)| {
+            protocol_project_bundle::ProjectSourceBody::Inline { path, bytes }
+        }),
+    );
     protocol_project_bundle::RuntimeProjectSourceBatch {
         manifest_json,
         resource_generation: Some(transaction.generation()),
-        bodies: vec![
-            protocol_project_bundle::ProjectSourceBody::Inline {
-                path: "assets/lock.json".to_owned(),
-                bytes: lock_bytes,
-            },
-            protocol_project_bundle::ProjectSourceBody::Inline {
-                path: "scenes/entry.scene.json".to_owned(),
-                bytes: scene_bytes,
-            },
-            protocol_project_bundle::ProjectSourceBody::Inline {
-                path: CATALOG_PATH.to_owned(),
-                bytes: catalog_bytes,
-            },
-            protocol_project_bundle::ProjectSourceBody::Resource {
-                path: VOXEL_PATH.to_owned(),
-                resource: protocol_project_bundle::StagedProjectResourceRef {
-                    handle: staged_asset.handle.raw(),
-                    generation: staged_asset.generation,
-                    version: staged_asset.version,
-                    byte_len: staged_asset.byte_len,
-                },
-            },
-        ],
+        bodies,
+    }
+}
+
+fn fps_project_source_batch(
+    bridge: &mut EngineBridge,
+    composition: &GameplayStaticComposition,
+) -> protocol_project_bundle::RuntimeProjectSourceBatch {
+    fps_project_source_batch_with(bridge, composition, 40, true)
+}
+
+fn fps_project_source_batch_with(
+    bridge: &mut EngineBridge,
+    composition: &GameplayStaticComposition,
+    enemy_health: u32,
+    include_player_weapon: bool,
+) -> protocol_project_bundle::RuntimeProjectSourceBatch {
+    let scene = stored_fps_scene("voxel-volume/hand-authored-room");
+    let content = fps_content_artifacts(composition, &scene, enemy_health, include_player_weapon);
+    project_source_batch_for_scene(bridge, composition, scene, content)
+}
+
+fn fps_input_catalog() -> InputBindingCatalog {
+    InputBindingCatalog {
+        schema_version: INPUT_BINDING_CATALOG_SCHEMA_VERSION,
+        actions: vec![InputActionDefinition {
+            action_id: "game.move.forward".to_owned(),
+            value_kind: InputValueKind::Button,
+            accepted_phases: vec![InputActionPhase::Held],
+        }],
+        contexts: vec![InputContextDefinition {
+            context_id: "gameplay".to_owned(),
+            priority: 10,
+            consumes_lower_priority: false,
+        }],
+        bindings: vec![InputBindingRecord {
+            binding_id: "game.forward.w".to_owned(),
+            action_id: "game.move.forward".to_owned(),
+            context_id: "gameplay".to_owned(),
+            platform_kind: PlatformInputKind::KeyboardKey,
+            control: "KeyW".to_owned(),
+            scale: 1.0,
+            extension: None,
+        }],
     }
 }
 
@@ -378,6 +683,377 @@ fn fresh_activation_derives_voxel_collision_projection_and_gameplay_from_stored_
         reaction.observe.invocations[0].module_id,
         "fixture.stored-project-tick"
     );
+}
+
+#[test]
+fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootstrap() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+    use protocol_view::{
+        CameraCollisionPolicy, CameraCollisionPolicyMode, CameraCollisionShape,
+        CameraCreateRequest, CameraPose, CollisionConstrainedCameraInputEnvelope,
+        FirstPersonCameraInput, FirstPersonMovementMode, PerspectiveProjection, ViewportSize,
+    };
+
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 6007 })
+        .unwrap();
+    let source = fps_project_source_batch(&mut bridge, &composition);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("canonical FPS source admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+
+    let receipt = RuntimeBridge::load_runtime_project(
+        &mut bridge,
+        RuntimeProjectLoadRequest {
+            source: RuntimeProjectSourceAdapterInput {
+                kind: RuntimeProjectSourceAdapterKind::InMemory,
+                identity: "fixture:canonical-fps".to_owned(),
+                materialization_hash: "fnv1a64:6007000000000000".to_owned(),
+            },
+            expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+        },
+    )
+    .expect("public canonical load operation");
+    assert!(receipt.accepted, "{:?}", receipt.diagnostics);
+    assert_eq!(receipt.active_project.as_ref().unwrap().entity_count, 2);
+    assert_eq!(
+        receipt.active_project.as_ref().unwrap().voxel_asset_count,
+        1
+    );
+    let active_content = RuntimeBridge::read_active_runtime_project_content(&bridge)
+        .expect("active content is projected from Rust authority");
+    assert_eq!(active_content.project_id, PROJECT_ID);
+    assert_eq!(active_content.content.documents.len(), 4);
+    assert_eq!(active_content.entry_scene.id, SceneId::new(SCENE_ID));
+
+    let initial = RuntimeBridge::read_fps_runtime_session(&bridge)
+        .expect("FPS authority is active immediately after loadProject");
+    assert_ne!(initial.player_entity, initial.enemy_entity);
+    assert_eq!(
+        initial
+            .health
+            .iter()
+            .find(|health| health.entity == initial.enemy_entity)
+            .map(|health| (health.current, health.max)),
+        Some((40, 40))
+    );
+    assert_eq!(initial.policy_bindings.len(), 1);
+
+    let active = receipt.active_project.as_ref().unwrap();
+    let collision_grid = active.voxel_bindings[0].grid;
+    let camera = bridge
+        .create_camera(CameraCreateRequest {
+            initial_pose: CameraPose {
+                position: [3.5, 2.5, -2.7],
+                yaw_degrees: 0.0,
+                pitch_degrees: 0.0,
+            },
+            projection: PerspectiveProjection {
+                fov_y_degrees: 60.0,
+                near: 0.1,
+                far: 1000.0,
+            },
+            viewport: ViewportSize {
+                width: 1280,
+                height: 720,
+            },
+        })
+        .unwrap();
+    let collision = bridge
+        .apply_collision_constrained_camera_input(CollisionConstrainedCameraInputEnvelope {
+            camera: camera.camera,
+            grid: collision_grid,
+            movement_mode: FirstPersonMovementMode::Grounded,
+            input: FirstPersonCameraInput {
+                move_forward: 1.0,
+                move_right: 0.0,
+                move_up: 0.0,
+                yaw_delta_degrees: 0.0,
+                pitch_delta_degrees: 0.0,
+                dt_seconds: 1.0,
+                move_speed_units_per_second: 1.0,
+            },
+            tick: 1,
+            shape: CameraCollisionShape {
+                half_extents: [0.2, 0.2, 0.2],
+            },
+            policy: CameraCollisionPolicy {
+                mode: CameraCollisionPolicyMode::AxisSeparableSlide,
+                max_iterations: 3,
+            },
+        })
+        .expect("collision camera consumes the canonical active voxel binding");
+    assert!(collision.collision.collided);
+
+    let pause = bridge
+        .apply_time_control_command(TimeControlCommand::Pause)
+        .expect("canonical runtime retains time authority");
+    assert!(pause.accepted);
+    assert_eq!(pause.after.mode, TimeControlMode::Paused);
+
+    let input = bridge
+        .configure_input_session(InputSessionConfigureRequest {
+            catalog: fps_input_catalog(),
+            initial_contexts: vec!["gameplay".to_owned()],
+        })
+        .expect("canonical runtime retains input authority");
+    assert_eq!(
+        input.context_state.active_contexts[0].context_id,
+        "gameplay"
+    );
+    let resolved = bridge
+        .submit_raw_input(RawInputSample {
+            sequence: 1,
+            platform_kind: PlatformInputKind::KeyboardKey,
+            control: "KeyW".to_owned(),
+            phase: InputActionPhase::Held,
+            value: InputValue::Button { pressed: true },
+        })
+        .expect("stored project input resolves");
+    assert_eq!(resolved.action.unwrap().action_id, "game.move.forward");
+
+    let gameplay = bridge
+        .with_static_gameplay_runtime("canonical_fps_tick", |host| {
+            let before = host.readout();
+            let tick = host.tick(9)?;
+            Ok((before, tick))
+        })
+        .expect("canonical gameplay operation")
+        .expect("canonical gameplay host");
+    assert!(!gameplay.0.trigger_snapshot_hash.is_empty());
+    assert_eq!(gameplay.1.observe.invocations.len(), 1);
+
+    let enemy = EntityId::new(initial.enemy_entity);
+    let enemy_position = bridge
+        .scene
+        .entities
+        .transform(enemy)
+        .expect("enemy transform")
+        .transform
+        .translation;
+    let moved = bridge
+        .apply_enemy_direct_nav_movement(EnemyDirectNavMovementRequest {
+            entity: initial.enemy_entity,
+            seed_position: enemy_position,
+            target: Vec3::new(enemy_position.x + 0.1, enemy_position.y, enemy_position.z),
+            max_step_units: 0.1,
+        })
+        .expect("enemy movement uses canonical EntityStore");
+    assert_eq!(
+        moved.authority_source,
+        EnemyDirectNavAuthoritySource::RustEntityStore
+    );
+
+    let player_position = bridge
+        .scene
+        .entities
+        .transform(EntityId::new(initial.player_entity))
+        .expect("player transform")
+        .transform
+        .translation;
+    let enemy_position = bridge
+        .scene
+        .entities
+        .transform(enemy)
+        .expect("moved enemy transform")
+        .transform
+        .translation;
+    let miss = bridge
+        .apply_fps_primary_fire(FpsPrimaryFireRequest {
+            tick: 5,
+            origin: [
+                player_position.x as f64,
+                player_position.y as f64,
+                player_position.z as f64,
+            ],
+            direction: [0.0, 0.0, 1.0],
+            shooter_role: None,
+            target_role: None,
+        })
+        .expect("miss feedback is resolved by canonical FPS authority");
+    assert_eq!(miss.target, None);
+    assert_eq!(
+        miss.target_health_after,
+        Some(FpsBridgeHealth {
+            current: 40,
+            max: 40,
+        })
+    );
+    let fire = bridge
+        .apply_fps_primary_fire(FpsPrimaryFireRequest {
+            tick: 10,
+            origin: [
+                player_position.x as f64,
+                player_position.y as f64,
+                player_position.z as f64,
+            ],
+            direction: [
+                (enemy_position.x - player_position.x) as f64,
+                (enemy_position.y - player_position.y) as f64,
+                (enemy_position.z - player_position.z) as f64,
+            ],
+            shooter_role: None,
+            target_role: None,
+        })
+        .expect("primary fire uses stored collision and actor capabilities");
+    assert_eq!(fire.target, Some(initial.enemy_entity));
+    assert_eq!(
+        fire.target_health_after,
+        Some(FpsBridgeHealth {
+            current: 0,
+            max: 40,
+        })
+    );
+    assert!(matches!(
+        fire.lifecycle_status,
+        FpsBridgeLifecycleStatus::EnemyDefeated { .. }
+    ));
+
+    let restarted = bridge
+        .restart_fps_runtime_session(FpsRuntimeSessionRestartRequest {
+            expected_epoch: initial.session_epoch,
+        })
+        .expect("restart reuses the internal canonical seed");
+    assert_eq!(restarted.session_epoch, initial.session_epoch + 1);
+    assert_eq!(
+        restarted
+            .health
+            .iter()
+            .find(|health| health.entity == restarted.enemy_entity)
+            .map(|health| health.current),
+        Some(40)
+    );
+}
+
+#[test]
+fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+
+    let load_request = || RuntimeProjectLoadRequest {
+        source: RuntimeProjectSourceAdapterInput {
+            kind: RuntimeProjectSourceAdapterKind::InMemory,
+            identity: "fixture:canonical-fps-configuration".to_owned(),
+            materialization_hash: "fnv1a64:6007000000000001".to_owned(),
+        },
+        expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+    };
+
+    let composition = static_composition();
+    let mut configured =
+        DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+            .build_unloaded();
+    configured
+        .initialize_engine(EngineConfig { seed: 6008 })
+        .unwrap();
+    let source = fps_project_source_batch_with(&mut configured, &composition, 65, true);
+    let admission = configured
+        .admit_runtime_project_source_batch(source)
+        .expect("configured source admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+    let loaded = RuntimeBridge::load_runtime_project(&mut configured, load_request()).unwrap();
+    assert!(loaded.accepted, "{:?}", loaded.diagnostics);
+    let snapshot = RuntimeBridge::read_fps_runtime_session(&configured).unwrap();
+    assert_eq!(
+        snapshot
+            .health
+            .iter()
+            .find(|health| health.entity == snapshot.enemy_entity)
+            .map(|health| (health.current, health.max)),
+        Some((65, 65)),
+        "stored actor configuration, not a bridge default, owns the next run"
+    );
+
+    let composition = static_composition();
+    let mut rejected = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .build_unloaded();
+    rejected
+        .initialize_engine(EngineConfig { seed: 6009 })
+        .unwrap();
+    let source = fps_project_source_batch_with(&mut rejected, &composition, 40, false);
+    let admission = rejected
+        .admit_runtime_project_source_batch(source)
+        .expect("structurally valid source reaches domain admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+    let receipt = RuntimeBridge::load_runtime_project(&mut rejected, load_request()).unwrap();
+    assert!(!receipt.accepted);
+    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
+    assert!(receipt.diagnostics[0]
+        .message
+        .contains("MissingPlayerWeapon"));
+    assert!(rejected.active_runtime_project().is_none());
+    assert!(rejected.scene.entities.snapshot().records.is_empty());
+    assert_eq!(
+        rejected.runtime_project_lifecycle_version(),
+        RuntimeProjectLifecycleVersion::default()
+    );
+    assert_eq!(
+        RuntimeBridge::read_fps_runtime_session(&rejected)
+            .expect_err("failed domain activation publishes no FPS authority")
+            .kind,
+        RuntimeBridgeErrorKind::NotInitialized
+    );
+}
+
+#[test]
+fn canonical_fps_spawn_binding_mismatch_rejects_without_publishing_authority() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 6010 })
+        .unwrap();
+    let mut scene = stored_fps_scene("voxel-volume/hand-authored-room");
+    let enemy = scene
+        .nodes
+        .iter_mut()
+        .find(|node| node.id == SceneNodeId::new(102))
+        .expect("enemy scene instance");
+    let SceneNodeKind::EntityInstance(instance) = &mut enemy.kind else {
+        panic!("enemy node must be an entity instance");
+    };
+    instance.spawn_marker_id = None;
+    let content = fps_content_artifacts(&composition, &scene, 40, true);
+    let source = project_source_batch_for_scene(&mut bridge, &composition, scene, content);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("structurally valid mismatch reaches domain activation");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+
+    let receipt = RuntimeBridge::load_runtime_project(
+        &mut bridge,
+        RuntimeProjectLoadRequest {
+            source: RuntimeProjectSourceAdapterInput {
+                kind: RuntimeProjectSourceAdapterKind::InMemory,
+                identity: "fixture:canonical-fps-spawn-mismatch".to_owned(),
+                materialization_hash: "fnv1a64:6007000000000002".to_owned(),
+            },
+            expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+        },
+    )
+    .unwrap();
+    assert!(!receipt.accepted);
+    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
+    assert!(receipt.diagnostics[0]
+        .message
+        .contains("binds spawn marker"));
+    assert!(bridge.active_runtime_project().is_none());
+    assert!(bridge.scene.entities.snapshot().records.is_empty());
+    assert!(RuntimeBridge::read_fps_runtime_session(&bridge).is_err());
 }
 
 #[test]

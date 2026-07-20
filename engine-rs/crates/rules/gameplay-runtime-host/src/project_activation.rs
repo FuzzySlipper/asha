@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use core_scene::FlatSceneDocument;
+use protocol_project_content::ProjectContentCodecResultDto;
 use protocol_voxel_asset::VoxelVolumeAsset;
 use svc_serialization::BundleHash;
 
@@ -33,7 +34,9 @@ impl GameplayRuntimeActivatedProjectIdentity {
 pub(super) struct ValidatedRuntimeProjectState {
     identity: GameplayRuntimeActivatedProjectIdentity,
     entry_scene: FlatSceneDocument,
+    content_readout: ProjectContentCodecResultDto,
     voxel_assets: BTreeMap<String, VoxelVolumeAsset>,
+    runtime_entity_seeds: Vec<crate::RuntimeProjectEntitySeed>,
 }
 
 impl GameplayRuntimeHost {
@@ -51,7 +54,9 @@ impl GameplayRuntimeHost {
                 admission_hash: parts.admission_hash,
             },
             entry_scene: parts.entry_scene,
+            content_readout: parts.content_readout,
             voxel_assets: parts.voxel_assets,
+            runtime_entity_seeds: parts.runtime_entity_seeds,
         };
         let mut host = Self::activate_project_with_prefabs(
             GameplayRuntimeProjectInput {
@@ -87,10 +92,27 @@ impl GameplayRuntimeHost {
     }
 
     #[doc(hidden)]
+    pub fn activated_project_content_readout(&self) -> Option<&ProjectContentCodecResultDto> {
+        self.activated_project
+            .as_ref()
+            .map(|project| &project.content_readout)
+    }
+
+    #[doc(hidden)]
     pub fn take_activated_voxel_assets(&mut self) -> BTreeMap<String, VoxelVolumeAsset> {
         self.activated_project
             .as_mut()
             .map(|project| core::mem::take(&mut project.voxel_assets))
+            .unwrap_or_default()
+    }
+
+    /// Transfer canonical entity/domain seeds into the surrounding authority
+    /// cell. This is an ownership handoff, not a public serialization surface.
+    #[doc(hidden)]
+    pub fn take_activated_runtime_entity_seeds(&mut self) -> Vec<crate::RuntimeProjectEntitySeed> {
+        self.activated_project
+            .as_mut()
+            .map(|project| core::mem::take(&mut project.runtime_entity_seeds))
             .unwrap_or_default()
     }
 }

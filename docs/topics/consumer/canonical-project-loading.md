@@ -42,6 +42,16 @@ accepted receipt contains the Rust-owned project, manifest, admission,
 content-set, composition, scene/entity/voxel, generation, and revision
 identities. A rejected receipt leaves project authority unactivated.
 
+Stored `EntityDefinition` documents use a closed typed capability schema. The
+current playable FPS slice recognizes transform, bounds/collision, controller,
+health, weapon mount, render projection, policy binding, spawn marker, and
+faction declarations. Rust validates those declarations, creates scene
+entities once during canonical admission, binds rule-owned FPS state to those
+same entity ids, and rejects the entire activation if domain topology is
+incomplete or contradictory. `loadProject({ source })` therefore produces
+immediate FPS, gameplay-module, trigger, collision, voxel, input, time-control,
+and restart authority without a second handwritten bootstrap call.
+
 The development directory and packaged archive are two transports for the same
 ProjectBundle closure. They are not separate content pipelines. Given the same
 manifest and bodies, both produce the same project, content-set, composition,

@@ -42,6 +42,7 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
         interface_coverage_key("projectContent", "ProjectContentCanonicalFile"),
         interface_coverage_key("projectContent", "ProjectContentFieldMetadata"),
         interface_coverage_key("projectContent", "ProjectContentCodecResult"),
+        interface_coverage_key("projectContent", "ActiveRuntimeProjectContentReadout"),
         variant_coverage_key("projectContent", "ProjectContentAuthoringCommand", "upsert"),
         variant_coverage_key("projectContent", "ProjectContentAuthoringCommand", "delete"),
         interface_coverage_key("projectContent", "ProjectContentAuthoringRequest"),

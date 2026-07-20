@@ -445,6 +445,11 @@ pub trait RuntimeBridge {
         &mut self,
         request: RuntimeProjectLoadRequest,
     ) -> BridgeResult<RuntimeProjectLoadReceipt>;
+    /// Read the exact admitted content and entry scene backing the active
+    /// canonical runtime. Projection-only; it cannot be replayed as bootstrap.
+    fn read_active_runtime_project_content(
+        &self,
+    ) -> BridgeResult<ActiveRuntimeProjectContentReadoutDto>;
     /// Explicitly close one lifecycle-bound active runtime project.
     fn close_runtime_project(
         &mut self,

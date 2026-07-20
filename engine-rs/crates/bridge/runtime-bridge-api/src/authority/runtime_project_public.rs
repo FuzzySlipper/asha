@@ -80,6 +80,13 @@ fn runtime_project_load_diagnostics(
             path: None,
             message: error.to_string(),
         }],
+        RuntimeProjectLoadError::Domain(message) => vec![RuntimeProjectDiagnostic {
+            phase: RuntimeProjectDiagnosticPhase::RuntimeActivation,
+            code: "domainActivationRejected".to_owned(),
+            document_id: None,
+            path: None,
+            message,
+        }],
         RuntimeProjectLoadError::Resource(message) => vec![RuntimeProjectDiagnostic {
             phase: RuntimeProjectDiagnosticPhase::RuntimeActivation,
             code: "resourceRejected".to_owned(),
@@ -97,6 +104,7 @@ fn runtime_project_load_diagnostics(
                 RuntimeProjectLoadError::StaleLifecycle { .. } => "staleLifecycle",
                 RuntimeProjectLoadError::Admission(_)
                 | RuntimeProjectLoadError::Activation(_)
+                | RuntimeProjectLoadError::Domain(_)
                 | RuntimeProjectLoadError::Resource(_) => unreachable!(),
             };
             vec![RuntimeProjectDiagnostic {

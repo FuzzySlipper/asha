@@ -223,16 +223,70 @@ pub struct EntityDefinitionMetadataEntry {
 /// instead of disappearing before validation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EntityDefinitionCapability {
-    Transform { transform: AuthoringTransform },
-    Render { visible: bool },
-    Collision { static_collider: bool },
-    Bounds { min: [f32; 3], max: [f32; 3] },
-    Unknown { capability_kind: String },
+    Transform {
+        transform: AuthoringTransform,
+    },
+    Render {
+        visible: bool,
+    },
+    Collision {
+        static_collider: bool,
+    },
+    Bounds {
+        min: [f32; 3],
+        max: [f32; 3],
+    },
+    Controller {
+        controller_id: String,
+    },
+    Health {
+        current: u32,
+        max: u32,
+    },
+    WeaponMount {
+        weapon_id: String,
+        damage: u32,
+        range_units: u32,
+        ammo: u32,
+        cooldown_ticks_after_fire: u32,
+    },
+    RenderProjection {
+        projection_id: String,
+        visible: bool,
+    },
+    PolicyBinding {
+        binding_id: String,
+        policy_id: String,
+        view_kind: String,
+        view_version: String,
+        allowed_intents: Vec<String>,
+        runtime_moment: String,
+    },
+    SpawnMarker {
+        marker_id: String,
+    },
+    Faction {
+        faction_id: String,
+    },
+    Unknown {
+        capability_kind: String,
+    },
 }
 
 /// Stable discriminants for valid stored entity definition capabilities.
-pub const ENTITY_DEFINITION_CAPABILITY_KINDS: &[&str] =
-    &["transform", "render", "collision", "bounds"];
+pub const ENTITY_DEFINITION_CAPABILITY_KINDS: &[&str] = &[
+    "transform",
+    "render",
+    "collision",
+    "bounds",
+    "controller",
+    "health",
+    "weaponMount",
+    "renderProjection",
+    "policyBinding",
+    "spawnMarker",
+    "faction",
+];
 
 impl EntityDefinitionCapability {
     pub fn kind(&self) -> &str {
@@ -241,6 +295,13 @@ impl EntityDefinitionCapability {
             EntityDefinitionCapability::Render { .. } => "render",
             EntityDefinitionCapability::Collision { .. } => "collision",
             EntityDefinitionCapability::Bounds { .. } => "bounds",
+            EntityDefinitionCapability::Controller { .. } => "controller",
+            EntityDefinitionCapability::Health { .. } => "health",
+            EntityDefinitionCapability::WeaponMount { .. } => "weaponMount",
+            EntityDefinitionCapability::RenderProjection { .. } => "renderProjection",
+            EntityDefinitionCapability::PolicyBinding { .. } => "policyBinding",
+            EntityDefinitionCapability::SpawnMarker { .. } => "spawnMarker",
+            EntityDefinitionCapability::Faction { .. } => "faction",
             EntityDefinitionCapability::Unknown { capability_kind } => capability_kind,
         }
     }

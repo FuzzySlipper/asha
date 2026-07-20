@@ -301,6 +301,18 @@ pub struct ProjectContentCodecResultDto {
     pub diagnostics: Vec<ProjectContentDiagnosticDto>,
 }
 
+/// Rust-owned projection of the canonical content and entry scene currently
+/// backing one active RuntimeSession. This is read-only accepted state, not a
+/// second authoring workspace or a caller-replayable bootstrap request.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActiveRuntimeProjectContentReadoutDto {
+    pub project_id: u64,
+    pub manifest_hash: String,
+    pub content_set_hash: String,
+    pub entry_scene: FlatSceneDocumentDto,
+    pub content: ProjectContentCodecResultDto,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectContentAuthoringCommandDto {
     Upsert {

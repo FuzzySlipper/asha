@@ -239,6 +239,214 @@ impl EngineBridge {
         })
     }
 
+    /// Derive the optional FPS domain seed from the canonical admission plan.
+    /// The presence of a recognized player/enemy role signal selects this
+    /// built-in domain; all actual state comes from closed stored capabilities.
+    pub(super) fn convert_runtime_project_fps_seed(
+        seeds: Vec<gameplay_runtime_host::RuntimeProjectEntitySeed>,
+    ) -> BridgeResult<Option<FpsProjectBundleLoadInput>> {
+        let selects_fps_domain = seeds.iter().any(|seed| {
+            seed.definition
+                .capabilities
+                .iter()
+                .any(|capability| match capability {
+                    EntityDefinitionCapability::Controller { controller_id } => {
+                        matches!(controller_id.as_str(), "player_input" | "enemy_policy")
+                    }
+                    EntityDefinitionCapability::Faction { faction_id } => {
+                        matches!(faction_id.as_str(), "player" | "hostile")
+                    }
+                    EntityDefinitionCapability::RenderProjection { projection_id, .. } => {
+                        matches!(
+                            projection_id.as_str(),
+                            "first_person_camera" | "target_cube"
+                        )
+                    }
+                    _ => false,
+                })
+        });
+        if !selects_fps_domain {
+            return Ok(None);
+        }
+
+        let project_bundle = seeds
+            .first()
+            .map(|seed| seed.definition.source.project_bundle.clone())
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    "FPS domain selection requires at least one canonical entity seed",
+                )
+            })?;
+        if seeds
+            .iter()
+            .any(|seed| seed.definition.source.project_bundle != project_bundle)
+        {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                "canonical FPS entity definitions must share one source ProjectBundle identity",
+            ));
+        }
+
+        let mut definitions = Vec::with_capacity(seeds.len());
+        for seed in seeds {
+            let mut definition = seed.definition;
+            let declared_spawn_marker =
+                definition
+                    .capabilities
+                    .iter()
+                    .find_map(|capability| match capability {
+                        EntityDefinitionCapability::SpawnMarker { marker_id } => {
+                            Some(marker_id.as_str())
+                        }
+                        _ => None,
+                    });
+            if declared_spawn_marker != seed.spawn_marker_id.as_deref() {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    format!(
+                        "canonical entity instance `{}` binds spawn marker {:?}, but definition `{}` declares {:?}",
+                        seed.instance_id,
+                        seed.spawn_marker_id,
+                        definition.stable_id,
+                        declared_spawn_marker
+                    ),
+                ));
+            }
+            if let Some(transform) =
+                definition
+                    .capabilities
+                    .iter_mut()
+                    .find_map(|capability| match capability {
+                        EntityDefinitionCapability::Transform { transform } => Some(transform),
+                        _ => None,
+                    })
+            {
+                *transform = AuthoringTransform {
+                    translation: seed.world_translation,
+                    rotation: seed.world_rotation,
+                    scale: seed.world_scale,
+                };
+            }
+
+            let controller =
+                definition
+                    .capabilities
+                    .iter()
+                    .find_map(|capability| match capability {
+                        EntityDefinitionCapability::Controller { controller_id } => {
+                            Some(controller_id.as_str())
+                        }
+                        _ => None,
+                    });
+            let faction = definition
+                .capabilities
+                .iter()
+                .find_map(|capability| match capability {
+                    EntityDefinitionCapability::Faction { faction_id } => Some(faction_id.as_str()),
+                    _ => None,
+                });
+            let player_signal = controller == Some("player_input") || faction == Some("player");
+            let enemy_signal = controller == Some("enemy_policy") || faction == Some("hostile");
+            if player_signal && enemy_signal {
+                return Err(RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::InvalidInput,
+                    format!(
+                        "canonical entity definition `{}` has conflicting player/enemy role capabilities",
+                        definition.stable_id
+                    ),
+                ));
+            }
+            let role = if player_signal {
+                FpsRuntimeRole::Player
+            } else if enemy_signal {
+                FpsRuntimeRole::Enemy
+            } else {
+                FpsRuntimeRole::Neutral
+            };
+
+            let health = definition
+                .capabilities
+                .iter()
+                .find_map(|capability| match capability {
+                    EntityDefinitionCapability::Health { current, max } => {
+                        Some(HealthState::new(*current, *max))
+                    }
+                    _ => None,
+                });
+            let weapon = definition
+                .capabilities
+                .iter()
+                .find_map(|capability| match capability {
+                    EntityDefinitionCapability::WeaponMount {
+                        weapon_id,
+                        damage,
+                        range_units,
+                        ammo,
+                        cooldown_ticks_after_fire,
+                    } => Some(FpsWeaponMount {
+                        weapon_id: weapon_id.clone(),
+                        damage: *damage,
+                        range_units: *range_units,
+                        ammo: *ammo,
+                        cooldown_ticks_after_fire: *cooldown_ticks_after_fire,
+                    }),
+                    _ => None,
+                });
+            let render_projection =
+                definition
+                    .capabilities
+                    .iter()
+                    .find_map(|capability| match capability {
+                        EntityDefinitionCapability::RenderProjection {
+                            projection_id,
+                            visible,
+                        } => Some(FpsRenderProjectionState {
+                            projection: projection_id.clone(),
+                            visible: *visible,
+                        }),
+                        _ => None,
+                    });
+            let policy_binding =
+                definition
+                    .capabilities
+                    .iter()
+                    .find_map(|capability| match capability {
+                        EntityDefinitionCapability::PolicyBinding {
+                            binding_id,
+                            policy_id,
+                            view_kind,
+                            view_version,
+                            allowed_intents,
+                            runtime_moment,
+                        } => Some(FpsPolicyBinding {
+                            binding_id: binding_id.clone(),
+                            policy_id: policy_id.clone(),
+                            view_kind: view_kind.clone(),
+                            view_version: view_version.clone(),
+                            allowed_intents: allowed_intents.clone(),
+                            runtime_moment: runtime_moment.clone(),
+                        }),
+                        _ => None,
+                    });
+
+            definitions.push(FpsStoredEntityDefinition {
+                entity: seed.entity,
+                definition,
+                role,
+                health,
+                weapon,
+                render_projection,
+                policy_binding,
+            });
+        }
+
+        Ok(Some(FpsProjectBundleLoadInput {
+            project_bundle,
+            definitions,
+        }))
+    }
+
     pub(super) fn fps_runtime_role(role: FpsBridgeRole) -> FpsRuntimeRole {
         match role {
             FpsBridgeRole::Player => FpsRuntimeRole::Player,

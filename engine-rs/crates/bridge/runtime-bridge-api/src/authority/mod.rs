@@ -171,7 +171,7 @@ struct BridgeCameraState {
 #[derive(Default)]
 struct BridgeGameplayState {
     fps_session: Option<FpsRuntimeSessionState>,
-    fps_seed: Option<FpsRuntimeSessionLoadRequest>,
+    fps_seed: Option<FpsProjectBundleLoadInput>,
     fps_epoch: u64,
     static_gameplay_host: Option<gameplay_runtime_host::GameplayRuntimeHost>,
     static_gameplay_composition: Option<gameplay_runtime_host::GameplayStaticComposition>,

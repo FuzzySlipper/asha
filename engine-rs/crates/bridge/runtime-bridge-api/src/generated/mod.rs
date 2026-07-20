@@ -1014,6 +1014,17 @@ pub(crate) const GENERATED_BRIDGE_BINDINGS: &[GeneratedBridgeBinding] = &[
         surface: GeneratedBridgeSurface::Stable,
     },
     GeneratedBridgeBinding {
+        manifest_name: "read_active_runtime_project_content",
+        facade_method: "readActiveRuntimeProjectContent",
+        capability: "bundle_lifecycle",
+        input: "Unit",
+        output: "protocol_project_content::ActiveRuntimeProjectContentReadout",
+        errors: "RuntimeBridgeError",
+        max_input_bytes: 8388608,
+        max_output_bytes: 8388608,
+        surface: GeneratedBridgeSurface::Stable,
+    },
+    GeneratedBridgeBinding {
         manifest_name: "close_runtime_project",
         facade_method: "closeRuntimeProject",
         capability: "bundle_lifecycle",

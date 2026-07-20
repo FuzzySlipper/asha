@@ -475,6 +475,12 @@ pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
     ),
     ("load_runtime_project", "loadRuntimeProject", 8388608, 8388608),
     (
+        "read_active_runtime_project_content",
+        "readActiveRuntimeProjectContent",
+        8388608,
+        8388608,
+    ),
+    (
         "close_runtime_project",
         "closeRuntimeProject",
         8388608,

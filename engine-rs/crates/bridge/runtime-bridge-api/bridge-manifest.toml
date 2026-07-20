@@ -131,7 +131,7 @@ initialization = "createsEngine"
 project_bundle = "ownsLoadUnload"
 snapshot_hash = "compositionStatus"
 resource_lifetime = "session"
-operations = ["initialize_engine", "begin_runtime_project_source_resources", "stage_runtime_project_source_resource", "admit_runtime_project_source_batch", "load_runtime_project", "close_runtime_project", "load_project_bundle", "save_project_bundle", "get_project_bundle_composition_status", "unload_project_bundle"]
+operations = ["initialize_engine", "begin_runtime_project_source_resources", "stage_runtime_project_source_resource", "admit_runtime_project_source_batch", "load_runtime_project", "read_active_runtime_project_content", "close_runtime_project", "load_project_bundle", "save_project_bundle", "get_project_bundle_composition_status", "unload_project_bundle"]
 
 [[capability]]
 id = "replay_evidence"
@@ -916,6 +916,14 @@ input = "protocol_project_bundle::RuntimeProjectLoadRequest"
 output = "protocol_project_bundle::RuntimeProjectLoadReceipt"
 errors = "RuntimeBridgeError"
 summary = "Atomically compile, link, and activate the admitted ProjectBundle source closure against the statically linked provider composition, returning generated authority identity and diagnostics."
+
+[[operation]]
+name = "read_active_runtime_project_content"
+surface = "stable"
+input = "Unit"
+output = "protocol_project_content::ActiveRuntimeProjectContentReadout"
+errors = "RuntimeBridgeError"
+summary = "Project the exact admitted content and entry scene backing the active canonical RuntimeSession without exposing a replayable bootstrap request."
 
 [[operation]]
 name = "close_runtime_project"

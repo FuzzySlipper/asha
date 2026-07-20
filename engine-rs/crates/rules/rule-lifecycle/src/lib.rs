@@ -41,10 +41,10 @@ use svc_combat::{
     HealthState,
 };
 use svc_entity_authoring::{
-    bootstrap_project_bundle_entity_definitions, EcrpRuleOwner,
-    ProjectBundleEntityDefinitionBootstrapEntry, ProjectBundleEntityDefinitionBootstrapError,
-    ProjectBundleEntityDefinitionBootstrapRecord, ProjectBundleEntityDefinitionBootstrapRequest,
-    RuleOwnedEntityAuthoringOutcome,
+    bind_project_bundle_entity_definitions, bootstrap_project_bundle_entity_definitions,
+    EcrpRuleOwner, ProjectBundleEntityDefinitionBootstrapEntry,
+    ProjectBundleEntityDefinitionBootstrapError, ProjectBundleEntityDefinitionBootstrapRecord,
+    ProjectBundleEntityDefinitionBootstrapRequest, RuleOwnedEntityAuthoringOutcome,
 };
 use svc_game_rules::resolve_protocol_request;
 use svc_pathfinding::{
@@ -292,6 +292,38 @@ pub fn load_fps_project_bundle_into(
     let bootstrap = bootstrap_project_bundle_entity_definitions(entities, &request)
         .map_err(FpsRuntimeError::Bootstrap)?;
 
+    finish_fps_project_bundle(entities, input, bootstrap)
+}
+
+/// Attach FPS rule authority to the entities created by canonical project
+/// admission. The entity graph is never rebuilt; this function only validates
+/// the stored definitions against that graph and installs rule-owned state.
+pub fn load_fps_project_bundle_from_existing_entities(
+    entities: &mut EntityStore,
+    input: FpsProjectBundleLoadInput,
+) -> Result<FpsRuntimeSessionState, FpsRuntimeError> {
+    validate_load_input(&input)?;
+    let request = ProjectBundleEntityDefinitionBootstrapRequest {
+        project_bundle: input.project_bundle.clone(),
+        entries: input
+            .definitions
+            .iter()
+            .map(|entry| ProjectBundleEntityDefinitionBootstrapEntry {
+                entity: entry.entity,
+                definition: entry.definition.clone(),
+            })
+            .collect(),
+    };
+    let bootstrap = bind_project_bundle_entity_definitions(entities, &request)
+        .map_err(FpsRuntimeError::Bootstrap)?;
+    finish_fps_project_bundle(entities, input, bootstrap)
+}
+
+fn finish_fps_project_bundle(
+    entities: &mut EntityStore,
+    input: FpsProjectBundleLoadInput,
+    bootstrap: ProjectBundleEntityDefinitionBootstrapRecord,
+) -> Result<FpsRuntimeSessionState, FpsRuntimeError> {
     let mut combat = CombatState::new();
     let mut definitions = BTreeMap::new();
     let mut roles = BTreeMap::new();
@@ -321,7 +353,7 @@ pub fn load_fps_project_bundle_into(
         kind: "runtime_session.fps.bootstrap.v0",
         entity_hash,
         health_hash,
-        record_hash: hash_bootstrap(&bootstrap, health_hash),
+        record_hash: hash_bootstrap(&bootstrap, &definitions, health_hash),
     };
 
     Ok(FpsRuntimeSessionState {
@@ -787,6 +819,7 @@ pub fn initial_fps_encounter_state() -> FpsEncounterState {
 
 fn hash_bootstrap(
     bootstrap: &ProjectBundleEntityDefinitionBootstrapRecord,
+    definitions: &BTreeMap<EntityId, FpsStoredEntityDefinition>,
     health_hash: u64,
 ) -> u64 {
     let mut h = Fnv1a::new();
@@ -799,7 +832,99 @@ fn hash_bootstrap(
         h.write_u64(record.entity.raw());
         h.write_u64(record.entity_hash.0);
     }
+    for (entity, definition) in definitions {
+        h.write_u64(entity.raw());
+        h.write_str(definition.role.label());
+        hash_entity_definition(&mut h, &definition.definition);
+    }
     h.finish()
+}
+
+fn hash_entity_definition(h: &mut Fnv1a, definition: &EntityDefinition) {
+    h.write_str(&definition.stable_id);
+    h.write_str(&definition.display_name);
+    h.write_str(&definition.source.project_bundle);
+    h.write_str(&definition.source.relative_path);
+    for tag in &definition.tags {
+        h.write_u64(tag.raw());
+    }
+    for metadata in &definition.metadata {
+        h.write_str(&metadata.key);
+        h.write_str(&metadata.value);
+    }
+    for capability in &definition.capabilities {
+        h.write_str(capability.kind());
+        match capability {
+            EntityDefinitionCapability::Transform { transform } => {
+                for value in transform
+                    .translation
+                    .iter()
+                    .chain(transform.rotation.iter())
+                    .chain(transform.scale.iter())
+                {
+                    h.write_u64(u64::from(value.to_bits()));
+                }
+            }
+            EntityDefinitionCapability::Render { visible } => h.write_bool(*visible),
+            EntityDefinitionCapability::Collision { static_collider } => {
+                h.write_bool(*static_collider);
+            }
+            EntityDefinitionCapability::Bounds { min, max } => {
+                for value in min.iter().chain(max.iter()) {
+                    h.write_u64(u64::from(value.to_bits()));
+                }
+            }
+            EntityDefinitionCapability::Controller { controller_id } => {
+                h.write_str(controller_id);
+            }
+            EntityDefinitionCapability::Health { current, max } => {
+                h.write_u64(u64::from(*current));
+                h.write_u64(u64::from(*max));
+            }
+            EntityDefinitionCapability::WeaponMount {
+                weapon_id,
+                damage,
+                range_units,
+                ammo,
+                cooldown_ticks_after_fire,
+            } => {
+                h.write_str(weapon_id);
+                h.write_u64(u64::from(*damage));
+                h.write_u64(u64::from(*range_units));
+                h.write_u64(u64::from(*ammo));
+                h.write_u64(u64::from(*cooldown_ticks_after_fire));
+            }
+            EntityDefinitionCapability::RenderProjection {
+                projection_id,
+                visible,
+            } => {
+                h.write_str(projection_id);
+                h.write_bool(*visible);
+            }
+            EntityDefinitionCapability::PolicyBinding {
+                binding_id,
+                policy_id,
+                view_kind,
+                view_version,
+                allowed_intents,
+                runtime_moment,
+            } => {
+                h.write_str(binding_id);
+                h.write_str(policy_id);
+                h.write_str(view_kind);
+                h.write_str(view_version);
+                for intent in allowed_intents {
+                    h.write_str(intent);
+                }
+                h.write_str(runtime_moment);
+            }
+            EntityDefinitionCapability::SpawnMarker { marker_id } => h.write_str(marker_id),
+            EntityDefinitionCapability::Faction { faction_id } => h.write_str(faction_id),
+            EntityDefinitionCapability::Unknown { capability_kind } => {
+                h.write_str(capability_kind);
+            }
+        }
+    }
 }
 
 fn resolve_primary_fire_damage(

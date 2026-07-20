@@ -1748,6 +1748,12 @@ impl RuntimeBridge for EngineBridge {
         Ok(self.load_runtime_project_authority(request))
     }
 
+    fn read_active_runtime_project_content(
+        &self,
+    ) -> BridgeResult<ActiveRuntimeProjectContentReadoutDto> {
+        self.read_active_runtime_project_content_authority()
+    }
+
     fn close_runtime_project(
         &mut self,
         request: RuntimeProjectCloseRequest,

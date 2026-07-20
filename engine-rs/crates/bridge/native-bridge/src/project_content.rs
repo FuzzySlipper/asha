@@ -206,7 +206,7 @@ fn result_json(
     }))
 }
 
-fn codec_result_json(result: &ProjectContentCodecResultDto) -> napi::Result<Value> {
+pub(crate) fn codec_result_json(result: &ProjectContentCodecResultDto) -> napi::Result<Value> {
     result_json(
         result.accepted,
         &result.canonical_files,

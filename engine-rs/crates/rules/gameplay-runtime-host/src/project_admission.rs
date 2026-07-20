@@ -15,7 +15,8 @@ use protocol_game_extension::{
     GameplayContractRef, GameplayModuleBindingRegistry, GameplayOwnerRef,
 };
 use protocol_project_content::{
-    ProjectContentDiagnosticCode, ProjectContentDiagnosticDto, ProjectContentDocumentDto,
+    ProjectContentCodecResultDto, ProjectContentDiagnosticCode, ProjectContentDiagnosticDto,
+    ProjectContentDocumentDto,
 };
 use protocol_voxel_asset::VoxelVolumeAsset;
 use rule_project_bundle::{
@@ -148,6 +149,7 @@ pub struct ValidatedRuntimeProjectAdmission {
     bindings: GameplayModuleBindingRegistry,
     entity_targets: GameplayBindingEntityTargets,
     spatial_entities: Vec<GameplayRuntimeSpatialEntity>,
+    runtime_entity_seeds: Vec<RuntimeProjectEntitySeed>,
     declared_reads: Vec<GameplayRuntimeDeclaredReadPlan>,
     triggers: Vec<protocol_project_bundle::GameplayTriggerDefinition>,
     scheduler: GameplayRuntimeSchedulerDefinition,
@@ -161,6 +163,7 @@ pub(crate) struct RuntimeProjectActivationParts {
     pub manifest_hash: BundleHash,
     pub project_id: u64,
     pub entry_scene: FlatSceneDocument,
+    pub content_readout: ProjectContentCodecResultDto,
     pub load_plan: LoadPlan,
     pub artifacts: BundleArtifacts,
     pub bootstrap_resolution: core_scene::BootstrapResolutionContext,
@@ -168,12 +171,28 @@ pub(crate) struct RuntimeProjectActivationParts {
     pub bindings: GameplayModuleBindingRegistry,
     pub entity_targets: GameplayBindingEntityTargets,
     pub spatial_entities: Vec<GameplayRuntimeSpatialEntity>,
+    pub runtime_entity_seeds: Vec<RuntimeProjectEntitySeed>,
     pub declared_reads: Vec<GameplayRuntimeDeclaredReadPlan>,
     pub triggers: Vec<protocol_project_bundle::GameplayTriggerDefinition>,
     pub scheduler: GameplayRuntimeSchedulerDefinition,
     pub prefabs: GameplayRuntimePrefabBootstrap,
     pub voxel_assets: BTreeMap<String, VoxelVolumeAsset>,
     pub admission_hash: String,
+}
+
+/// Internal typed handoff from canonical scene/bootstrap admission to domain
+/// authority. It carries only validated stored meaning and resolved instance
+/// identity; no downstream runtime IDs, hashes, or registries can be supplied.
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct RuntimeProjectEntitySeed {
+    pub entity: core_ids::EntityId,
+    pub instance_id: String,
+    pub spawn_marker_id: Option<String>,
+    pub world_translation: [f32; 3],
+    pub world_rotation: [f32; 4],
+    pub world_scale: [f32; 3],
+    pub definition: EntityDefinition,
 }
 
 impl ValidatedRuntimeProjectAdmission {
@@ -233,6 +252,7 @@ impl ValidatedRuntimeProjectAdmission {
             manifest_hash: self.source.manifest_hash(),
             project_id: self.source.manifest().project.id.raw(),
             entry_scene,
+            content_readout: self.content.result().clone(),
             load_plan: self.load_plan,
             artifacts: self.artifacts,
             bootstrap_resolution: self.bootstrap_resolution,
@@ -240,6 +260,7 @@ impl ValidatedRuntimeProjectAdmission {
             bindings: self.bindings,
             entity_targets: self.entity_targets,
             spatial_entities: self.spatial_entities,
+            runtime_entity_seeds: self.runtime_entity_seeds,
             declared_reads: self.declared_reads,
             triggers: self.triggers,
             scheduler: self.scheduler,
@@ -369,7 +390,7 @@ pub fn compile_runtime_project_admission(
     };
 
     let bindings = compiled_bindings(&content);
-    let (entity_targets, spatial_entities) =
+    let (entity_targets, spatial_entities, runtime_entity_seeds) =
         derive_entity_authority(&content, &bootstrap, &mut report);
     let prefabs = derive_prefab_bootstrap(&content, &bootstrap, &mut report);
     if !report.is_valid() {
@@ -416,6 +437,7 @@ pub fn compile_runtime_project_admission(
         bindings,
         entity_targets,
         spatial_entities,
+        runtime_entity_seeds,
         declared_reads,
         triggers,
         scheduler,
@@ -868,10 +890,12 @@ fn derive_entity_authority(
 ) -> (
     GameplayBindingEntityTargets,
     Vec<GameplayRuntimeSpatialEntity>,
+    Vec<RuntimeProjectEntitySeed>,
 ) {
     let definitions = definitions(content);
     let mut targets = GameplayBindingEntityTargets::new();
     let mut spatial = Vec::new();
+    let mut runtime_entity_seeds = Vec::new();
     for instance in bootstrap.resolved_instances() {
         let SceneEntityReference::EntityDefinition { stable_id } = &instance.reference else {
             continue;
@@ -880,6 +904,20 @@ fn derive_entity_authority(
         let Some(definition) = definitions.get(stable_id.as_str()).copied() else {
             continue;
         };
+        runtime_entity_seeds.push(RuntimeProjectEntitySeed {
+            entity: instance.entity,
+            instance_id: instance.instance_id.clone(),
+            spawn_marker_id: instance.spawn_marker_id.clone(),
+            world_translation: instance.world_transform.translation.to_array(),
+            world_rotation: [
+                instance.world_transform.rotation.x,
+                instance.world_transform.rotation.y,
+                instance.world_transform.rotation.z,
+                instance.world_transform.rotation.w,
+            ],
+            world_scale: instance.world_transform.scale.to_array(),
+            definition: definition.clone(),
+        });
         let bounds = definition
             .capabilities
             .iter()
@@ -935,7 +973,7 @@ fn derive_entity_authority(
             static_collider,
         });
     }
-    (targets, spatial)
+    (targets, spatial, runtime_entity_seeds)
 }
 
 fn derive_prefab_bootstrap(
@@ -1327,6 +1365,7 @@ mod tests {
         let outcome = decode_project_content(
             ProjectContentDecodeRequestDto {
                 sources: vec![ProjectContentSourceDto {
+                    source_path: "entities/reference-console.json".to_owned(),
                     document_id: "entities/reference-console.json".to_owned(),
                     kind: ProjectContentDocumentKind::EntityDefinition,
                     source_text: r#"{
@@ -1505,6 +1544,7 @@ mod tests {
         let decoded = decode_project_content(
             ProjectContentDecodeRequestDto {
                 sources: vec![ProjectContentSourceDto {
+                    source_path: "catalogs/assets.json".to_owned(),
                     document_id: "catalogs/assets.json".to_owned(),
                     kind: ProjectContentDocumentKind::AssetCatalog,
                     source_text: r#"{"entries":[{"id":"mesh/reference-house","version":1,"hash":null,"sourcePath":"assets/reference-house.glb","label":"House","dependencies":[],"material":null}]}"#.to_owned(),

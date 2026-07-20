@@ -80,7 +80,17 @@ fixtures continue to boot. Product consumers load canonical project sources;
 compatibility fixtures may still call `loadEcrpProject()` until Demo migration.
 After a successful load, `readEcrpRuntimeReadout()` derives Entity ids, stable ids, source paths,
 CapabilityState, health, render visibility, recent events, and hashes from the
-loaded runtime project state.
+loaded runtime project state. For canonical loads, the facade first reads the
+Rust-owned active ProjectContent/entry-scene projection and the Rust-owned FPS
+snapshot. It does not retain a caller-supplied `ProjectBundle` bootstrap input;
+the compatibility `projectBundle` readout field is therefore `null` on this
+path.
+
+Canonical scene admission creates one `EntityStore` graph. FPS lifecycle,
+combat, movement, render visibility, and restart state bind to those existing
+entities rather than allocating a parallel actor graph. The bootstrap replay
+record hashes the complete typed stored definitions, and restart reuses the
+validated internal seed retained by Rust authority.
 
 Accepted primary-fire runtime action updates the loaded enemy lifecycle/health
 state, render visibility, recent event list, and readout hashes. The Rust
