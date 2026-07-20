@@ -83,6 +83,53 @@ void test('browser host fails closed for missing and spoofed providers', async (
   assert.equal(spoofed.diagnostics[0]?.code, 'invalid_rust_runtime_provider');
 });
 
+void test('browser host accepts exactly one trusted native provider selection mechanism', () => {
+  assert.throws(
+    () => installNativeBrowserHostProvider({
+      globalScope: {},
+      createRuntimeBridge: createFakeRuntimeBridge,
+      nativeModulePath: '/projects/demo/runtime-provider.node',
+    }),
+    /either createRuntimeBridge or nativeModulePath/u,
+  );
+});
+
+void test('browser host rejects missing and malformed composed provider modules before serving', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-provider-module-'));
+  try {
+    await writeFile(join(tempRoot, 'index.html'), '<!doctype html><title>ASHA Studio</title>');
+    await assert.rejects(
+      () => launchNativeBrowserHost({
+        uiRoot: tempRoot,
+        host: '127.0.0.1',
+        port: 0,
+        provider: {
+          globalScope: {},
+          nativeModulePath: join(tempRoot, 'missing-provider.node'),
+        },
+      }),
+      /failed to load native addon/u,
+    );
+
+    const malformedProvider = join(tempRoot, 'malformed-provider.node');
+    await writeFile(malformedProvider, 'not a native addon');
+    await assert.rejects(
+      () => launchNativeBrowserHost({
+        uiRoot: tempRoot,
+        host: '127.0.0.1',
+        port: 0,
+        provider: {
+          globalScope: {},
+          nativeModulePath: malformedProvider,
+        },
+      }),
+      /failed to load native addon/u,
+    );
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 void test('browser host serves a downstream UI root with provider status evidence', async () => {
   const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-'));
   try {

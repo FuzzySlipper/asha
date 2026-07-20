@@ -36,6 +36,8 @@ export type NativeBrowserHostProviderScope = Record<
 export interface NativeBrowserHostProviderInstallOptions {
   readonly createRuntimeBridge?: () => RuntimeBridge | Promise<RuntimeBridge>;
   readonly globalScope?: NativeBrowserHostProviderScope;
+  /** Trusted-host path to one downstream composed native RuntimeBridge provider. */
+  readonly nativeModulePath?: string;
 }
 
 export type NativeBrowserHostProviderStatus =
@@ -146,10 +148,19 @@ export function installNativeBrowserHostProvider(
   options: NativeBrowserHostProviderInstallOptions = {},
 ): NativeRustRuntimeBridgeProviderInstallation {
   const globalScope = options.globalScope ?? defaultGlobalScope();
+  if (options.createRuntimeBridge !== undefined && options.nativeModulePath !== undefined) {
+    throw new Error(
+      'ASHA browser host provider must select either createRuntimeBridge or nativeModulePath, not both.',
+    );
+  }
+  const nativeModulePath = options.nativeModulePath;
+  const createRuntimeBridgeForProvider = nativeModulePath === undefined
+    ? options.createRuntimeBridge ?? createNativeRuntimeBridge
+    : () => createNativeRuntimeBridge(nativeModulePath);
   return installNativeRustRuntimeBridgeProvider({
     globalScope,
     providerGlobalName: ASHA_BROWSER_HOST_PROVIDER_GLOBAL,
-    createRuntimeBridge: options.createRuntimeBridge ?? createNativeRuntimeBridge,
+    createRuntimeBridge: createRuntimeBridgeForProvider,
   });
 }
 
@@ -187,6 +198,9 @@ export async function launchNativeBrowserHost(
     globalScope: providerScope,
     ...(options.provider?.createRuntimeBridge !== undefined
       ? { createRuntimeBridge: options.provider.createRuntimeBridge }
+      : {}),
+    ...(options.provider?.nativeModulePath !== undefined
+      ? { nativeModulePath: options.provider.nativeModulePath }
       : {}),
   });
   const bridgeResolution = await resolveNativeRustRuntimeBridgeProvider({
