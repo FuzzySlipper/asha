@@ -275,12 +275,28 @@ pub fn apply_project_content_authoring(
                     },
                 );
             }
-            let key = (document.kind(), document.document_id().to_owned());
-            documents.retain(|current| (current.kind(), current.document_id().to_owned()) != key);
-            source_paths.insert(
-                document_key(document.kind(), document.document_id()),
-                source_path,
-            );
+            let source_key = document_key(document.kind(), document.document_id());
+            if let Some(conflicting_document_id) = source_paths.iter().find_map(|(key, path)| {
+                (key != &source_key && path == &source_path).then(|| key.1.clone())
+            }) {
+                return authoring_rejection(
+                    current,
+                    context.gameplay.configuration_schemas(),
+                    ProjectContentDiagnosticDto {
+                        code: ProjectContentDiagnosticCode::DuplicateDocument,
+                        document_id: Some(document.document_id().to_owned()),
+                        path: "command.sourcePath".to_owned(),
+                        message: format!(
+                            "project-content sourcePath is already owned by document `{conflicting_document_id}`"
+                        ),
+                    },
+                );
+            }
+            let document_identity = (document.kind(), document.document_id().to_owned());
+            documents.retain(|current| {
+                (current.kind(), current.document_id().to_owned()) != document_identity
+            });
+            source_paths.insert(source_key, source_path);
             documents.push(document);
         }
         ProjectContentAuthoringCommandDto::Delete {
@@ -366,10 +382,25 @@ fn encode_documents(
         Ok(mut canonical_files) => {
             if let Some(source_paths) = source_paths {
                 let mut path_diagnostics = Vec::new();
+                let mut assigned_paths = BTreeMap::<String, String>::new();
                 for file in &mut canonical_files {
                     let key = document_key(file.kind, &file.document_id);
                     match source_paths.get(&key) {
-                        Some(path) => file.source_path = Some(path.clone()),
+                        Some(path) => {
+                            if let Some(conflicting_document_id) =
+                                assigned_paths.insert(path.clone(), file.document_id.clone())
+                            {
+                                path_diagnostics.push(ProjectContentDiagnosticDto {
+                                    code: ProjectContentDiagnosticCode::DuplicateDocument,
+                                    document_id: Some(file.document_id.clone()),
+                                    path: "sourcePath".to_owned(),
+                                    message: format!(
+                                        "project-content sourcePath is already owned by document `{conflicting_document_id}`"
+                                    ),
+                                });
+                            }
+                            file.source_path = Some(path.clone());
+                        }
                         None => path_diagnostics.push(ProjectContentDiagnosticDto {
                             code: ProjectContentDiagnosticCode::InvalidDocument,
                             document_id: Some(file.document_id.clone()),

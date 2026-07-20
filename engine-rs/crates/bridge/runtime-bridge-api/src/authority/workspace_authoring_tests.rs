@@ -531,6 +531,86 @@ fn project_content_authoring_is_revision_bound_and_promotes_only_the_rust_candid
 }
 
 #[test]
+fn project_content_authoring_rejects_a_source_path_owned_by_another_document() {
+    let mut bridge = EngineBridge::new();
+    let opened = bridge
+        .open_workspace_authoring(open_request("workspace.project-content-paths"))
+        .unwrap();
+    let presentation_source = |source_path: &str, document_id: &str| ProjectContentSourceDto {
+        source_path: source_path.to_owned(),
+        document_id: document_id.to_owned(),
+        kind: ProjectContentDocumentKind::PresentationCatalog,
+        source_text: r#"{"schemaVersion":1,"resources":[],"cues":[]}"#.to_owned(),
+    };
+    let decoded = bridge
+        .decode_project_content(ProjectContentDecodeRequestDto {
+            sources: vec![
+                presentation_source("presentation/first.json", "presentation.first"),
+                presentation_source("presentation/second.json", "presentation.second"),
+            ],
+        })
+        .unwrap();
+    assert!(decoded.accepted, "{:?}", decoded.diagnostics);
+    let original_set_hash = decoded.set_hash.clone().expect("content set hash");
+    let first_document = decoded
+        .documents
+        .iter()
+        .find(|document| document.document_id() == "presentation.first")
+        .cloned()
+        .expect("first presentation document");
+
+    let rejected = bridge
+        .apply_project_content_authoring(ProjectContentAuthoringRequestDto {
+            expected_workspace_id: "workspace.project-content-paths".to_owned(),
+            expected_generation: opened.identity.generation,
+            expected_working_revision: 0,
+            expected_set_hash: original_set_hash.clone(),
+            command: ProjectContentAuthoringCommandDto::Upsert {
+                source_path: "presentation/second.json".to_owned(),
+                document: first_document.clone(),
+            },
+        })
+        .unwrap();
+    assert!(!rejected.accepted);
+    assert_eq!(
+        rejected.diagnostics[0].code,
+        ProjectContentDiagnosticCode::DuplicateDocument
+    );
+    assert_eq!(
+        rejected.set_hash.as_deref(),
+        Some(original_set_hash.as_str())
+    );
+    assert_eq!(
+        bridge
+            .read_workspace_authoring_state()
+            .unwrap()
+            .working_revision,
+        0
+    );
+
+    let accepted = bridge
+        .apply_project_content_authoring(ProjectContentAuthoringRequestDto {
+            expected_workspace_id: "workspace.project-content-paths".to_owned(),
+            expected_generation: opened.identity.generation,
+            expected_working_revision: 0,
+            expected_set_hash: original_set_hash,
+            command: ProjectContentAuthoringCommandDto::Upsert {
+                source_path: "presentation/first.json".to_owned(),
+                document: first_document,
+            },
+        })
+        .unwrap();
+    assert!(accepted.accepted, "{:?}", accepted.diagnostics);
+    assert_eq!(
+        bridge
+            .read_workspace_authoring_state()
+            .unwrap()
+            .working_revision,
+        1
+    );
+}
+
+#[test]
 fn project_write_is_rust_derived_revision_bound_and_single_use() {
     let mut bridge = EngineBridge::new();
     let opened = bridge
