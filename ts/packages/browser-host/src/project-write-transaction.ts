@@ -87,6 +87,39 @@ export async function applyAshaProjectWriteCandidate(
 
   const resources = await borrowCandidateResources(options);
   await releaseCandidateResources(options);
+  const releaseStoreLock = await acquireProjectStoreLock(projectRoot);
+  try {
+    // The optimistic observation above avoids borrowing resources for an
+    // already-stale candidate. This second observation is the real CAS: the
+    // sibling lock remains held until Rust confirms or the host rolls back.
+    let lockedPrior: ProjectStoreIdentity;
+    try {
+      lockedPrior = await observeStore(
+        projectRoot,
+        options.candidate.expectedPriorArtifacts,
+        indexPath,
+      );
+    } catch (error) {
+      throw new Error(`stale project write candidate: ${errorMessage(error)}`);
+    }
+    assertIdentity('stale project write candidate', options.candidate.expectedPrior, lockedPrior);
+    return await publishAshaProjectWriteCandidate(
+      options,
+      projectRoot,
+      indexPath,
+      resources,
+    );
+  } finally {
+    await releaseStoreLock();
+  }
+}
+
+async function publishAshaProjectWriteCandidate(
+  options: AshaProjectWriteTransactionOptions,
+  projectRoot: string,
+  indexPath: string,
+  resources: ReadonlyMap<number, Uint8Array>,
+): Promise<AshaProjectWriteTransactionReceipt> {
   const parent = dirname(projectRoot);
   const rootName = basename(projectRoot);
   const transactionId = randomUUID();
@@ -181,11 +214,28 @@ function allWrites(candidate: ProjectWriteCandidate) {
 }
 
 async function applyMoves(root: string, candidate: ProjectWriteCandidate): Promise<void> {
-  for (const movement of candidate.moves) {
-    const from = projectPath(root, movement.from);
-    const to = projectPath(root, movement.to);
-    await mkdir(dirname(to), { recursive: true });
-    await rename(from, to);
+  if (candidate.moves.length === 0) return;
+  const moveStaging = join(
+    dirname(root),
+    `.${basename(root)}.asha-moves-${randomUUID()}`,
+  );
+  await mkdir(moveStaging);
+  const stagedMoves: Array<{ readonly temporary: string; readonly to: string }> = [];
+  try {
+    // Move every source out of the graph before populating any destination.
+    // This preserves A->B,B->A swaps and A->B,B->C chains without letting an
+    // early rename destroy a later source.
+    for (const [index, movement] of candidate.moves.entries()) {
+      const temporary = join(moveStaging, index.toString().padStart(8, '0'));
+      await rename(projectPath(root, movement.from), temporary);
+      stagedMoves.push({ temporary, to: projectPath(root, movement.to) });
+    }
+    for (const movement of stagedMoves) {
+      await mkdir(dirname(movement.to), { recursive: true });
+      await rename(movement.temporary, movement.to);
+    }
+  } finally {
+    await rm(moveStaging, { recursive: true, force: true });
   }
 }
 
@@ -328,6 +378,34 @@ async function rollbackPublication(projectRoot: string, backup: string, failed: 
   }
 }
 
+async function acquireProjectStoreLock(
+  projectRoot: string,
+): Promise<() => Promise<void>> {
+  const lockPath = join(dirname(projectRoot), `.${basename(projectRoot)}.asha-write-lock`);
+  const deadline = Date.now() + 30_000;
+  while (true) {
+    try {
+      await mkdir(lockPath);
+      try {
+        await writeFile(join(lockPath, 'owner.json'), `${JSON.stringify({
+          pid: process.pid,
+          acquiredAt: new Date().toISOString(),
+        })}\n`);
+      } catch (error) {
+        await rm(lockPath, { recursive: true, force: true });
+        throw error;
+      }
+      return async () => rm(lockPath, { recursive: true, force: true });
+    } catch (error) {
+      if (!isAlreadyExists(error)) throw error;
+      if (Date.now() >= deadline) {
+        throw new Error(`timed out waiting for project write lock at "${lockPath}"`);
+      }
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
+    }
+  }
+}
+
 function fnv1a64Hex(bytes: Uint8Array): string {
   let hash = 14_695_981_039_346_656_037n;
   for (const byte of bytes) {
@@ -339,4 +417,12 @@ function fnv1a64Hex(bytes: Uint8Array): string {
 
 function isMissingFile(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT';
+}
+
+function isAlreadyExists(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EEXIST';
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

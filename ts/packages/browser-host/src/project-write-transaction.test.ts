@@ -106,6 +106,89 @@ void test('a rejected confirmation rolls the published directory back exactly', 
   await assert.rejects(readFile(join(fixture.root, 'scenes/added.json')), /ENOENT/);
 });
 
+void test('the host CAS serializes stale writers through Rust confirmation', async (context) => {
+  const fixture = await createFixture(context);
+  const secondReadStarted = deferred();
+  const releaseSecondRead = deferred();
+  const firstConfirmationStarted = deferred();
+  const releaseFirstConfirmation = deferred();
+  let secondReadCount = 0;
+  let secondConfirmations = 0;
+
+  // This writer observes the shared prior first, then pauses while borrowing
+  // resources. It must not be able to publish after another writer commits.
+  const second = applyAshaProjectWriteCandidate({
+    projectRoot: fixture.root,
+    candidate: fixture.candidate,
+    readResource: async (resource) => {
+      if (secondReadCount === 0) {
+        secondReadStarted.resolve();
+        await releaseSecondRead.promise;
+      }
+      secondReadCount += 1;
+      return fixture.resources.get(resource.handle) ?? new Uint8Array();
+    },
+    confirm: () => {
+      secondConfirmations += 1;
+      return true;
+    },
+  });
+  await secondReadStarted.promise;
+
+  const first = applyAshaProjectWriteCandidate({
+    projectRoot: fixture.root,
+    candidate: fixture.candidate,
+    readResource: async (resource) => fixture.resources.get(resource.handle) ?? new Uint8Array(),
+    confirm: async () => {
+      firstConfirmationStarted.resolve();
+      await releaseFirstConfirmation.promise;
+      return true;
+    },
+  });
+  await firstConfirmationStarted.promise;
+  releaseSecondRead.resolve();
+  releaseFirstConfirmation.resolve();
+
+  await first;
+  await assert.rejects(second, /stale project write candidate/);
+  assert.equal(secondConfirmations, 0);
+  assert.equal(await readFile(join(fixture.root, 'scenes/added.json'), 'utf8'), 'added-new');
+  assert.equal(
+    await readFile(join(fixture.root, ASHA_PROJECT_BUNDLE_MANIFEST_PATH), 'utf8'),
+    fixture.nextManifestJson,
+  );
+});
+
+void test('overlapping move swaps and chains publish without losing sources', async (context) => {
+  for (const specification of [
+    {
+      name: 'swap',
+      prior: [['scenes/a.json', 'A'], ['scenes/b.json', 'B']] as const,
+      next: [['scenes/a.json', 'B'], ['scenes/b.json', 'A']] as const,
+      moves: [['scenes/a.json', 'scenes/b.json'], ['scenes/b.json', 'scenes/a.json']] as const,
+    },
+    {
+      name: 'chain',
+      prior: [['scenes/a.json', 'A'], ['scenes/b.json', 'B']] as const,
+      next: [['scenes/b.json', 'A'], ['scenes/c.json', 'B']] as const,
+      moves: [['scenes/a.json', 'scenes/b.json'], ['scenes/b.json', 'scenes/c.json']] as const,
+    },
+  ]) {
+    const fixture = await createMoveFixture(context, specification);
+    await applyAshaProjectWriteCandidate({
+      projectRoot: fixture.root,
+      candidate: fixture.candidate,
+      readResource: async () => {
+        throw new Error('move-only candidate has no resources');
+      },
+      confirm: () => true,
+    });
+    for (const [path, expected] of specification.next) {
+      assert.equal(await readFile(join(fixture.root, path), 'utf8'), expected);
+    }
+  }
+});
+
 async function createFixture(context: TestContext): Promise<ProjectFixture> {
   const root = await mkdtemp(join(tmpdir(), 'asha-project-write-'));
   context.after(async () => rm(root, { recursive: true, force: true }));
@@ -166,6 +249,72 @@ async function createFixture(context: TestContext): Promise<ProjectFixture> {
     },
   };
   return { root, priorManifestJson, nextManifestJson, candidate, resources };
+}
+
+interface MoveFixtureSpecification {
+  readonly name: string;
+  readonly prior: readonly (readonly [string, string])[];
+  readonly next: readonly (readonly [string, string])[];
+  readonly moves: readonly (readonly [string, string])[];
+}
+
+async function createMoveFixture(
+  context: TestContext,
+  specification: MoveFixtureSpecification,
+): Promise<Pick<ProjectFixture, 'root' | 'candidate'>> {
+  const root = await mkdtemp(join(tmpdir(), `asha-project-${specification.name}-`));
+  context.after(async () => rm(root, { recursive: true, force: true }));
+  const lockBytes = text('{"assets":[]}');
+  const priorFiles = new Map<string, Uint8Array>([
+    ...specification.prior.map(([path, body]) => [path, text(body)] as const),
+    ['assets/lock.json', lockBytes] as const,
+  ]);
+  const nextFiles = new Map<string, Uint8Array>([
+    ...specification.next.map(([path, body]) => [path, text(body)] as const),
+    ['assets/lock.json', lockBytes] as const,
+  ]);
+  const priorManifest = manifest(
+    specification.prior.map(([path], index) => [index + 1, path, priorFiles.get(path)!]),
+    lockBytes,
+  );
+  const nextManifest = manifest(
+    specification.next.map(([path], index) => [index + 1, path, nextFiles.get(path)!]),
+    lockBytes,
+  );
+  const priorManifestJson = `${JSON.stringify(priorManifest)}\n`;
+  const nextManifestJson = `${JSON.stringify(nextManifest)}\n`;
+  await writeProject(root, priorManifestJson, priorFiles);
+
+  return {
+    root,
+    candidate: {
+      candidateHash: `candidate:${specification.name}`,
+      expectedPrior: identity(0, priorManifestJson, priorManifest, null),
+      expectedNext: identity(1, nextManifestJson, nextManifest, null),
+      expectedPriorArtifacts: expectations(priorManifest),
+      expectedNextArtifacts: expectations(nextManifest),
+      manifestJson: nextManifestJson,
+      writes: [],
+      moves: specification.moves.map(([from, to]) => ({
+        from,
+        to,
+        expectedContentHash: hash(priorFiles.get(from)!),
+      })),
+      deletes: [],
+      indexReplacement: null,
+    },
+  };
+}
+
+function deferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
+  let resolvePromise: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return {
+    promise,
+    resolve: () => resolvePromise?.(),
+  };
 }
 
 function manifest(
