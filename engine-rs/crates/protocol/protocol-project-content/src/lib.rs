@@ -301,6 +301,33 @@ pub struct ProjectContentCodecResultDto {
     pub diagnostics: Vec<ProjectContentDiagnosticDto>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActiveRuntimeProjectDomainKind {
+    Fps,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActiveRuntimeProjectEntityRole {
+    Player,
+    Enemy,
+    Neutral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveRuntimeProjectEntityRoleReadoutDto {
+    pub entity: u64,
+    pub role: ActiveRuntimeProjectEntityRole,
+}
+
+/// Rust-owned status for one statically installed gameplay domain. Entity roles
+/// are resolved by that domain's adapter and are projection facts, not TS
+/// inference or a caller-supplied bootstrap registry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveRuntimeProjectDomainReadoutDto {
+    pub kind: ActiveRuntimeProjectDomainKind,
+    pub entity_roles: Vec<ActiveRuntimeProjectEntityRoleReadoutDto>,
+}
+
 /// Rust-owned projection of the canonical content and entry scene currently
 /// backing one active RuntimeSession. This is read-only accepted state, not a
 /// second authoring workspace or a caller-replayable bootstrap request.
@@ -311,6 +338,7 @@ pub struct ActiveRuntimeProjectContentReadoutDto {
     pub content_set_hash: String,
     pub entry_scene: FlatSceneDocumentDto,
     pub content: ProjectContentCodecResultDto,
+    pub active_domains: Vec<ActiveRuntimeProjectDomainReadoutDto>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

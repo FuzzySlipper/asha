@@ -303,6 +303,37 @@ fn fps_content_artifacts(
     enemy_health: u32,
     include_player_weapon: bool,
 ) -> Vec<(String, Vec<u8>)> {
+    fps_content_artifacts_with(
+        composition,
+        scene,
+        enemy_health,
+        include_player_weapon,
+        false,
+    )
+}
+
+fn fps_content_artifacts_with(
+    composition: &GameplayStaticComposition,
+    scene: &FlatSceneDocument,
+    enemy_health: u32,
+    include_player_weapon: bool,
+    enemy_controller_only_role: bool,
+) -> Vec<(String, Vec<u8>)> {
+    let mut enemy_definition = stored_fps_definition(
+        "actor/generated-tunnel-enemy",
+        false,
+        enemy_health,
+        include_player_weapon,
+    );
+    if enemy_controller_only_role {
+        enemy_definition.capabilities.retain(|capability| {
+            !matches!(
+                capability,
+                EntityDefinitionCapability::Faction { .. }
+                    | EntityDefinitionCapability::PolicyBinding { .. }
+            )
+        });
+    }
     let documents = vec![
         ProjectContentDocumentDto::EntityDefinition {
             document_id: PLAYER_DEFINITION_PATH.to_owned(),
@@ -315,12 +346,7 @@ fn fps_content_artifacts(
         },
         ProjectContentDocumentDto::EntityDefinition {
             document_id: ENEMY_DEFINITION_PATH.to_owned(),
-            definition: stored_fps_definition(
-                "actor/generated-tunnel-enemy",
-                false,
-                enemy_health,
-                include_player_weapon,
-            ),
+            definition: enemy_definition,
         },
         ProjectContentDocumentDto::GameplayConfiguration {
             document_id: GAMEPLAY_PATH.to_owned(),
@@ -529,8 +555,30 @@ fn fps_project_source_batch_with(
     enemy_health: u32,
     include_player_weapon: bool,
 ) -> protocol_project_bundle::RuntimeProjectSourceBatch {
+    fps_project_source_batch_with_role_mode(
+        bridge,
+        composition,
+        enemy_health,
+        include_player_weapon,
+        false,
+    )
+}
+
+fn fps_project_source_batch_with_role_mode(
+    bridge: &mut EngineBridge,
+    composition: &GameplayStaticComposition,
+    enemy_health: u32,
+    include_player_weapon: bool,
+    enemy_controller_only_role: bool,
+) -> protocol_project_bundle::RuntimeProjectSourceBatch {
     let scene = stored_fps_scene("voxel-volume/hand-authored-room");
-    let content = fps_content_artifacts(composition, &scene, enemy_health, include_player_weapon);
+    let content = fps_content_artifacts_with(
+        composition,
+        &scene,
+        enemy_health,
+        include_player_weapon,
+        enemy_controller_only_role,
+    );
     project_source_batch_for_scene(bridge, composition, scene, content)
 }
 
@@ -686,6 +734,48 @@ fn fresh_activation_derives_voxel_collision_projection_and_gameplay_from_stored_
 }
 
 #[test]
+fn statically_required_fps_domain_rejects_missing_semantics_before_publication() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 6006 })
+        .unwrap();
+    admit(&mut bridge, &composition, "voxel-volume/hand-authored-room");
+    let before_lifecycle = bridge.runtime_project_lifecycle_version();
+    let before_entities = bridge.scene.entities.hash();
+
+    let receipt = RuntimeBridge::load_runtime_project(
+        &mut bridge,
+        RuntimeProjectLoadRequest {
+            source: RuntimeProjectSourceAdapterInput {
+                kind: RuntimeProjectSourceAdapterKind::InMemory,
+                identity: "fixture:required-fps-missing-semantics".to_owned(),
+                materialization_hash: "fnv1a64:6006000000000000".to_owned(),
+            },
+            expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+        },
+    )
+    .unwrap();
+
+    assert!(!receipt.accepted);
+    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
+    assert!(receipt.diagnostics[0]
+        .message
+        .contains("requires at least one canonical entity seed"));
+    assert!(bridge.active_runtime_project().is_none());
+    assert_eq!(bridge.scene.entities.hash(), before_entities);
+    assert_eq!(bridge.runtime_project_lifecycle_version(), before_lifecycle);
+    assert!(RuntimeBridge::read_fps_runtime_session(&bridge).is_err());
+}
+
+#[test]
 fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootstrap() {
     use protocol_project_bundle::{
         RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
@@ -699,6 +789,7 @@ fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootst
 
     let composition = static_composition();
     let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
         .build_unloaded();
     bridge
         .initialize_engine(EngineConfig { seed: 6007 })
@@ -732,6 +823,22 @@ fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootst
     assert_eq!(active_content.project_id, PROJECT_ID);
     assert_eq!(active_content.content.documents.len(), 4);
     assert_eq!(active_content.entry_scene.id, SceneId::new(SCENE_ID));
+    assert_eq!(active_content.active_domains.len(), 1);
+    assert_eq!(
+        active_content.active_domains[0].kind,
+        ActiveRuntimeProjectDomainKind::Fps
+    );
+    assert_eq!(
+        active_content.active_domains[0]
+            .entity_roles
+            .iter()
+            .map(|entry| entry.role)
+            .collect::<Vec<_>>(),
+        vec![
+            ActiveRuntimeProjectEntityRole::Player,
+            ActiveRuntimeProjectEntityRole::Enemy,
+        ]
+    );
 
     let initial = RuntimeBridge::read_fps_runtime_session(&bridge)
         .expect("FPS authority is active immediately after loadProject");
@@ -933,6 +1040,50 @@ fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootst
 }
 
 #[test]
+fn rust_active_domain_projects_controller_only_enemy_role() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 6011 })
+        .unwrap();
+    let source = fps_project_source_batch_with_role_mode(&mut bridge, &composition, 40, true, true);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("controller-only role source admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+    let receipt = RuntimeBridge::load_runtime_project(
+        &mut bridge,
+        RuntimeProjectLoadRequest {
+            source: RuntimeProjectSourceAdapterInput {
+                kind: RuntimeProjectSourceAdapterKind::InMemory,
+                identity: "fixture:canonical-fps-controller-role".to_owned(),
+                materialization_hash: "fnv1a64:6007000000000003".to_owned(),
+            },
+            expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+        },
+    )
+    .unwrap();
+    assert!(receipt.accepted, "{:?}", receipt.diagnostics);
+
+    let snapshot = RuntimeBridge::read_fps_runtime_session(&bridge).unwrap();
+    assert!(snapshot.policy_bindings.is_empty());
+    let content = RuntimeBridge::read_active_runtime_project_content(&bridge).unwrap();
+    let enemy_role = content.active_domains[0]
+        .entity_roles
+        .iter()
+        .find(|entry| entry.role == ActiveRuntimeProjectEntityRole::Enemy)
+        .expect("Rust adapter projects the controller-only enemy role");
+    assert_eq!(enemy_role.entity, snapshot.enemy_entity);
+}
+
+#[test]
 fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic() {
     use protocol_project_bundle::{
         RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
@@ -951,6 +1102,7 @@ fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic()
     let composition = static_composition();
     let mut configured =
         DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+            .with_project_domain(RuntimeProjectDomainAdapter::Fps)
             .build_unloaded();
     configured
         .initialize_engine(EngineConfig { seed: 6008 })
@@ -975,6 +1127,7 @@ fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic()
 
     let composition = static_composition();
     let mut rejected = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
         .build_unloaded();
     rejected
         .initialize_engine(EngineConfig { seed: 6009 })
@@ -1013,6 +1166,7 @@ fn canonical_fps_spawn_binding_mismatch_rejects_without_publishing_authority() {
 
     let composition = static_composition();
     let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
         .build_unloaded();
     bridge
         .initialize_engine(EngineConfig { seed: 6010 })

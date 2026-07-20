@@ -26,12 +26,20 @@ asha-runtime-session-composition = { path = "../asha-engine/public-rust/runtime-
 ```
 
 ```rust,no_run
-# use asha_runtime_session_composition::{DeferredRuntimeSessionBuilder, GameplayStaticComposition};
+# use asha_runtime_session_composition::{DeferredRuntimeSessionBuilder, GameplayStaticComposition, RuntimeProjectDomainAdapter};
 # fn static_composition() -> GameplayStaticComposition { todo!() }
 let bridge = DeferredRuntimeSessionBuilder::from_static_composition(static_composition())
+    .with_project_domain(RuntimeProjectDomainAdapter::Fps)
     .build_unloaded();
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
+
+`with_project_domain` installs a typed Engine-owned adapter; it is not a hint
+derived again at load time. The saved project must satisfy that adapter, and
+the active-project readout publishes the adapter's Rust-resolved entity roles.
+A provider without a product-domain adapter still admits generic canonical
+project content, but does not acquire FPS authority because its data happens to
+contain familiar strings.
 
 A loadable downstream `.node` addon annotates one module-load function with
 `asha_native_runtime_provider::native_provider_module_init` and installs a

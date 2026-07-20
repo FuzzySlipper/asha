@@ -113,12 +113,32 @@ pub fn read_active_runtime_project_content(handle: i64) -> napi::Result<String> 
         let readout = bridge
             .read_active_runtime_project_content()
             .map_err(to_napi)?;
+        let active_domains = readout
+            .active_domains
+            .iter()
+            .map(|domain| {
+                serde_json::json!({
+                    "kind": match domain.kind {
+                        runtime_bridge_api::ActiveRuntimeProjectDomainKind::Fps => "fps",
+                    },
+                    "entityRoles": domain.entity_roles.iter().map(|entity| serde_json::json!({
+                        "entity": entity.entity,
+                        "role": match entity.role {
+                            runtime_bridge_api::ActiveRuntimeProjectEntityRole::Player => "player",
+                            runtime_bridge_api::ActiveRuntimeProjectEntityRole::Enemy => "enemy",
+                            runtime_bridge_api::ActiveRuntimeProjectEntityRole::Neutral => "neutral",
+                        },
+                    })).collect::<Vec<_>>(),
+                })
+            })
+            .collect::<Vec<_>>();
         let value = serde_json::json!({
             "projectId": readout.project_id,
             "manifestHash": readout.manifest_hash,
             "contentSetHash": readout.content_set_hash,
             "entryScene": crate::scene_preview::scene_document_json(&readout.entry_scene),
             "content": crate::project_content::codec_result_json(&readout.content)?,
+            "activeDomains": active_domains,
         });
         serde_json::to_string(&value).map_err(|error| {
             to_napi(RuntimeBridgeError::new(

@@ -84,7 +84,10 @@ loaded runtime project state. For canonical loads, the facade first reads the
 Rust-owned active ProjectContent/entry-scene projection and the Rust-owned FPS
 snapshot. It does not retain a caller-supplied `ProjectBundle` bootstrap input;
 the compatibility `projectBundle` readout field is therefore `null` on this
-path.
+path. The active-project projection also identifies the statically installed
+domain and its Rust-resolved entity roles. Canonical TypeScript projection uses
+that table directly; it does not infer player, enemy, or neutral roles from
+capability strings.
 
 Canonical scene admission creates one `EntityStore` graph. FPS lifecycle,
 combat, movement, render visibility, and restart state bind to those existing
@@ -107,7 +110,7 @@ loaded-project primary-fire receipts.
 
 Each `renderProjection` CapabilityState now carries a
 `runtime_session.ecrp_render_target.v0` target object. The target binds runtime
-Entity id, EntityDefinition stable id, source path, inferred runtime role,
+Entity id, EntityDefinition stable id, source path, Rust-resolved runtime role,
 projection kind, render label, current transform, optional visual scale, and a
 deterministic target hash. `renderHandle` is `null` until a concrete render-frame
 owner assigns retained renderer handles; consumers should use `renderLabel` and

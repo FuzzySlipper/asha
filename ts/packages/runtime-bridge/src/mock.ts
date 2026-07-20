@@ -1723,6 +1723,7 @@ export class MockRuntimeBridge implements RuntimeBridge {
         fieldMetadata: [],
         diagnostics: [],
       },
+      activeDomains: [],
     };
   }
 

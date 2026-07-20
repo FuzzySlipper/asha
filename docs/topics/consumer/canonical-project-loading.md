@@ -42,6 +42,14 @@ accepted receipt contains the Rust-owned project, manifest, admission,
 content-set, composition, scene/entity/voxel, generation, and revision
 identities. A rejected receipt leaves project authority unactivated.
 
+A downstream provider that supports a product domain installs its typed Rust
+adapter when it constructs the deferred RuntimeSession. For example, the FPS
+provider uses `with_project_domain(RuntimeProjectDomainAdapter::Fps)`. The
+adapter is both available and required for that provider: canonical admission
+must satisfy its typed topology or fail without publication. Rust never selects
+a domain by scanning saved controller, faction, policy, or projection strings,
+and TypeScript does not repeat that decision.
+
 Stored `EntityDefinition` documents use a closed typed capability schema. The
 current playable FPS slice recognizes transform, bounds/collision, controller,
 health, weapon mount, render projection, policy binding, spawn marker, and
@@ -51,6 +59,9 @@ same entity ids, and rejects the entire activation if domain topology is
 incomplete or contradictory. `loadProject({ source })` therefore produces
 immediate FPS, gameplay-module, trigger, collision, voxel, input, time-control,
 and restart authority without a second handwritten bootstrap call.
+The active-project readout publishes the installed domain and Rust-resolved
+entity roles so render and UI projection consume the same classification used
+by runtime authority.
 
 The development directory and packaged archive are two transports for the same
 ProjectBundle closure. They are not separate content pipelines. Given the same

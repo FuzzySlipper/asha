@@ -447,8 +447,9 @@ pub fn bootstrap_entity_definition(
         return Err(EntityDefinitionBootstrapError::Invalid { diagnostics });
     }
 
+    let mut staging = store.clone();
     let create = validate_and_apply_rule_owned(
-        store,
+        &mut staging,
         EcrpRuleOwner::EntityBootstrap,
         &EntityAuthoringCommand::Create {
             id: entity,
@@ -468,10 +469,14 @@ pub fn bootstrap_entity_definition(
 
     let mut applied_capabilities = Vec::with_capacity(definition.capabilities.len());
     for capability in &definition.capabilities {
-        let authoring_capability =
-            to_authoring_capability(capability).expect("validated capabilities are known");
+        let Some(authoring_capability) = to_authoring_capability(capability) else {
+            // Valid domain-owned stored capabilities are consumed by their
+            // statically installed Rule adapter. They are not generic
+            // EntityStore attachments and must never be treated as unknown.
+            continue;
+        };
         let outcome = validate_and_apply_rule_owned(
-            store,
+            &mut staging,
             EcrpRuleOwner::EntityBootstrap,
             &EntityAuthoringCommand::AttachCapability {
                 id: entity,
@@ -493,13 +498,15 @@ pub fn bootstrap_entity_definition(
         }
     }
 
+    let entity_hash = staging.hash();
+    *store = staging;
     Ok(EntityDefinitionBootstrapRecord {
         stable_id: definition.stable_id.clone(),
         display_name: definition.display_name.clone(),
         entity,
         source: definition.source.clone(),
         applied_capabilities,
-        entity_hash: store.hash(),
+        entity_hash,
         replay_unit_label: "entity_definition.bootstrap",
     })
 }
@@ -1199,6 +1206,45 @@ mod tests {
         }
     }
 
+    fn semantic_entity_definition() -> EntityDefinition {
+        let mut definition = minimal_entity_definition();
+        definition.capabilities.extend([
+            EntityDefinitionCapability::Controller {
+                controller_id: "player_input".into(),
+            },
+            EntityDefinitionCapability::Health {
+                current: 100,
+                max: 100,
+            },
+            EntityDefinitionCapability::WeaponMount {
+                weapon_id: "weapon/demo".into(),
+                damage: 10,
+                range_units: 12,
+                ammo: 3,
+                cooldown_ticks_after_fire: 2,
+            },
+            EntityDefinitionCapability::RenderProjection {
+                projection_id: "first_person_camera".into(),
+                visible: true,
+            },
+            EntityDefinitionCapability::PolicyBinding {
+                binding_id: "player:policy".into(),
+                policy_id: "policy/player".into(),
+                view_kind: "runtime_session.fps.policy_view.v0".into(),
+                view_version: "v0".into(),
+                allowed_intents: vec!["runtime.intent.primary_fire.v0".into()],
+                runtime_moment: "player_input".into(),
+            },
+            EntityDefinitionCapability::SpawnMarker {
+                marker_id: "spawn.player".into(),
+            },
+            EntityDefinitionCapability::Faction {
+                faction_id: "player".into(),
+            },
+        ]);
+        definition
+    }
+
     fn project_bundle_request(
         entries: Vec<(u64, EntityDefinition)>,
     ) -> ProjectBundleEntityDefinitionBootstrapRequest {
@@ -1521,6 +1567,40 @@ mod tests {
     }
 
     #[test]
+    fn semantic_capabilities_are_valid_without_becoming_generic_store_attachments() {
+        let mut store = EntityStore::new();
+        let definition = semantic_entity_definition();
+
+        let record = bootstrap_entity_definition(&mut store, EntityId::new(80), &definition)
+            .expect("valid domain-owned capabilities must not panic");
+
+        assert_eq!(record.applied_capabilities, vec!["transform".to_string()]);
+        assert_eq!(store.alive_count(), 1);
+        assert!(store.transform(EntityId::new(80)).is_some());
+        assert_eq!(record.entity_hash, store.hash());
+    }
+
+    #[test]
+    fn single_definition_bootstrap_rejection_never_partially_publishes() {
+        let mut store = EntityStore::new();
+        create(&mut store, 81);
+        let before = store.hash();
+
+        let result = bootstrap_entity_definition(
+            &mut store,
+            EntityId::new(81),
+            &semantic_entity_definition(),
+        );
+
+        assert!(matches!(
+            result,
+            Err(EntityDefinitionBootstrapError::Rejected { .. })
+        ));
+        assert_eq!(store.hash(), before);
+        assert_eq!(store.alive_count(), 1);
+    }
+
+    #[test]
     fn project_bundle_bootstrap_seeds_multiple_entity_definitions_atomically() {
         let mut store = EntityStore::new();
         let request = project_bundle_request(vec![
@@ -1557,6 +1637,23 @@ mod tests {
         assert!(store.render_projection(EntityId::new(78)).is_some());
         assert!(store.collision(EntityId::new(78)).is_some());
         assert!(store.bounds(EntityId::new(78)).is_some());
+    }
+
+    #[test]
+    fn project_bundle_bootstrap_accepts_domain_owned_semantic_capabilities() {
+        let mut store = EntityStore::new();
+        let request = project_bundle_request(vec![
+            (80, semantic_entity_definition()),
+            (82, target_entity_definition()),
+        ]);
+
+        let record = bootstrap_project_bundle_entity_definitions(&mut store, &request)
+            .expect("valid semantic capabilities must survive batch bootstrap");
+
+        assert_eq!(record.records[0].applied_capabilities, vec!["transform"]);
+        assert_eq!(record.records[1].applied_capabilities.len(), 4);
+        assert_eq!(store.alive_count(), 2);
+        assert_eq!(record.entity_hash, store.hash());
     }
 
     #[test]

@@ -281,9 +281,8 @@ export class RustBackedRuntimeSessionFacade implements RuntimeSessionFacade {
       const activeContent = this.#bridge.readActiveRuntimeProjectContent();
       const projectState = buildEcrpProjectStateFromCanonical(activeContent);
       this.#ecrpProjectState = projectState;
-      const hasPlayer = projectState.entities.some((entity) => entity.role === 'player');
-      const hasEnemy = projectState.entities.some((entity) => entity.role === 'enemy');
-      this.#snapshot = hasPlayer && hasEnemy
+      const hasFpsDomain = activeContent.activeDomains.some((domain) => domain.kind === 'fps');
+      this.#snapshot = hasFpsDomain
         ? this.#bridge.readFpsRuntimeSession()
         : null;
       this.#runtimeTransforms = new Map();

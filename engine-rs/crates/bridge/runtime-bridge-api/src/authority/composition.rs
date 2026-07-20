@@ -150,6 +150,14 @@ impl From<GameplayRuntimeHostError> for StaticRuntimeSessionCompositionError {
     }
 }
 
+/// Closed engine-owned domain adapter installed before project admission.
+/// The adapter declares both availability and requirement: a project loaded by
+/// this RuntimeSession must satisfy the selected domain's typed semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeProjectDomainAdapter {
+    Fps,
+}
+
 /// Pre-runtime composition root for Studio and other trusted project tools.
 ///
 /// Consuming a static gameplay composition here retains only its immutable
@@ -181,11 +189,22 @@ impl StaticProjectAuthoringBuilder {
 /// the immutable Rust schemas/codecs/behaviors remain fixed for this bridge.
 pub struct DeferredRuntimeSessionBuilder {
     composition: GameplayStaticComposition,
+    domain_adapter: Option<RuntimeProjectDomainAdapter>,
 }
 
 impl DeferredRuntimeSessionBuilder {
     pub fn from_static_composition(composition: GameplayStaticComposition) -> Self {
-        Self { composition }
+        Self {
+            composition,
+            domain_adapter: None,
+        }
+    }
+
+    /// Install one typed domain requirement as part of the immutable runtime
+    /// composition. Domain selection never depends on inspecting project data.
+    pub fn with_project_domain(mut self, domain_adapter: RuntimeProjectDomainAdapter) -> Self {
+        self.domain_adapter = Some(domain_adapter);
+        self
     }
 
     pub fn build_unloaded(self) -> EngineBridge {
@@ -195,6 +214,7 @@ impl DeferredRuntimeSessionBuilder {
         let mut bridge = EngineBridge::new();
         bridge.gameplay.static_project_content_admission = Some(project_content_admission);
         bridge.gameplay.static_gameplay_composition = Some(self.composition);
+        bridge.gameplay.static_project_domain_adapter = self.domain_adapter;
         bridge
     }
 }

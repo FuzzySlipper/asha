@@ -579,7 +579,7 @@ function isVec3(value: readonly number[] | undefined): value is readonly [number
 }
 
 export function buildEcrpProjectState(input: RuntimeSessionEcrpProjectLoadInput): RuntimeSessionEcrpProjectState {
-  return buildEcrpProjectStateFromParts(input, input.entityDefinitions, input.sceneDocument);
+  return buildEcrpProjectStateFromParts(input, input.entityDefinitions, input.sceneDocument, null);
 }
 
 /** Project the accepted Rust-owned canonical content into the existing ECRP
@@ -592,13 +592,19 @@ export function buildEcrpProjectStateFromCanonical(
       ? [ecrpDefinitionFromStored(document.definition)]
       : [],
   );
-  return buildEcrpProjectStateFromParts(null, definitions, readout.entryScene);
+  const roleByEntity = new Map(
+    readout.activeDomains.flatMap((domain) =>
+      domain.entityRoles.map((entry) => [entry.entity, entry.role] as const),
+    ),
+  );
+  return buildEcrpProjectStateFromParts(null, definitions, readout.entryScene, roleByEntity);
 }
 
 function buildEcrpProjectStateFromParts(
   input: RuntimeSessionEcrpProjectLoadInput | null,
   entityDefinitions: readonly RuntimeSessionEcrpEntityDefinition[],
   sceneDocument: FlatSceneDocument,
+  canonicalRoleByEntity: ReadonlyMap<number, RuntimeSessionEcrpEntityState['role']> | null,
 ): RuntimeSessionEcrpProjectState {
   const definitions = new Map(entityDefinitions.map((definition) => [definition.stableId, definition]));
   const worldTransforms = sceneWorldTransforms(sceneDocument);
@@ -627,7 +633,9 @@ function buildEcrpProjectStateFromParts(
         ? authoredWorldTransform
         : composeSceneTransform(spawnMarkerTransform, placement.transform),
       definition,
-      role: inferRuntimeRole(definition),
+      role: canonicalRoleByEntity === null
+        ? inferCompatibilityRuntimeRole(definition)
+        : canonicalRoleByEntity.get(placement.id) ?? 'neutral',
     };
   });
   return {
@@ -815,7 +823,7 @@ function rotateSceneVector(
   return [result[0], result[1], result[2]];
 }
 
-function inferRuntimeRole(definition: RuntimeSessionEcrpEntityDefinition): RuntimeSessionEcrpEntityState['role'] {
+function inferCompatibilityRuntimeRole(definition: RuntimeSessionEcrpEntityDefinition): RuntimeSessionEcrpEntityState['role'] {
   const faction = definition.capabilities.find((capability) => capability.kind === 'faction');
   if (faction?.kind === 'faction') {
     if (faction.factionId === 'player') {

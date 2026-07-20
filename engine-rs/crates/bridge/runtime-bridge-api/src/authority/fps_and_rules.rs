@@ -239,36 +239,12 @@ impl EngineBridge {
         })
     }
 
-    /// Derive the optional FPS domain seed from the canonical admission plan.
-    /// The presence of a recognized player/enemy role signal selects this
-    /// built-in domain; all actual state comes from closed stored capabilities.
+    /// Derive the required FPS domain seed from the canonical admission plan.
+    /// The statically installed adapter selects this function before any
+    /// project data is inspected; missing or incompatible semantics reject.
     pub(super) fn convert_runtime_project_fps_seed(
         seeds: Vec<gameplay_runtime_host::RuntimeProjectEntitySeed>,
-    ) -> BridgeResult<Option<FpsProjectBundleLoadInput>> {
-        let selects_fps_domain = seeds.iter().any(|seed| {
-            seed.definition
-                .capabilities
-                .iter()
-                .any(|capability| match capability {
-                    EntityDefinitionCapability::Controller { controller_id } => {
-                        matches!(controller_id.as_str(), "player_input" | "enemy_policy")
-                    }
-                    EntityDefinitionCapability::Faction { faction_id } => {
-                        matches!(faction_id.as_str(), "player" | "hostile")
-                    }
-                    EntityDefinitionCapability::RenderProjection { projection_id, .. } => {
-                        matches!(
-                            projection_id.as_str(),
-                            "first_person_camera" | "target_cube"
-                        )
-                    }
-                    _ => false,
-                })
-        });
-        if !selects_fps_domain {
-            return Ok(None);
-        }
-
+    ) -> BridgeResult<FpsProjectBundleLoadInput> {
         let project_bundle = seeds
             .first()
             .map(|seed| seed.definition.source.project_bundle.clone())
@@ -441,10 +417,10 @@ impl EngineBridge {
             });
         }
 
-        Ok(Some(FpsProjectBundleLoadInput {
+        Ok(FpsProjectBundleLoadInput {
             project_bundle,
             definitions,
-        }))
+        })
     }
 
     pub(super) fn fps_runtime_role(role: FpsBridgeRole) -> FpsRuntimeRole {

@@ -165,6 +165,21 @@ export interface ProjectContentCodecResult {
   readonly diagnostics: readonly ProjectContentDiagnostic[];
 }
 
+export type ActiveRuntimeProjectDomainKind = 'fps';
+
+export type ActiveRuntimeProjectEntityRole = 'player' | 'enemy' | 'neutral';
+
+export interface ActiveRuntimeProjectEntityRoleReadout {
+  readonly entity: number;
+  readonly role: ActiveRuntimeProjectEntityRole;
+}
+
+// Rust-owned status for one statically installed gameplay domain. Entity roles are resolved by that domain's adapter and are projection facts, not TS inference or a caller-supplied bootstrap registry.
+export interface ActiveRuntimeProjectDomainReadout {
+  readonly kind: ActiveRuntimeProjectDomainKind;
+  readonly entityRoles: readonly ActiveRuntimeProjectEntityRoleReadout[];
+}
+
 // Rust-owned projection of the canonical content and entry scene currently backing one active RuntimeSession. This is read-only accepted state, not a second authoring workspace or a caller-replayable bootstrap request.
 export interface ActiveRuntimeProjectContentReadout {
   readonly projectId: number;
@@ -172,6 +187,7 @@ export interface ActiveRuntimeProjectContentReadout {
   readonly contentSetHash: string;
   readonly entryScene: FlatSceneDocument;
   readonly content: ProjectContentCodecResult;
+  readonly activeDomains: readonly ActiveRuntimeProjectDomainReadout[];
 }
 
 export type ProjectContentAuthoringCommand =

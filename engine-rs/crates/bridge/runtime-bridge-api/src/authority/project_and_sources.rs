@@ -96,12 +96,39 @@ impl EngineBridge {
                 "active canonical project is missing its entry scene",
             )
         })?;
+        let active_domains = match self.gameplay.static_project_domain_adapter {
+            Some(RuntimeProjectDomainAdapter::Fps) => {
+                let seed = self.gameplay.fps_seed.as_ref().ok_or_else(|| {
+                    RuntimeBridgeError::new(
+                        RuntimeBridgeErrorKind::Internal,
+                        "active FPS project is missing its Rust-owned domain seed",
+                    )
+                })?;
+                vec![ActiveRuntimeProjectDomainReadoutDto {
+                    kind: ActiveRuntimeProjectDomainKind::Fps,
+                    entity_roles: seed
+                        .definitions
+                        .iter()
+                        .map(|definition| ActiveRuntimeProjectEntityRoleReadoutDto {
+                            entity: definition.entity.raw(),
+                            role: match definition.role {
+                                FpsRuntimeRole::Player => ActiveRuntimeProjectEntityRole::Player,
+                                FpsRuntimeRole::Enemy => ActiveRuntimeProjectEntityRole::Enemy,
+                                FpsRuntimeRole::Neutral => ActiveRuntimeProjectEntityRole::Neutral,
+                            },
+                        })
+                        .collect(),
+                }]
+            }
+            None => Vec::new(),
+        };
         Ok(ActiveRuntimeProjectContentReadoutDto {
             project_id: active.project_id,
             manifest_hash: active.manifest_hash.clone(),
             content_set_hash: active.content_set_hash.clone(),
             entry_scene: Self::scene_document_dto(entry_scene),
             content,
+            active_domains,
         })
     }
 
@@ -139,6 +166,7 @@ impl EngineBridge {
                 )
             }
         };
+        let domain_adapter = self.gameplay.static_project_domain_adapter;
         let source = match self.bundle.pending_project_source.take() {
             Some(source) => source,
             None => {
@@ -166,15 +194,20 @@ impl EngineBridge {
             .expect("validated activation retains entry scene")
             .clone();
         let voxel_assets = gameplay_host.take_activated_voxel_assets();
-        let fps_seed = Self::convert_runtime_project_fps_seed(
-            gameplay_host.take_activated_runtime_entity_seeds(),
-        )
-        .map_err(|error| RuntimeProjectLoadError::Domain(error.to_string()))?;
+        let runtime_entity_seeds = gameplay_host.take_activated_runtime_entity_seeds();
+        let fps_seed = match domain_adapter {
+            Some(RuntimeProjectDomainAdapter::Fps) => Some(
+                Self::convert_runtime_project_fps_seed(runtime_entity_seeds)
+                    .map_err(|error| RuntimeProjectLoadError::Domain(error.to_string()))?,
+            ),
+            None => None,
+        };
 
         let mut staged = EngineBridge::new();
         initialization::initialize(&mut staged, EngineConfig { seed: engine.raw() })
             .map_err(|error| RuntimeProjectLoadError::Resource(error.to_string()))?;
         staged.gameplay.static_gameplay_composition = Some(composition.clone());
+        staged.gameplay.static_project_domain_adapter = domain_adapter;
         staged.gameplay.static_project_content_admission =
             Some(rule_project_bundle::GameplayProjectContentAdmission::new(
                 composition.project_configuration_authority(),
@@ -316,6 +349,7 @@ impl EngineBridge {
             .static_gameplay_composition
             .clone()
             .ok_or(RuntimeProjectLoadError::MissingStaticComposition)?;
+        let domain_adapter = self.gameplay.static_project_domain_adapter;
         let mut unloaded = EngineBridge::new();
         initialization::initialize(&mut unloaded, EngineConfig { seed: engine.raw() })
             .map_err(|error| RuntimeProjectLoadError::Resource(error.to_string()))?;
@@ -324,6 +358,7 @@ impl EngineBridge {
                 composition.project_configuration_authority(),
             ));
         unloaded.gameplay.static_gameplay_composition = Some(composition);
+        unloaded.gameplay.static_project_domain_adapter = domain_adapter;
         let lifecycle = RuntimeProjectLifecycleVersion {
             generation: actual.generation,
             revision: actual.revision.saturating_add(1),

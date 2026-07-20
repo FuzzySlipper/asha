@@ -128,12 +128,12 @@ class CanonicalFpsProjectBridge extends MockRuntimeBridge {
           { kind: 'bounds', min: [-0.5, -0.5, -0.5], max: [0.5, 0.5, 0.5] },
           { kind: 'collision', staticCollider: false },
           { kind: 'health', current: player ? 100 : 40, max: player ? 100 : 40 },
+          { kind: 'controller', controllerId: player ? 'player_input' : 'enemy_policy' },
           {
             kind: 'renderProjection',
             projectionId: player ? 'first_person_camera' : 'target_cube',
             visible: true,
           },
-          { kind: 'faction', factionId: player ? 'player' : 'hostile' },
           ...(player
             ? [{
                 kind: 'weaponMount' as const,
@@ -143,15 +143,7 @@ class CanonicalFpsProjectBridge extends MockRuntimeBridge {
                 ammo: 2,
                 cooldownTicksAfterFire: 4,
               }]
-            : [{
-                kind: 'policyBinding' as const,
-                bindingId: 'enemy:policy',
-                policyId: 'policy.enemy.canonical',
-                viewKind: 'runtime_session.fps.policy_view.v0',
-                viewVersion: 'v0',
-                allowedIntents: ['runtime.intent.move_direct_nav.v0'],
-                runtimeMoment: 'autonomous_policy_tick',
-              }]),
+            : []),
         ],
       },
     });
@@ -178,6 +170,13 @@ class CanonicalFpsProjectBridge extends MockRuntimeBridge {
         fieldMetadata: [],
         diagnostics: [],
       },
+      activeDomains: [{
+        kind: 'fps',
+        entityRoles: [
+          { entity: 101, role: 'player' },
+          { entity: 102, role: 'enemy' },
+        ],
+      }],
     };
   }
 
@@ -229,5 +228,11 @@ void test('loadProject derives FPS readouts from Rust active content without leg
     readout.entities.map((entity) => entity.definitionStableId),
     ['actor/player', 'actor/enemy'],
   );
+  const projectedRoles = readout.entities.map((entity) => {
+    const projection = entity.capabilities.find((capability) => capability.kind === 'renderProjection');
+    assert.equal(projection?.kind, 'renderProjection');
+    return projection?.kind === 'renderProjection' ? projection.target.role : null;
+  });
+  assert.deepEqual(projectedRoles, ['player', 'enemy']);
   assert.equal(session.readLifecycleStatus().enemy.health.current, 40);
 });
