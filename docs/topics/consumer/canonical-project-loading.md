@@ -48,7 +48,10 @@ provider uses `with_project_domain(RuntimeProjectDomainAdapter::Fps)`. The
 adapter is both available and required for that provider: canonical admission
 must satisfy its typed topology or fail without publication. Rust never selects
 a domain by scanning saved controller, faction, policy, or projection strings,
-and TypeScript does not repeat that decision.
+and TypeScript does not repeat that decision. Domain rejections retain the
+stable ProjectContent document ID and independent manifest source path down to
+the relevant definition field, so authors never need to reverse-map runtime
+entity numbers to repair stored content.
 
 Stored `EntityDefinition` documents use a closed typed capability schema. The
 current playable FPS slice recognizes transform, bounds/collision, controller,

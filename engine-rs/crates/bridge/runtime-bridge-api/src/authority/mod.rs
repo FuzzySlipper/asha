@@ -637,6 +637,7 @@ mod camera;
 mod composition;
 mod fps_and_rules;
 mod fps_bootstrap_registry;
+mod fps_project_diagnostics;
 mod fps_runtime_session;
 mod presentation_catalog;
 mod project_and_sources;

@@ -1,6 +1,9 @@
 use super::fps_animation_catalog::{
     animation_authority_error, animation_projection_error, primary_fire_animation_catalog,
 };
+use super::fps_project_diagnostics::{
+    runtime_project_seed_domain_error, CanonicalFpsDefinitionSource, CanonicalFpsProjectSeed,
+};
 use super::*;
 
 impl EngineBridge {
@@ -244,29 +247,36 @@ impl EngineBridge {
     /// project data is inspected; missing or incompatible semantics reject.
     pub(super) fn convert_runtime_project_fps_seed(
         seeds: Vec<gameplay_runtime_host::RuntimeProjectEntitySeed>,
-    ) -> BridgeResult<FpsProjectBundleLoadInput> {
+        entry_scene: SceneId,
+    ) -> Result<CanonicalFpsProjectSeed, RuntimeProjectLoadError> {
         let project_bundle = seeds
             .first()
             .map(|seed| seed.definition.source.project_bundle.clone())
-            .ok_or_else(|| {
-                RuntimeBridgeError::new(
-                    RuntimeBridgeErrorKind::InvalidInput,
-                    "FPS domain selection requires at least one canonical entity seed",
-                )
+            .ok_or_else(|| RuntimeProjectLoadError::Domain {
+                code: "missingEntityDefinitions".to_owned(),
+                document_id: Some(entry_scene.raw().to_string()),
+                path: Some("nodes".to_owned()),
+                message: "FPS domain activation requires at least one canonical entity definition instance in the entry scene".to_owned(),
             })?;
-        if seeds
+        if let Some(seed) = seeds
             .iter()
-            .any(|seed| seed.definition.source.project_bundle != project_bundle)
+            .find(|seed| seed.definition.source.project_bundle != project_bundle)
         {
-            return Err(RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::InvalidInput,
-                "canonical FPS entity definitions must share one source ProjectBundle identity",
+            return Err(runtime_project_seed_domain_error(
+                "projectBundleMismatch",
+                seed,
+                "source.projectBundle",
+                format!(
+                    "entity definition `{}` belongs to ProjectBundle `{}` instead of `{project_bundle}`",
+                    seed.definition.stable_id, seed.definition.source.project_bundle
+                ),
             ));
         }
 
         let mut definitions = Vec::with_capacity(seeds.len());
+        let mut sources = BTreeMap::new();
         for seed in seeds {
-            let mut definition = seed.definition;
+            let mut definition = seed.definition.clone();
             let declared_spawn_marker =
                 definition
                     .capabilities
@@ -278,8 +288,10 @@ impl EngineBridge {
                         _ => None,
                     });
             if declared_spawn_marker != seed.spawn_marker_id.as_deref() {
-                return Err(RuntimeBridgeError::new(
-                    RuntimeBridgeErrorKind::InvalidInput,
+                return Err(runtime_project_seed_domain_error(
+                    "spawnMarkerMismatch",
+                    &seed,
+                    "capabilities",
                     format!(
                         "canonical entity instance `{}` binds spawn marker {:?}, but definition `{}` declares {:?}",
                         seed.instance_id,
@@ -325,8 +337,10 @@ impl EngineBridge {
             let player_signal = controller == Some("player_input") || faction == Some("player");
             let enemy_signal = controller == Some("enemy_policy") || faction == Some("hostile");
             if player_signal && enemy_signal {
-                return Err(RuntimeBridgeError::new(
-                    RuntimeBridgeErrorKind::InvalidInput,
+                return Err(runtime_project_seed_domain_error(
+                    "conflictingFpsRole",
+                    &seed,
+                    "capabilities",
                     format!(
                         "canonical entity definition `{}` has conflicting player/enemy role capabilities",
                         definition.stable_id
@@ -406,6 +420,13 @@ impl EngineBridge {
                         _ => None,
                     });
 
+            sources.insert(
+                seed.entity,
+                CanonicalFpsDefinitionSource {
+                    document_id: seed.document_id,
+                    source_path: seed.source_path,
+                },
+            );
             definitions.push(FpsStoredEntityDefinition {
                 entity: seed.entity,
                 definition,
@@ -417,9 +438,12 @@ impl EngineBridge {
             });
         }
 
-        Ok(FpsProjectBundleLoadInput {
-            project_bundle,
-            definitions,
+        Ok(CanonicalFpsProjectSeed {
+            input: FpsProjectBundleLoadInput {
+                project_bundle,
+                definitions,
+            },
+            sources,
         })
     }
 

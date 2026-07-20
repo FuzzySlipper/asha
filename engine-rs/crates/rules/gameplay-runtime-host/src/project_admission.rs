@@ -188,6 +188,8 @@ pub(crate) struct RuntimeProjectActivationParts {
 pub struct RuntimeProjectEntitySeed {
     pub entity: core_ids::EntityId,
     pub instance_id: String,
+    pub document_id: String,
+    pub source_path: String,
     pub spawn_marker_id: Option<String>,
     pub world_translation: [f32; 3],
     pub world_rotation: [f32; 4],
@@ -284,6 +286,7 @@ pub fn compile_runtime_project_admission(
     let voxel_assets = voxel::decode_voxel_assets(&source, &mut report);
 
     let mut documents = Vec::new();
+    let mut entity_definition_source_paths = BTreeMap::new();
     for artifact in source.manifest().artifacts.iter().filter(|artifact| {
         matches!(
             artifact.role,
@@ -304,6 +307,13 @@ pub fn compile_runtime_project_admission(
         };
         match decode_project_content_artifact(&artifact.path, body) {
             Ok(document) if artifact_role_accepts_document(&artifact.role, &document) => {
+                if matches!(
+                    &document,
+                    ProjectContentDocumentDto::EntityDefinition { .. }
+                ) {
+                    entity_definition_source_paths
+                        .insert(document.document_id().to_owned(), artifact.path.clone());
+                }
                 documents.push(document);
             }
             Ok(document) => report.push(
@@ -390,8 +400,12 @@ pub fn compile_runtime_project_admission(
     };
 
     let bindings = compiled_bindings(&content);
-    let (entity_targets, spatial_entities, runtime_entity_seeds) =
-        derive_entity_authority(&content, &bootstrap, &mut report);
+    let (entity_targets, spatial_entities, runtime_entity_seeds) = derive_entity_authority(
+        &content,
+        &entity_definition_source_paths,
+        &bootstrap,
+        &mut report,
+    );
     let prefabs = derive_prefab_bootstrap(&content, &bootstrap, &mut report);
     if !report.is_valid() {
         report.canonicalize();
@@ -869,15 +883,29 @@ fn compiled_bindings(content: &ValidatedProjectContentSet) -> GameplayModuleBind
     builder.build()
 }
 
-fn definitions(content: &ValidatedProjectContentSet) -> BTreeMap<&str, &EntityDefinition> {
+fn definitions<'a>(
+    content: &'a ValidatedProjectContentSet,
+    source_paths: &'a BTreeMap<String, String>,
+) -> BTreeMap<&'a str, (&'a str, &'a str, &'a EntityDefinition)> {
     content
         .result()
         .documents
         .iter()
         .filter_map(|document| match document {
-            ProjectContentDocumentDto::EntityDefinition { definition, .. } => {
-                Some((definition.stable_id.as_str(), definition))
-            }
+            ProjectContentDocumentDto::EntityDefinition {
+                document_id,
+                definition,
+            } => Some((
+                definition.stable_id.as_str(),
+                (
+                    document_id.as_str(),
+                    source_paths
+                        .get(document_id)
+                        .map(String::as_str)
+                        .expect("validated runtime content retains every manifest source path"),
+                    definition,
+                ),
+            )),
             _ => None,
         })
         .collect()
@@ -885,6 +913,7 @@ fn definitions(content: &ValidatedProjectContentSet) -> BTreeMap<&str, &EntityDe
 
 fn derive_entity_authority(
     content: &ValidatedProjectContentSet,
+    source_paths: &BTreeMap<String, String>,
     bootstrap: &BootstrapPlan,
     report: &mut RuntimeProjectAdmissionReport,
 ) -> (
@@ -892,7 +921,7 @@ fn derive_entity_authority(
     Vec<GameplayRuntimeSpatialEntity>,
     Vec<RuntimeProjectEntitySeed>,
 ) {
-    let definitions = definitions(content);
+    let definitions = definitions(content, source_paths);
     let mut targets = GameplayBindingEntityTargets::new();
     let mut spatial = Vec::new();
     let mut runtime_entity_seeds = Vec::new();
@@ -901,12 +930,16 @@ fn derive_entity_authority(
             continue;
         };
         targets.bind(stable_id.clone(), instance.entity);
-        let Some(definition) = definitions.get(stable_id.as_str()).copied() else {
+        let Some((document_id, source_path, definition)) =
+            definitions.get(stable_id.as_str()).copied()
+        else {
             continue;
         };
         runtime_entity_seeds.push(RuntimeProjectEntitySeed {
             entity: instance.entity,
             instance_id: instance.instance_id.clone(),
+            document_id: document_id.to_owned(),
+            source_path: source_path.to_owned(),
             spawn_marker_id: instance.spawn_marker_id.clone(),
             world_translation: instance.world_transform.translation.to_array(),
             world_rotation: [

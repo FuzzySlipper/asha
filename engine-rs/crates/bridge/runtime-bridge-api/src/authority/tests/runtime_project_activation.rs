@@ -18,7 +18,9 @@ const SCENE_ID: u64 = 912;
 const VOXEL_PATH: &str = "assets/hand-authored-room.avxl.json";
 const CATALOG_PATH: &str = "catalogs/materials.project-content.json";
 const FPS_PROJECT_BUNDLE: &str = "stored-fps-project";
+const PLAYER_DEFINITION_DOCUMENT_ID: &str = "entity.demo-player";
 const PLAYER_DEFINITION_PATH: &str = "entities/demo-player.project-content.json";
+const ENEMY_DEFINITION_DOCUMENT_ID: &str = "entity.tunnel-enemy";
 const ENEMY_DEFINITION_PATH: &str = "entities/tunnel-enemy.project-content.json";
 const GAMEPLAY_PATH: &str = "gameplay/fps.project-content.json";
 
@@ -309,6 +311,7 @@ fn fps_content_artifacts(
         enemy_health,
         include_player_weapon,
         false,
+        false,
     )
 }
 
@@ -318,7 +321,23 @@ fn fps_content_artifacts_with(
     enemy_health: u32,
     include_player_weapon: bool,
     enemy_controller_only_role: bool,
+    player_missing_role: bool,
 ) -> Vec<(String, Vec<u8>)> {
+    let mut player_definition = stored_fps_definition(
+        "actor/demo-player",
+        true,
+        enemy_health,
+        include_player_weapon,
+    );
+    if player_missing_role {
+        player_definition.capabilities.retain(|capability| {
+            !matches!(
+                capability,
+                EntityDefinitionCapability::Faction { .. }
+                    | EntityDefinitionCapability::Controller { .. }
+            )
+        });
+    }
     let mut enemy_definition = stored_fps_definition(
         "actor/generated-tunnel-enemy",
         false,
@@ -336,16 +355,11 @@ fn fps_content_artifacts_with(
     }
     let documents = vec![
         ProjectContentDocumentDto::EntityDefinition {
-            document_id: PLAYER_DEFINITION_PATH.to_owned(),
-            definition: stored_fps_definition(
-                "actor/demo-player",
-                true,
-                enemy_health,
-                include_player_weapon,
-            ),
+            document_id: PLAYER_DEFINITION_DOCUMENT_ID.to_owned(),
+            definition: player_definition,
         },
         ProjectContentDocumentDto::EntityDefinition {
-            document_id: ENEMY_DEFINITION_PATH.to_owned(),
+            document_id: ENEMY_DEFINITION_DOCUMENT_ID.to_owned(),
             definition: enemy_definition,
         },
         ProjectContentDocumentDto::GameplayConfiguration {
@@ -381,7 +395,14 @@ fn fps_content_artifacts_with(
         .result
         .canonical_files
         .into_iter()
-        .map(|file| (file.document_id, file.canonical_json.into_bytes()))
+        .map(|file| {
+            let path = match file.document_id.as_str() {
+                PLAYER_DEFINITION_DOCUMENT_ID => PLAYER_DEFINITION_PATH,
+                ENEMY_DEFINITION_DOCUMENT_ID => ENEMY_DEFINITION_PATH,
+                _ => file.document_id.as_str(),
+            };
+            (path.to_owned(), file.canonical_json.into_bytes())
+        })
         .collect()
 }
 
@@ -578,7 +599,17 @@ fn fps_project_source_batch_with_role_mode(
         enemy_health,
         include_player_weapon,
         enemy_controller_only_role,
+        false,
     );
+    project_source_batch_for_scene(bridge, composition, scene, content)
+}
+
+fn fps_project_source_batch_missing_player_role(
+    bridge: &mut EngineBridge,
+    composition: &GameplayStaticComposition,
+) -> protocol_project_bundle::RuntimeProjectSourceBatch {
+    let scene = stored_fps_scene("voxel-volume/hand-authored-room");
+    let content = fps_content_artifacts_with(composition, &scene, 40, true, false, true);
     project_source_batch_for_scene(bridge, composition, scene, content)
 }
 
@@ -765,10 +796,12 @@ fn statically_required_fps_domain_rejects_missing_semantics_before_publication()
     .unwrap();
 
     assert!(!receipt.accepted);
-    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
+    assert_eq!(receipt.diagnostics[0].code, "missingEntityDefinitions");
+    assert_eq!(receipt.diagnostics[0].document_id.as_deref(), Some("912"));
+    assert_eq!(receipt.diagnostics[0].path.as_deref(), Some("nodes"));
     assert!(receipt.diagnostics[0]
         .message
-        .contains("requires at least one canonical entity seed"));
+        .contains("requires at least one canonical entity definition"));
     assert!(bridge.active_runtime_project().is_none());
     assert_eq!(bridge.scene.entities.hash(), before_entities);
     assert_eq!(bridge.runtime_project_lifecycle_version(), before_lifecycle);
@@ -1139,10 +1172,17 @@ fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic()
     assert!(admission.accepted, "{:?}", admission.diagnostics);
     let receipt = RuntimeBridge::load_runtime_project(&mut rejected, load_request()).unwrap();
     assert!(!receipt.accepted);
-    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
-    assert!(receipt.diagnostics[0]
-        .message
-        .contains("MissingPlayerWeapon"));
+    assert_eq!(receipt.diagnostics[0].code, "missingPlayerWeapon");
+    assert_eq!(
+        receipt.diagnostics[0].document_id.as_deref(),
+        Some(PLAYER_DEFINITION_DOCUMENT_ID)
+    );
+    assert_eq!(
+        receipt.diagnostics[0].path.as_deref(),
+        Some("entities/demo-player.project-content.json.document.definition.capabilities")
+    );
+    assert!(receipt.diagnostics[0].message.contains("actor/demo-player"));
+    assert!(receipt.diagnostics[0].message.contains("weaponMount"));
     assert!(rejected.active_runtime_project().is_none());
     assert!(rejected.scene.entities.snapshot().records.is_empty());
     assert_eq!(
@@ -1154,6 +1194,58 @@ fn canonical_fps_configuration_changes_next_run_and_invalid_topology_is_atomic()
             .expect_err("failed domain activation publishes no FPS authority")
             .kind,
         RuntimeBridgeErrorKind::NotInitialized
+    );
+}
+
+#[test]
+fn canonical_fps_missing_role_diagnostic_names_authored_document_and_field() {
+    use protocol_project_bundle::{
+        RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
+        RuntimeProjectSourceAdapterKind,
+    };
+
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 6012 })
+        .unwrap();
+    let source = fps_project_source_batch_missing_player_role(&mut bridge, &composition);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("structurally valid missing-role source reaches domain activation");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+
+    let receipt = RuntimeBridge::load_runtime_project(
+        &mut bridge,
+        RuntimeProjectLoadRequest {
+            source: RuntimeProjectSourceAdapterInput {
+                kind: RuntimeProjectSourceAdapterKind::InMemory,
+                identity: "fixture:canonical-fps-missing-player-role".to_owned(),
+                materialization_hash: "fnv1a64:6007000000000004".to_owned(),
+            },
+            expected_lifecycle: RuntimeProjectLifecycleVersion::default(),
+        },
+    )
+    .unwrap();
+
+    assert!(!receipt.accepted);
+    assert_eq!(receipt.diagnostics[0].code, "missingPlayerRole");
+    assert_eq!(
+        receipt.diagnostics[0].document_id.as_deref(),
+        Some(PLAYER_DEFINITION_DOCUMENT_ID)
+    );
+    assert_eq!(
+        receipt.diagnostics[0].path.as_deref(),
+        Some("entities/demo-player.project-content.json.document.definition.capabilities")
+    );
+    assert!(receipt.diagnostics[0].message.contains("player_input"));
+    assert!(bridge.active_runtime_project().is_none());
+    assert!(bridge.scene.entities.snapshot().records.is_empty());
+    assert_eq!(
+        bridge.runtime_project_lifecycle_version(),
+        RuntimeProjectLifecycleVersion::default()
     );
 }
 
@@ -1201,7 +1293,15 @@ fn canonical_fps_spawn_binding_mismatch_rejects_without_publishing_authority() {
     )
     .unwrap();
     assert!(!receipt.accepted);
-    assert_eq!(receipt.diagnostics[0].code, "domainActivationRejected");
+    assert_eq!(receipt.diagnostics[0].code, "spawnMarkerMismatch");
+    assert_eq!(
+        receipt.diagnostics[0].document_id.as_deref(),
+        Some(ENEMY_DEFINITION_DOCUMENT_ID)
+    );
+    assert_eq!(
+        receipt.diagnostics[0].path.as_deref(),
+        Some("entities/tunnel-enemy.project-content.json.document.definition.capabilities")
+    );
     assert!(receipt.diagnostics[0]
         .message
         .contains("binds spawn marker"));

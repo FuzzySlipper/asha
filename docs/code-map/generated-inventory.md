@@ -315,7 +315,7 @@ Source: [bridge-manifest.toml](../../engine-rs/crates/bridge/runtime-bridge-api/
 
 ## Assignment And Dependency Pressure
 
-Committed path classes: 780 source; 27 generated source; 543 other; 0 build/cache/output.
+Committed path classes: 781 source; 27 generated source; 543 other; 0 build/cache/output.
 
 ### Rust actual and allowed edges
 
@@ -452,16 +452,16 @@ Committed path classes: 780 source; 27 generated source; 543 other; 0 build/cach
 
 | Source | Lines / warning / cap | Owner | Review by |
 |---|---:|---|---|
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1790 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/services/svc-entity-authoring/src/lib.rs` | 1771 / 1400 / 1600 | rust-service | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1766 / 1400 / 1600 | rust-bridge | global policy |
 | `ts/packages/runtime-bridge/src/mock.ts` | 1787 / 1580 / 1620 | ts-shell | 2026-10-15 |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/runtime_bridge_impl.rs` | 1776 / 1570 / 1621 | rust-bridge | 2026-10-15 |
 | `engine-rs/crates/rules/rule-lifecycle/src/lib.rs` | 1725 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/gameplay-runtime-host/src/lib.rs` | 3171 / 2950 / 3036 | rust-rule | 2026-09-15 |
+| `engine-rs/crates/rules/gameplay-runtime-host/src/project_admission.rs` | 1669 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/services/svc-project-content/src/codec.rs` | 1663 / 1400 / 1600 | rust-service | global policy |
-| `engine-rs/crates/rules/gameplay-runtime-host/src/project_admission.rs` | 1636 / 1400 / 1600 | rust-rule | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/project_and_sources.rs` | 1638 / 1400 / 1600 | rust-bridge | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session-rust-facade.ts` | 1634 / 1400 / 1600 | ts-shell | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/project_and_sources.rs` | 1631 / 1400 / 1600 | rust-bridge | global policy |
 | `ts/packages/runtime-bridge/src/runtime-session.test.ts` | 1619 / 1400 / 1600 | ts-shell | global policy |
 | `ts/packages/runtime-bridge/src/native.ts` | 1739 / 1680 / 1730 | ts-shell | 2026-09-15 |
 | `engine-rs/crates/render/render-bridge/src/presentation.rs` | 1608 / 1400 / 1600 | rust-render | global policy |

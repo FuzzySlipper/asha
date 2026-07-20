@@ -26,7 +26,12 @@ pub enum RuntimeProjectLoadError {
     },
     Admission(gameplay_runtime_host::RuntimeProjectAdmissionReport),
     Activation(gameplay_runtime_host::GameplayRuntimeHostError),
-    Domain(String),
+    Domain {
+        code: String,
+        document_id: Option<String>,
+        path: Option<String>,
+        message: String,
+    },
     Resource(String),
 }
 
@@ -196,10 +201,10 @@ impl EngineBridge {
         let voxel_assets = gameplay_host.take_activated_voxel_assets();
         let runtime_entity_seeds = gameplay_host.take_activated_runtime_entity_seeds();
         let fps_seed = match domain_adapter {
-            Some(RuntimeProjectDomainAdapter::Fps) => Some(
-                Self::convert_runtime_project_fps_seed(runtime_entity_seeds)
-                    .map_err(|error| RuntimeProjectLoadError::Domain(error.to_string()))?,
-            ),
+            Some(RuntimeProjectDomainAdapter::Fps) => Some(Self::convert_runtime_project_fps_seed(
+                runtime_entity_seeds,
+                entry_scene.id,
+            )?),
             None => None,
         };
 
@@ -225,11 +230,13 @@ impl EngineBridge {
         if let Some(seed) = fps_seed {
             let fps_session = load_fps_project_bundle_from_existing_entities(
                 &mut staged.scene.entities,
-                seed.clone(),
+                seed.input.clone(),
             )
-            .map_err(|error| RuntimeProjectLoadError::Domain(format!("{error:?}")))?;
+            .map_err(|error| {
+                super::fps_project_diagnostics::runtime_project_fps_activation_error(&seed, error)
+            })?;
             staged.gameplay.fps_session = Some(fps_session);
-            staged.gameplay.fps_seed = Some(seed);
+            staged.gameplay.fps_seed = Some(seed.input);
             staged.gameplay.fps_epoch = 1;
             staged.reset_presentation_projection();
         }
