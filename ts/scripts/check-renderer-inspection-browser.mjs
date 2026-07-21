@@ -64,7 +64,7 @@ const TEST_PAGE = `<!doctype html>
       {
         autoStart: false,
         initialGrid: ${JSON.stringify(INITIAL_GRID)},
-        controls: { minimumDistance: 2, maximumDistance: 20 },
+        controls: { initialPosition: [0, 19, 1], minimumDistance: 2, maximumDistance: 20 },
       },
     );
     window.__ashaInspection = {
@@ -124,6 +124,10 @@ async function main() {
     assert.ok(initial.grid.renderedLineCount > 0, 'real browser backend should realize visible grid lines');
     assert.notEqual(initial.grid.bounds, null);
     assert.equal(initial.gridRevision, 1);
+    assert.ok(
+      Math.abs(initial.camera.pose.pitchDegrees) <= 85.000_001,
+      'real browser mount must clamp the initial inspection camera pitch',
+    );
 
     await client.send('Input.dispatchMouseEvent', {
       type: 'mousePressed', x: point.x, y: point.y, button: 'left', buttons: 1, clickCount: 1,

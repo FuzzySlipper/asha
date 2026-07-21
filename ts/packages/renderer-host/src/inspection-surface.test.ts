@@ -123,6 +123,21 @@ void test('inspection controls bound pitch and camera distance under repeated fo
   assert.ok(Math.abs(harness.surface.camera().pose.pitchDegrees) <= 85.000_001);
 });
 
+void test('inspection controls clamp the initial camera to the pitch bound before mount readout', () => {
+  for (const initialPosition of [[0, 100, 1], [0, -100, 1]] as const) {
+    const harness = createInspectionHarness({
+      autoStart: false,
+      controls: { initialPosition },
+    });
+
+    const initialReadout = harness.surface.readout();
+    assert.ok(Math.abs(initialReadout.camera.pose.pitchDegrees) <= 85.000_001);
+    assert.equal(initialReadout.cameraRevision, 1);
+    assert.equal(initialReadout.lastCameraChange, 'initial_camera');
+    harness.surface.dispose();
+  }
+});
+
 void test('inspection surface retains accepted frames, fails closed on malformed replacement, and owns resize', () => {
   const harness = createInspectionHarness({ autoStart: false, frame: primitiveFrame(7) });
   const accepted = harness.surface.readout();

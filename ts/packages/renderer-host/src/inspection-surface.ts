@@ -147,6 +147,7 @@ const DEFAULT_PROJECTION: PerspectiveProjection = {
 };
 const MOVEMENT_KEYS = ['KeyA', 'KeyD', 'KeyS', 'KeyW'] as const;
 const ORBIT_KEYS = ['ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowUp'] as const;
+const MAXIMUM_PITCH_DEGREES = 85;
 
 export async function mountAshaRendererInspectionSurface(
   canvas: HTMLCanvasElement,
@@ -381,7 +382,11 @@ function createInspectionControls(
     throw new TypeError('inspection initial camera distance must be within its configured bounds');
   }
   let yawRadians = Math.atan2(offset[0], offset[2]);
-  let pitchRadians = Math.asin(clamp(offset[1] / distance, -1, 1));
+  let pitchRadians = clamp(
+    Math.asin(clamp(offset[1] / distance, -1, 1)),
+    degreesToRadians(-MAXIMUM_PITCH_DEGREES),
+    degreesToRadians(MAXIMUM_PITCH_DEGREES),
+  );
   let camera = resolveCamera(positionFromOrbit(target, distance, yawRadians, pitchRadians), target, projection);
   let cameraRevision = 0;
   let lastCameraChange: AshaRendererInspectionCameraChange = 'initial_camera';
@@ -486,8 +491,8 @@ function createInspectionControls(
     const nextYawRadians = yawRadians - degreesToRadians(movementX * orbitDegreesPerPixel);
     const nextPitchRadians = clamp(
       pitchRadians + degreesToRadians(movementY * orbitDegreesPerPixel),
-      degreesToRadians(-85),
-      degreesToRadians(85),
+      degreesToRadians(-MAXIMUM_PITCH_DEGREES),
+      degreesToRadians(MAXIMUM_PITCH_DEGREES),
     );
     commitCamera(target, nextYawRadians, nextPitchRadians, distance, 'pointer_orbit');
   };
@@ -608,8 +613,8 @@ function createInspectionControls(
         const nextYawRadians = yawRadians + yawAxis * orbitStepRadians;
         const nextPitchRadians = clamp(
           pitchRadians + pitchAxis * orbitStepRadians,
-          degreesToRadians(-85),
-          degreesToRadians(85),
+          degreesToRadians(-MAXIMUM_PITCH_DEGREES),
+          degreesToRadians(MAXIMUM_PITCH_DEGREES),
         );
         commitCamera(target, nextYawRadians, nextPitchRadians, distance, 'keyboard_orbit');
       }
