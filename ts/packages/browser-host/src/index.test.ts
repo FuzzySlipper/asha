@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +11,7 @@ import {
   NativeRuntimeBridge,
   type RuntimeBridge,
 } from '@asha/runtime-bridge';
+import type { ProjectWriteCandidate } from '@asha/game-workspace';
 
 import {
   ASHA_BROWSER_HOST_BRIDGE_METHODS,
@@ -22,6 +23,7 @@ import {
   describeNativeBrowserHostCommand,
   installNativeBrowserHostProvider,
   launchNativeBrowserHost,
+  observeAshaProjectStore,
   readNativeBrowserHostProviderStatus,
 } from './index.js';
 
@@ -303,6 +305,102 @@ void test('browser host keeps workspace authoring open behind its private Sessio
         result: { kind: 'workspace_authoring.state.v0', status: 'open' },
       });
       assert.deepEqual(requests, [input]);
+    } finally {
+      await host.close();
+    }
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+void test('browser host publishes and confirms one Rust project write candidate', async () => {
+  const tempRoot = await mkdtemp(join(tmpdir(), 'asha-browser-host-project-write-'));
+  const uiRoot = join(tempRoot, 'ui');
+  const projectRoot = join(tempRoot, 'project');
+  const nextRoot = join(tempRoot, 'next-project');
+  let confirmations = 0;
+  let releases = 0;
+  try {
+    await mkdir(uiRoot);
+    await writeFile(join(uiRoot, 'index.html'), '<!doctype html><title>ASHA Studio</title>');
+    const priorScene = textBytes('scene-before');
+    const nextScene = textBytes('scene-after');
+    const lock = textBytes('{"entries":[]}\n');
+    const priorManifest = projectWriteManifest(priorScene, lock);
+    const nextManifest = projectWriteManifest(nextScene, lock);
+    await writeProjectStoreFixture(projectRoot, priorManifest, priorScene, lock, 0);
+    await writeProjectStoreFixture(nextRoot, nextManifest, nextScene, lock, 1);
+    const prior = await observeAshaProjectStore(projectRoot);
+    const next = await observeAshaProjectStore(nextRoot);
+    const candidate: ProjectWriteCandidate = {
+      candidateHash: 'candidate:browser-host-project-write',
+      expectedPrior: prior.identity,
+      expectedNext: next.identity,
+      expectedPriorArtifacts: projectWriteExpectations(priorManifest),
+      expectedNextArtifacts: projectWriteExpectations(nextManifest),
+      manifestJson: nextManifest,
+      writes: [{
+        path: 'scenes/main.scene.json',
+        contentHash: fnv1a64Test(nextScene),
+        resource: { handle: 7, version: 1, byteLen: nextScene.byteLength },
+      }],
+      moves: [],
+      deletes: [],
+      indexReplacement: null,
+    };
+    const host = await launchNativeBrowserHost({
+      uiRoot,
+      host: '127.0.0.1',
+      port: 0,
+      provider: {
+        globalScope: {},
+        createRuntimeBridge: () => ({
+          ...createFakeRuntimeBridge(),
+          getBuffer: () => ({ handle: 7 as never, bytes: nextScene }),
+          releaseBuffer: () => { releases += 1; },
+          readWorkspaceAuthoringState: () => ({
+            status: 'open',
+            identity: {
+              project: { gameId: 'fixture', workspaceId: 'workspace.fixture' },
+              generation: 4,
+            },
+            workingRevision: 9,
+          }) as never,
+          confirmProjectWrite: (request) => {
+            confirmations += 1;
+            assert.equal(request.expectedWorkspaceId, 'workspace.fixture');
+            assert.equal(request.expectedGeneration, 4);
+            assert.equal(request.expectedWorkingRevision, 9);
+            assert.deepEqual(request.publication.published, next.identity);
+            return { accepted: true, stored: next.identity, diagnostics: [] };
+          },
+        }),
+      },
+    });
+    try {
+      const script = await (await fetch(`${host.url}/asha/browser-host/native-provider.js`)).text();
+      const scope: Record<string, unknown> = {};
+      runInNewContext(script, scope);
+      const provider = scope['ashaRuntimeBridge'] as { readonly browserHostSessionId: string };
+      const headers = browserHostHeaders(provider.browserHostSessionId, '0');
+      const observedResponse = await fetch(`${host.url}/asha/browser-host/project-store/observe`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ args: [projectRoot] }),
+      });
+      assert.equal(observedResponse.status, 200);
+      assert.deepEqual((await observedResponse.json() as { readonly result: unknown }).result, prior);
+
+      const appliedResponse = await fetch(`${host.url}/asha/browser-host/project-store/apply`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ args: [{ projectRoot, candidate }] }),
+      });
+      assert.equal(appliedResponse.status, 200, await appliedResponse.text());
+      assert.equal(await readFile(join(projectRoot, 'scenes/main.scene.json'), 'utf8'), 'scene-after');
+      assert.equal(await readFile(join(projectRoot, 'asha.project-bundle.json'), 'utf8'), nextManifest);
+      assert.equal(confirmations, 1);
+      assert.equal(releases, 1);
     } finally {
       await host.close();
     }
@@ -926,6 +1024,68 @@ function invokeBrowserHostBridge(
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ args }),
   });
+}
+
+function textBytes(value: string): Uint8Array {
+  return new TextEncoder().encode(value);
+}
+
+function projectWriteManifest(scene: Uint8Array, lock: Uint8Array): string {
+  return `${JSON.stringify({
+    bundleSchemaVersion: 2,
+    protocolVersion: 1,
+    project: { id: 1, name: 'Browser host project write fixture' },
+    entryScene: 1,
+    scenes: [{ id: 1, schemaVersion: 4, artifact: 'scenes/main.scene.json' }],
+    assetLock: { artifact: 'assets/lock.json', assetCount: 0 },
+    generationProvenance: null,
+    artifacts: [
+      {
+        path: 'assets/lock.json',
+        class: 'durable',
+        role: 'assetLock',
+        contentHash: fnv1a64Test(lock),
+      },
+      {
+        path: 'scenes/main.scene.json',
+        class: 'durable',
+        role: 'sceneDocument',
+        contentHash: fnv1a64Test(scene),
+      },
+    ],
+  }, null, 2)}\n`;
+}
+
+function projectWriteExpectations(manifestJson: string) {
+  const manifest = JSON.parse(manifestJson) as {
+    readonly artifacts: readonly { readonly path: string; readonly contentHash: string | null }[];
+  };
+  return manifest.artifacts.map(({ path, contentHash }) => ({ path, contentHash }));
+}
+
+async function writeProjectStoreFixture(
+  root: string,
+  manifestJson: string,
+  scene: Uint8Array,
+  lock: Uint8Array,
+  revision: number,
+): Promise<void> {
+  await mkdir(join(root, 'assets'), { recursive: true });
+  await mkdir(join(root, 'scenes'), { recursive: true });
+  await mkdir(join(root, '.asha'), { recursive: true });
+  await writeFile(join(root, 'asha.project-bundle.json'), manifestJson);
+  await writeFile(join(root, 'assets/lock.json'), lock);
+  await writeFile(join(root, 'scenes/main.scene.json'), scene);
+  await writeFile(join(root, '.asha/project-store.json'), `${JSON.stringify({ revision })}\n`);
+}
+
+function fnv1a64Test(bytes: Uint8Array): string {
+  let hash = 14_695_981_039_346_656_037n;
+  for (const byte of bytes) {
+    hash ^= BigInt(byte);
+    hash = BigInt.asUintN(64, hash * 1_099_511_628_211n);
+  }
+  return hash.toString(16).padStart(16, '0');
 }
 
 function createTrackedRuntimeBridge(cell: {

@@ -4,6 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import type { RuntimeProjectLifecycleVersion } from '@asha/contracts';
+import type { ProjectWriteCandidate } from '@asha/game-workspace';
 
 import {
   createNativeRuntimeBridge,
@@ -15,8 +16,16 @@ import {
   type NativeRustRuntimeBridgeProviderInstallation,
   type NativeRustRuntimeBridgeProviderProfile,
   type RuntimeBridge,
+  type RuntimeBufferHandle,
   RuntimeBridgeError,
 } from '@asha/runtime-bridge';
+
+import {
+  applyAshaProjectWriteCandidate,
+  observeAshaProjectStore,
+  type AshaProjectStoreObservation,
+  type AshaProjectWriteTransactionReceipt,
+} from './project-write-transaction.js';
 
 export const ASHA_BROWSER_HOST_COMPATIBILITY_VERSION = 'browser-host.v0';
 export const ASHA_BROWSER_HOST_PROVIDER_GLOBAL = 'ashaRuntimeBridge';
@@ -100,7 +109,16 @@ export interface NativeBrowserHostClientLifecycle {
 
 export type NativeBrowserHostRuntimeBridge = RuntimeBridge & {
   readonly browserHostLifecycle: NativeBrowserHostClientLifecycle;
+  readonly browserHostProjectStore: NativeBrowserHostProjectStore;
 };
+
+export interface NativeBrowserHostProjectStore {
+  observe(projectRoot: string): Promise<AshaProjectStoreObservation>;
+  apply(input: {
+    readonly projectRoot: string;
+    readonly candidate: ProjectWriteCandidate;
+  }): Promise<AshaProjectWriteTransactionReceipt>;
+}
 
 type NativeBrowserHostBridgeMethod = Extract<keyof RuntimeBridge, string>;
 
@@ -122,6 +140,8 @@ const WORKSPACE_AUTHORING_OPEN_ADAPTER_SYMBOL = Symbol.for(
 const WORKSPACE_AUTHORING_OPEN_ADAPTER_METHOD = 'openWorkspaceAuthoringAdapter';
 const WORKSPACE_AUTHORING_OPEN_ADAPTER_PATH =
   '/asha/browser-host/private-adapter/workspace-authoring/open';
+const PROJECT_STORE_OBSERVE_PATH = '/asha/browser-host/project-store/observe';
+const PROJECT_STORE_APPLY_PATH = '/asha/browser-host/project-store/apply';
 const PROJECT_RESOURCE_STAGE_MAX_INPUT_BYTES = MANIFEST_OPERATIONS.find(
   (operation) => operation.facadeMethod === PROJECT_RESOURCE_STAGE_METHOD,
 )?.maxInputBytes ?? 0;
@@ -327,6 +347,10 @@ async function handleNativeBrowserHostRequest(
     await handleWorkspaceAuthoringOpenAdapter(request, response, bridgePool);
     return;
   }
+  if (requestPath === PROJECT_STORE_OBSERVE_PATH || requestPath === PROJECT_STORE_APPLY_PATH) {
+    await handleProjectStoreOperation(request, response, bridgePool, requestPath);
+    return;
+  }
   if (requestPath.startsWith('/asha/browser-host/runtime-bridge/session/')) {
     await handleRuntimeBridgeSessionDisconnect(request, response, bridgePool, requestPath);
     return;
@@ -503,6 +527,96 @@ async function handleWorkspaceAuthoringOpenAdapter(
   } catch (error) {
     sendNativeBrowserHostError(response, error);
   }
+}
+
+async function handleProjectStoreOperation(
+  request: IncomingMessage,
+  response: ServerResponse,
+  bridgePool: NativeBrowserHostBridgePool,
+  requestPath: string,
+): Promise<void> {
+  if (request.method !== 'POST') {
+    sendJson(response, 405, { error: { message: 'Project-store operation requires POST.' } });
+    return;
+  }
+  try {
+    const identity = readNativeBrowserHostBridgeIdentity(request, bridgePool);
+    if (identity.browserSession === 'server') {
+      throw new RuntimeBridgeError(
+        'invalid_input',
+        'Project-store operations require a host-issued browser Session capability.',
+        { operation: 'browserHost.projectStore', provenance: 'transport_loader' },
+      );
+    }
+    const invocation = await readInvocationBody(request);
+    if (requestPath === PROJECT_STORE_OBSERVE_PATH) {
+      const projectRoot = requireProjectStoreRoot(invocation, 'observe');
+      sendJson(response, 200, { result: await observeAshaProjectStore(projectRoot) });
+      return;
+    }
+
+    if (invocation.args?.length !== 1) {
+      throw invalidProjectStoreInvocation('apply requires exactly one input object');
+    }
+    const input = invocation.args[0];
+    if (
+      input === null
+      || typeof input !== 'object'
+      || Array.isArray(input)
+      || typeof (input as { readonly projectRoot?: unknown }).projectRoot !== 'string'
+      || (input as { readonly projectRoot: string }).projectRoot.trim().length === 0
+      || typeof (input as { readonly candidate?: unknown }).candidate !== 'object'
+      || (input as { readonly candidate?: unknown }).candidate === null
+    ) {
+      throw invalidProjectStoreInvocation('apply requires projectRoot and a Rust-issued candidate');
+    }
+    const entry = await readNativeBrowserHostBridge(identity, bridgePool);
+    const bridge = await entry.bridge;
+    const candidate = (input as { readonly candidate: ProjectWriteCandidate }).candidate;
+    const projectRoot = (input as { readonly projectRoot: string }).projectRoot;
+    const receipt = await applyAshaProjectWriteCandidate({
+      projectRoot,
+      candidate,
+      readResource: async (resource) =>
+        bridge.getBuffer(resource.handle as RuntimeBufferHandle).bytes,
+      releaseResource: (resource) =>
+        bridge.releaseBuffer(resource.handle as RuntimeBufferHandle),
+      confirm: (publication) => {
+        const state = bridge.readWorkspaceAuthoringState();
+        const confirmation = bridge.confirmProjectWrite({
+          expectedWorkspaceId: state.identity.project.workspaceId,
+          expectedGeneration: state.identity.generation,
+          expectedWorkingRevision: state.workingRevision,
+          publication,
+        });
+        return confirmation.accepted;
+      },
+    });
+    sendJson(response, 200, { result: receipt });
+  } catch (error) {
+    sendNativeBrowserHostError(response, error);
+  }
+}
+
+function requireProjectStoreRoot(
+  invocation: NativeBrowserHostBridgeInvocation,
+  operation: string,
+): string {
+  if (
+    invocation.args?.length !== 1
+    || typeof invocation.args[0] !== 'string'
+    || invocation.args[0].trim().length === 0
+  ) {
+    throw invalidProjectStoreInvocation(`${operation} requires exactly one non-empty project root`);
+  }
+  return invocation.args[0];
+}
+
+function invalidProjectStoreInvocation(message: string): RuntimeBridgeError {
+  return new RuntimeBridgeError('invalid_input', `Project-store ${message}.`, {
+    operation: 'browserHost.projectStore',
+    provenance: 'transport_loader',
+  });
 }
 
 function acceptedRuntimeProjectLifecycle(result: unknown): RuntimeProjectLifecycleVersion | null {
@@ -1105,6 +1219,40 @@ function nativeBrowserHostProviderScript(browserSession: string): string {
         sessionId: browserSession,
         status: () => disconnectedClients.has(bridgeClient) ? 'disconnected' : 'active',
         disconnect: () => disconnect(bridgeClient),
+      }),
+    });
+    const invokeProjectStore = async (operation, args, bridgeClient) => {
+      if (disconnectedClients.has(bridgeClient)) {
+        throw classifiedError({ error: {
+          kind: 'not_initialized',
+          message: 'RuntimeBridge browser client is disconnected.',
+          operation: 'browserHost.projectStore.' + operation,
+          provenance: 'transport_loader',
+        } }, 'RuntimeBridge browser client is disconnected.');
+      }
+      const endpoint = operation === 'observe'
+        ? '${PROJECT_STORE_OBSERVE_PATH}'
+        : '${PROJECT_STORE_APPLY_PATH}';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          '${ASHA_BROWSER_HOST_BRIDGE_SESSION_HEADER}': browserSession,
+          '${ASHA_BROWSER_HOST_BRIDGE_CLIENT_HEADER}': String(bridgeClient),
+        },
+        body: JSON.stringify({ args }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw classifiedError(payload, 'ASHA project-store host operation failed.');
+      }
+      return payload.result;
+    };
+    Object.defineProperty(bridge, 'browserHostProjectStore', {
+      enumerable: false,
+      value: Object.freeze({
+        observe: (projectRoot) => invokeProjectStore('observe', [projectRoot], bridgeClient),
+        apply: (input) => invokeProjectStore('apply', [input], bridgeClient),
       }),
     });
     return bridge;

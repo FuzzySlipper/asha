@@ -672,7 +672,7 @@ fn project_write_is_rust_derived_revision_bound_and_single_use() {
         Some("content/moved-fixture.json")
     );
 
-    let asset_lock = br#"{"assets":[]}"#;
+    let asset_lock = br#"{"entries":[]}"#;
     let prior = svc_serialization::ProjectBundleManifest {
         bundle_schema_version: svc_serialization::BUNDLE_SCHEMA_VERSION,
         protocol_version: svc_serialization::SUPPORTED_PROTOCOL_VERSION,

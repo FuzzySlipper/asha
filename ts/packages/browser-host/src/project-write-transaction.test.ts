@@ -195,7 +195,7 @@ async function createFixture(context: TestContext): Promise<ProjectFixture> {
   const priorFiles = new Map<string, Uint8Array>([
     ['scenes/main.json', text('main-old')],
     ['scenes/removed.json', text('removed-old')],
-    ['assets/lock.json', text('{"assets":[]}')],
+    ['assets/lock.json', text('{"entries":[]}')],
   ]);
   const nextFiles = new Map<string, Uint8Array>([
     ['scenes/archive/main-renamed.json', priorFiles.get('scenes/main.json')!],
@@ -264,7 +264,7 @@ async function createMoveFixture(
 ): Promise<Pick<ProjectFixture, 'root' | 'candidate'>> {
   const root = await mkdtemp(join(tmpdir(), `asha-project-${specification.name}-`));
   context.after(async () => rm(root, { recursive: true, force: true }));
-  const lockBytes = text('{"assets":[]}');
+  const lockBytes = text('{"entries":[]}');
   const priorFiles = new Map<string, Uint8Array>([
     ...specification.prior.map(([path, body]) => [path, text(body)] as const),
     ['assets/lock.json', lockBytes] as const,

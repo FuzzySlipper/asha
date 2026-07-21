@@ -14,7 +14,7 @@ const text = (value: string): Uint8Array => new TextEncoder().encode(value);
 
 function projectFiles(): ReadonlyMap<string, Uint8Array> {
   const scene = text('{"scene":"main"}\n');
-  const lock = text('{"assets":[]}\n');
+  const lock = text('{"entries":[]}\n');
   const second = text('{"scene":"second"}\n');
   const manifest = {
     bundleSchemaVersion: 2,

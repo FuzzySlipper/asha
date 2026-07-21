@@ -11,7 +11,7 @@
   "generationProvenance": null,
   "artifacts": [
     { "path": "assets/demo-house.avxl.json", "class": "durable", "role": "voxelVolumeAsset", "contentHash": "70574c28a281334b" },
-    { "path": "assets/lock.json", "class": "durable", "role": "assetLock", "contentHash": "fa9b5193b4ce9eb4" },
+    { "path": "assets/lock.json", "class": "durable", "role": "assetLock", "contentHash": "9cd976d0d059fdb6" },
     { "path": "catalogs/demo-assets.json", "class": "durable", "role": "projectContent", "contentHash": "9b964a369093f4ca" },
     { "path": "catalogs/split-source.json", "class": "durable", "role": "projectContent", "contentHash": "8c9a73a1d173b4e5" },
     { "path": "entities/demo-actor.json", "class": "durable", "role": "projectContent", "contentHash": "349a5fecca756987" },

@@ -3,7 +3,7 @@ use core_ids::{ProjectId, SceneId};
 use super::*;
 
 fn source_fixture() -> (String, Vec<u8>, Vec<u8>, Vec<u8>) {
-    let lock = b"asset-lock".to_vec();
+    let lock = br#"{"entries":[]}"#.to_vec();
     let scene = b"entry-scene".to_vec();
     let voxel = b"voxel-house".to_vec();
     let manifest = svc_serialization::ProjectBundleManifest {

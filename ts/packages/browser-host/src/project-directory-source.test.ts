@@ -32,7 +32,7 @@ function projectFiles(): ReadonlyMap<string, Uint8Array> {
   };
   return new Map([
     [ASHA_PROJECT_BUNDLE_MANIFEST_PATH, text(`${JSON.stringify(manifest)}\n`)],
-    ['assets/lock.json', text('{"assets":[]}\n')],
+    ['assets/lock.json', text('{"entries":[]}\n')],
     ['scenes/main.json', text('{"scene":"main"}\n')],
   ]);
 }

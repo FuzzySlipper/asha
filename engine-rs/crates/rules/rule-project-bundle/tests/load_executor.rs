@@ -43,7 +43,7 @@ fn sample_plan() -> LoadPlan {
             },
             LoadStep::LoadAssetLock {
                 artifact: "assets/lock.json".into(),
-                asset_count: 1,
+                asset_count: 0,
             },
             LoadStep::LoadSceneDocument {
                 artifact: "scene/scene.json".into(),
@@ -96,7 +96,7 @@ fn stage_summary_matches_golden() {
     let spatial_session_hash = result.spatial_session_hash.0;
     let expected = format!(
         "stage versions schema=2 protocol=1\n\
-         stage assetLock artifact=assets/lock.json expectedAssets=1\n\
+         stage assetLock artifact=assets/lock.json expectedAssets=0\n\
          stage sceneDocument artifact=scene/scene.json nodes=2\n\
          stage bootstrap runtimeSession=7 entities=2\n\
          stage finalValidation spatialSessionHash={spatial_session_hash:016x} ok\n\
@@ -112,7 +112,8 @@ fn stage_summary_matches_golden() {
 #[test]
 fn missing_durable_artifact_fails_closed() {
     // Drop the scene artifact from the source.
-    let artifacts = BundleArtifacts::new().with_artifact("assets/lock.json", "{}\n");
+    let artifacts =
+        BundleArtifacts::new().with_artifact("assets/lock.json", "{ \"entries\": [] }\n");
     let err = execute_load_plan(&sample_plan(), &artifacts).unwrap_err();
     match err {
         LoadExecutionError::MissingArtifact { stage, path } => {
@@ -137,6 +138,37 @@ fn missing_asset_lock_fails_closed() {
 }
 
 #[test]
+fn malformed_asset_lock_fails_before_scene_bootstrap() {
+    let artifacts = BundleArtifacts::new()
+        .with_artifact("assets/lock.json", r#"{"entries":[{"garbage":true}]}"#)
+        .with_artifact("scene/scene.json", sample_scene_json());
+    let err = execute_load_plan(&sample_plan(), &artifacts).unwrap_err();
+    assert!(matches!(
+        err,
+        LoadExecutionError::AssetLockDecode { artifact, .. }
+            if artifact == "assets/lock.json"
+    ));
+}
+
+#[test]
+fn manifest_asset_count_must_match_decoded_lock_entries() {
+    let mut plan = sample_plan();
+    plan.steps[1] = LoadStep::LoadAssetLock {
+        artifact: "assets/lock.json".into(),
+        asset_count: 1,
+    };
+    let err = execute_load_plan(&plan, &sample_artifacts()).unwrap_err();
+    assert_eq!(
+        err,
+        LoadExecutionError::AssetLockCountMismatch {
+            artifact: "assets/lock.json".into(),
+            expected: 1,
+            found: 0,
+        }
+    );
+}
+
+#[test]
 fn invalid_scene_is_classified() {
     // A scene whose node names a parent that does not exist fails validation.
     let bad_scene = r#"{
@@ -150,7 +182,7 @@ fn invalid_scene_is_classified() {
 }
 "#;
     let artifacts = BundleArtifacts::new()
-        .with_artifact("assets/lock.json", "{}\n")
+        .with_artifact("assets/lock.json", "{ \"entries\": [] }\n")
         .with_artifact("scene/scene.json", bad_scene);
     let err = execute_load_plan(&sample_plan(), &artifacts).unwrap_err();
     match err {
@@ -517,7 +549,7 @@ fn staged_commit_swaps_only_on_success() {
 
     // A second, failing load (missing scene artifact) must NOT mutate the live
     // load: the previous ProjectBundle load stays committed, unchanged.
-    let broken = BundleArtifacts::new().with_artifact("assets/lock.json", "{}\n");
+    let broken = BundleArtifacts::new().with_artifact("assets/lock.json", "{ \"entries\": [] }\n");
     let err = stage.load_and_commit(&sample_plan(), &broken).unwrap_err();
     assert!(matches!(err, LoadExecutionError::MissingArtifact { .. }));
     assert_eq!(

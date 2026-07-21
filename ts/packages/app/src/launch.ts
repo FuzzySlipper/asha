@@ -164,7 +164,7 @@ function canonicalFixtureSource(id: string, sceneId: number): FixtureChoice['sou
     dependencies: [],
     nodes: [],
   })}\n`);
-  const assetLock = encode('{"assets":[]}');
+  const assetLock = encode('{"entries":[]}');
   const manifest = encode(`${JSON.stringify({
     bundleSchemaVersion: 2,
     protocolVersion: 1,

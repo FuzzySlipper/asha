@@ -1445,7 +1445,7 @@ mod tests {
         contents: Vec<(&str, ArtifactRole, Vec<u8>)>,
     ) -> AdmittedRuntimeProjectSourceBatch {
         let scene_bytes = core_scene::encode(scene).into_bytes();
-        let lock_bytes = b"asset-lock-v1".to_vec();
+        let lock_bytes = br#"{"entries":[]}"#.to_vec();
         let mut artifacts = vec![
             ArtifactEntry::durable("assets/lock.json", ArtifactRole::AssetLock, &lock_bytes),
             ArtifactEntry::durable(

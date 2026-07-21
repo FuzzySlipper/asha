@@ -48,7 +48,7 @@ function authoringProjectOpenInput(authoringId: string) {
     workspaceId: 'workspace.local',
     source: createMemoryAshaProjectSource(`memory:${authoringId}`, new Map([
       [ASHA_PROJECT_BUNDLE_MANIFEST_PATH, new TextEncoder().encode(manifestJson)],
-      ['assets/lock.json', new TextEncoder().encode('{"assets":[]}')],
+      ['assets/lock.json', new TextEncoder().encode('{"entries":[]}')],
       ['scenes/entry.scene.json', new TextEncoder().encode(sceneJson)],
     ])),
   };
@@ -198,7 +198,7 @@ void test('openProject closes partial Rust authoring state after a late artifact
   });
   const source = createMemoryAshaProjectSource('memory:partial-open', new Map([
     [ASHA_PROJECT_BUNDLE_MANIFEST_PATH, new TextEncoder().encode(manifestJson)],
-    ['assets/lock.json', new TextEncoder().encode('{"assets":[]}')],
+    ['assets/lock.json', new TextEncoder().encode('{"entries":[]}')],
     ['scenes/first.json', new TextEncoder().encode(scene(42))],
     ['scenes/second.json', new TextEncoder().encode(scene(43))],
   ]));

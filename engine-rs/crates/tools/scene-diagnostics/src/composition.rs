@@ -45,6 +45,28 @@ pub fn composition_failure_diagnostic(err: &LoadExecutionError) -> DiagnosticRep
             RemedyAction::RestoreArtifact,
             "restore the artifact; an empty durable artifact cannot load",
         ),
+        LoadExecutionError::AssetLockDecode { artifact, detail } => report(
+            DiagnosticCode::CorruptBundleArtifact,
+            "assetLock",
+            DiagnosticSourceRef::empty().with_bundle_path(artifact.clone()),
+            format!("asset lock `{artifact}` failed canonical decoding: {detail}"),
+            RemedyAction::RestoreArtifact,
+            "restore or regenerate the typed asset lock before loading the project",
+        ),
+        LoadExecutionError::AssetLockCountMismatch {
+            artifact,
+            expected,
+            found,
+        } => report(
+            DiagnosticCode::LoadStageFailed,
+            "assetLock",
+            DiagnosticSourceRef::empty().with_bundle_path(artifact.clone()),
+            format!(
+                "asset lock `{artifact}` contains {found} entries but the manifest declares {expected}"
+            ),
+            RemedyAction::Regenerate,
+            "regenerate the manifest and asset lock from the same canonical project closure",
+        ),
         LoadExecutionError::VersionUnsupported {
             bundle_schema,
             protocol,

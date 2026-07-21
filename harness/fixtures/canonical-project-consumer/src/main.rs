@@ -180,7 +180,16 @@ fn generate_project() -> BTreeMap<String, Vec<u8>> {
         &mut files,
         "assets/lock.json",
         ArtifactRole::AssetLock,
-        b"{\"assets\":[]}".to_vec(),
+        serde_json::to_vec(&serde_json::json!({
+            "entries": [{
+                "id": HOUSE_ASSET_ID,
+                "kind": "voxel-volume",
+                "version": 1,
+                "hash": null,
+                "dependencies": []
+            }]
+        }))
+        .expect("asset lock serializes"),
     );
 
     let manifest = ProjectBundleManifest {

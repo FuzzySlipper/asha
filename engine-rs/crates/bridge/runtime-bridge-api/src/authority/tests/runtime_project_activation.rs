@@ -468,7 +468,16 @@ fn project_source_batch_for_scene(
         .expect("canonical voxel asset")
         .into_bytes();
     let catalog_bytes = material_catalog_artifact(composition, &asset);
-    let lock_bytes = b"asset-lock-v1".to_vec();
+    let lock_bytes = serde_json::to_vec(&serde_json::json!({
+        "entries": [{
+            "id": asset.asset_id,
+            "kind": "voxel-volume",
+            "version": 1,
+            "hash": null,
+            "dependencies": []
+        }]
+    }))
+    .expect("asset lock serializes");
     let mut artifacts = vec![
         svc_serialization::ArtifactEntry::durable(
             "assets/lock.json",

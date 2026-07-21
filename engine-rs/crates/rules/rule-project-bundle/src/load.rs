@@ -18,6 +18,7 @@
 
 use std::collections::BTreeMap;
 
+use core_assets::{AssetHash, AssetId, AssetKind};
 use core_entity::{decode_snapshot, EntityStore, SnapshotDecodeError};
 use core_ids::SceneId;
 use core_scene::{
@@ -30,6 +31,7 @@ use protocol_voxel_annotation::{
     VoxelAnnotationDiagnostic, VoxelAnnotationLayer, VoxelAnnotationLayerValidationInput,
     VoxelAnnotationLayerValidationRequest,
 };
+use serde::Deserialize;
 use svc_serialization::{LoadPlan, LoadPlanError, LoadStage, LoadStep, ValidatedPrefabRegistry};
 use svc_spatial::VoxelWorld;
 
@@ -259,6 +261,14 @@ pub enum LoadExecutionError {
     MissingArtifact { stage: LoadStage, path: String },
     /// A required artifact is present but empty.
     EmptyArtifact { stage: LoadStage, path: String },
+    /// The asset lock is not a typed canonical lock document.
+    AssetLockDecode { artifact: String, detail: String },
+    /// The manifest's declared lock size differs from decoded durable truth.
+    AssetLockCountMismatch {
+        artifact: String,
+        expected: u32,
+        found: usize,
+    },
     /// The bundle declares versions newer than this build supports (fail closed).
     VersionUnsupported { bundle_schema: u32, protocol: u32 },
     /// The scene document failed to decode.
@@ -471,6 +481,19 @@ fn execute_load_plan_internal(
                     return Err(LoadExecutionError::EmptyArtifact {
                         stage: LoadStage::AssetLock,
                         path: artifact.clone(),
+                    });
+                }
+                let decoded_count = decode_asset_lock_count(text).map_err(|detail| {
+                    LoadExecutionError::AssetLockDecode {
+                        artifact: artifact.clone(),
+                        detail,
+                    }
+                })?;
+                if decoded_count != *asset_count as usize {
+                    return Err(LoadExecutionError::AssetLockCountMismatch {
+                        artifact: artifact.clone(),
+                        expected: *asset_count,
+                        found: decoded_count,
                     });
                 }
                 stages.push(StageOutcome {
@@ -691,6 +714,55 @@ fn execute_load_plan_internal(
         spatial_session_hash,
         stages,
     })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StoredAssetLock {
+    entries: Vec<StoredAssetLockEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StoredAssetLockEntry {
+    id: String,
+    kind: String,
+    version: u32,
+    hash: Option<String>,
+    dependencies: Vec<String>,
+}
+
+fn decode_asset_lock_count(text: &str) -> Result<usize, String> {
+    let lock: StoredAssetLock =
+        serde_json::from_str(text).map_err(|error| format!("invalid asset lock JSON: {error}"))?;
+    for entry in &lock.entries {
+        let id = AssetId::parse(&entry.id)
+            .map_err(|error| format!("invalid asset lock id `{}`: {error}", entry.id))?;
+        let kind = AssetKind::from_prefix(&entry.kind)
+            .ok_or_else(|| format!("invalid asset lock kind `{}`", entry.kind))?;
+        if id.kind() != kind {
+            return Err(format!(
+                "asset lock id `{}` does not match kind `{}`",
+                entry.id, entry.kind
+            ));
+        }
+        if entry.version == 0 {
+            return Err(format!("asset lock entry `{}` has version 0", entry.id));
+        }
+        if let Some(hash) = &entry.hash {
+            AssetHash::parse(hash)
+                .map_err(|error| format!("invalid asset lock hash for `{}`: {error}", entry.id))?;
+        }
+        for dependency in &entry.dependencies {
+            AssetId::parse(dependency).map_err(|error| {
+                format!(
+                    "invalid asset lock dependency `{dependency}` for `{}`: {error}",
+                    entry.id
+                )
+            })?;
+        }
+    }
+    Ok(lock.entries.len())
 }
 
 /// Convenience wrapper for `execute_load_plan(plan, &BundleArtifacts)`.
