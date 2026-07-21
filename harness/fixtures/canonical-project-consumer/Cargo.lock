@@ -28,10 +28,10 @@ name = "asha-canonical-project-consumer-fixture"
 version = "0.1.0"
 dependencies = [
  "asha-gameplay-module-fixture",
- "asha-runtime-session-composition",
  "core-ids",
  "protocol-project-bundle",
  "protocol-voxel-asset",
+ "runtime-bridge-api",
  "serde_json",
  "svc-serialization",
  "svc-voxel-asset",
@@ -67,13 +67,6 @@ name = "asha-gameplay-module-sdk"
 version = "0.1.0"
 dependencies = [
  "gameplay-module-sdk",
-]
-
-[[package]]
-name = "asha-runtime-session-composition"
-version = "0.1.0"
-dependencies = [
- "runtime-bridge-api",
 ]
 
 [[package]]

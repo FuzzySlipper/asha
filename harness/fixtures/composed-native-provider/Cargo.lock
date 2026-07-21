@@ -62,8 +62,6 @@ version = "0.1.0"
 dependencies = [
  "asha-gameplay-module-conformance",
  "asha-gameplay-module-sdk",
- "asha-gameplay-runtime-host",
- "asha-runtime-session-composition",
  "serde",
  "serde_json",
 ]
@@ -73,13 +71,6 @@ name = "asha-gameplay-module-sdk"
 version = "0.1.0"
 dependencies = [
  "gameplay-module-sdk",
-]
-
-[[package]]
-name = "asha-gameplay-runtime-host"
-version = "0.1.0"
-dependencies = [
- "gameplay-runtime-host",
 ]
 
 [[package]]
@@ -93,7 +84,6 @@ dependencies = [
 name = "asha-runtime-session-composition"
 version = "0.1.0"
 dependencies = [
- "gameplay-runtime-host",
  "runtime-bridge-api",
 ]
 
@@ -596,6 +586,7 @@ dependencies = [
  "protocol-assets",
  "protocol-diagnostics",
  "protocol-game-extension",
+ "protocol-project-bundle",
  "protocol-render",
  "protocol-scene",
  "protocol-view",

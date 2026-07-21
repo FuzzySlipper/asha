@@ -221,6 +221,35 @@ mod generated;
 mod handles;
 mod payloads;
 
+/// Internal owner seam used by ASHA's native transport and fixture generator.
+///
+/// This module is intentionally not re-exported by the preferred public Rust
+/// composition facade. Ordinary downstream providers return an `EngineBridge`
+/// built from immutable composition and never receive manual authoring-open
+/// vocabulary.
+#[doc(hidden)]
+pub mod native_transport_internal {
+    use protocol_project_bundle::WorkspaceAuthoringOpenRequest;
+
+    use crate::{BridgeResult, EngineBridge, WorkspaceAuthoringStateSummary};
+
+    pub trait WorkspaceAuthoringTransportAdapter {
+        fn open_workspace_authoring_for_native_transport(
+            &mut self,
+            request: WorkspaceAuthoringOpenRequest,
+        ) -> BridgeResult<WorkspaceAuthoringStateSummary>;
+    }
+
+    impl WorkspaceAuthoringTransportAdapter for EngineBridge {
+        fn open_workspace_authoring_for_native_transport(
+            &mut self,
+            request: WorkspaceAuthoringOpenRequest,
+        ) -> BridgeResult<WorkspaceAuthoringStateSummary> {
+            self.open_workspace_authoring_authority(request)
+        }
+    }
+}
+
 pub use authority::EngineBridge;
 pub use authority::{
     ComposedRuntimeSessionReadout, DeferredRuntimeSessionBuilder, RuntimeProjectActivationReceipt,

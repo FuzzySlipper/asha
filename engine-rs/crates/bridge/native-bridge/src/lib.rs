@@ -37,6 +37,7 @@ use runtime_bridge_api::{
     WorkspaceAuthoringStoredConfirmationRequest, VOXEL_CONVERSION_MESH_IMPORT_MAX_REQUEST_BYTES,
     VOXEL_PALETTE_UPDATE_MAX_REQUEST_BYTES,
 };
+use runtime_bridge_api::native_transport_internal::WorkspaceAuthoringTransportAdapter;
 use serde::Serialize;
 
 pub use napi::module_init as native_provider_module_init;
@@ -730,14 +731,14 @@ pub fn open_workspace_authoring_adapter(
     if existing_handle >= 0 {
         return with_bridge(existing_handle, |bridge| {
             bridge
-                .open_workspace_authoring_adapter(request)
+                .open_workspace_authoring_for_native_transport(request)
                 .map_err(to_napi)?;
             Ok(existing_handle)
         });
     }
     let mut bridge = create_project_authoring_bridge().map_err(to_napi)?;
     bridge
-        .open_workspace_authoring_adapter(request)
+        .open_workspace_authoring_for_native_transport(request)
         .map_err(to_napi)?;
     insert_native_bridge(bridge)
 }

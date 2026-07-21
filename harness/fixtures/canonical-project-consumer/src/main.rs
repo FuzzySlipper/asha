@@ -1,15 +1,22 @@
+//! Engine-owned generator for the committed canonical downstream fixture.
+//!
+//! The generated project is consumed through public canonical source APIs by
+//! the composed-provider smoke. Generation itself sits behind the Engine's
+//! internal owner seam and is not downstream authoring vocabulary.
+
 #![forbid(unsafe_code)]
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use asha_runtime_session_composition::{
+use runtime_bridge_api::{
     AssetReferenceDto, AssetVersionReqDto, FlatSceneDocumentDto, ProjectContentDecodeRequestDto,
     ProjectContentDocumentKind, ProjectContentSourceDto, RuntimeBridge,
     SceneDocumentDecodeRequestDto, SceneDocumentEncodeRequestDto, SceneEntityInstanceDto,
     SceneEntityReferenceDto, SceneLightDto, SceneLightShadowIntentDto, SceneMetadataDto,
     SceneNodeKindDto, SceneNodeRecordDto, SceneTransformDto, StaticProjectAuthoringBuilder,
 };
+use runtime_bridge_api::native_transport_internal::WorkspaceAuthoringTransportAdapter;
 use core_ids::{ProjectId, SceneId, SceneNodeId};
 use protocol_voxel_asset::{
     VoxelAssetAuthoringMetadata, VoxelAssetBounds, VoxelAssetContentHashes, VoxelAssetCoord,
@@ -96,7 +103,7 @@ fn generate_project() -> BTreeMap<String, Vec<u8>> {
     let composition = asha_gameplay_module_fixture::composed_static_composition(4);
     let mut bridge = StaticProjectAuthoringBuilder::from_static_composition(composition).build();
     bridge
-        .open_workspace_authoring_adapter(WorkspaceAuthoringOpenRequest {
+        .open_workspace_authoring_for_native_transport(WorkspaceAuthoringOpenRequest {
             authoring_id: "canonical-project-consumer.generator".to_owned(),
             seed: 5997,
             project: WorkspaceAuthoringProjectIdentity {

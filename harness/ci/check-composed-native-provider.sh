@@ -8,7 +8,7 @@ TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target/composed-native-provider}"
 OUTPUT_DIR="$ROOT/harness/smoke-out/composed-native-provider"
 DESTINATION="$OUTPUT_DIR/asha-composed-native-provider.node"
 
-echo "==> Checking committed canonical project content"
+echo "==> Checking Engine-owned generation of committed canonical project content"
 CARGO_TARGET_DIR="$TARGET_DIR" cargo run --locked \
   --manifest-path "$CONSUMER/Cargo.toml" -- --check
 

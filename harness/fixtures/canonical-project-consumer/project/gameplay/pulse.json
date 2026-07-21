@@ -33,7 +33,7 @@
       {
         "configurationId": "fixture.pulse.default",
         "module": {
-          "artifactHash": "fnv1a64:290e3d2f150925cd",
+          "artifactHash": "fnv1a64:aa73b5839b2d314e",
           "contractHash": "fnv1a64:787fe49e16da7682",
           "moduleId": "fixture.pulse.module",
           "namespace": "fixture.pulse",
