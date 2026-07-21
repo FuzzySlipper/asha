@@ -1358,9 +1358,13 @@ export class MockRuntimeBridge implements RuntimeBridge, WorkspaceAuthoringOpenA
   }
 
   readProjectionFrame(cursor: FrameCursor): RuntimeProjectionFrame {
+    if (this.#engine === null) {
+      throw new RuntimeBridgeError('not_initialized', 'readProjectionFrame before initializeEngine');
+    }
+    const validatedCursor = nonNegativeSafeInteger(cursor as number, 'frame cursor');
     return {
       schemaVersion: 1,
-      authorityTick: cursor as number,
+      authorityTick: validatedCursor,
       scene: { ops: [] },
       presentation: {
         replayScope: 'excludedFromReplayTruth',

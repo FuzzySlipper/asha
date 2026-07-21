@@ -454,9 +454,27 @@ void test('mock: readRenderDiffs returns a contract-shaped frame', () => {
   assert.deepEqual(frame, { ops: [] });
 });
 
-void test('mock: readProjectionFrame preserves the G1 scene plus presentation envelope', () => {
+void test('mock: readProjectionFrame fails closed and preserves pending telemetry', () => {
   const bridge = createMockRuntimeBridge();
+  assert.throws(
+    () => bridge.readProjectionFrame(frameCursor(0)),
+    (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'not_initialized',
+  );
   bridge.initializeEngine({ seed: 1 });
+  for (const cursor of [-1, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(
+      () => bridge.readProjectionFrame(frameCursor(cursor)),
+      (error: unknown) => error instanceof RuntimeBridgeError && error.kind === 'invalid_input',
+    );
+  }
+  bridge.submitCommands({
+    commands: [{
+      op: 'setVoxel',
+      grid: 1,
+      coord: { x: 0, y: 0, z: 0 },
+      value: { kind: 'solid', material: 1 },
+    }],
+  });
   const frame = bridge.readProjectionFrame(frameCursor(4));
   assert.equal(frame.schemaVersion, 1);
   assert.equal(frame.authorityTick, 4);
@@ -465,6 +483,10 @@ void test('mock: readProjectionFrame preserves the G1 scene plus presentation en
     replayScope: 'excludedFromReplayTruth',
     ops: [],
   });
+  bridge.readRenderDiffs(frameCursor(4));
+  const telemetry = bridge.readVoxelUpdateTelemetry({ grid: 1, projectionCursor: 4 });
+  assert.equal(telemetry.committedCommandBatchCount, 1);
+  assert.equal(telemetry.acceptedCommandCount, 1);
 });
 
 // Legacy bundle lifecycle tests were deleted with the retired lifecycle.
