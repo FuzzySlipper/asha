@@ -108,6 +108,11 @@ export interface AshaRendererInspectionSurface {
   readonly pick: (request: AshaRendererEditorViewportPickRequest) => AshaRendererEditorViewportPickReceipt;
   readonly readout: () => AshaRendererInspectionSurfaceReadout;
   readonly renderOnce: (timeMs?: number) => void;
+  /** Atomically replace authored content from individually bounded transport frames. */
+  readonly replaceAuthoredFrameChunks: (
+    chunks: readonly RenderFrameDiff[],
+  ) => AshaRendererEditorViewportChannelReceipt;
+  /** Atomically replace authored content from one bounded frame. */
   readonly replaceFrame: (frame: RenderFrameDiff) => AshaRendererEditorViewportChannelReceipt;
   readonly resize: (size: AshaRendererEditorViewportSize) => AshaRendererEditorViewportSizeReceipt;
   readonly resizeToCanvas: () => AshaRendererEditorViewportSizeReceipt;
@@ -253,6 +258,10 @@ export function createAshaRendererInspectionSurfaceWithViewport(
   const replaceFrame = (frame: RenderFrameDiff): AshaRendererEditorViewportChannelReceipt =>
     viewport.channels.authored.replace(frame);
 
+  const replaceAuthoredFrameChunks = (
+    chunks: readonly RenderFrameDiff[],
+  ): AshaRendererEditorViewportChannelReceipt => viewport.channels.authored.replaceChunks(chunks);
+
   const applyRuntimeFrame = (frame: RenderFrameDiff): AshaRendererEditorViewportChannelReceipt =>
     viewport.channels.runtime.apply(frame);
 
@@ -341,6 +350,7 @@ export function createAshaRendererInspectionSurfaceWithViewport(
       };
     },
     renderOnce,
+    replaceAuthoredFrameChunks,
     replaceFrame,
     resize: (size) => viewport.resize(size),
     resizeToCanvas,

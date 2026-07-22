@@ -41,11 +41,16 @@ The surface has exactly three fixed channels:
 | `authored` | 1 | `scene` or `debug` | Stored scene and unsaved authoring preview |
 | `overlay` | 2 | `debug` only, rendered after a depth clear | Selection, gizmo, and debug evidence |
 
-Each channel supports bounded `apply`, atomic `replace`, `clear`, `snapshot`, and
-`dispose`. Equal downstream `RenderHandle` values are mapped to distinct
-engine-owned handles per channel. A rejected frame or missing resource leaves the
-last accepted channel projection intact and does not block the other channels.
-Frame receipts carry typed diagnostics and stable logical snapshot hashes.
+Each channel supports bounded `apply`, atomic `replace`, atomic `replaceChunks`,
+`clear`, `snapshot`, and `dispose`. `replaceChunks` accepts multiple transport
+frames as one channel transaction: every chunk stays under the 4,096-operation
+frame limit and their combined history stays under the 8,192-operation retained
+limit. The host validates the complete ordered history and realizes one backend
+candidate before publishing it. Equal downstream `RenderHandle` values are
+mapped to distinct engine-owned handles per channel. A rejected chunk, ordering
+error, frame, or missing resource leaves the last accepted channel projection
+intact and does not block the other channels. Frame receipts carry typed
+diagnostics and stable logical snapshot hashes.
 
 Use existing `RenderFrameDiff` primitives first. Cubes and quads cover selection
 bounds and planes; points and lines cover pivots, axes, and pick markers.

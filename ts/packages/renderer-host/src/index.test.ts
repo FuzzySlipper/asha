@@ -249,6 +249,7 @@ void test('renderer-host declarations do not expose concrete Three.js backend ty
   assert.doesNotMatch(editorViewportDeclarationText, /from ['"]three['"]/);
   assert.doesNotMatch(editorViewportDeclarationText, /Scene|Object3D|Shader/);
   assert.match(editorViewportDeclarationText, /AshaRendererEditorViewportChannelHandle/);
+  assert.match(editorViewportDeclarationText, /readonly replaceChunks:/);
   assert.match(editorViewportDeclarationText, /AshaRendererEditorViewportPickHint/);
   assert.match(editorViewportDeclarationText, /runtime_authority/);
   assert.match(editorViewportDeclarationText, /stored_editor/);
@@ -256,6 +257,7 @@ void test('renderer-host declarations do not expose concrete Three.js backend ty
   assert.match(inspectionSurfaceDeclarationText, /readonly applyRuntimeFrame:/);
   assert.match(inspectionSurfaceDeclarationText, /readonly clearRuntimeProjection:/);
   assert.match(inspectionSurfaceDeclarationText, /readonly replaceFrame:/);
+  assert.match(inspectionSurfaceDeclarationText, /readonly replaceAuthoredFrameChunks:/);
   assert.match(inspectionSurfaceDeclarationText, /readonly setGrid:/);
   assert.match(inspectionSurfaceDeclarationText, /readonly initialGrid\?: EditorGridDescriptor/);
   assert.match(inspectionSurfaceDeclarationText, /readonly lastCameraChange: AshaRendererInspectionCameraChange/);

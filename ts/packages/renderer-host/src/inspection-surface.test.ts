@@ -5,10 +5,12 @@ import {
   renderHandle,
   type EditorGridDescriptor,
   type EditorGridProjectionReadout,
+  type RenderDiff,
   type RenderFrameDiff,
 } from '@asha/contracts';
 import {
   ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+  ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS,
   createAshaRendererEditorViewportWithBackend,
   type AshaRendererEditorViewportBackendPort,
   type AshaRendererEditorViewportSize,
@@ -159,6 +161,99 @@ void test('inspection surface retains accepted frames, fails closed on malformed
   const explicitResize = harness.surface.resize({ width: 1200, height: 700, pixelRatio: 2 });
   assert.equal(explicitResize.applied, true);
   assert.deepEqual(harness.backend.sizes.at(-1), { width: 1200, height: 700, pixelRatio: 2 });
+});
+
+void test('inspection surface atomically replaces authored content at exact chunk and retained limits', () => {
+  const harness = createInspectionHarness({ autoStart: false, frame: primitiveFrame(7) });
+  const chunks = authoredHistoryChunks(41, [
+    ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+    ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+  ]);
+
+  const receipt = harness.surface.replaceAuthoredFrameChunks(chunks);
+
+  assert.equal(receipt.applied, true);
+  assert.equal(receipt.channel, 'authored');
+  assert.equal(receipt.generation, 2);
+  assert.equal(harness.surface.readout().retainedOpCount, ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS);
+  assert.equal(harness.backend.frames.get('authored')?.ops.length, ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS);
+  assert.equal(harness.surface.readout().runtimeRetainedOpCount, 0);
+});
+
+void test('inspection chunk replacement rejects malformed bounds and ordering without changing authored state', () => {
+  const harness = createInspectionHarness({ autoStart: false, frame: primitiveFrame(7) });
+  const accepted = harness.surface.readout();
+  const backendFrame = structuredClone(harness.backend.frames.get('authored'));
+  const cases: readonly {
+    readonly chunks: readonly RenderFrameDiff[];
+    readonly code: string;
+    readonly name: string;
+  }[] = [
+    {
+      name: 'malformed chunk list',
+      chunks: null as unknown as readonly RenderFrameDiff[],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'malformed nested frame',
+      chunks: [{ ops: null } as unknown as RenderFrameDiff],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'duplicate handle across chunks',
+      chunks: [primitiveFrame(8), primitiveFrame(8)],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'update before create',
+      chunks: [{ ops: [updateVisibility(8, false)] }, primitiveFrame(8)],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'invalid logical handle',
+      chunks: [invalidLogicalHandleFrame()],
+      code: 'invalid_handle',
+    },
+    {
+      name: 'over-limit chunk',
+      chunks: authoredHistoryChunks(9, [ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS + 1]),
+      code: 'frame_limit_exceeded',
+    },
+    {
+      name: 'retained total overflow',
+      chunks: authoredHistoryChunks(10, [
+        ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+        ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+        1,
+      ]),
+      code: 'frame_limit_exceeded',
+    },
+  ];
+
+  for (const testCase of cases) {
+    const receipt = harness.surface.replaceAuthoredFrameChunks(testCase.chunks);
+    assert.equal(receipt.applied, false, testCase.name);
+    assert.equal(receipt.diagnostics[0]?.code, testCase.code, testCase.name);
+    assertAuthoredReadoutUnchanged(harness.surface.readout(), accepted, testCase.name);
+    assert.deepEqual(harness.backend.frames.get('authored'), backendFrame, testCase.name);
+  }
+});
+
+void test('inspection chunk replacement rolls back when backend realization rejects the candidate', () => {
+  const harness = createInspectionHarness({ autoStart: false, frame: primitiveFrame(7) });
+  const accepted = harness.surface.readout();
+  const backendFrame = structuredClone(harness.backend.frames.get('authored'));
+  harness.backend.rejectChannel = 'authored';
+
+  const receipt = harness.surface.replaceAuthoredFrameChunks([
+    primitiveFrame(12),
+    { ops: [updateVisibility(12, false)] },
+  ]);
+
+  assert.equal(receipt.applied, false);
+  assert.equal(receipt.diagnostics[0]?.code, 'backend_rejected');
+  assertAuthoredReadoutUnchanged(harness.surface.readout(), accepted, 'backend rejection');
+  assert.deepEqual(harness.backend.frames.get('authored'), backendFrame);
 });
 
 void test('inspection surface keeps incremental runtime projection distinct from authored replacement', () => {
@@ -372,6 +467,15 @@ function assertRuntimeReadoutUnchanged(
   assert.equal(actual.runtimeRetainedOpCount, expected.runtimeRetainedOpCount);
 }
 
+function assertAuthoredReadoutUnchanged(
+  actual: ReturnType<ReturnType<typeof createInspectionHarness>['surface']['readout']>,
+  expected: ReturnType<ReturnType<typeof createInspectionHarness>['surface']['readout']>,
+  message: string,
+): void {
+  assert.equal(actual.retainedFrameHash, expected.retainedFrameHash, message);
+  assert.equal(actual.retainedOpCount, expected.retainedOpCount, message);
+}
+
 function inspectionEnvironment(
   animation: FakeAnimationScheduler,
   resizeObserver: FakeResizeObserver,
@@ -542,8 +646,12 @@ class FakeEditorViewportBackend implements AshaRendererEditorViewportBackendPort
   readonly sizes: AshaRendererEditorViewportSize[] = [];
   disposals = 0;
   grid: EditorGridDescriptor | null = null;
+  rejectChannel: 'runtime' | 'authored' | 'overlay' | null = null;
 
   replaceChannel(channel: 'runtime' | 'authored' | 'overlay', frame: RenderFrameDiff): void {
+    if (this.rejectChannel === channel) {
+      throw new Error(`fixture rejected ${channel} replacement`);
+    }
     this.frames.set(channel, structuredClone(frame));
   }
 
@@ -611,22 +719,59 @@ function editorGridDescriptor(): EditorGridDescriptor {
 
 function primitiveFrame(handle: number): RenderFrameDiff {
   return {
-    ops: [{
-      op: 'create',
-      handle: renderHandle(handle),
-      parent: null,
-      node: {
-        layer: 'scene',
-        geometry: { shape: 'cube' },
-        transform: {
-          translation: [0, 0, 0],
-          rotation: [0, 0, 0, 1],
-          scale: [1, 1, 1],
-        },
-        material: { color: [0.3, 0.5, 0.8, 1], wireframe: false },
-        visible: true,
-        metadata: { source: null, tags: [], label: 'inspection-fixture' },
-      },
-    }],
+    ops: [primitiveCreate(handle)],
   };
+}
+
+function primitiveCreate(handle: number): Extract<RenderDiff, { readonly op: 'create' }> {
+  return {
+    op: 'create',
+    handle: renderHandle(handle),
+    parent: null,
+    node: {
+      layer: 'scene',
+      geometry: { shape: 'cube' },
+      transform: {
+        translation: [0, 0, 0],
+        rotation: [0, 0, 0, 1],
+        scale: [1, 1, 1],
+      },
+      material: { color: [0.3, 0.5, 0.8, 1], wireframe: false },
+      visible: true,
+      metadata: { source: null, tags: [], label: 'inspection-fixture' },
+    },
+  };
+}
+
+function invalidLogicalHandleFrame(): RenderFrameDiff {
+  return {
+    ops: [{ ...primitiveCreate(8), handle: Number.MAX_SAFE_INTEGER as never }],
+  };
+}
+
+function updateVisibility(handle: number, visible: boolean): RenderDiff {
+  return {
+    op: 'update',
+    handle: renderHandle(handle),
+    transform: null,
+    material: null,
+    visible,
+    metadata: null,
+  };
+}
+
+function authoredHistoryChunks(
+  handle: number,
+  chunkLengths: readonly number[],
+): readonly RenderFrameDiff[] {
+  let operationIndex = 0;
+  return chunkLengths.map((length) => ({
+    ops: Array.from({ length }, () => {
+      const currentIndex = operationIndex;
+      operationIndex += 1;
+      return currentIndex === 0
+        ? primitiveCreate(handle)
+        : updateVisibility(handle, currentIndex % 2 === 0);
+    }),
+  }));
 }

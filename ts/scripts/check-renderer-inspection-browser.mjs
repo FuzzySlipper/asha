@@ -59,7 +59,7 @@ const TEST_PAGE = `<!doctype html>
   <canvas id="surface" width="640" height="360" tabindex="0"></canvas>
   <canvas id="projection-surface" width="1000" height="500"></canvas>
   <script type="module">
-    import { mountAshaRendererInspectionSurface } from '/ts/packages/renderer-host/dist/inspection-surface.js';
+    import { mountAshaRendererInspectionSurface } from '/ts/packages/renderer-host/dist/index.js';
     import { mountAshaRendererBrowserSurface } from '@asha/renderer-three/backend';
 
     const canvas = document.querySelector('#surface');
@@ -140,6 +140,7 @@ const TEST_PAGE = `<!doctype html>
       dispose: () => surface.dispose(),
       bufferLifecycle: () => ({ borrowed: [...borrowedBuffers], released: [...releasedBuffers] }),
       render: timeMs => surface.renderOnce(timeMs),
+      replaceAuthoredFrameChunks: chunks => surface.replaceAuthoredFrameChunks(chunks),
       replaceFrame: frame => surface.replaceFrame(frame),
       sampleWorld,
       setGrid: descriptor => surface.setGrid(descriptor),
@@ -371,6 +372,43 @@ async function main() {
       'runtime voxel wall must occlude grid lines behind it',
     );
 
+    const bulkAuthored = await evaluate(client, `(() => {
+      const update = visible => ({
+        op: 'update', handle: 81,
+        transform: null, material: null, visible, metadata: null,
+      });
+      const firstChunk = [{
+        op: 'create', handle: 81, parent: null,
+        node: {
+          geometry: { shape: 'cube' },
+          material: { color: [0.95, 0.05, 0.95, 1], wireframe: false },
+          transform: { translation: [-3, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+          visible: true, layer: 'scene',
+          metadata: { source: null, tags: [], label: 'bulk-authored-cube' },
+        },
+      }];
+      for (let index = 1; index < 4096; index += 1) {
+        firstChunk.push(update(index % 2 === 0));
+      }
+      const receipt = window.__ashaInspection.replaceAuthoredFrameChunks([
+        { ops: firstChunk },
+        { ops: [update(true)] },
+      ]);
+      window.__ashaInspection.render(7);
+      return {
+        receipt,
+        readout: window.__ashaInspection.snapshot(),
+        pixels: window.__ashaInspection.sampleWorld([-3, 1, 0]),
+      };
+    })()`);
+    assert.equal(bulkAuthored.receipt.applied, true);
+    assert.equal(bulkAuthored.receipt.channel, 'authored');
+    assert.equal(bulkAuthored.readout.retainedOpCount, 4097);
+    assert.ok(
+      countPixels(bulkAuthored.pixels, isBulkMagenta) > 0,
+      'real browser renderer must visibly realize a chunked authored replacement above one-frame capacity',
+    );
+
     const cameraBeforeRuntimeUpdate = voxelDefined.readout.camera;
     const voxelUpdated = await evaluate(client, `(() => {
       const receipt = window.__ashaInspection.applyRuntimeFrame({ ops: [{
@@ -520,7 +558,9 @@ function createStaticServer() {
         response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8' });
         response.end(
           "export { decodeRenderFrameDiff } from '/ts/packages/runtime-bridge/dist/render-decode.js';\n"
-          + "export { RuntimeBridgeError } from '/ts/packages/runtime-bridge/dist/bridge.js';\n",
+          + "export { RuntimeBridgeError } from '/ts/packages/runtime-bridge/dist/bridge.js';\n"
+          + "export { BrowserInputHost } from '/ts/packages/runtime-bridge/dist/browser-input-host.js';\n"
+          + "export { BrowserFpsResolvedActionConsumer } from '/ts/packages/runtime-bridge/dist/browser-fps-resolved-actions.js';\n",
         );
         return;
       }
@@ -652,6 +692,10 @@ function isFloorBlue(red, green, blue) {
 
 function isWallGreen(red, green, blue) {
   return green > 50 && green > red * 1.3 && green > blue * 1.2;
+}
+
+function isBulkMagenta(red, green, blue) {
+  return red > 50 && blue > 50 && red > green * 1.5 && blue > green * 1.5;
 }
 
 async function snapshot(client) {

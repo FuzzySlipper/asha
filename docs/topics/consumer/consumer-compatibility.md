@@ -945,6 +945,14 @@ Additive editor viewport in #5741:
   existing buffer source make live voxel remesh projection inspectable without
   importing renderer internals or treating renderer state as authority. Procgen
   should clear the runtime channel on run restart or project switch.
+- #6062 adds `replaceAuthoredFrameChunks` to the public inspection surface and
+  `replaceChunks` to editor viewport channel handles. Individually bounded
+  transport frames are validated and realized as one atomic authored-channel
+  replacement under the existing 4,096 per-frame and 8,192 retained-operation
+  limits. Rejection preserves the prior authored projection, generation, and
+  hash. The operation is additive under `renderer-host.v1`, remains
+  projection-only, and does not route authored content through the runtime
+  channel.
 - #6040 adds generated `VoxelUpdateTelemetryRequest` and
   `VoxelUpdateTelemetryReadout` contracts plus
   `RuntimeSessionFacade.readVoxelUpdateTelemetry`. Rust retains exactly one

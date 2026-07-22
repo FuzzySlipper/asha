@@ -129,6 +129,10 @@ export interface AshaRendererEditorViewportChannelHandle {
   readonly clear: () => AshaRendererEditorViewportChannelReceipt;
   readonly dispose: () => AshaRendererEditorViewportChannelReceipt;
   readonly replace: (frame: RenderFrameDiff) => AshaRendererEditorViewportChannelReceipt;
+  /** Atomically replace this channel from individually bounded transport chunks. */
+  readonly replaceChunks: (
+    chunks: readonly RenderFrameDiff[],
+  ) => AshaRendererEditorViewportChannelReceipt;
   readonly snapshot: () => AshaRendererEditorViewportChannelSnapshot;
 }
 
@@ -495,7 +499,10 @@ function createChannelHandle(
   backend: AshaRendererEditorViewportBackendPort,
   diagnostics: AshaRendererEditorViewportDiagnostic[],
 ): AshaRendererEditorViewportChannelHandle {
-  const commit = (mode: 'apply' | 'replace' | 'clear'): AshaRendererEditorViewportChannelReceipt => {
+  const commit = (
+    mode: 'apply' | 'replace',
+    chunks: unknown,
+  ): AshaRendererEditorViewportChannelReceipt => {
     const state = requireState(states, channel);
     if (viewportStatus() === 'disposed') {
       return rejectedChannelReceipt(state, diagnostics, viewportDisposedDiagnostic(channel));
@@ -508,16 +515,32 @@ function createChannelHandle(
         recoverable: false,
       });
     }
-    const frame = mode === 'clear' ? { ops: [] as readonly RenderDiff[] } : pendingFrame;
-    if (!hasRenderFrameOps(frame)) {
+    if (!isUnknownArray(chunks)) {
       return rejectedChannelReceipt(
         state,
         diagnostics,
-        invalidFrameDiagnostic(channel, 'render frame ops must be an array'),
+        invalidFrameDiagnostic(channel, 'renderer viewport frame chunks must be an array'),
       );
     }
-    const nextHistory = mode === 'apply' ? [...state.history, ...frame.ops] : [...frame.ops];
-    const validation = validateChannelHistory(channel, frame, nextHistory);
+    const validChunks: RenderFrameDiff[] = [];
+    for (const [chunkIndex, frame] of chunks.entries()) {
+      if (!hasRenderFrameOps(frame)) {
+        return rejectedChannelReceipt(
+          state,
+          diagnostics,
+          invalidFrameDiagnostic(
+            channel,
+            chunks.length === 1
+              ? 'render frame ops must be an array'
+              : `renderer viewport frame chunk ${chunkIndex} ops must be an array`,
+          ),
+        );
+      }
+      validChunks.push(frame);
+    }
+    const suppliedOps = validChunks.flatMap((frame) => frame.ops);
+    const nextHistory = mode === 'apply' ? [...state.history, ...suppliedOps] : suppliedOps;
+    const validation = validateChannelHistory(channel, validChunks, nextHistory);
     if ('diagnostic' in validation) {
       return rejectedChannelReceipt(state, diagnostics, validation.diagnostic);
     }
@@ -532,18 +555,12 @@ function createChannelHandle(
     return acceptedChannelReceipt(state);
   };
 
-  let pendingFrame: RenderFrameDiff = { ops: [] };
   return {
     channel,
-    apply: (frame) => {
-      pendingFrame = frame;
-      return commit('apply');
-    },
-    replace: (frame) => {
-      pendingFrame = frame;
-      return commit('replace');
-    },
-    clear: () => commit('clear'),
+    apply: (frame) => commit('apply', [frame]),
+    replace: (frame) => commit('replace', [frame]),
+    replaceChunks: (chunks) => commit('replace', chunks),
+    clear: () => commit('replace', []),
     snapshot: () => snapshotChannel(requireState(states, channel)),
     dispose: () => {
       const state = requireState(states, channel);
@@ -558,7 +575,7 @@ function createChannelHandle(
             };
         return rejectedChannelReceipt(state, diagnostics, diagnostic);
       }
-      const receipt = commit('clear');
+      const receipt = commit('replace', []);
       if (receipt.applied) {
         state.disposed = true;
       }
@@ -569,21 +586,25 @@ function createChannelHandle(
 
 function validateChannelHistory(
   channel: AshaRendererEditorViewportChannel,
-  frame: RenderFrameDiff,
+  chunks: readonly RenderFrameDiff[],
   history: readonly RenderDiff[],
 ): { readonly projection: RenderProjection } | { readonly diagnostic: AshaRendererEditorViewportDiagnostic } {
-  if (frame.ops.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS
-    || history.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS) {
+  const overLimitChunkIndex = chunks.findIndex(
+    (frame) => frame.ops.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+  );
+  if (overLimitChunkIndex !== -1 || history.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS) {
     return {
       diagnostic: {
         channel,
         code: 'frame_limit_exceeded',
-        message: `renderer viewport frames are bounded to ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS} ops and ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS} retained ops`,
+        message: overLimitChunkIndex !== -1
+          ? `renderer viewport frame chunk ${overLimitChunkIndex} exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS} op limit`
+          : `renderer viewport replacement exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS} retained op limit`,
         recoverable: true,
       },
     };
   }
-  for (const op of frame.ops) {
+  for (const op of chunks.flatMap((frame) => frame.ops)) {
     const handleIssue = validateDiffHandles(channel, op);
     if (handleIssue !== null) {
       return { diagnostic: handleIssue };
@@ -1005,6 +1026,10 @@ function hasRenderFrameOps(value: unknown): value is RenderFrameDiff {
     return false;
   }
   return Array.isArray((value as { readonly ops?: unknown }).ops);
+}
+
+function isUnknownArray(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value);
 }
 
 function isStableValueArray(value: StableValue): value is readonly StableValue[] {

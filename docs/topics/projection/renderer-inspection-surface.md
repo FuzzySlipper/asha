@@ -38,6 +38,11 @@ if (!receipt.applied) {
   showDiagnostics(receipt.diagnostics);
 }
 
+const bulkReceipt = viewer.replaceAuthoredFrameChunks(generationResult.renderChunks);
+if (!bulkReceipt.applied) {
+  showDiagnostics(bulkReceipt.diagnostics);
+}
+
 const runtimeReceipt = viewer.applyRuntimeFrame(runtimeSessionFrame);
 if (!runtimeReceipt.applied) {
   showDiagnostics(runtimeReceipt.diagnostics);
@@ -52,6 +57,18 @@ Replacement is atomic: malformed frames, invalid handles, policy violations, or
 backend resource failures return a rejected receipt while the last accepted
 frame remains visible. A malformed `frame` passed during mount rejects the mount
 and disposes the prepared renderer.
+
+`replaceAuthoredFrameChunks` is the bounded bulk form for a complete authored
+result that cannot fit in one transport frame. Chunks are evaluated in array and
+operation order as one replacement. Each chunk may contain at most 4,096
+operations and the combined replacement may retain at most 8,192 operations.
+Duplicate or invalid handles, update/create ordering errors, malformed chunks,
+limit overflow, and backend resource failures reject the whole replacement;
+none of its chunks become visible and the prior authored hash, generation, and
+projection remain intact. Empty chunks replace the authored projection with an
+empty result. This operation still targets only the `authored` channel. Do not
+send these chunks through `applyRuntimeFrame` or merge them with runtime
+projection downstream.
 
 `applyRuntimeFrame` incrementally retains engine-produced runtime projection on
 the viewport's dedicated `runtime` channel. It does not replace or mutate the
@@ -134,10 +151,13 @@ For Procgen task #5980:
    `@asha/renderer-host` root. Do not add `three`, `@asha/renderer-three`, or an
    engine package private path.
 4. Convert an accepted authored Procgen result into one complete
-   `RenderFrameDiff`, then pass it to `replaceFrame`. When the workbench attaches
-   a real RuntimeSession, forward each emitted `RenderFrameDiff` through
-   `applyRuntimeFrame` and call `clearRuntimeProjection` on run restart or
-   project switch. Do not merge those two channels downstream.
+   `RenderFrameDiff`, then pass it to `replaceFrame`. If deterministic compaction
+   still leaves more than 4,096 but no more than 8,192 operations, split only at
+   operation boundaries into chunks of at most 4,096 and submit the complete set
+   once through `replaceAuthoredFrameChunks`. When the workbench attaches a real
+   RuntimeSession, forward each emitted `RenderFrameDiff` through
+   `applyRuntimeFrame` and call `clearRuntimeProjection` on run restart or project
+   switch. Do not merge those two channels downstream.
 5. Preserve the runtime buffer source when mounting so handle-backed voxel mesh
    frames use the engine upload path. Display rejected receipts instead of
    falling back to a downstream renderer or reference runtime.
