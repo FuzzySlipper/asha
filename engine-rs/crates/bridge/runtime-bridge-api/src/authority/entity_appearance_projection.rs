@@ -74,10 +74,13 @@ impl EngineBridge {
         );
         self.projection.entity_appearance_handles.clear();
 
-        let mut defined_assets = BTreeSet::new();
         for (index, seed) in seeds.into_iter().enumerate() {
             let asset = self.entity_appearance_asset(&seed)?;
-            if defined_assets.insert(asset.asset.clone()) {
+            if self
+                .projection
+                .entity_appearance_defined_assets
+                .insert(asset.asset.clone())
+            {
                 frame
                     .scene
                     .ops
@@ -156,6 +159,7 @@ impl EngineBridge {
             .collect::<Vec<_>>();
         let mut operations = Vec::new();
         let mut next_handles = self.projection.entity_appearance_handles.clone();
+        let mut next_defined_assets = self.projection.entity_appearance_defined_assets.clone();
 
         for seed in seeds {
             let before_transform = Self::entity_appearance_transform_in(
@@ -194,9 +198,11 @@ impl EngineBridge {
                 (None, _, Some(transform)) => {
                     let asset = self.entity_appearance_asset(&seed)?;
                     let handle = self.entity_appearance_handle(seed.entity)?;
-                    operations.push(protocol_render::RenderDiff::DefineAnimatedMesh {
-                        asset: asset.clone(),
-                    });
+                    if next_defined_assets.insert(asset.asset.clone()) {
+                        operations.push(protocol_render::RenderDiff::DefineAnimatedMesh {
+                            asset: asset.clone(),
+                        });
+                    }
                     operations.push(protocol_render::RenderDiff::CreateAnimatedMeshInstance {
                         handle,
                         parent: None,
@@ -232,6 +238,7 @@ impl EngineBridge {
 
         self.scene.entities = next_entities;
         self.projection.entity_appearance_handles = next_handles;
+        self.projection.entity_appearance_defined_assets = next_defined_assets;
         if !operations.is_empty() {
             if self
                 .projection

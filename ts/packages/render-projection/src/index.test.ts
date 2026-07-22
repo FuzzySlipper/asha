@@ -401,6 +401,39 @@ void test('tracks animated mesh definitions and command-selected named clip play
   assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 0);
 });
 
+void test('public retained projection re-adds one shared animated-mesh instance without redefining its live asset', () => {
+  const projection = new RenderProjection();
+  const instance = (handle: number) => ({
+    op: 'createAnimatedMeshInstance' as const,
+    handle: renderHandle(handle),
+    parent: null,
+    instance: {
+      asset: 'mesh-animation/kenney-retro-character-medium',
+      transform: { translation: [handle, 0, 0] as const, rotation: [0, 0, 0, 1] as const, scale: [1, 1, 1] as const },
+      materialOverrides: [],
+      playback: null,
+      metadata: { source: entityId(handle), tags: [], label: `shared-${handle}` },
+    },
+  });
+  projection.applyFrame({ ops: [
+    { op: 'defineAnimatedMesh', asset: animatedMeshAsset() },
+    instance(21),
+    instance(22),
+  ] });
+  assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 2);
+
+  projection.applyDiff({ op: 'destroy', handle: renderHandle(21) });
+  assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 1);
+  assert.throws(
+    () => projection.applyDiff({ op: 'defineAnimatedMesh', asset: animatedMeshAsset() }),
+    /is in use by 1 instance/,
+  );
+  projection.applyDiff(instance(21));
+  assert.equal(projection.animatedMeshRefCount('mesh-animation/kenney-retro-character-medium'), 2);
+  assert.equal(projection.node(renderHandle(21))?.kind, 'animatedMesh');
+  assert.equal(projection.node(renderHandle(22))?.kind, 'animatedMesh');
+});
+
 void test('animated mesh render-diff fixture registers asset and starts the run clip', () => {
   const frame = JSON.parse(readFileSync(renderDiffFixturePath('animated-mesh.json'), 'utf8')) as RenderFrameDiff;
   const projection = new RenderProjection();

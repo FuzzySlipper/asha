@@ -447,7 +447,7 @@ Committed path classes: 772 source; 27 generated source; 543 other; 0 build/cach
 | Source | Lines / warning / cap | Owner | Review by |
 |---|---:|---|---|
 | `engine-rs/crates/rules/rule-input/src/lib.rs` | 2277 / 1400 / 1600 | rust-rule | global policy |
-| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime_project_activation.rs` | 2065 / 1400 / 1600 | rust-bridge | global policy |
+| `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/runtime_project_activation.rs` | 2187 / 1400 / 1600 | rust-bridge | global policy |
 | `engine-rs/crates/services/svc-project-content/src/validate.rs` | 1978 / 1400 / 1600 | rust-service | global policy |
 | `engine-rs/crates/services/svc-project-content/src/codec.rs` | 1894 / 1400 / 1600 | rust-service | global policy |
 | `engine-rs/crates/services/svc-project-content/src/lib.rs` | 1834 / 1400 / 1600 | rust-service | global policy |
@@ -480,7 +480,7 @@ Committed path classes: 772 source; 27 generated source; 543 other; 0 build/cach
 | `engine-rs/crates/rules/rule-animation-controller/src/lib.rs` | 1565 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/state.rs` | 1556 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/tests/voxel.rs` | 1554 / 1400 / 1600 | rust-bridge | global policy |
-| `ts/packages/renderer-three/src/renderer.test.ts` | 1523 / 1400 / 1600 | ts-shell | global policy |
+| `ts/packages/renderer-three/src/renderer.test.ts` | 1539 / 1400 / 1600 | ts-shell | global policy |
 | `engine-rs/crates/rules/rule-voxel-edit/src/lib.rs` | 1510 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/rules/rule-gameplay-fabric/src/reads.rs` | 1481 / 1400 / 1600 | rust-rule | global policy |
 | `engine-rs/crates/bridge/runtime-bridge-api/src/authority/fps_and_rules.rs` | 1467 / 1400 / 1600 | rust-bridge | global policy |

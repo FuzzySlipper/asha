@@ -492,6 +492,32 @@ fn fps_content_artifacts_with(
         .collect()
 }
 
+fn fps_content_artifacts_with_shared_player_appearance(
+    composition: &GameplayStaticComposition,
+    scene: &FlatSceneDocument,
+) -> Vec<(String, Vec<u8>)> {
+    let mut content = fps_content_artifacts_with(composition, scene, 40, true, false, false);
+    let (_, player_bytes) = content
+        .iter_mut()
+        .find(|(path, _)| path == PLAYER_DEFINITION_PATH)
+        .expect("player project-content fixture");
+    let mut player_artifact: serde_json::Value =
+        serde_json::from_slice(player_bytes).expect("canonical player artifact");
+    let render_projection = player_artifact["document"]["capabilities"]
+        .as_array_mut()
+        .expect("player capabilities")
+        .iter_mut()
+        .find(|capability| capability["kind"] == "renderProjection")
+        .expect("player render projection");
+    render_projection["appearance"] = serde_json::json!({
+        "resourceId": "fixture.primary-fire.animation",
+        "initialClipId": "idle",
+        "modelScale": [1.0, 1.0, 1.0]
+    });
+    *player_bytes = serde_json::to_vec(&player_artifact).expect("updated player artifact");
+    content
+}
+
 fn replace_project_input_control(content: &mut [(String, Vec<u8>)], control: &str) {
     let (_, input_bytes) = content
         .iter_mut()
@@ -1272,6 +1298,102 @@ fn project_input_collision_rejects_before_runtime_publication() {
         bridge.runtime_project_lifecycle_version(),
         RuntimeProjectLifecycleVersion::default()
     );
+}
+
+#[test]
+fn shared_appearance_asset_is_defined_once_across_entity_remove_and_readd() {
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 60762 })
+        .unwrap();
+    let scene = stored_fps_scene("voxel-volume/hand-authored-room");
+    let content = fps_content_artifacts_with_shared_player_appearance(&composition, &scene);
+    let source = project_source_batch_for_scene(&mut bridge, &composition, scene, content);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("shared appearance project admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+    bridge
+        .activate_pending_runtime_project(RuntimeProjectLifecycleVersion::default())
+        .expect("shared appearance project activation");
+
+    let initial = RuntimeBridge::read_fps_runtime_session(&bridge).expect("active FPS roles");
+    let initial_projection = bridge
+        .read_projection_frame(0)
+        .expect("initial shared appearance projection");
+    assert_eq!(
+        initial_projection
+            .scene
+            .ops
+            .iter()
+            .filter(|operation| matches!(
+                operation,
+                protocol_render::RenderDiff::DefineAnimatedMesh { asset }
+                    if asset.asset == "mesh/fixture-character"
+            ))
+            .count(),
+        1
+    );
+    assert_eq!(
+        initial_projection
+            .scene
+            .ops
+            .iter()
+            .filter(|operation| matches!(
+                operation,
+                protocol_render::RenderDiff::CreateAnimatedMeshInstance { instance, .. }
+                    if instance.asset == "mesh/fixture-character"
+            ))
+            .count(),
+        2
+    );
+    let player = EntityId::new(initial.player_entity);
+    let player_handle = initial_projection
+        .scene
+        .ops
+        .iter()
+        .find_map(|operation| match operation {
+            protocol_render::RenderDiff::CreateAnimatedMeshInstance {
+                handle, instance, ..
+            } if instance.metadata.source == Some(player) => Some(*handle),
+            _ => None,
+        })
+        .expect("player shared appearance handle");
+
+    let original_entities = bridge.scene.entities.clone();
+    let mut without_player = original_entities.snapshot();
+    without_player
+        .records
+        .retain(|record| record.core.id != player);
+    bridge
+        .commit_entity_authority_change(EntityStore::from_snapshot(without_player), 20)
+        .expect("remove one shared-resource entity");
+    let removed = bridge
+        .read_projection_frame(20)
+        .expect("shared-resource removal projection");
+    assert!(removed.scene.ops.iter().any(|operation| matches!(
+        operation,
+        protocol_render::RenderDiff::Destroy { handle } if *handle == player_handle
+    )));
+
+    bridge
+        .commit_entity_authority_change(original_entities, 21)
+        .expect("re-add one shared-resource entity");
+    let readded = bridge
+        .read_projection_frame(21)
+        .expect("shared-resource re-add projection");
+    assert!(readded.scene.ops.iter().all(|operation| !matches!(
+        operation,
+        protocol_render::RenderDiff::DefineAnimatedMesh { .. }
+    )));
+    assert!(readded.scene.ops.iter().any(|operation| matches!(
+        operation,
+        protocol_render::RenderDiff::CreateAnimatedMeshInstance { handle, instance, .. }
+            if *handle == player_handle && instance.asset == "mesh/fixture-character"
+    )));
 }
 
 #[test]

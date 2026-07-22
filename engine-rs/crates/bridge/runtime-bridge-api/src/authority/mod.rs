@@ -191,6 +191,7 @@ struct BridgeProjectionState {
     entity_appearances:
         BTreeMap<EntityId, entity_appearance_projection::EntityAppearanceProjectionSeed>,
     entity_appearance_handles: BTreeMap<EntityId, protocol_render::RenderHandle>,
+    entity_appearance_defined_assets: BTreeSet<String>,
     voxel_projector: VoxelChunkProjector,
     pending_voxel_frame: RenderFrameDiff,
     voxel_instance_binding: Option<VoxelInstanceBindingAuthority>,

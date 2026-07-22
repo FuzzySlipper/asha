@@ -1268,6 +1268,22 @@ void test('animated instances own disposable geometry without invalidating sibli
   assert.equal(secondDisposed, false);
   assert.equal(sourceDisposed, false);
 
+  renderer.applyDiff({
+    op: 'createAnimatedMeshInstance',
+    handle: renderHandle(4201),
+    parent: null,
+    instance: {
+      asset: asset.asset,
+      transform: { translation: [1, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      materialOverrides: [],
+      playback: null,
+      metadata: { source: null, tags: [], label: 'animated-4201-readded' },
+    },
+  });
+  assert.ok(renderer.objectFor(renderHandle(4201)));
+  assert.ok(renderer.objectFor(renderHandle(4202)));
+  assert.equal(sourceDisposed, false);
+
   renderer.dispose();
   assert.equal(secondDisposed, true);
   assert.equal(sourceDisposed, false);
