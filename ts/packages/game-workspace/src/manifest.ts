@@ -101,7 +101,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
   validateVersion(manifest.asha.runtimeBridgeVersion, 'asha.runtime_bridge_version', diagnostics);
 
   validateNonEmptyRoots(manifest.workspace.sceneRoots, 'workspace.scene_roots', diagnostics);
-  validateNonEmptyRoots(manifest.workspace.prefabRoots, 'workspace.prefab_roots', diagnostics);
+  validateRoots(manifest.workspace.prefabRoots, 'workspace.prefab_roots', diagnostics);
   validateNonEmptyRoots(manifest.workspace.assetRoots, 'workspace.asset_roots', diagnostics);
   validateNonEmptyRoots(manifest.workspace.replayRoots, 'workspace.replay_roots', diagnostics);
   validateEngineSource(manifest.asha.engineSource, 'asha.engine_source', diagnostics);
@@ -176,6 +176,10 @@ function validateNonEmptyRoots(roots: readonly string[], path: string, diagnosti
   if (roots.length === 0) {
     diagnostics.push(diag('missing_root', path, 'at least one root is required'));
   }
+  validateRoots(roots, path, diagnostics);
+}
+
+function validateRoots(roots: readonly string[], path: string, diagnostics: AshaGameManifestDiagnostic[]): void {
   for (const root of roots) {
     validatePath(root, path, diagnostics);
   }

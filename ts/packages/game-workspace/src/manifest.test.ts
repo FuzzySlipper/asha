@@ -29,6 +29,18 @@ void test('validates the golden asha.game.toml manifest', () => {
   assert.equal(result.manifest.publishResourceProfile.resolutionPolicy, 'locked');
 });
 
+void test('accepts a workspace that does not author prefab content', () => {
+  const manifest = fixture('asha.game.toml')
+    .replace('prefab_roots = ["prefabs"]', 'prefab_roots = []')
+    .replace('allowed_source_writes = ["scenes", "prefabs", "assets", "packages/game-catalogs"]', 'allowed_source_writes = ["scenes", "assets", "packages/game-catalogs"]');
+  const result = parseAshaGameManifestToml(manifest);
+  assert.equal(result.ok, true);
+  if (!result.ok) {
+    throw new Error('prefab-free workspace should validate');
+  }
+  assert.deepEqual(result.manifest.workspace.prefabRoots, []);
+});
+
 void test('fails closed when required workspace roots are missing', () => {
   const result = parseAshaGameManifestToml(fixture('invalid-missing-roots.toml'));
   assert.equal(result.ok, false);
