@@ -14,6 +14,7 @@ core-scene = { path = "../../state/core-scene" }
 protocol-assets = { path = "../../protocol/protocol-assets" }
 protocol-entity-authoring = { path = "../../protocol/protocol-entity-authoring" }
 protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-input = { path = "../../protocol/protocol-input" }
 protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
 protocol-project-content = { path = "../../protocol/protocol-project-content" }
 protocol-scene = { path = "../../protocol/protocol-scene" }

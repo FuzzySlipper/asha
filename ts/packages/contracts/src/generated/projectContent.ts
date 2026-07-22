@@ -13,10 +13,11 @@ import type { RenderFrameDiff } from './render.js';
 import type { SceneId, SceneNodeId, SceneTransform, FlatSceneDocument } from './scene.js';
 import type { VoxelAssetAuthoringMetadata, VoxelAssetMaterialBinding, VoxelVolumeAsset } from './voxelAsset.js';
 import type { GameplayContractRef, GameplayModuleRef, GameplayModuleBinding, GameplayModuleBindingOverride } from './gameExtension.js';
+import type { ProjectInputCatalog } from './input.js';
 
 export const PROJECT_CONTENT_SCHEMA_VERSION = 1;
 
-export type ProjectContentDocumentKind = 'entityDefinition' | 'assetCatalog' | 'prefabRegistry' | 'gameplayConfiguration' | 'presentationCatalog';
+export type ProjectContentDocumentKind = 'entityDefinition' | 'assetCatalog' | 'prefabRegistry' | 'gameplayConfiguration' | 'presentationCatalog' | 'inputCatalog';
 
 export interface ProjectContentSource {
   readonly sourcePath: string;
@@ -150,7 +151,8 @@ export type ProjectContentDocument =
   | { readonly kind: 'assetCatalog'; readonly documentId: string; readonly catalog: StoredAssetCatalog }
   | { readonly kind: 'prefabRegistry'; readonly documentId: string; readonly registry: PrefabRegistry }
   | { readonly kind: 'gameplayConfiguration'; readonly documentId: string; readonly document: ProjectGameplayConfigurationDocument }
-  | { readonly kind: 'presentationCatalog'; readonly documentId: string; readonly catalog: ProjectPresentationCatalog };
+  | { readonly kind: 'presentationCatalog'; readonly documentId: string; readonly catalog: ProjectPresentationCatalog }
+  | { readonly kind: 'inputCatalog'; readonly documentId: string; readonly catalog: ProjectInputCatalog };
 
 export interface ProjectContentDecodeRequest {
   readonly sources: readonly ProjectContentSource[];

@@ -9,6 +9,7 @@
 use serde::{Deserialize, Serialize};
 
 pub const INPUT_BINDING_CATALOG_SCHEMA_VERSION: u32 = 1;
+pub const PROJECT_INPUT_CATALOG_SCHEMA_VERSION: u32 = 1;
 pub const INPUT_CONTEXT_STATE_SCHEMA_VERSION: u32 = 1;
 pub const INPUT_ACTION_RECORD_SCHEMA_VERSION: u32 = 1;
 
@@ -70,7 +71,7 @@ impl InputValue {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InputActionDefinition {
     pub action_id: InputActionId,
     pub value_kind: InputValueKind,
@@ -78,7 +79,7 @@ pub struct InputActionDefinition {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InputContextDefinition {
     pub context_id: InputContextId,
     pub priority: i32,
@@ -88,14 +89,14 @@ pub struct InputContextDefinition {
 /// Reserved versioned seam for modifiers/chords. Schema v1 catalogs must leave
 /// this absent; a later schema can define execution without changing bindings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InputBindingExtension {
     pub schema_version: u32,
     pub required_controls: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InputBindingRecord {
     pub binding_id: InputBindingId,
     pub action_id: InputActionId,
@@ -107,9 +108,24 @@ pub struct InputBindingRecord {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InputBindingCatalog {
     pub schema_version: u32,
+    pub actions: Vec<InputActionDefinition>,
+    pub contexts: Vec<InputContextDefinition>,
+    pub bindings: Vec<InputBindingRecord>,
+}
+
+/// One immutable Game Project extension to the Engine input catalog.
+///
+/// Project actions, contexts, and bindings use a consumer-owned namespace.
+/// Bindings may target a compatible Engine context such as `gameplay`, but
+/// they cannot replace an Engine action, context, or normalized control.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ProjectInputCatalog {
+    pub schema_version: u32,
+    pub namespace: String,
     pub actions: Vec<InputActionDefinition>,
     pub contexts: Vec<InputContextDefinition>,
     pub bindings: Vec<InputBindingRecord>,
@@ -210,6 +226,11 @@ pub enum InputDiagnosticCode {
     DuplicateAction,
     DuplicateContext,
     DuplicateBinding,
+    CatalogLimitExceeded,
+    DuplicateProjectCatalog,
+    ReservedNamespace,
+    ProtectedControl,
+    InvalidControl,
     InvalidPriority,
     UnknownAction,
     UnknownContext,

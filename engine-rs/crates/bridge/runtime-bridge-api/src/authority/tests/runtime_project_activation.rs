@@ -13,7 +13,8 @@ use protocol_entity_authoring::{
 };
 use protocol_input::{
     InputActionDefinition, InputActionPhase, InputBindingRecord, InputContextDefinition,
-    InputValue, InputValueKind, PlatformInputKind, INPUT_BINDING_CATALOG_SCHEMA_VERSION,
+    InputValue, InputValueKind, PlatformInputKind, ProjectInputCatalog,
+    INPUT_BINDING_CATALOG_SCHEMA_VERSION, PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
 };
 use rule_gameplay_fabric::{SessionTickGameplayPayload, StandardGameplayEventKind};
 
@@ -36,6 +37,7 @@ const PLAYER_DEFINITION_PATH: &str = "entities/demo-player.project-content.json"
 const ENEMY_DEFINITION_DOCUMENT_ID: &str = "entity.tunnel-enemy";
 const ENEMY_DEFINITION_PATH: &str = "entities/tunnel-enemy.project-content.json";
 const GAMEPLAY_PATH: &str = "gameplay/fps.project-content.json";
+const INPUT_PATH: &str = "input/demo.project-content.json";
 
 struct TickProbeBehavior;
 
@@ -396,6 +398,28 @@ fn fps_content_artifacts_with(
                 }],
             },
         },
+        ProjectContentDocumentDto::InputCatalog {
+            document_id: INPUT_PATH.to_owned(),
+            catalog: ProjectInputCatalog {
+                schema_version: PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
+                namespace: "demo".to_owned(),
+                actions: vec![InputActionDefinition {
+                    action_id: "demo.interact".to_owned(),
+                    value_kind: InputValueKind::Button,
+                    accepted_phases: vec![InputActionPhase::Pressed],
+                }],
+                contexts: Vec::new(),
+                bindings: vec![InputBindingRecord {
+                    binding_id: "demo.interact.primary".to_owned(),
+                    action_id: "demo.interact".to_owned(),
+                    context_id: "gameplay".to_owned(),
+                    platform_kind: PlatformInputKind::KeyboardKey,
+                    control: "KeyE".to_owned(),
+                    scale: 1.0,
+                    extension: None,
+                }],
+            },
+        },
         ProjectContentDocumentDto::AssetCatalog {
             document_id: "catalogs/appearance-validation.project-content.json".to_owned(),
             catalog: StoredAssetCatalog {
@@ -451,7 +475,10 @@ fn fps_content_artifacts_with(
         .filter(|file| {
             matches!(
                 file.document_id.as_str(),
-                PLAYER_DEFINITION_DOCUMENT_ID | ENEMY_DEFINITION_DOCUMENT_ID | GAMEPLAY_PATH
+                PLAYER_DEFINITION_DOCUMENT_ID
+                    | ENEMY_DEFINITION_DOCUMENT_ID
+                    | GAMEPLAY_PATH
+                    | INPUT_PATH
             )
         })
         .map(|file| {
@@ -463,6 +490,18 @@ fn fps_content_artifacts_with(
             (path.to_owned(), file.canonical_json.into_bytes())
         })
         .collect()
+}
+
+fn replace_project_input_control(content: &mut [(String, Vec<u8>)], control: &str) {
+    let (_, input_bytes) = content
+        .iter_mut()
+        .find(|(path, _)| path == INPUT_PATH)
+        .expect("input project-content fixture");
+    let mut input_artifact: serde_json::Value =
+        serde_json::from_slice(input_bytes).expect("canonical input artifact");
+    input_artifact["document"]["bindings"][0]["control"] =
+        serde_json::Value::String(control.to_owned());
+    *input_bytes = serde_json::to_vec(&input_artifact).expect("updated input artifact");
 }
 
 fn material_catalog_document(asset: &VoxelVolumeAsset) -> ProjectContentDocumentDto {
@@ -800,7 +839,7 @@ fn project_source_batch_for_scene_with_presentation(
     artifacts.extend(content_artifacts.iter().map(|(path, bytes)| {
         svc_serialization::ArtifactEntry::durable(
             path,
-            if path == GAMEPLAY_PATH {
+            if path == GAMEPLAY_PATH || path == INPUT_PATH {
                 svc_serialization::ArtifactRole::ProjectContent
             } else {
                 svc_serialization::ArtifactRole::EntityDefinitionCatalog
@@ -1198,6 +1237,95 @@ fn statically_required_fps_domain_rejects_missing_semantics_before_publication()
 }
 
 #[test]
+fn project_input_collision_rejects_before_runtime_publication() {
+    let composition = static_composition();
+    let mut bridge = DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+        .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+        .build_unloaded();
+    bridge
+        .initialize_engine(EngineConfig { seed: 60061 })
+        .unwrap();
+    let scene = stored_fps_scene("voxel-volume/hand-authored-room");
+    let mut content = fps_content_artifacts_with(&composition, &scene, 40, true, false, false);
+    replace_project_input_control(&mut content, "KeyW");
+
+    let source = project_source_batch_for_scene(&mut bridge, &composition, scene, content);
+    let admission = bridge
+        .admit_runtime_project_source_batch(source)
+        .expect("structurally valid source reaches staged admission");
+    assert!(admission.accepted, "{:?}", admission.diagnostics);
+
+    let error = bridge
+        .activate_pending_runtime_project(RuntimeProjectLifecycleVersion::default())
+        .expect_err("project input may not replace Engine movement control");
+    assert!(matches!(error, RuntimeProjectLoadError::Admission(_)));
+    assert!(error.to_string().contains("ProtectedControl"), "{error}");
+    assert!(
+        error
+            .to_string()
+            .contains("projectCatalog.bindings[0].control"),
+        "{error}"
+    );
+    assert!(bridge.active_runtime_project().is_none());
+    assert!(bridge.scene.entities.snapshot().records.is_empty());
+    assert_eq!(
+        bridge.runtime_project_lifecycle_version(),
+        RuntimeProjectLifecycleVersion::default()
+    );
+}
+
+#[test]
+fn saved_project_input_change_applies_to_the_next_fresh_runtime_session() {
+    let composition = static_composition();
+    for (seed, control) in [(60062, "KeyE"), (60063, "KeyF")] {
+        let mut bridge =
+            DeferredRuntimeSessionBuilder::from_static_composition(composition.clone())
+                .with_project_domain(RuntimeProjectDomainAdapter::Fps)
+                .build_unloaded();
+        bridge.initialize_engine(EngineConfig { seed }).unwrap();
+        let scene = stored_fps_scene("voxel-volume/hand-authored-room");
+        let mut content = fps_content_artifacts_with(&composition, &scene, 40, true, false, false);
+        replace_project_input_control(&mut content, control);
+        let source = project_source_batch_for_scene(&mut bridge, &composition, scene, content);
+        let admission = bridge
+            .admit_runtime_project_source_batch(source)
+            .expect("changed project source admission");
+        assert!(admission.accepted, "{:?}", admission.diagnostics);
+        bridge
+            .activate_pending_runtime_project(RuntimeProjectLifecycleVersion::default())
+            .expect("changed stored input activates in a fresh Session");
+        bridge
+            .configure_input_session(InputSessionConfigureRequest {
+                catalog: fps_input_catalog(),
+                initial_contexts: vec!["gameplay".to_owned()],
+            })
+            .expect("canonical Engine and project input compose");
+
+        let receipt = bridge
+            .submit_raw_input(RawInputSample {
+                sequence: 1,
+                platform_kind: PlatformInputKind::KeyboardKey,
+                control: control.to_owned(),
+                phase: InputActionPhase::Pressed,
+                value: InputValue::Button { pressed: true },
+            })
+            .expect("saved binding resolves");
+        assert_eq!(receipt.action.unwrap().action_id, "demo.interact");
+        let stale_control = if control == "KeyE" { "KeyF" } else { "KeyE" };
+        let stale = bridge
+            .submit_raw_input(RawInputSample {
+                sequence: 2,
+                platform_kind: PlatformInputKind::KeyboardKey,
+                control: stale_control.to_owned(),
+                phase: InputActionPhase::Pressed,
+                value: InputValue::Button { pressed: true },
+            })
+            .expect("stale binding is a classified unbound input");
+        assert!(stale.action.is_none());
+    }
+}
+
+#[test]
 fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootstrap() {
     use protocol_project_bundle::{
         RuntimeProjectLoadRequest, RuntimeProjectSourceAdapterInput,
@@ -1243,7 +1371,7 @@ fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootst
     let active_content = RuntimeBridge::read_active_runtime_project_content(&bridge)
         .expect("active content is projected from Rust authority");
     assert_eq!(active_content.project_id, PROJECT_ID);
-    assert_eq!(active_content.content.documents.len(), 5);
+    assert_eq!(active_content.content.documents.len(), 6);
     assert_eq!(active_content.entry_scene.id, SceneId::new(SCENE_ID));
     assert_eq!(active_content.active_domains.len(), 1);
     assert_eq!(
@@ -1385,7 +1513,18 @@ fn canonical_project_load_activates_playable_fps_authority_without_legacy_bootst
             value: InputValue::Button { pressed: true },
         })
         .expect("stored project input resolves");
-    assert_eq!(resolved.action.unwrap().action_id, "game.move.forward");
+    assert_eq!(resolved.action.unwrap().action_id, "gameplay.move.forward");
+    let interaction = bridge
+        .submit_raw_input(RawInputSample {
+            sequence: 2,
+            platform_kind: PlatformInputKind::KeyboardKey,
+            control: "KeyE".to_owned(),
+            phase: InputActionPhase::Pressed,
+            value: InputValue::Button { pressed: true },
+        })
+        .expect("stored Game Project interaction input resolves");
+    assert_eq!(interaction.action.unwrap().action_id, "demo.interact");
+    assert_eq!(interaction.record.unwrap().action.context_id, "gameplay");
 
     let gameplay = bridge
         .with_static_gameplay_runtime("canonical_fps_tick", |host| {

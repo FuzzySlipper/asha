@@ -602,6 +602,7 @@ const PROJECT_CONTENT_KINDS: readonly ProjectContentDocumentKind[] = [
   'prefabRegistry',
   'gameplayConfiguration',
   'presentationCatalog',
+  'inputCatalog',
 ];
 
 function isProjectContentRole(role: string): boolean {

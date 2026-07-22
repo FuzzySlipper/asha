@@ -7,6 +7,7 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
         interface_coverage_key("input", "InputBindingExtension"),
         interface_coverage_key("input", "InputBindingRecord"),
         interface_coverage_key("input", "InputBindingCatalog"),
+        interface_coverage_key("input", "ProjectInputCatalog"),
         interface_coverage_key("input", "InputSessionConfigureRequest"),
         interface_coverage_key("input", "ActiveInputContext"),
         interface_coverage_key("input", "InputContextStackState"),
@@ -34,10 +35,11 @@ fn input_rust_serialization_matches_ir_shape() {
         InputBindingCatalog, InputBindingExtension, InputBindingRecord, InputContextChangeReceipt,
         InputContextCommand, InputContextDefinition, InputContextStackState, InputDiagnostic,
         InputDiagnosticCode, InputResolutionReceipt, InputSessionConfigureRequest,
-        InputSessionSnapshot, InputValue, InputValueKind, PlatformInputKind, RawInputSample,
-        RecordedInputAction, ResolvedInputAction, INPUT_ACTION_PHASES,
+        InputSessionSnapshot, InputValue, InputValueKind, PlatformInputKind, ProjectInputCatalog,
+        RawInputSample, RecordedInputAction, ResolvedInputAction, INPUT_ACTION_PHASES,
         INPUT_ACTION_RECORD_SCHEMA_VERSION, INPUT_BINDING_CATALOG_SCHEMA_VERSION,
         INPUT_CONTEXT_STATE_SCHEMA_VERSION, INPUT_VALUE_KINDS, PLATFORM_INPUT_KINDS,
+        PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
     };
 
     let input = module("input");
@@ -92,6 +94,13 @@ fn input_rust_serialization_matches_ir_shape() {
         contexts: vec![context.clone()],
         bindings: vec![binding.clone()],
     };
+    let project_catalog = ProjectInputCatalog {
+        schema_version: PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
+        namespace: "demo".into(),
+        actions: vec![action.clone()],
+        contexts: vec![context.clone()],
+        bindings: vec![binding.clone()],
+    };
     let configure = InputSessionConfigureRequest {
         catalog: catalog.clone(),
         initial_contexts: vec!["gameplay".into()],
@@ -129,6 +138,10 @@ fn input_rust_serialization_matches_ir_shape() {
         (
             "InputBindingCatalog",
             serde_json::to_value(catalog).unwrap(),
+        ),
+        (
+            "ProjectInputCatalog",
+            serde_json::to_value(project_catalog).unwrap(),
         ),
         (
             "InputSessionConfigureRequest",

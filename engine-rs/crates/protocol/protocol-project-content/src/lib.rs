@@ -27,6 +27,7 @@ pub enum ProjectContentDocumentKind {
     PrefabRegistry,
     GameplayConfiguration,
     PresentationCatalog,
+    InputCatalog,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,6 +271,10 @@ pub enum ProjectContentDocumentDto {
         document_id: String,
         catalog: ProjectPresentationCatalogDto,
     },
+    InputCatalog {
+        document_id: String,
+        catalog: protocol_input::ProjectInputCatalog,
+    },
 }
 
 impl ProjectContentDocumentDto {
@@ -279,7 +284,8 @@ impl ProjectContentDocumentDto {
             | Self::AssetCatalog { document_id, .. }
             | Self::PrefabRegistry { document_id, .. }
             | Self::GameplayConfiguration { document_id, .. }
-            | Self::PresentationCatalog { document_id, .. } => document_id,
+            | Self::PresentationCatalog { document_id, .. }
+            | Self::InputCatalog { document_id, .. } => document_id,
         }
     }
 
@@ -290,6 +296,7 @@ impl ProjectContentDocumentDto {
             Self::PrefabRegistry { .. } => ProjectContentDocumentKind::PrefabRegistry,
             Self::GameplayConfiguration { .. } => ProjectContentDocumentKind::GameplayConfiguration,
             Self::PresentationCatalog { .. } => ProjectContentDocumentKind::PresentationCatalog,
+            Self::InputCatalog { .. } => ProjectContentDocumentKind::InputCatalog,
         }
     }
 }

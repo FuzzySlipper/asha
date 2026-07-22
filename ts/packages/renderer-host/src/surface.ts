@@ -7,6 +7,7 @@ import type {
   RenderFrameDiff,
   RenderHandle,
   RenderLayer,
+  ResolvedInputAction,
   TagId,
 } from '@asha/contracts';
 import {
@@ -75,6 +76,8 @@ export interface AshaRendererSurfaceControlsOptions {
   /** Public RuntimeSession input surface. Controls stay inactive when omitted. */
   readonly inputSession?: BrowserInputSessionPort;
   readonly initialInputContexts?: readonly string[];
+  /** Observes Rust-resolved semantic actions; it never receives raw DOM keys. */
+  readonly onResolvedAction?: (action: ResolvedInputAction) => void;
 }
 
 export interface AshaRendererSurfaceCameraPose {
@@ -472,7 +475,10 @@ function createAshaRendererSurfaceFirstPersonControls(
           'menu.open': 'shell.menu',
           'menu.close': 'shell.menu',
         },
-        onResolvedAction: (action) => actionConsumer.accept(action),
+        onResolvedAction: (action) => {
+          actionConsumer.accept(action);
+          options.onResolvedAction?.(action);
+        },
         onContextChanged: () => actionConsumer.reset(),
       });
   let authorityBasis: AshaRendererSurfaceCameraBasis | null = null;

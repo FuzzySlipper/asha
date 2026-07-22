@@ -1622,6 +1622,52 @@ pub(super) fn field_metadata(
                     }
                 }
             }
+            ProjectContentDocumentDto::InputCatalog { catalog, .. } => {
+                for (index, action) in catalog.actions.iter().enumerate() {
+                    fields.push(metadata(
+                        &document_id,
+                        &format!("catalog.actions[{index}].actionId"),
+                        "Input action id",
+                        ProjectConfigurationValueKind::String,
+                        true,
+                        None,
+                    ));
+                    fields.push(metadata(
+                        &document_id,
+                        &format!("catalog.actions[{index}].acceptedPhases"),
+                        &format!("{} accepted phases", action.action_id),
+                        ProjectConfigurationValueKind::String,
+                        true,
+                        None,
+                    ));
+                }
+                for (index, context) in catalog.contexts.iter().enumerate() {
+                    fields.push(metadata(
+                        &document_id,
+                        &format!("catalog.contexts[{index}].contextId"),
+                        &format!("{} context id", context.context_id),
+                        ProjectConfigurationValueKind::String,
+                        true,
+                        None,
+                    ));
+                }
+                for (index, binding) in catalog.bindings.iter().enumerate() {
+                    for (suffix, label) in [
+                        ("actionId", "Input action"),
+                        ("contextId", "Input context"),
+                        ("control", "Platform control"),
+                    ] {
+                        fields.push(metadata(
+                            &document_id,
+                            &format!("catalog.bindings[{index}].{suffix}"),
+                            &format!("{} · {label}", binding.binding_id),
+                            ProjectConfigurationValueKind::String,
+                            true,
+                            None,
+                        ));
+                    }
+                }
+            }
         }
     }
     fields.sort_by(|left, right| {

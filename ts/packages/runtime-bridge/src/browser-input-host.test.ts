@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { RecordedInputAction } from '@asha/contracts';
+import type { InputBindingCatalog, RecordedInputAction } from '@asha/contracts';
 
 import {
   BrowserFpsResolvedActionConsumer,
@@ -96,6 +96,99 @@ void test('restart resolves once from KeyR in gameplay and menu while repeat and
       1,
     );
   }
+});
+
+void test('project interaction resolves once beside protected Engine movement through the normal host readout', () => {
+  const baseCatalog = createDefaultBrowserInputCatalog();
+  const catalog: InputBindingCatalog = {
+    ...baseCatalog,
+    actions: [
+      ...baseCatalog.actions,
+      { actionId: 'demo.interact', valueKind: 'button', acceptedPhases: ['pressed'] },
+    ],
+    bindings: [
+      ...baseCatalog.bindings,
+      {
+        bindingId: 'demo.interact.primary',
+        actionId: 'demo.interact',
+        contextId: 'gameplay',
+        platformKind: 'keyboardKey',
+        control: 'KeyE',
+        scale: 1,
+        extension: null,
+      },
+    ],
+  };
+  const bridge = new MockRuntimeBridge();
+  bridge.initializeEngine({ seed: 18 });
+  const resolvedActions: string[] = [];
+  const host = new BrowserInputHost({
+    session: bridge,
+    catalog,
+    initialContexts: ['gameplay'],
+    onResolvedAction: (action) => { resolvedActions.push(action.actionId); },
+  });
+
+  const movement = host.handleKeyDown({ code: 'KeyW' });
+  const pressed = host.handleKeyDown({ code: 'KeyE' });
+  const repeated = host.handleKeyDown({ code: 'KeyE', repeat: true });
+  const released = host.handleKeyUp({ code: 'KeyE' });
+
+  assert.equal(movement.receipt.action?.actionId, 'gameplay.move.forward');
+  assert.equal(pressed.receipt.action?.actionId, 'demo.interact');
+  assert.equal(repeated.receipt.action, null);
+  assert.equal(released.receipt.action, null);
+  assert.deepEqual(resolvedActions, ['gameplay.move.forward', 'demo.interact']);
+  assert.equal(host.readout().recentDeliveries.filter((delivery) => (
+    delivery.receipt.action?.actionId === 'demo.interact'
+  )).length, 1);
+
+  host.applyContextCommand({ operation: 'push', contextId: 'menu' });
+  const inactive = host.handleKeyDown({ code: 'KeyE' });
+  assert.equal(inactive.receipt.action, null);
+  assert.equal(inactive.receipt.consumed, true);
+  assert.deepEqual(resolvedActions, ['gameplay.move.forward', 'demo.interact']);
+});
+
+void test('keyboard focus exclusion blocks project actions before DOM normalization', () => {
+  const baseCatalog = createDefaultBrowserInputCatalog();
+  const catalog: InputBindingCatalog = {
+    ...baseCatalog,
+    actions: [
+      ...baseCatalog.actions,
+      { actionId: 'demo.interact', valueKind: 'button', acceptedPhases: ['pressed'] },
+    ],
+    bindings: [
+      ...baseCatalog.bindings,
+      {
+        bindingId: 'demo.interact.primary', actionId: 'demo.interact', contextId: 'gameplay',
+        platformKind: 'keyboardKey', control: 'KeyE', scale: 1, extension: null,
+      },
+    ],
+  };
+  const bridge = new MockRuntimeBridge();
+  bridge.initializeEngine({ seed: 20 });
+  const host = new BrowserInputHost({ session: bridge, catalog });
+  const listeners = new Map<string, EventListener>();
+  const eventTarget = {
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject): void {
+      if (typeof listener === 'function') listeners.set(type, listener);
+    },
+    removeEventListener(type: string): void { listeners.delete(type); },
+  };
+  let acceptsKeyboard = false;
+  const detach = host.attachDom({
+    pointerTarget: eventTarget as unknown as HTMLElement,
+    keyboardTarget: eventTarget as unknown as Document,
+    acceptsKeyboard: () => acceptsKeyboard,
+  });
+
+  listeners.get('keydown')?.({ code: 'KeyE' } as KeyboardEvent);
+  assert.equal(host.readout().recentDeliveries.length, 0);
+  acceptsKeyboard = true;
+  listeners.get('keydown')?.({ code: 'KeyE' } as KeyboardEvent);
+  assert.equal(host.readout().lastDelivery?.receipt.action?.actionId, 'demo.interact');
+  detach();
 });
 
 void test('resolved pause context records and replays without browser events or double delivery', () => {

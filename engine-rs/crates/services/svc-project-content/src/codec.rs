@@ -32,6 +32,7 @@ enum ProjectContentDocumentKindWire {
     PrefabRegistry,
     GameplayConfiguration,
     PresentationCatalog,
+    InputCatalog,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -485,6 +486,13 @@ fn decode_source(source: &ProjectContentSourceDto) -> Result<ProjectContentDocum
                 catalog: wire.into(),
             })
         }
+        ProjectContentDocumentKind::InputCatalog => {
+            let catalog: protocol_input::ProjectInputCatalog = strict_json(&source.source_text)?;
+            Ok(ProjectContentDocumentDto::InputCatalog {
+                document_id: source.document_id.clone(),
+                catalog,
+            })
+        }
     }
 }
 
@@ -717,6 +725,22 @@ fn canonical_document(document: &ProjectContentDocumentDto) -> Result<String, St
             canonical.cues.sort_by(|a, b| cue_id(a).cmp(cue_id(b)));
             pretty(&PresentationCatalogWire::from(canonical))
         }
+        ProjectContentDocumentDto::InputCatalog { catalog, .. } => {
+            let mut canonical = catalog.clone();
+            canonical
+                .actions
+                .sort_by(|left, right| left.action_id.cmp(&right.action_id));
+            for action in &mut canonical.actions {
+                action.accepted_phases.sort();
+            }
+            canonical
+                .contexts
+                .sort_by(|left, right| left.context_id.cmp(&right.context_id));
+            canonical
+                .bindings
+                .sort_by(|left, right| left.binding_id.cmp(&right.binding_id));
+            pretty(&canonical)
+        }
     }
 }
 
@@ -765,6 +789,7 @@ impl From<ProjectContentDocumentKind> for ProjectContentDocumentKindWire {
             ProjectContentDocumentKind::PrefabRegistry => Self::PrefabRegistry,
             ProjectContentDocumentKind::GameplayConfiguration => Self::GameplayConfiguration,
             ProjectContentDocumentKind::PresentationCatalog => Self::PresentationCatalog,
+            ProjectContentDocumentKind::InputCatalog => Self::InputCatalog,
         }
     }
 }
@@ -777,6 +802,7 @@ impl From<ProjectContentDocumentKindWire> for ProjectContentDocumentKind {
             ProjectContentDocumentKindWire::PrefabRegistry => Self::PrefabRegistry,
             ProjectContentDocumentKindWire::GameplayConfiguration => Self::GameplayConfiguration,
             ProjectContentDocumentKindWire::PresentationCatalog => Self::PresentationCatalog,
+            ProjectContentDocumentKindWire::InputCatalog => Self::InputCatalog,
         }
     }
 }

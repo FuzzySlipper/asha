@@ -8,6 +8,8 @@
 
 export const INPUT_BINDING_CATALOG_SCHEMA_VERSION = 1;
 
+export const PROJECT_INPUT_CATALOG_SCHEMA_VERSION = 1;
+
 export const INPUT_CONTEXT_STATE_SCHEMA_VERSION = 1;
 
 export const INPUT_ACTION_RECORD_SCHEMA_VERSION = 1;
@@ -59,6 +61,15 @@ export interface InputBindingRecord {
 
 export interface InputBindingCatalog {
   readonly schemaVersion: number;
+  readonly actions: readonly InputActionDefinition[];
+  readonly contexts: readonly InputContextDefinition[];
+  readonly bindings: readonly InputBindingRecord[];
+}
+
+// One immutable Game Project extension to the Engine input catalog.  Project actions, contexts, and bindings use a consumer-owned namespace. Bindings may target a compatible Engine context such as `gameplay`, but they cannot replace an Engine action, context, or normalized control.
+export interface ProjectInputCatalog {
+  readonly schemaVersion: number;
+  readonly namespace: string;
   readonly actions: readonly InputActionDefinition[];
   readonly contexts: readonly InputContextDefinition[];
   readonly bindings: readonly InputBindingRecord[];
@@ -123,7 +134,7 @@ export interface RecordedInputAction {
   readonly recordHash: string;
 }
 
-export type InputDiagnosticCode = 'unsupportedCatalogSchema' | 'unsupportedContextSchema' | 'invalidIdentifier' | 'duplicateAction' | 'duplicateContext' | 'duplicateBinding' | 'invalidPriority' | 'unknownAction' | 'unknownContext' | 'conflictingBinding' | 'valueKindMismatch' | 'unsupportedBindingExtension' | 'duplicateActiveContext' | 'nonCanonicalStackOrder' | 'contextStackMismatch' | 'catalogHashMismatch' | 'contextHashMismatch' | 'nonFiniteInput' | 'unsupportedPhase' | 'unboundInput' | 'consumedByContext' | 'unsupportedReplaySchema' | 'replayRecordHashMismatch' | 'replayAlreadyDelivered';
+export type InputDiagnosticCode = 'unsupportedCatalogSchema' | 'unsupportedContextSchema' | 'invalidIdentifier' | 'duplicateAction' | 'duplicateContext' | 'duplicateBinding' | 'catalogLimitExceeded' | 'duplicateProjectCatalog' | 'reservedNamespace' | 'protectedControl' | 'invalidControl' | 'invalidPriority' | 'unknownAction' | 'unknownContext' | 'conflictingBinding' | 'valueKindMismatch' | 'unsupportedBindingExtension' | 'duplicateActiveContext' | 'nonCanonicalStackOrder' | 'contextStackMismatch' | 'catalogHashMismatch' | 'contextHashMismatch' | 'nonFiniteInput' | 'unsupportedPhase' | 'unboundInput' | 'consumedByContext' | 'unsupportedReplaySchema' | 'replayRecordHashMismatch' | 'replayAlreadyDelivered';
 
 export interface InputDiagnostic {
   readonly code: InputDiagnosticCode;

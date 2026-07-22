@@ -303,6 +303,44 @@ impl ProjectContentGameplayAdmission for GameplayProjectContentAdmission {
         }
     }
 
+    fn validate_input_catalogs(
+        &self,
+        documents: &[ProjectContentDocumentDto],
+    ) -> Result<(), Vec<ProjectContentDiagnosticDto>> {
+        let input_documents = documents
+            .iter()
+            .filter_map(|document| match document {
+                ProjectContentDocumentDto::InputCatalog {
+                    document_id,
+                    catalog,
+                } => Some((document_id, catalog.clone())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let catalogs = input_documents
+            .iter()
+            .map(|(_, catalog)| catalog.clone())
+            .collect::<Vec<_>>();
+        rule_input::compose_project_input_catalog(
+            rule_input::default_browser_input_catalog(),
+            &catalogs,
+        )
+        .map(|_| ())
+        .map_err(|error| {
+            let document_id = (input_documents.len() == 1).then(|| input_documents[0].0.clone());
+            error
+                .diagnostics()
+                .iter()
+                .map(|diagnostic| ProjectContentDiagnosticDto {
+                    code: ProjectContentDiagnosticCode::InvalidDocument,
+                    document_id: document_id.clone(),
+                    path: diagnostic.path.clone(),
+                    message: format!("{:?}: {}", diagnostic.code, diagnostic.message),
+                })
+                .collect()
+        })
+    }
+
     fn entity_definition_matches_reference(
         &self,
         kind: protocol_project_content::ProjectContentReferenceKind,

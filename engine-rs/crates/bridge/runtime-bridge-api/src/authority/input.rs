@@ -5,22 +5,50 @@ pub(super) fn configure(
     request: InputSessionConfigureRequest,
 ) -> BridgeResult<InputSessionSnapshot> {
     bridge.require_initialized("configure_input_session")?;
-    let resolver = InputSessionResolver::activate(request.catalog, request.initial_contexts)
-        .map_err(|error| {
-            let details = error
-                .diagnostics()
+    let project_catalogs = bridge
+        .gameplay
+        .static_gameplay_host
+        .as_ref()
+        .and_then(|host| host.activated_project_content_readout())
+        .map(|content| {
+            content
+                .documents
                 .iter()
-                .map(|item| format!("{:?}@{}: {}", item.code, item.path, item.message))
+                .filter_map(|document| match document {
+                    protocol_project_content::ProjectContentDocumentDto::InputCatalog {
+                        catalog,
+                        ..
+                    } => Some(catalog.clone()),
+                    _ => None,
+                })
                 .collect::<Vec<_>>()
-                .join("; ");
-            RuntimeBridgeError::new(
-                RuntimeBridgeErrorKind::InvalidInput,
-                format!("input Session activation rejected: {details}"),
-            )
-        })?;
+        })
+        .unwrap_or_default();
+    let base_catalog = if project_catalogs.is_empty() {
+        request.catalog
+    } else {
+        rule_input::default_browser_input_catalog()
+    };
+    let catalog = rule_input::compose_project_input_catalog(base_catalog, &project_catalogs)
+        .map_err(input_activation_error)?;
+    let resolver = InputSessionResolver::activate(catalog, request.initial_contexts)
+        .map_err(input_activation_error)?;
     let snapshot = resolver.snapshot();
     bridge.input.input_session = Some(resolver);
     Ok(snapshot)
+}
+
+fn input_activation_error(error: rule_input::InputCatalogValidationError) -> RuntimeBridgeError {
+    let details = error
+        .diagnostics()
+        .iter()
+        .map(|item| format!("{:?}@{}: {}", item.code, item.path, item.message))
+        .collect::<Vec<_>>()
+        .join("; ");
+    RuntimeBridgeError::new(
+        RuntimeBridgeErrorKind::InvalidInput,
+        format!("input Session activation rejected: {details}"),
+    )
 }
 
 pub(super) fn apply_context_command(

@@ -14,12 +14,22 @@ use protocol_input::{
     ActiveInputContext, InputActionDefinition, InputActionReplayReceipt, InputBindingCatalog,
     InputBindingRecord, InputContextChangeReceipt, InputContextCommand, InputContextDefinition,
     InputContextStackState, InputDiagnostic, InputDiagnosticCode, InputResolutionReceipt,
-    InputSessionSnapshot, InputValue, InputValueKind, PlatformInputKind, RawInputSample,
-    RecordedInputAction, ResolvedInputAction, INPUT_ACTION_RECORD_SCHEMA_VERSION,
+    InputSessionSnapshot, InputValue, InputValueKind, PlatformInputKind, ProjectInputCatalog,
+    RawInputSample, RecordedInputAction, ResolvedInputAction, INPUT_ACTION_RECORD_SCHEMA_VERSION,
     INPUT_BINDING_CATALOG_SCHEMA_VERSION, INPUT_CONTEXT_STATE_SCHEMA_VERSION,
+    PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
 };
 
 const MAX_CONTEXT_PRIORITY: i32 = 10_000;
+const MAX_CATALOG_ACTIONS: usize = 128;
+const MAX_CATALOG_CONTEXTS: usize = 32;
+const MAX_CATALOG_BINDINGS: usize = 256;
+const MAX_PROJECT_ACTIONS: usize = 64;
+const MAX_PROJECT_CONTEXTS: usize = 16;
+const MAX_PROJECT_BINDINGS: usize = 128;
+const RESERVED_PROJECT_NAMESPACES: &[&str] = &[
+    "asha", "gameplay", "runtime", "camera", "menu", "dialog", "editor", "host",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputCatalogValidationError {
@@ -125,6 +135,365 @@ impl ValidatedInputBindingCatalog {
 
     pub fn catalog_hash(&self) -> &str {
         &self.catalog_hash
+    }
+}
+
+/// Compose at most one immutable Game Project extension over a caller's base
+/// catalog. The base remains protected: project declarations can add new
+/// namespaced meaning and bind unused controls, but cannot replace it.
+pub fn compose_project_input_catalog(
+    base: InputBindingCatalog,
+    project_catalogs: &[ProjectInputCatalog],
+) -> Result<InputBindingCatalog, InputCatalogValidationError> {
+    let validated_base = ValidatedInputBindingCatalog::validate(base)?;
+    if project_catalogs.len() > 1 {
+        return Err(InputCatalogValidationError {
+            diagnostics: vec![diagnostic(
+                InputDiagnosticCode::DuplicateProjectCatalog,
+                "projectInputCatalogs",
+                "a RuntimeSession accepts at most one Game Project input catalog",
+            )],
+        });
+    }
+    let Some(project) = project_catalogs.first() else {
+        return Ok(validated_base.catalog().clone());
+    };
+    let mut diagnostics = validate_project_catalog(validated_base.catalog(), project);
+    if !diagnostics.is_empty() {
+        return Err(InputCatalogValidationError { diagnostics });
+    }
+
+    let mut catalog = validated_base.catalog().clone();
+    catalog.actions.extend(project.actions.clone());
+    catalog.contexts.extend(project.contexts.clone());
+    catalog.bindings.extend(project.bindings.clone());
+    match ValidatedInputBindingCatalog::validate(catalog) {
+        Ok(validated) => Ok(validated.catalog().clone()),
+        Err(mut error) => {
+            diagnostics.append(&mut error.diagnostics);
+            Err(InputCatalogValidationError { diagnostics })
+        }
+    }
+}
+
+/// Canonical Engine browser-input base used to validate project declarations
+/// before RuntimeSession activation. Browser hosts still normalize DOM input;
+/// the semantic catalog and project merge are Rust-owned.
+pub fn default_browser_input_catalog() -> InputBindingCatalog {
+    let button_phases = vec![
+        protocol_input::InputActionPhase::Pressed,
+        protocol_input::InputActionPhase::Held,
+        protocol_input::InputActionPhase::Released,
+    ];
+    let pressed = vec![protocol_input::InputActionPhase::Pressed];
+    let changed = vec![protocol_input::InputActionPhase::Changed];
+    let button = |action_id: &str| InputActionDefinition {
+        action_id: action_id.to_owned(),
+        value_kind: InputValueKind::Button,
+        accepted_phases: button_phases.clone(),
+    };
+    let pressed_button = |action_id: &str| InputActionDefinition {
+        action_id: action_id.to_owned(),
+        value_kind: InputValueKind::Button,
+        accepted_phases: pressed.clone(),
+    };
+    let axis = |action_id: &str, value_kind| InputActionDefinition {
+        action_id: action_id.to_owned(),
+        value_kind,
+        accepted_phases: changed.clone(),
+    };
+    let binding =
+        |binding_id: &str, action_id: &str, context_id: &str, platform_kind, control: &str| {
+            InputBindingRecord {
+                binding_id: binding_id.to_owned(),
+                action_id: action_id.to_owned(),
+                context_id: context_id.to_owned(),
+                platform_kind,
+                control: control.to_owned(),
+                scale: 1.0,
+                extension: None,
+            }
+        };
+    InputBindingCatalog {
+        schema_version: INPUT_BINDING_CATALOG_SCHEMA_VERSION,
+        actions: vec![
+            button("gameplay.move.forward"),
+            button("gameplay.move.backward"),
+            button("gameplay.move.left"),
+            button("gameplay.move.right"),
+            axis("gameplay.look", InputValueKind::Axis2d),
+            button("gameplay.primaryFire"),
+            pressed_button("runtime.time.pause"),
+            pressed_button("runtime.time.resume"),
+            pressed_button("runtime.session.restart"),
+            pressed_button("camera.mode.firstPerson"),
+            pressed_button("camera.mode.orbit"),
+            pressed_button("camera.mode.topDown"),
+            axis("camera.navigation.rotate", InputValueKind::Axis2d),
+            axis("camera.navigation.zoom", InputValueKind::Axis1d),
+            button("camera.navigation.panForward"),
+            button("camera.navigation.panBackward"),
+            button("camera.navigation.panLeft"),
+            button("camera.navigation.panRight"),
+            button("menu.open"),
+            button("menu.close"),
+            button("menu.navigateUp"),
+            button("menu.navigateDown"),
+            button("dialog.confirm"),
+            button("dialog.cancel"),
+            button("editor.camera.forward"),
+            button("editor.camera.backward"),
+            button("editor.camera.left"),
+            button("editor.camera.right"),
+            axis("editor.camera.look", InputValueKind::Axis2d),
+            button("editor.tool.primary"),
+            button("editor.tool.cancel"),
+        ],
+        contexts: vec![
+            input_context("gameplay", 100, false),
+            input_context("editor", 200, false),
+            input_context("cameraNavigation", 300, true),
+            input_context("menu", 1_000, true),
+            input_context("dialog", 2_000, true),
+        ],
+        bindings: vec![
+            binding(
+                "gameplay-forward",
+                "gameplay.move.forward",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyW",
+            ),
+            binding(
+                "gameplay-backward",
+                "gameplay.move.backward",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyS",
+            ),
+            binding(
+                "gameplay-left",
+                "gameplay.move.left",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyA",
+            ),
+            binding(
+                "gameplay-right",
+                "gameplay.move.right",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyD",
+            ),
+            binding(
+                "gameplay-look",
+                "gameplay.look",
+                "gameplay",
+                PlatformInputKind::MouseDelta,
+                "pointer",
+            ),
+            binding(
+                "gameplay-fire",
+                "gameplay.primaryFire",
+                "gameplay",
+                PlatformInputKind::MouseButton,
+                "button0",
+            ),
+            binding(
+                "gameplay-menu",
+                "runtime.time.pause",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "Escape",
+            ),
+            binding(
+                "gameplay-restart",
+                "runtime.session.restart",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyR",
+            ),
+            binding(
+                "gameplay-camera-orbit",
+                "camera.mode.orbit",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyO",
+            ),
+            binding(
+                "gameplay-camera-top-down",
+                "camera.mode.topDown",
+                "gameplay",
+                PlatformInputKind::KeyboardKey,
+                "KeyT",
+            ),
+            binding(
+                "camera-first-person",
+                "camera.mode.firstPerson",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyF",
+            ),
+            binding(
+                "camera-orbit",
+                "camera.mode.orbit",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyO",
+            ),
+            binding(
+                "camera-top-down",
+                "camera.mode.topDown",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyT",
+            ),
+            binding(
+                "camera-rotate",
+                "camera.navigation.rotate",
+                "cameraNavigation",
+                PlatformInputKind::MouseDelta,
+                "pointer",
+            ),
+            binding(
+                "camera-zoom",
+                "camera.navigation.zoom",
+                "cameraNavigation",
+                PlatformInputKind::MouseWheel,
+                "wheel",
+            ),
+            binding(
+                "camera-pan-forward",
+                "camera.navigation.panForward",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyW",
+            ),
+            binding(
+                "camera-pan-backward",
+                "camera.navigation.panBackward",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyS",
+            ),
+            binding(
+                "camera-pan-left",
+                "camera.navigation.panLeft",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyA",
+            ),
+            binding(
+                "camera-pan-right",
+                "camera.navigation.panRight",
+                "cameraNavigation",
+                PlatformInputKind::KeyboardKey,
+                "KeyD",
+            ),
+            binding(
+                "menu-close",
+                "runtime.time.resume",
+                "menu",
+                PlatformInputKind::KeyboardKey,
+                "Escape",
+            ),
+            binding(
+                "menu-restart",
+                "runtime.session.restart",
+                "menu",
+                PlatformInputKind::KeyboardKey,
+                "KeyR",
+            ),
+            binding(
+                "menu-up",
+                "menu.navigateUp",
+                "menu",
+                PlatformInputKind::KeyboardKey,
+                "ArrowUp",
+            ),
+            binding(
+                "menu-down",
+                "menu.navigateDown",
+                "menu",
+                PlatformInputKind::KeyboardKey,
+                "ArrowDown",
+            ),
+            binding(
+                "dialog-confirm",
+                "dialog.confirm",
+                "dialog",
+                PlatformInputKind::KeyboardKey,
+                "Enter",
+            ),
+            binding(
+                "dialog-cancel",
+                "dialog.cancel",
+                "dialog",
+                PlatformInputKind::KeyboardKey,
+                "Escape",
+            ),
+            binding(
+                "editor-forward",
+                "editor.camera.forward",
+                "editor",
+                PlatformInputKind::KeyboardKey,
+                "KeyW",
+            ),
+            binding(
+                "editor-backward",
+                "editor.camera.backward",
+                "editor",
+                PlatformInputKind::KeyboardKey,
+                "KeyS",
+            ),
+            binding(
+                "editor-left",
+                "editor.camera.left",
+                "editor",
+                PlatformInputKind::KeyboardKey,
+                "KeyA",
+            ),
+            binding(
+                "editor-right",
+                "editor.camera.right",
+                "editor",
+                PlatformInputKind::KeyboardKey,
+                "KeyD",
+            ),
+            binding(
+                "editor-look",
+                "editor.camera.look",
+                "editor",
+                PlatformInputKind::MouseDelta,
+                "pointer",
+            ),
+            binding(
+                "editor-primary",
+                "editor.tool.primary",
+                "editor",
+                PlatformInputKind::MouseButton,
+                "button0",
+            ),
+            binding(
+                "editor-cancel",
+                "editor.tool.cancel",
+                "editor",
+                PlatformInputKind::KeyboardKey,
+                "Escape",
+            ),
+        ],
+    }
+}
+
+fn input_context(
+    context_id: &str,
+    priority: i32,
+    consumes_lower_priority: bool,
+) -> InputContextDefinition {
+    InputContextDefinition {
+        context_id: context_id.to_owned(),
+        priority,
+        consumes_lower_priority,
     }
 }
 
@@ -442,6 +811,153 @@ pub fn resolve_input(
     )
 }
 
+fn validate_project_catalog(
+    base: &InputBindingCatalog,
+    project: &ProjectInputCatalog,
+) -> Vec<InputDiagnostic> {
+    let mut diagnostics = Vec::new();
+    if project.schema_version != PROJECT_INPUT_CATALOG_SCHEMA_VERSION {
+        diagnostics.push(diagnostic(
+            InputDiagnosticCode::UnsupportedCatalogSchema,
+            "projectCatalog.schemaVersion",
+            format!(
+                "project input catalog schema {} is unsupported; expected {}",
+                project.schema_version, PROJECT_INPUT_CATALOG_SCHEMA_VERSION
+            ),
+        ));
+    }
+    if !is_project_namespace(&project.namespace)
+        || RESERVED_PROJECT_NAMESPACES.contains(&project.namespace.as_str())
+    {
+        diagnostics.push(diagnostic(
+            InputDiagnosticCode::ReservedNamespace,
+            "projectCatalog.namespace",
+            "project input namespace must be a portable consumer-owned namespace",
+        ));
+    }
+    for (count, maximum, path, label) in [
+        (
+            project.actions.len(),
+            MAX_PROJECT_ACTIONS,
+            "projectCatalog.actions",
+            "actions",
+        ),
+        (
+            project.contexts.len(),
+            MAX_PROJECT_CONTEXTS,
+            "projectCatalog.contexts",
+            "contexts",
+        ),
+        (
+            project.bindings.len(),
+            MAX_PROJECT_BINDINGS,
+            "projectCatalog.bindings",
+            "bindings",
+        ),
+    ] {
+        if count > maximum {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::CatalogLimitExceeded,
+                path,
+                format!("project input catalog {label} exceed the bounded maximum of {maximum}"),
+            ));
+        }
+    }
+
+    let prefix = format!("{}.", project.namespace);
+    let base_actions = base
+        .actions
+        .iter()
+        .map(|action| action.action_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let base_contexts = base
+        .contexts
+        .iter()
+        .map(|context| context.context_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let project_actions = project
+        .actions
+        .iter()
+        .map(|action| action.action_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let project_contexts = project
+        .contexts
+        .iter()
+        .map(|context| context.context_id.as_str())
+        .collect::<BTreeSet<_>>();
+
+    for (index, action) in project.actions.iter().enumerate() {
+        if !action.action_id.starts_with(&prefix)
+            || base_actions.contains(action.action_id.as_str())
+        {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::ReservedNamespace,
+                format!("projectCatalog.actions[{index}].actionId"),
+                format!("project action ids must begin with '{prefix}' and must not replace Engine actions"),
+            ));
+        }
+    }
+    for (index, context) in project.contexts.iter().enumerate() {
+        if !context.context_id.starts_with(&prefix)
+            || base_contexts.contains(context.context_id.as_str())
+        {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::ReservedNamespace,
+                format!("projectCatalog.contexts[{index}].contextId"),
+                format!("project context ids must begin with '{prefix}' and must not replace Engine contexts"),
+            ));
+        }
+    }
+    for (index, binding) in project.bindings.iter().enumerate() {
+        let path = format!("projectCatalog.bindings[{index}]");
+        if !binding.binding_id.starts_with(&prefix) {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::ReservedNamespace,
+                format!("{path}.bindingId"),
+                format!("project binding ids must begin with '{prefix}'"),
+            ));
+        }
+        if !project_actions.contains(binding.action_id.as_str()) {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::UnknownAction,
+                format!("{path}.actionId"),
+                "project bindings may target only actions declared by the same project catalog",
+            ));
+        }
+        if !project_contexts.contains(binding.context_id.as_str())
+            && !base_contexts.contains(binding.context_id.as_str())
+        {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::UnknownContext,
+                format!("{path}.contextId"),
+                "project binding references an unknown project or compatible Engine context",
+            ));
+        }
+        if !valid_platform_control(binding.platform_kind, &binding.control) {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::InvalidControl,
+                format!("{path}.control"),
+                format!(
+                    "'{}' is not a bounded normalized {:?} control",
+                    binding.control, binding.platform_kind
+                ),
+            ));
+        }
+        if base.bindings.iter().any(|candidate| {
+            candidate.context_id == binding.context_id
+                && candidate.platform_kind == binding.platform_kind
+                && candidate.control == binding.control
+        }) {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::ProtectedControl,
+                format!("{path}.control"),
+                "project binding would replace a protected Engine control in the same context",
+            ));
+        }
+    }
+    diagnostics
+}
+
 fn validate_catalog(catalog: &InputBindingCatalog) -> Vec<InputDiagnostic> {
     let mut diagnostics = Vec::new();
     if catalog.schema_version != INPUT_BINDING_CATALOG_SCHEMA_VERSION {
@@ -453,6 +969,35 @@ fn validate_catalog(catalog: &InputBindingCatalog) -> Vec<InputDiagnostic> {
                 catalog.schema_version, INPUT_BINDING_CATALOG_SCHEMA_VERSION
             ),
         ));
+    }
+
+    for (count, maximum, path, label) in [
+        (
+            catalog.actions.len(),
+            MAX_CATALOG_ACTIONS,
+            "actions",
+            "actions",
+        ),
+        (
+            catalog.contexts.len(),
+            MAX_CATALOG_CONTEXTS,
+            "contexts",
+            "contexts",
+        ),
+        (
+            catalog.bindings.len(),
+            MAX_CATALOG_BINDINGS,
+            "bindings",
+            "bindings",
+        ),
+    ] {
+        if count > maximum {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::CatalogLimitExceeded,
+                path,
+                format!("input catalog {label} exceed the bounded maximum of {maximum}"),
+            ));
+        }
     }
 
     let mut action_ids = BTreeSet::new();
@@ -483,6 +1028,28 @@ fn validate_catalog(catalog: &InputBindingCatalog) -> Vec<InputDiagnostic> {
                 InputDiagnosticCode::UnsupportedPhase,
                 format!("{path}.acceptedPhases"),
                 "accepted phases must not contain duplicates",
+            ));
+        }
+        let phases_match_value =
+            action
+                .accepted_phases
+                .iter()
+                .all(|phase| match action.value_kind {
+                    InputValueKind::Button => matches!(
+                        phase,
+                        protocol_input::InputActionPhase::Pressed
+                            | protocol_input::InputActionPhase::Held
+                            | protocol_input::InputActionPhase::Released
+                    ),
+                    InputValueKind::Axis1d | InputValueKind::Axis2d => {
+                        *phase == protocol_input::InputActionPhase::Changed
+                    }
+                });
+        if !phases_match_value {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::UnsupportedPhase,
+                format!("{path}.acceptedPhases"),
+                "button actions accept pressed/held/released; axis actions accept changed",
             ));
         }
     }
@@ -548,6 +1115,16 @@ fn validate_catalog(catalog: &InputBindingCatalog) -> Vec<InputDiagnostic> {
                 "platform control must not be blank",
             ));
         }
+        if !valid_platform_control(binding.platform_kind, &binding.control) {
+            diagnostics.push(diagnostic(
+                InputDiagnosticCode::InvalidControl,
+                format!("{path}.control"),
+                format!(
+                    "'{}' is not a bounded normalized {:?} control",
+                    binding.control, binding.platform_kind
+                ),
+            ));
+        }
         let control_key = (
             binding.context_id.clone(),
             binding.platform_kind,
@@ -597,6 +1174,69 @@ fn validate_catalog(catalog: &InputBindingCatalog) -> Vec<InputDiagnostic> {
         }
     }
     diagnostics
+}
+
+fn is_project_namespace(value: &str) -> bool {
+    let mut parts = value.split('.');
+    let Some(first) = parts.next() else {
+        return false;
+    };
+    if !portable_namespace_part(first) {
+        return false;
+    }
+    parts.all(portable_namespace_part)
+}
+
+fn portable_namespace_part(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 48
+        && value
+            .bytes()
+            .enumerate()
+            .all(|(index, byte)| byte.is_ascii_lowercase() || byte.is_ascii_digit() && index > 0)
+}
+
+fn valid_platform_control(kind: PlatformInputKind, control: &str) -> bool {
+    if control.is_empty() || control.len() > 64 || !control.is_ascii() {
+        return false;
+    }
+    match kind {
+        PlatformInputKind::KeyboardKey => {
+            matches!(
+                control,
+                "Escape"
+                    | "Enter"
+                    | "Space"
+                    | "Tab"
+                    | "Backspace"
+                    | "Delete"
+                    | "Home"
+                    | "End"
+                    | "PageUp"
+                    | "PageDown"
+                    | "ArrowUp"
+                    | "ArrowDown"
+                    | "ArrowLeft"
+                    | "ArrowRight"
+                    | "ShiftLeft"
+                    | "ShiftRight"
+                    | "ControlLeft"
+                    | "ControlRight"
+                    | "AltLeft"
+                    | "AltRight"
+            ) || control.strip_prefix("Key").is_some_and(|suffix| {
+                suffix.len() == 1 && suffix.as_bytes()[0].is_ascii_uppercase()
+            }) || control
+                .strip_prefix("Digit")
+                .is_some_and(|suffix| suffix.len() == 1 && suffix.as_bytes()[0].is_ascii_digit())
+        }
+        PlatformInputKind::MouseButton => control
+            .strip_prefix("button")
+            .and_then(|suffix| suffix.parse::<u8>().ok())
+            .is_some_and(|button| button <= 7),
+        PlatformInputKind::MouseDelta => control == "pointer",
+        PlatformInputKind::MouseWheel => control == "wheel",
+    }
 }
 
 fn validate_context_state(
@@ -1234,7 +1874,7 @@ mod tests {
                     action_id: "camera.look".into(),
                     context_id: "gameplay".into(),
                     platform_kind: PlatformInputKind::MouseDelta,
-                    control: "PointerDelta".into(),
+                    control: "pointer".into(),
                     scale: 0.5,
                     extension: None,
                 },
@@ -1261,6 +1901,158 @@ mod tests {
                 pressed: phase != InputActionPhase::Released,
             },
         }
+    }
+
+    fn project_catalog(control: &str) -> ProjectInputCatalog {
+        ProjectInputCatalog {
+            schema_version: PROJECT_INPUT_CATALOG_SCHEMA_VERSION,
+            namespace: "demo".into(),
+            actions: vec![InputActionDefinition {
+                action_id: "demo.interact".into(),
+                value_kind: InputValueKind::Button,
+                accepted_phases: vec![InputActionPhase::Pressed],
+            }],
+            contexts: Vec::new(),
+            bindings: vec![InputBindingRecord {
+                binding_id: "demo.interact.primary".into(),
+                action_id: "demo.interact".into(),
+                context_id: "gameplay".into(),
+                platform_kind: PlatformInputKind::KeyboardKey,
+                control: control.into(),
+                scale: 1.0,
+                extension: None,
+            }],
+        }
+    }
+
+    #[test]
+    fn project_catalog_adds_a_semantic_action_without_replacing_engine_defaults() {
+        let merged = compose_project_input_catalog(
+            default_browser_input_catalog(),
+            &[project_catalog("KeyE")],
+        )
+        .unwrap();
+        let resolver = InputSessionResolver::activate(merged, vec!["gameplay".into()]).unwrap();
+        let receipt = resolver.resolve(key(0, "KeyE", InputActionPhase::Pressed));
+        assert_eq!(receipt.action.as_ref().unwrap().action_id, "demo.interact");
+        assert_eq!(receipt.action.as_ref().unwrap().context_id, "gameplay");
+        let record = receipt.record.unwrap();
+        assert!(!serde_json::to_string(&record).unwrap().contains("KeyE"));
+
+        let movement = resolver.resolve(key(1, "KeyW", InputActionPhase::Held));
+        assert_eq!(
+            movement.action.as_ref().unwrap().action_id,
+            "gameplay.move.forward"
+        );
+    }
+
+    #[test]
+    fn project_catalog_rejects_reserved_replacement_invalid_controls_and_bounds() {
+        let mut reserved = project_catalog("KeyE");
+        reserved.namespace = "gameplay".into();
+        reserved.actions[0].action_id = "gameplay.interact".into();
+        reserved.bindings[0].binding_id = "gameplay.interact.primary".into();
+        reserved.bindings[0].action_id = "gameplay.interact".into();
+        let error = compose_project_input_catalog(default_browser_input_catalog(), &[reserved])
+            .unwrap_err();
+        assert!(error
+            .diagnostics()
+            .iter()
+            .any(|item| item.code == InputDiagnosticCode::ReservedNamespace));
+
+        let protected = project_catalog("KeyW");
+        let error = compose_project_input_catalog(default_browser_input_catalog(), &[protected])
+            .unwrap_err();
+        assert!(error
+            .diagnostics()
+            .iter()
+            .any(|item| item.code == InputDiagnosticCode::ProtectedControl));
+
+        let malformed = project_catalog("the e key");
+        let error = compose_project_input_catalog(default_browser_input_catalog(), &[malformed])
+            .unwrap_err();
+        assert!(error
+            .diagnostics()
+            .iter()
+            .any(|item| item.code == InputDiagnosticCode::InvalidControl));
+
+        let mut oversized = project_catalog("KeyE");
+        oversized.actions = (0..=MAX_PROJECT_ACTIONS)
+            .map(|index| InputActionDefinition {
+                action_id: format!("demo.action{index}"),
+                value_kind: InputValueKind::Button,
+                accepted_phases: vec![InputActionPhase::Pressed],
+            })
+            .collect();
+        let error = compose_project_input_catalog(default_browser_input_catalog(), &[oversized])
+            .unwrap_err();
+        assert!(error
+            .diagnostics()
+            .iter()
+            .any(|item| item.code == InputDiagnosticCode::CatalogLimitExceeded));
+    }
+
+    #[test]
+    fn project_context_priority_and_saved_binding_changes_are_deterministic() {
+        let mut project = project_catalog("KeyE");
+        project.actions.push(InputActionDefinition {
+            action_id: "demo.modalConfirm".into(),
+            value_kind: InputValueKind::Button,
+            accepted_phases: vec![InputActionPhase::Pressed],
+        });
+        project.contexts.push(InputContextDefinition {
+            context_id: "demo.modal".into(),
+            priority: 1_500,
+            consumes_lower_priority: true,
+        });
+        project.bindings.push(InputBindingRecord {
+            binding_id: "demo.modal.confirm".into(),
+            action_id: "demo.modalConfirm".into(),
+            context_id: "demo.modal".into(),
+            platform_kind: PlatformInputKind::KeyboardKey,
+            control: "KeyE".into(),
+            scale: 1.0,
+            extension: None,
+        });
+        let merged =
+            compose_project_input_catalog(default_browser_input_catalog(), &[project]).unwrap();
+        let resolver =
+            InputSessionResolver::activate(merged, vec!["gameplay".into(), "demo.modal".into()])
+                .unwrap();
+        assert_eq!(
+            resolver
+                .resolve(key(0, "KeyE", InputActionPhase::Pressed))
+                .action
+                .unwrap()
+                .action_id,
+            "demo.modalConfirm"
+        );
+
+        let with_e = compose_project_input_catalog(
+            default_browser_input_catalog(),
+            &[project_catalog("KeyE")],
+        )
+        .unwrap();
+        let with_f = compose_project_input_catalog(
+            default_browser_input_catalog(),
+            &[project_catalog("KeyF")],
+        )
+        .unwrap();
+        let e = InputSessionResolver::activate(with_e, vec!["gameplay".into()]).unwrap();
+        let f = InputSessionResolver::activate(with_f, vec!["gameplay".into()]).unwrap();
+        assert_ne!(e.catalog_hash(), f.catalog_hash());
+        assert!(
+            e.resolve(key(1, "KeyE", InputActionPhase::Pressed))
+                .accepted
+        );
+        assert!(
+            !f.resolve(key(1, "KeyE", InputActionPhase::Pressed))
+                .accepted
+        );
+        assert!(
+            f.resolve(key(2, "KeyF", InputActionPhase::Pressed))
+                .accepted
+        );
     }
 
     #[test]
@@ -1382,7 +2174,7 @@ mod tests {
         let moved = resolver.resolve(RawInputSample {
             sequence: 3,
             platform_kind: PlatformInputKind::MouseDelta,
-            control: "PointerDelta".into(),
+            control: "pointer".into(),
             phase: InputActionPhase::Changed,
             value: InputValue::Axis2d { x: 8.0, y: -4.0 },
         });
@@ -1394,7 +2186,7 @@ mod tests {
         let invalid = resolver.resolve(RawInputSample {
             sequence: 4,
             platform_kind: PlatformInputKind::MouseDelta,
-            control: "PointerDelta".into(),
+            control: "pointer".into(),
             phase: InputActionPhase::Changed,
             value: InputValue::Axis2d {
                 x: f64::NAN,

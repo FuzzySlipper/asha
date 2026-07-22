@@ -42,6 +42,7 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
             "ProjectContentDocument",
             "presentationCatalog",
         ),
+        variant_coverage_key("projectContent", "ProjectContentDocument", "inputCatalog"),
         interface_coverage_key("projectContent", "ProjectContentDecodeRequest"),
         interface_coverage_key("projectContent", "ProjectContentEncodeRequest"),
         interface_coverage_key("projectContent", "ProjectContentDiagnostic"),
@@ -189,6 +190,21 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
         compare_object_to_variant(&project, "ProjectPresentationCue", tag, cue).unwrap();
     }
     let presentation = json!({ "schemaVersion": 1, "resources": [resource], "cues": cues.iter().map(|(_, cue)| cue).collect::<Vec<_>>() });
+    let input_catalog = json!({
+        "schemaVersion": 1,
+        "namespace": "demo",
+        "actions": [{ "actionId": "demo.interact", "valueKind": "button", "acceptedPhases": ["pressed"] }],
+        "contexts": [],
+        "bindings": [{
+            "bindingId": "demo.interact.primary",
+            "actionId": "demo.interact",
+            "contextId": "gameplay",
+            "platformKind": "keyboardKey",
+            "control": "KeyE",
+            "scale": 1.0,
+            "extension": null
+        }]
+    });
 
     compare_object_to_interface(&project, "ProjectContentSource", &source).unwrap();
     compare_object_to_interface(&project, "ProjectConfigurationField", &field).unwrap();
@@ -231,6 +247,10 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
         (
             "presentationCatalog",
             json!({ "kind": "presentationCatalog", "documentId": "presentation/demo", "catalog": presentation }),
+        ),
+        (
+            "inputCatalog",
+            json!({ "kind": "inputCatalog", "documentId": "input/demo", "catalog": input_catalog }),
         ),
     ];
     for (tag, document) in &documents {

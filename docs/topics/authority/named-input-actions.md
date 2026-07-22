@@ -8,8 +8,8 @@ see-also: []
 
 # Named Input Actions and Session Contexts
 
-Status: #5641 contracts/resolver, #5642 browser/FPS/editor integration, and the
-#5643 replay/pause engine boundary are implemented.
+Status: #5641 contracts/resolver, #5642 browser/FPS/editor integration, #5643
+replay/pause, and #6089 project-authored catalog extension are implemented.
 
 ## Purpose
 
@@ -51,6 +51,33 @@ An `InputBindingCatalog` declares:
 Catalog activation fails atomically for unsupported schemas, malformed or
 duplicate ids, unknown references, invalid priorities, conflicting controls,
 value-kind mismatches, invalid scales, or executable modifier/chord data.
+
+## Project-authored catalog extension
+
+A Game Project may store one `inputCatalog` ProjectContent document. It declares
+one consumer namespace plus bounded action, context, and binding arrays. For
+example, a `demo` project may add a pressed-only `demo.interact` action bound to
+`KeyE` in the Engine-owned `gameplay` context. Saving that document changes the
+next freshly loaded RuntimeSession; it does not require rebuilding the Engine or
+the downstream TypeScript application.
+
+Rust decodes this document with exact fields and validates it during project
+admission against the canonical Engine browser catalog. Project action and
+binding ids, and any new context ids, must use the declared namespace. Reserved
+Engine namespaces, unsupported platform controls, duplicate ids, oversized
+tables, and incompatible action phases/value kinds reject before runtime
+publication. A project binding may join a project action to a compatible Engine
+context, but it may not replace an Engine action, context, or normalized control
+in that context. The admitted immutable extension is merged again by Rust over
+the canonical Engine catalog when the input Session is configured; TypeScript
+does not choose an alternate base or install a mutable registry for an active
+Game Project.
+
+`BrowserInputHost` remains the only browser normalization path. Its existing
+readout includes project actions in the same bounded delivery history, and its
+`onResolvedAction` callback delivers the semantic `ResolvedInputAction` to game
+composition. The renderer host forwards that semantic callback after its own
+Engine FPS consumer. Neither surface exposes a DOM event as gameplay input.
 
 `InputBindingExtension` is the versioned modifier/chord seam. Schema v1 carries
 the optional field but rejects it when present. This keeps future catalog
@@ -175,5 +202,5 @@ The current input surface does not execute modifiers or chords, support
 gamepads, touch, gesture navigation, IME/text composition, accessibility switch devices, or
 rebinding UI. It records accepted resolved actions only; rejected/consumed raw
 samples remain resolution evidence rather than replay deliveries. Downstream
-live-browser adoption is tracked by Den task #5686 in the `asha-demo` repository
-so the reference game cannot quietly keep a parallel pause/input authority path.
+projects still own the game-specific meaning of project actions after Rust has
+resolved them; they may not introduce a second DOM or raw-control path.

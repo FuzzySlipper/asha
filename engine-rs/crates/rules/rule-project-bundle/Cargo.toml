@@ -22,6 +22,7 @@ svc-gameplay-fabric = { path = "../../services/svc-gameplay-fabric" }
 svc-voxel-annotation = { path = "../../services/svc-voxel-annotation" }
 protocol-voxel-annotation = { path = "../../protocol/protocol-voxel-annotation" }
 protocol-game-extension = { path = "../../protocol/protocol-game-extension" }
+protocol-input = { path = "../../protocol/protocol-input" }
 protocol-entity-authoring = { path = "../../protocol/protocol-entity-authoring" }
 protocol-project-content = { path = "../../protocol/protocol-project-content" }
 protocol-project-bundle = { path = "../../protocol/protocol-project-bundle" }
@@ -30,6 +31,7 @@ rule-voxel-edit   = { path = "../rule-voxel-edit" }
 rule-gameplay-fabric = { path = "../rule-gameplay-fabric" }
 rule-trigger-volume = { path = "../rule-trigger-volume" }
 rule-lifecycle = { path = "../rule-lifecycle" }
+rule-input = { path = "../rule-input" }
 gameplay-module-sdk = { path = "../gameplay-module-sdk" }
 svc-project-content = { path = "../../services/svc-project-content" }
 serde_json = "1"

@@ -78,6 +78,14 @@ pub trait ProjectContentGameplayAdmission: Send + Sync {
         documents: &[ProjectContentDocumentDto],
     ) -> Result<CompiledProjectGameplayContent, Vec<ProjectContentDiagnosticDto>>;
 
+    /// Validate Engine-owned project input declarations through the composed
+    /// Rust input rule. The service owns document closure; it does not
+    /// duplicate namespace, control, or conflict semantics.
+    fn validate_input_catalogs(
+        &self,
+        documents: &[ProjectContentDocumentDto],
+    ) -> Result<(), Vec<ProjectContentDiagnosticDto>>;
+
     /// Resolve provider/domain semantics that cannot be inferred from generic
     /// project structure alone. The service remains the owner of scene and
     /// bounds checks; composed Rust gameplay authority owns role meaning.
@@ -122,6 +130,32 @@ impl ProjectContentGameplayAdmission for EmptyProjectContentGameplayAdmission {
             .collect::<Vec<_>>();
         if diagnostics.is_empty() {
             Ok(CompiledProjectGameplayContent::default())
+        } else {
+            Err(diagnostics)
+        }
+    }
+
+    fn validate_input_catalogs(
+        &self,
+        documents: &[ProjectContentDocumentDto],
+    ) -> Result<(), Vec<ProjectContentDiagnosticDto>> {
+        let diagnostics = documents
+            .iter()
+            .filter_map(|document| match document {
+                ProjectContentDocumentDto::InputCatalog { document_id, .. } => {
+                    Some(ProjectContentDiagnosticDto {
+                        code: ProjectContentDiagnosticCode::InvalidDocument,
+                        document_id: Some(document_id.clone()),
+                        path: "catalog".to_owned(),
+                        message: "project input catalog requires the composed Rust input rule"
+                            .to_owned(),
+                    })
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        if diagnostics.is_empty() {
+            Ok(())
         } else {
             Err(diagnostics)
         }
@@ -537,6 +571,9 @@ fn encode_documents(
             CompiledProjectGameplayContent::default()
         }
     };
+    if let Err(input_diagnostics) = context.gameplay.validate_input_catalogs(&documents) {
+        diagnostics.extend(input_diagnostics);
+    }
     if !diagnostics.is_empty() {
         return outcome(rejected_codec(
             diagnostics,
@@ -897,6 +934,13 @@ mod tests {
             _documents: &[ProjectContentDocumentDto],
         ) -> Result<CompiledProjectGameplayContent, Vec<ProjectContentDiagnosticDto>> {
             Ok(CompiledProjectGameplayContent::default())
+        }
+
+        fn validate_input_catalogs(
+            &self,
+            _documents: &[ProjectContentDocumentDto],
+        ) -> Result<(), Vec<ProjectContentDiagnosticDto>> {
+            Ok(())
         }
 
         fn entity_definition_matches_reference(

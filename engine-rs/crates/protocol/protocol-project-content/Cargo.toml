@@ -12,6 +12,7 @@ workspace = true
 protocol-assets = { path = "../protocol-assets" }
 protocol-entity-authoring = { path = "../protocol-entity-authoring" }
 protocol-game-extension = { path = "../protocol-game-extension" }
+protocol-input = { path = "../protocol-input" }
 protocol-project-bundle = { path = "../protocol-project-bundle" }
 protocol-render = { path = "../protocol-render" }
 protocol-scene = { path = "../protocol-scene" }
