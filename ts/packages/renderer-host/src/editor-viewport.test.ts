@@ -72,6 +72,18 @@ void test('editor viewport isolates equal handles across deterministic runtime a
   assert.equal(malformed.diagnostics[0]?.code, 'invalid_frame');
   assert.deepEqual(viewport.channels.authored.snapshot(), beforeFailedReplace);
 
+  const backendFrameBeforeMalformedOps = structuredClone(backend.frame('authored'));
+  for (const op of [null, 42] as const) {
+    const malformedOperation = viewport.channels.authored.replaceChunks([
+      { ops: [op as never] },
+    ]);
+    assert.equal(malformedOperation.applied, false);
+    assert.equal(malformedOperation.diagnostics[0]?.code, 'invalid_frame');
+    assert.equal(malformedOperation.generation, beforeFailedReplace.generation);
+    assert.deepEqual(viewport.channels.authored.snapshot(), beforeFailedReplace);
+    assert.deepEqual(backend.frame('authored'), backendFrameBeforeMalformedOps);
+  }
+
   const updated = viewport.channels.runtime.apply({
     ops: [{
       op: 'update',

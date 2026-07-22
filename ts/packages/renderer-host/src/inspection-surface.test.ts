@@ -181,7 +181,9 @@ void test('inspection surface atomically replaces authored content at exact chun
 });
 
 void test('inspection chunk replacement rejects malformed bounds and ordering without changing authored state', () => {
-  const harness = createInspectionHarness({ autoStart: false, frame: primitiveFrame(7) });
+  const harness = createInspectionHarness({ autoStart: false });
+  const seeded = harness.surface.replaceFrame(primitiveFrame(7));
+  assert.equal(seeded.applied, true);
   const accepted = harness.surface.readout();
   const backendFrame = structuredClone(harness.backend.frames.get('authored'));
   const cases: readonly {
@@ -197,6 +199,21 @@ void test('inspection chunk replacement rejects malformed bounds and ordering wi
     {
       name: 'malformed nested frame',
       chunks: [{ ops: null } as unknown as RenderFrameDiff],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'null operation',
+      chunks: [{ ops: [null as never] }],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'primitive operation',
+      chunks: [{ ops: [42 as never] }],
+      code: 'invalid_frame',
+    },
+    {
+      name: 'malformed object operation',
+      chunks: [{ ops: [{ op: 'create', handle: 8, parent: null, node: null } as never] }],
       code: 'invalid_frame',
     },
     {
@@ -234,6 +251,7 @@ void test('inspection chunk replacement rejects malformed bounds and ordering wi
     const receipt = harness.surface.replaceAuthoredFrameChunks(testCase.chunks);
     assert.equal(receipt.applied, false, testCase.name);
     assert.equal(receipt.diagnostics[0]?.code, testCase.code, testCase.name);
+    assert.equal(receipt.generation, seeded.generation, testCase.name);
     assertAuthoredReadoutUnchanged(harness.surface.readout(), accepted, testCase.name);
     assert.deepEqual(harness.backend.frames.get('authored'), backendFrame, testCase.name);
   }
@@ -474,6 +492,7 @@ function assertAuthoredReadoutUnchanged(
 ): void {
   assert.equal(actual.retainedFrameHash, expected.retainedFrameHash, message);
   assert.equal(actual.retainedOpCount, expected.retainedOpCount, message);
+  assert.equal(actual.viewportHash, expected.viewportHash, message);
 }
 
 function inspectionEnvironment(

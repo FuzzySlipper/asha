@@ -589,38 +589,46 @@ function validateChannelHistory(
   chunks: readonly RenderFrameDiff[],
   history: readonly RenderDiff[],
 ): { readonly projection: RenderProjection } | { readonly diagnostic: AshaRendererEditorViewportDiagnostic } {
-  const overLimitChunkIndex = chunks.findIndex(
-    (frame) => frame.ops.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
-  );
-  if (overLimitChunkIndex !== -1 || history.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS) {
-    return {
-      diagnostic: {
-        channel,
-        code: 'frame_limit_exceeded',
-        message: overLimitChunkIndex !== -1
-          ? `renderer viewport frame chunk ${overLimitChunkIndex} exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS} op limit`
-          : `renderer viewport replacement exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS} retained op limit`,
-        recoverable: true,
-      },
-    };
-  }
-  for (const op of chunks.flatMap((frame) => frame.ops)) {
-    const handleIssue = validateDiffHandles(channel, op);
-    if (handleIssue !== null) {
-      return { diagnostic: handleIssue };
-    }
-    if (channel === 'overlay' && createdLayer(op) !== null && createdLayer(op) !== 'debug') {
+  try {
+    const overLimitChunkIndex = chunks.findIndex(
+      (frame) => frame.ops.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS,
+    );
+    if (overLimitChunkIndex !== -1 || history.length > ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS) {
       return {
         diagnostic: {
           channel,
-          code: 'overlay_requires_debug_layer',
-          message: 'overlay channel creates must use the debug render layer',
+          code: 'frame_limit_exceeded',
+          message: overLimitChunkIndex !== -1
+            ? `renderer viewport frame chunk ${overLimitChunkIndex} exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_FRAME_OPS} op limit`
+            : `renderer viewport replacement exceeds the ${ASHA_RENDERER_EDITOR_VIEWPORT_MAX_RETAINED_OPS} retained op limit`,
           recoverable: true,
         },
       };
     }
-  }
-  try {
+    for (const op of chunks.flatMap((frame) => frame.ops)) {
+      if (!isRenderDiffCandidate(op)) {
+        return {
+          diagnostic: invalidFrameDiagnostic(
+            channel,
+            'renderer viewport frame operations must be non-array objects',
+          ),
+        };
+      }
+      const handleIssue = validateDiffHandles(channel, op);
+      if (handleIssue !== null) {
+        return { diagnostic: handleIssue };
+      }
+      if (channel === 'overlay' && createdLayer(op) !== null && createdLayer(op) !== 'debug') {
+        return {
+          diagnostic: {
+            channel,
+            code: 'overlay_requires_debug_layer',
+            message: 'overlay channel creates must use the debug render layer',
+            recoverable: true,
+          },
+        };
+      }
+    }
     const projection = new RenderProjection();
     projection.applyFrame({ ops: history });
     return { projection };
@@ -1026,6 +1034,10 @@ function hasRenderFrameOps(value: unknown): value is RenderFrameDiff {
     return false;
   }
   return Array.isArray((value as { readonly ops?: unknown }).ops);
+}
+
+function isRenderDiffCandidate(value: unknown): value is RenderDiff {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isUnknownArray(value: unknown): value is readonly unknown[] {
