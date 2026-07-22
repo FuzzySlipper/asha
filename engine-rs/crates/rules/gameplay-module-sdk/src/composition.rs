@@ -142,6 +142,8 @@ impl GameplayModuleBuildProvenance {
 pub enum GameplayConfigurationReferenceKind {
     Asset,
     EntityDefinition,
+    /// An entity definition that must also be instantiated by an admitted scene.
+    InstantiatedEntityDefinition,
     SceneInstance,
     Prefab,
     PrefabPart,

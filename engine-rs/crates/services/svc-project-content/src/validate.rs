@@ -874,6 +874,16 @@ fn reference_exists(
     match kind {
         ProjectContentReferenceKind::Asset => index.assets.contains_key(target_id),
         ProjectContentReferenceKind::EntityDefinition => index.entities.contains_key(target_id),
+        ProjectContentReferenceKind::InstantiatedEntityDefinition => {
+            index.entities.contains_key(target_id)
+                && index.scene_instances.values().any(|reference| {
+                    matches!(
+                        reference,
+                        SceneInstanceReference::EntityDefinition { stable_id, .. }
+                            if stable_id == target_id
+                    )
+                })
+        }
         ProjectContentReferenceKind::SceneInstance => index.scene_instances.contains_key(target_id),
         ProjectContentReferenceKind::Prefab => target_id
             .parse::<u64>()

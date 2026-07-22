@@ -754,17 +754,32 @@ mod tests {
                     schema_hash: "fnv1a64:config".to_owned(),
                 },
                 codec_id: "asha.project-configuration.canonical-json.v1".to_owned(),
-                fields: vec![ProjectConfigurationFieldDto {
-                    field_id: "cooldownTicks".to_owned(),
-                    label: "Cooldown ticks".to_owned(),
-                    value_kind: ProjectConfigurationValueKind::Integer,
-                    required: true,
-                    reference_kind: None,
-                    integer_min: Some(0),
-                    integer_max: Some(120),
-                    number_min: None,
-                    number_max: None,
-                }],
+                fields: vec![
+                    ProjectConfigurationFieldDto {
+                        field_id: "cooldownTicks".to_owned(),
+                        label: "Cooldown ticks".to_owned(),
+                        value_kind: ProjectConfigurationValueKind::Integer,
+                        required: true,
+                        reference_kind: None,
+                        integer_min: Some(0),
+                        integer_max: Some(120),
+                        number_min: None,
+                        number_max: None,
+                    },
+                    ProjectConfigurationFieldDto {
+                        field_id: "requiredActor".to_owned(),
+                        label: "Required actor".to_owned(),
+                        value_kind: ProjectConfigurationValueKind::Reference,
+                        required: false,
+                        reference_kind: Some(
+                            ProjectContentReferenceKind::InstantiatedEntityDefinition,
+                        ),
+                        integer_min: None,
+                        integer_max: None,
+                        number_min: None,
+                        number_max: None,
+                    },
+                ],
             }],
         }
     }
@@ -919,6 +934,47 @@ mod tests {
             .iter()
             .any(|document| document.document_id() == stable_document_id));
         assert_ne!(moved.result.set_hash, decoded.result.set_hash);
+    }
+
+    #[test]
+    fn instantiated_entity_definition_reference_requires_a_scene_instance() {
+        let with_target = |target_id: &str| {
+            let mut request = request();
+            let gameplay = request
+                .sources
+                .iter_mut()
+                .find(|source| source.kind == ProjectContentDocumentKind::GameplayConfiguration)
+                .expect("gameplay source");
+            let mut value: serde_json::Value =
+                serde_json::from_str(&gameplay.source_text).expect("fixture JSON");
+            value["configurations"][0]["values"]
+                .as_array_mut()
+                .expect("configuration values")
+                .push(serde_json::json!({
+                    "fieldId": "requiredActor",
+                    "value": {
+                        "kind": "reference",
+                        "referenceKind": "instantiatedEntityDefinition",
+                        "targetId": target_id,
+                    }
+                }));
+            gameplay.source_text = serde_json::to_string(&value).expect("fixture serializes");
+            request
+        };
+
+        let instantiated = decode(with_target("reference.trigger"));
+        assert!(
+            instantiated.result.accepted,
+            "{:?}",
+            instantiated.result.diagnostics
+        );
+
+        let uninstantiated = decode(with_target("reference.console"));
+        assert!(!uninstantiated.result.accepted);
+        assert!(uninstantiated.result.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code == ProjectContentDiagnosticCode::UnknownReference
+                && diagnostic.message.contains("unknown or has the wrong kind")
+        }));
     }
 
     #[test]

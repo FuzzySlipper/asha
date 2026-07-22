@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import * as THREE from 'three';
 import { entityId, renderHandle, tagId, type RenderFrameDiff } from '@asha/contracts';
-import { pickProjectedObject } from './browser-surface.js';
+import { pickProjectedObject, projectWorldPointWithPerspectiveCamera } from './browser-surface.js';
 import { ThreeRenderer } from './three-renderer.js';
 
 const PICK_HANDLE = renderHandle(7701);
@@ -128,4 +128,31 @@ void test('projection pick filters are descriptive only and invalid rays fail cl
   assert.equal(oversizedFilter.hit, null);
   assert.equal(oversizedFilter.diagnostics[0]?.code, 'filter_limit_exceeded');
   assert.equal(renderer.snapshot(), beforeSnapshot);
+});
+
+void test('world projection uses the configured Three perspective camera', () => {
+  const viewport = { width: 1_000, height: 500 };
+  const narrow = new THREE.PerspectiveCamera(58, 2, 0.1, 100);
+  const wide = new THREE.PerspectiveCamera(90, 2, 0.1, 100);
+  for (const camera of [narrow, wide]) {
+    camera.position.set(0, 0, 0);
+    camera.lookAt(0, 0, -1);
+    camera.updateMatrixWorld(true);
+    camera.updateProjectionMatrix();
+  }
+
+  const narrowProjection = projectWorldPointWithPerspectiveCamera(
+    narrow,
+    viewport,
+    [2, 0, -5],
+  );
+  const wideProjection = projectWorldPointWithPerspectiveCamera(
+    wide,
+    viewport,
+    [2, 0, -5],
+  );
+
+  assert.equal(wide.fov, 90);
+  assert.ok(wideProjection.xPixels < narrowProjection.xPixels);
+  assert.equal(wideProjection.insideViewport, true);
 });

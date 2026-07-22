@@ -335,6 +335,9 @@ fn reference_kind(
         GameplayConfigurationReferenceKind::EntityDefinition => {
             ProjectContentReferenceKind::EntityDefinition
         }
+        GameplayConfigurationReferenceKind::InstantiatedEntityDefinition => {
+            ProjectContentReferenceKind::InstantiatedEntityDefinition
+        }
         GameplayConfigurationReferenceKind::SceneInstance => {
             ProjectContentReferenceKind::SceneInstance
         }

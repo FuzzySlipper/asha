@@ -227,6 +227,7 @@ struct GameplayDocumentWire {
 enum ReferenceKindWire {
     Asset,
     EntityDefinition,
+    InstantiatedEntityDefinition,
     SceneInstance,
     Prefab,
     PrefabPart,
@@ -1497,6 +1498,7 @@ bidirectional_enum!(
     [
         Asset,
         EntityDefinition,
+        InstantiatedEntityDefinition,
         SceneInstance,
         Prefab,
         PrefabPart,

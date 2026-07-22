@@ -403,6 +403,9 @@ fn reference_kind_tag(value: ProjectContentReferenceKind) -> &'static str {
     match value {
         ProjectContentReferenceKind::Asset => "asset",
         ProjectContentReferenceKind::EntityDefinition => "entityDefinition",
+        ProjectContentReferenceKind::InstantiatedEntityDefinition => {
+            "instantiatedEntityDefinition"
+        }
         ProjectContentReferenceKind::SceneInstance => "sceneInstance",
         ProjectContentReferenceKind::Prefab => "prefab",
         ProjectContentReferenceKind::PrefabPart => "prefabPart",

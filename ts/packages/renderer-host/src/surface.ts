@@ -3,6 +3,7 @@
 import type {
   CameraBasis,
   EntityId,
+  PerspectiveProjection,
   RenderFrameDiff,
   RenderHandle,
   RenderLayer,
@@ -53,6 +54,8 @@ export interface AshaRendererSurfaceOptions {
   readonly controls?: AshaRendererSurfaceControlsOptions;
   readonly frame?: RenderFrameDiff;
   readonly pixelRatio?: number;
+  /** Rust-admitted perspective projection shared by scene and overlay projection. */
+  readonly projection?: PerspectiveProjection;
 }
 
 export interface AshaRendererAnimatedMeshSurfaceOptions extends AshaRendererSurfaceOptions {
@@ -114,6 +117,15 @@ export interface AshaRendererSurfaceMovementState {
 }
 
 export type AshaRendererSurfaceVec3 = readonly [number, number, number];
+
+export interface AshaRendererSurfaceWorldProjection {
+  readonly xPixels: number;
+  readonly yPixels: number;
+  readonly depth: number;
+  readonly distance: number;
+  readonly insideViewport: boolean;
+  readonly occluded: false;
+}
 
 export type AshaRendererSurfacePickRay =
   | {
@@ -205,6 +217,10 @@ export interface AshaRendererSurface {
   readonly applyFrame: (frame: RenderFrameDiff) => AshaRendererAnimatedMeshFrameReceipt;
   readonly projectionSnapshot: () => RenderProjectionSnapshot;
   readonly cameraPose: () => AshaRendererSurfaceCameraPose;
+  readonly cameraProjection: () => PerspectiveProjection;
+  readonly projectWorldPoint: (
+    position: AshaRendererSurfaceVec3,
+  ) => AshaRendererSurfaceWorldProjection;
   readonly pick: (request: AshaRendererSurfacePickRequest) => AshaRendererSurfacePickReceipt;
   readonly lockPointer: () => void;
   readonly movementState: () => AshaRendererSurfaceMovementState;
@@ -278,7 +294,10 @@ function mountPreparedAshaRendererSurface(
   const backendSurface = mountThreeBackedBrowserSurface(canvas, {
     autoStart: false,
     ...(animatedMeshSource === undefined ? {} : { animatedMeshSource }),
-    camera: { initialPose: controls.cameraPose() },
+    camera: {
+      initialPose: controls.cameraPose(),
+      ...(options.projection === undefined ? {} : { projection: options.projection }),
+    },
     ...(options.clearColor === undefined ? {} : { clearColor: options.clearColor }),
     ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
     frame,
@@ -381,6 +400,8 @@ function mountPreparedAshaRendererSurface(
     applyFrame,
     projectionSnapshot: () => projection.snapshot(),
     cameraPose: () => controls.cameraPose(),
+    cameraProjection: () => backendSurface.cameraProjection(),
+    projectWorldPoint: (position) => backendSurface.projectWorldPoint(position),
     pick: (request) => {
       const receipt = backendSurface.pick(request);
       return {

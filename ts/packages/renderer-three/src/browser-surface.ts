@@ -17,6 +17,7 @@ import {
   type RenderHandle,
   type RenderLayer,
   type RenderNode,
+  type PerspectiveProjection,
   type TagId,
   type Transform,
 } from '@asha/contracts';
@@ -54,6 +55,16 @@ export type AshaRendererBrowserSurfaceCameraBasis = CameraBasis;
 export interface AshaRendererBrowserSurfaceCameraOptions {
   readonly initialBasis?: AshaRendererBrowserSurfaceCameraBasis;
   readonly initialPose?: AshaRendererBrowserSurfaceCameraPose;
+  readonly projection?: PerspectiveProjection;
+}
+
+export interface AshaRendererBrowserSurfaceWorldProjection {
+  readonly xPixels: number;
+  readonly yPixels: number;
+  readonly depth: number;
+  readonly distance: number;
+  readonly insideViewport: boolean;
+  readonly occluded: false;
 }
 
 export type AshaRendererBrowserSurfacePickRay =
@@ -119,6 +130,10 @@ export interface AshaRendererBrowserSurface {
   readonly renderer: ThreeRenderer;
   readonly frame: RenderFrameDiff;
   readonly cameraPose: () => AshaRendererBrowserSurfaceCameraPose;
+  readonly cameraProjection: () => PerspectiveProjection;
+  readonly projectWorldPoint: (
+    position: readonly [number, number, number],
+  ) => AshaRendererBrowserSurfaceWorldProjection;
   readonly animatedMeshPlayback: (handle: import('@asha/contracts').RenderHandle) => AnimatedMeshPlaybackReadout | undefined;
   readonly applyFrame: (frame: RenderFrameDiff) => void;
   readonly pick: (request: AshaRendererBrowserSurfacePickRequest) => AshaRendererBrowserSurfacePickReceipt;
@@ -199,7 +214,15 @@ export function mountAshaRendererBrowserSurface(
   webgl.setClearColor(options.clearColor ?? 0x101820, 1);
   webgl.setPixelRatio(options.pixelRatio ?? globalThis.devicePixelRatio ?? 1);
 
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  const cameraProjection = validatePerspectiveProjection(
+    options.camera?.projection ?? { fovYDegrees: 55, near: 0.1, far: 100 },
+  );
+  const camera = new THREE.PerspectiveCamera(
+    cameraProjection.fovYDegrees,
+    1,
+    cameraProjection.near,
+    cameraProjection.far,
+  );
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0);
   const cameraLookTarget = new THREE.Vector3();
@@ -259,6 +282,18 @@ export function mountAshaRendererBrowserSurface(
     webgl.render(renderer.scene, camera);
   };
 
+  const projectWorldPoint = (
+    position: readonly [number, number, number],
+  ): AshaRendererBrowserSurfaceWorldProjection => {
+    resize();
+    camera.updateMatrixWorld(true);
+    return projectWorldPointWithPerspectiveCamera(
+      camera,
+      { width: Math.max(1, canvas.width), height: Math.max(1, canvas.height) },
+      position,
+    );
+  };
+
   const tick = (timeMs: number): void => {
     renderOnce(timeMs);
     animationFrame = globalThis.requestAnimationFrame(tick);
@@ -298,6 +333,8 @@ export function mountAshaRendererBrowserSurface(
     animatedMeshPlayback: (handle) => renderer.animatedMeshPlayback(handle),
     applyFrame: (nextFrame) => renderer.applyFrame(nextFrame),
     cameraPose: () => currentCameraPose,
+    cameraProjection: () => cameraProjection,
+    projectWorldPoint,
     pick: (request) => pickProjectedObject(renderer, camera, raycaster, center, request),
     snapshot: () => renderer.snapshot(),
     renderOnce,
@@ -305,6 +342,45 @@ export function mountAshaRendererBrowserSurface(
     start,
     stop,
     dispose,
+  };
+}
+
+export function projectWorldPointWithPerspectiveCamera(
+  camera: THREE.PerspectiveCamera,
+  viewport: { readonly width: number; readonly height: number },
+  position: readonly [number, number, number],
+): AshaRendererBrowserSurfaceWorldProjection {
+  const projected = new THREE.Vector3(...position).project(camera);
+  const distance = camera.position.distanceTo(new THREE.Vector3(...position));
+  const insideViewport =
+    projected.x >= -1 && projected.x <= 1
+    && projected.y >= -1 && projected.y <= 1
+    && projected.z >= -1 && projected.z <= 1;
+  return {
+    xPixels: ((projected.x + 1) / 2) * viewport.width,
+    yPixels: ((1 - projected.y) / 2) * viewport.height,
+    depth: Math.max(0, Math.min(1, (projected.z + 1) / 2)),
+    distance,
+    insideViewport,
+    occluded: false,
+  };
+}
+
+function validatePerspectiveProjection(projection: PerspectiveProjection): PerspectiveProjection {
+  const values = [projection.fovYDegrees, projection.near, projection.far];
+  if (
+    !values.every(Number.isFinite)
+    || projection.fovYDegrees <= 0
+    || projection.fovYDegrees >= 180
+    || projection.near <= 0
+    || projection.far <= projection.near
+  ) {
+    throw new RangeError('camera projection must have a finite FOV in (0, 180) and 0 < near < far');
+  }
+  return {
+    fovYDegrees: projection.fovYDegrees,
+    near: projection.near,
+    far: projection.far,
   };
 }
 
