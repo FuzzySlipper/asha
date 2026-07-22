@@ -468,6 +468,7 @@ function createAshaRendererSurfaceFirstPersonControls(
           'gameplay.move.right': 'renderer.fpsCamera',
           'gameplay.look': 'renderer.fpsCamera',
           'gameplay.primaryFire': 'runtime.gameplay',
+          'runtime.session.restart': 'runtime.lifecycle',
           'menu.open': 'shell.menu',
           'menu.close': 'shell.menu',
         },

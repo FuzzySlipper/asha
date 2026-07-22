@@ -23,6 +23,7 @@ function createHost(initialContexts: readonly string[] = ['gameplay']) {
       'gameplay.look': 'fps.camera',
       'runtime.time.pause': 'shell.menu',
       'runtime.time.resume': 'shell.menu',
+      'runtime.session.restart': 'runtime.lifecycle',
       'dialog.confirm': 'shell.dialog',
     },
     onResolvedAction: (action) => consumer.accept(action),
@@ -74,6 +75,27 @@ void test('menu and dialog contexts consume gameplay while preserving their own 
     ['gameplay', 'menu'],
     'a later context push does not rewrite the delivery-time snapshot',
   );
+});
+
+void test('restart resolves once from KeyR in gameplay and menu while repeat and release stay inert', () => {
+  for (const contexts of [['gameplay'], ['gameplay', 'menu']] as const) {
+    const { host } = createHost(contexts);
+    const pressed = host.handleKeyDown({ code: 'KeyR' });
+    const held = host.handleKeyDown({ code: 'KeyR', repeat: true });
+    const released = host.handleKeyUp({ code: 'KeyR' });
+
+    assert.equal(pressed.receipt.action?.actionId, 'runtime.session.restart');
+    assert.equal(pressed.consumer, 'runtime.lifecycle');
+    assert.equal(pressed.receipt.action?.phase, 'pressed');
+    assert.equal(held.receipt.action, null);
+    assert.equal(released.receipt.action, null);
+    assert.equal(
+      host.readout().recentDeliveries.filter(delivery => (
+        delivery.receipt.action?.actionId === 'runtime.session.restart'
+      )).length,
+      1,
+    );
+  }
 });
 
 void test('resolved pause context records and replays without browser events or double delivery', () => {
