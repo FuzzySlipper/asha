@@ -96,7 +96,6 @@ fn validate_authored_behaviors(
         };
         let package_diagnostic_start = diagnostics.len();
         let base = "package";
-        let _ = gameplay;
         if package.schema_version != AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION {
             push(
                 diagnostics,
@@ -207,6 +206,7 @@ fn validate_authored_behaviors(
                 &behavior.signal,
                 index,
                 entry_scene_id,
+                gameplay,
                 diagnostics,
             );
             validate_authored_sequence(
@@ -336,111 +336,81 @@ fn validate_authored_signal(
     signal: &AuthoredBehaviorSignalDto,
     index: &ReferenceIndex<'_>,
     entry_scene_id: Option<SceneId>,
+    gameplay: &dyn crate::ProjectContentGameplayAdmission,
     diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
 ) {
     if signal.arguments.len()
         > usize::try_from(AUTHORED_BEHAVIOR_MAX_ARGUMENTS).unwrap_or(usize::MAX)
         || !unique_authored_arguments(&signal.arguments)
-        || signal.signal.version != AUTHORED_BEHAVIOR_VOCABULARY_VERSION
     {
         push(
             diagnostics,
             ProjectContentDiagnosticCode::InvalidField,
             Some(document_id),
             &format!("{path}.signal"),
-            "signal arguments must be bounded and unique and the signal version must be supported",
+            "signal arguments must be bounded and unique",
         );
         return;
     }
-    let Some(descriptor) = authored_signal_descriptors().iter().find(|descriptor| {
-        descriptor.semantic_id == signal.signal.semantic_id
-            && descriptor.version == signal.signal.version
-    }) else {
+    if gameplay
+        .resolve_authored_signal(&signal.signal.semantic_id, signal.signal.version)
+        .is_none()
+    {
         push(
             diagnostics,
             ProjectContentDiagnosticCode::UnknownReference,
             Some(document_id),
             &format!("{path}.signal.signal.semanticId"),
-            "signal semantic id is not published by the Rust authored-program catalog",
+            "signal semantic id and version do not resolve to an event published by the statically composed Rust gameplay registry",
         );
         return;
-    };
-    (descriptor.validate)(
-        document_id,
-        path,
-        signal,
-        index,
-        entry_scene_id,
-        diagnostics,
-    );
-}
-
-type AuthoredSignalValidator = fn(
-    &str,
-    &str,
-    &AuthoredBehaviorSignalDto,
-    &ReferenceIndex<'_>,
-    Option<SceneId>,
-    &mut Vec<ProjectContentDiagnosticDto>,
-);
-
-struct AuthoredSignalDescriptor {
-    semantic_id: &'static str,
-    version: u32,
-    validate: AuthoredSignalValidator,
-}
-
-fn authored_signal_descriptors() -> &'static [AuthoredSignalDescriptor] {
-    static DESCRIPTORS: [AuthoredSignalDescriptor; 1] = [AuthoredSignalDescriptor {
-        semantic_id: AUTHORED_SIGNAL_PREFAB_PART_INTERACTED,
-        version: AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
-        validate: validate_prefab_part_interacted_signal,
-    }];
-    &DESCRIPTORS
-}
-
-fn validate_prefab_part_interacted_signal(
-    document_id: &str,
-    path: &str,
-    signal: &AuthoredBehaviorSignalDto,
-    index: &ReferenceIndex<'_>,
-    entry_scene_id: Option<SceneId>,
-    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
-) {
-    let Some(AuthoredBehaviorValueDto::PrefabPart {
-        scene_instance_id,
-        role,
-    }) = authored_argument(&signal.arguments, "part")
-    else {
-        push(
+    }
+    for (argument_index, argument) in signal.arguments.iter().enumerate() {
+        let argument_path = format!("{path}.signal.arguments[{argument_index}]");
+        validate_authored_id(
+            &argument.name,
+            document_id,
+            &format!("{argument_path}.name"),
             diagnostics,
-            ProjectContentDiagnosticCode::InvalidField,
-            Some(document_id),
-            &format!("{path}.signal.arguments"),
-            "prefab-part-interacted requires one typed `part` argument",
         );
-        return;
-    };
-    if signal.arguments.len() != 1
-        || !matches!(
-            index.scene_instances.get(scene_instance_id),
-            Some(SceneInstanceReference::Prefab {
-                scene_id,
-                prefab_id,
-            }) if Some(*scene_id) == entry_scene_id
-                && index
-                    .prefabs
-                    .get(prefab_id)
-                    .is_some_and(|roles| roles.contains(role))
-        )
-    {
-        push(
-            diagnostics,
-            ProjectContentDiagnosticCode::UnknownReference,
-            Some(document_id),
-            &format!("{path}.signal"),
-            "prefab interaction signal must resolve an instantiated prefab part role",
-        );
+        let valid = match &argument.value {
+            AuthoredBehaviorValueDto::SceneEntity { scene_instance_id } => {
+                entry_scene_entity(index, scene_instance_id, entry_scene_id)
+            }
+            AuthoredBehaviorValueDto::PrefabPart {
+                scene_instance_id,
+                role,
+            } => matches!(
+                index.scene_instances.get(scene_instance_id),
+                Some(SceneInstanceReference::Prefab {
+                    scene_id,
+                    prefab_id,
+                }) if Some(*scene_id) == entry_scene_id
+                    && index
+                        .prefabs
+                        .get(prefab_id)
+                        .is_some_and(|roles| roles.contains(role))
+            ),
+            AuthoredBehaviorValueDto::StateMachine { .. }
+            | AuthoredBehaviorValueDto::State { .. } => false,
+            AuthoredBehaviorValueDto::Text { value } => value.len() <= 1_024,
+            AuthoredBehaviorValueDto::Boolean { .. } | AuthoredBehaviorValueDto::Integer { .. } => {
+                true
+            }
+            AuthoredBehaviorValueDto::Number { value } => value.is_finite(),
+            AuthoredBehaviorValueDto::Vector3 { value } => {
+                value.iter().all(|component| component.is_finite())
+            }
+        };
+        if !valid {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::UnknownReference,
+                Some(document_id),
+                &format!("{argument_path}.value"),
+                "signal argument must be a finite data value or resolve to an entry-scene entity or prefab part",
+            );
+        }
     }
 }
 

@@ -419,8 +419,12 @@ pub fn compile_runtime_project_admission(
         &mut report,
     );
     let prefabs = derive_prefab_bootstrap(&content, &bootstrap, &mut report);
-    let authored_program = match compile_authored_program(&content, &prefabs, &runtime_entity_seeds)
-    {
+    let authored_program = match compile_authored_program(
+        &content,
+        &prefabs,
+        &runtime_entity_seeds,
+        composition.registry(),
+    ) {
         Ok(program) => program,
         Err(message) => {
             report.push(
@@ -1422,6 +1426,9 @@ mod tests {
         AuthoringTransform, EntityDefinitionCapability, EntityDefinitionMetadataEntry,
         EntityDefinitionSourceTrace,
     };
+    use protocol_game_extension::{
+        GameplayCausationRef, GameplayEmitterRef, GameplayEventEnvelope, GameplayEventPhase,
+    };
     use protocol_project_bundle::{
         PrefabDefinition, PrefabPart, PrefabPartRoleBinding, PrefabPartSource, PrefabRegistry,
         PrefabTransform, PREFAB_DEFINITION_SCHEMA_VERSION, PREFAB_REGISTRY_SCHEMA_VERSION,
@@ -1438,7 +1445,7 @@ mod tests {
         AUTHORED_VERB_SET_CAPABILITY_ACTIVE, AUTHORED_VERB_SET_RELATIVE_TRANSLATION,
         AUTHORED_VERB_TRANSITION_STATE,
     };
-    use rule_gameplay_fabric::StandardGameplayEventKind;
+    use rule_gameplay_fabric::{CombatGameplayPayload, StandardGameplayEventKind};
     use svc_project_content::{decode_project_content, EmptyProjectContentGameplayAdmission};
     use svc_serialization::{
         encode, validate_runtime_project_source_batch, ArtifactEntry, AssetLockSection,
@@ -2475,6 +2482,111 @@ mod tests {
                 .expect("restored door collision activation")
                 .presence,
             core_entity::CapabilityActivationPresence::Active
+        );
+    }
+
+    #[test]
+    fn authored_behavior_consumes_any_statically_published_event_without_a_signal_adapter() {
+        let scene = authored_behavior_scene(13);
+        let composition = authored_behavior_composition();
+        let mut documents = authored_behavior_documents();
+        let package = documents
+            .iter_mut()
+            .find_map(|document| match document {
+                ProjectContentDocumentDto::BehaviorPackage { package, .. } => Some(package),
+                _ => None,
+            })
+            .expect("behavior package fixture");
+        package.behaviors[0].signal = AuthoredBehaviorSignalDto {
+            signal: AuthoredBehaviorSemanticRefDto {
+                semantic_id: "asha.combat.entity-defeated".to_owned(),
+                version: 1,
+            },
+            arguments: Vec::new(),
+        };
+        let admission = compile_runtime_project_admission(
+            authored_behavior_batch_with_documents(&scene, &composition, documents),
+            composition,
+        )
+        .expect("published-event authored behavior admission");
+        let door = admission
+            .runtime_entity_seeds
+            .iter()
+            .find(|seed| seed.instance_id == "fixture.door.instance")
+            .expect("door seed")
+            .entity;
+        assert_eq!(
+            admission
+                .authored_program
+                .as_ref()
+                .expect("compiled authored program")
+                .behaviors[0]
+                .signal
+                .event,
+            StandardGameplayEventKind::CombatEntityDefeated.contract()
+        );
+        let mut host = GameplayRuntimeHost::activate_validated_project(admission)
+            .expect("published-event authored behavior activation");
+        let canonical_payload = serde_json::to_vec(&CombatGameplayPayload {
+            shooter: None,
+            shooter_role: None,
+            weapon_id: None,
+            target: Some(99),
+            distance: None,
+            miss_reason: None,
+            damage: None,
+            health_before: None,
+            health_after: Some(0),
+            defeated: true,
+            tick: 1,
+            combat_replay_hash: 7,
+        })
+        .expect("combat event payload");
+        let event = GameplayEventEnvelope {
+            event_id: "fixture:enemy-defeated".to_owned(),
+            event: StandardGameplayEventKind::CombatEntityDefeated.contract(),
+            tick: 1,
+            root_sequence: 1,
+            wave: 0,
+            event_sequence: 0,
+            phase: GameplayEventPhase::PostCommit,
+            emitter: GameplayEmitterRef::Owner {
+                owner_id: "fixture.combat-owner".to_owned(),
+            },
+            causation: GameplayCausationRef {
+                root_id: "fixture:combat".to_owned(),
+                parent_event_id: None,
+                decision_id: None,
+            },
+            source: None,
+            subjects: Vec::new(),
+            targets: Vec::new(),
+            scope: Some("combat".to_owned()),
+            tags: vec!["defeated".to_owned()],
+            payload_hash: rule_gameplay_fabric::gameplay_payload_hash(&canonical_payload),
+            canonical_payload,
+        };
+
+        let receipt = host
+            .observe_owner_events(vec![event])
+            .expect("published enemy-defeat event executes the authored package");
+        assert!(receipt.observe.accepted(), "{:?}", receipt.observe);
+        let entities = host.take_entity_authority().expect("entity authority");
+        assert_eq!(
+            entities
+                .transform(door)
+                .expect("door transform")
+                .transform
+                .translation
+                .to_array(),
+            [0.0, 3.0, 5.0]
+        );
+        assert_eq!(
+            entities
+                .capability_activation(door, core_entity::ActivatableCapabilityKind::Collision)
+                .expect("door collision activation")
+                .presence,
+            core_entity::CapabilityActivationPresence::Inactive
         );
     }
 }

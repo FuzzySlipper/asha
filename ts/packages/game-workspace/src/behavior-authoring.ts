@@ -78,11 +78,23 @@ export const authoredBehavior = {
     return freeze({ kind: 'prefabPart', sceneInstanceId, role });
   },
 
+  publishedEvent(
+    namespace: string,
+    name: string,
+    arguments_: readonly AuthoredBehaviorArgument[] = [],
+    version = 1,
+  ): AuthoredBehaviorSignal {
+    return publishedEventSignal(namespace, name, arguments_, version);
+  },
+
   prefabPartInteracted(part: PrefabPartValue): AuthoredBehaviorSignal {
-    return freeze({
-      signal: semantic(AUTHORED_SIGNAL_PREFAB_PART_INTERACTED),
-      arguments: freezeArray([argument('part', part)]),
-    });
+    const split = AUTHORED_SIGNAL_PREFAB_PART_INTERACTED.lastIndexOf('.');
+    return publishedEventSignal(
+      AUTHORED_SIGNAL_PREFAB_PART_INTERACTED.slice(0, split),
+      AUTHORED_SIGNAL_PREFAB_PART_INTERACTED.slice(split + 1),
+      [argument('part', part)],
+      AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
+    );
   },
 
   whenState(machineId: string, stateId: string): AuthoredBehaviorCondition {
@@ -301,8 +313,23 @@ function normalizeValue(value: AuthoredBehaviorValue): AuthoredBehaviorValue {
   return freeze({ ...value });
 }
 
-function semantic(semanticId: string): AuthoredBehaviorSemanticRef {
-  return freeze({ semanticId, version: AUTHORED_BEHAVIOR_VOCABULARY_VERSION });
+function semantic(
+  semanticId: string,
+  version = AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
+): AuthoredBehaviorSemanticRef {
+  return freeze({ semanticId, version });
+}
+
+function publishedEventSignal(
+  namespace: string,
+  name: string,
+  arguments_: readonly AuthoredBehaviorArgument[],
+  version: number,
+): AuthoredBehaviorSignal {
+  return freeze({
+    signal: semantic(`${namespace}.${name}`, version),
+    arguments: freezeArray(arguments_.map((entry) => argument(entry.name, entry.value))),
+  });
 }
 
 function normalizeSemantic(value: AuthoredBehaviorSemanticRef): AuthoredBehaviorSemanticRef {

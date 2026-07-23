@@ -86,6 +86,18 @@ pub trait ProjectContentGameplayAdmission: Send + Sync {
         documents: &[ProjectContentDocumentDto],
     ) -> Result<(), Vec<ProjectContentDiagnosticDto>>;
 
+    /// Resolve an authored signal against the events published by the
+    /// statically composed gameplay providers. The compact semantic id is the
+    /// contract namespace and name joined by a dot; `version` remains the
+    /// published contract version. Schema identity comes only from Rust.
+    fn resolve_authored_signal(
+        &self,
+        _semantic_id: &str,
+        _version: u32,
+    ) -> Option<protocol_game_extension::GameplayContractRef> {
+        None
+    }
+
     /// Resolve provider/domain semantics that cannot be inferred from generic
     /// project structure alone. The service remains the owner of scene and
     /// bounds checks; composed Rust gameplay authority owns role meaning.
@@ -943,6 +955,21 @@ mod tests {
             Ok(())
         }
 
+        fn resolve_authored_signal(
+            &self,
+            semantic_id: &str,
+            version: u32,
+        ) -> Option<protocol_game_extension::GameplayContractRef> {
+            (semantic_id == AUTHORED_SIGNAL_PREFAB_PART_INTERACTED && version == 1).then(|| {
+                protocol_game_extension::GameplayContractRef {
+                    namespace: "asha.prefab".to_owned(),
+                    name: "part-interacted".to_owned(),
+                    version,
+                    schema_hash: "fixture-prefab-part-interacted-v1".to_owned(),
+                }
+            })
+        }
+
         fn entity_definition_matches_reference(
             &self,
             kind: ProjectContentReferenceKind,
@@ -1176,7 +1203,7 @@ mod tests {
               }}],
               "behaviors":[{{
                 "behaviorId":"switch-opens-door",
-                "signal":{{"signal":{{"semanticId":"asha.signal.prefab-part-interacted","version":1}},"arguments":[{{"name":"part","value":{{"kind":"prefabPart","sceneInstanceId":"reference.console.blue","role":"interaction/body"}}}}]}},
+                "signal":{{"signal":{{"semanticId":"asha.prefab.part-interacted","version":1}},"arguments":[{{"name":"part","value":{{"kind":"prefabPart","sceneInstanceId":"reference.console.blue","role":"interaction/body"}}}}]}},
                 "conditions":[{{"predicate":{{"semanticId":"asha.predicate.state-is","version":1}},"arguments":[{{"name":"state","value":{{"kind":"state","machineId":"door","stateId":"closed"}}}}]}}],
                 "steps":[
                   {{"stepId":"open-now","afterStepIds":[],"delayTicks":0,"operations":[

@@ -258,7 +258,7 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
         "states": [closed_state, open_state],
         "transitions": [open_transition, close_transition]
     });
-    let semantic_ref = json!({ "semanticId": "asha.signal.prefab-part-interacted", "version": 1 });
+    let semantic_ref = json!({ "semanticId": "asha.prefab.part-interacted", "version": 1 });
     let values = [
         (
             "sceneEntity",

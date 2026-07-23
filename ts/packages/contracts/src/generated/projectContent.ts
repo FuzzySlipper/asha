@@ -21,9 +21,9 @@ export const AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION = 1;
 
 export const AUTHORED_BEHAVIOR_VOCABULARY_VERSION = 1;
 
-export const AUTHORED_BEHAVIOR_VOCABULARY_HASH = "asha.authored-behavior.v1:typed-semantic-refs;symbolic-state;direct-owner-verbs";
+export const AUTHORED_BEHAVIOR_VOCABULARY_HASH = "asha.authored-behavior.v1:published-event-signals;typed-arguments;symbolic-state;direct-owner-verbs";
 
-export const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED = "asha.signal.prefab-part-interacted";
+export const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED = "asha.prefab.part-interacted";
 
 export const AUTHORED_PREDICATE_STATE_IS = "asha.predicate.state-is";
 
@@ -79,7 +79,7 @@ export interface AuthoredBehaviorStateMachine {
   readonly transitions: readonly AuthoredBehaviorTransition[];
 }
 
-// Open, versioned reference to one Rust-published authored meaning. Admission resolves this reference against the closed Engine semantic catalog; runtime never dispatches an arbitrary method name.
+// Open, versioned reference to one Rust-published authored meaning. Signal references resolve against the immutable event contracts in the statically composed gameplay registry; predicates and verbs resolve against the direct Rust authority vocabulary. Runtime never dispatches an arbitrary method name.
 export interface AuthoredBehaviorSemanticRef {
   readonly semanticId: string;
   readonly version: number;

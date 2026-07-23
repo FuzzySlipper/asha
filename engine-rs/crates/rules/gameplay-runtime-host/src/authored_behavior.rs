@@ -9,19 +9,17 @@ use std::collections::BTreeMap;
 use core_ids::{EntityId, ModeId, ProcessId};
 use gameplay_module_sdk::{gameplay_contract, gameplay_module_payload_hash};
 use protocol_game_extension::{
-    GameplayCausationRef, GameplayEmitterRef, GameplayEntityRef, GameplayEventEnvelope,
-    GameplayProposalEnvelope,
+    GameplayCausationRef, GameplayContractRef, GameplayEmitterRef, GameplayEntityRef,
+    GameplayEventEnvelope, GameplayProposalEnvelope,
 };
 use protocol_project_content::{
     AuthoredBehaviorArgumentDto, AuthoredBehaviorOperationDto, AuthoredBehaviorValueDto,
     ProjectContentDocumentDto, AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION,
-    AUTHORED_BEHAVIOR_VOCABULARY_VERSION, AUTHORED_PREDICATE_STATE_IS,
-    AUTHORED_SIGNAL_PREFAB_PART_INTERACTED, AUTHORED_VERB_SET_CAPABILITY_ACTIVE,
+    AUTHORED_PREDICATE_STATE_IS, AUTHORED_VERB_SET_CAPABILITY_ACTIVE,
     AUTHORED_VERB_SET_RELATIVE_TRANSLATION, AUTHORED_VERB_TRANSITION_STATE,
 };
 use rule_gameplay_fabric::{
-    gameplay_payload_hash, GameplayOwnerEventContext, PrefabPartInteractionGameplayPayload,
-    StandardGameplayEventKind,
+    gameplay_payload_hash, GameplayOwnerEventContext, StandardGameplayEventKind,
 };
 use rule_scheduler::{
     GameplayActionScheduler, GameplaySchedulerCommand, ScheduledActionId, ScheduledGameplayAction,
@@ -29,6 +27,8 @@ use rule_scheduler::{
 };
 use rule_state_machine::MachineInstance;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use svc_gameplay_fabric::GameplayFabricRegistry;
 use svc_project_content::ValidatedProjectContentSet;
 
 use crate::{
@@ -93,8 +93,7 @@ pub(crate) struct CompiledAuthoredTransition {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CompiledAuthoredSignal {
-    pub semantic_id: String,
-    pub version: u32,
+    pub event: GameplayContractRef,
     pub arguments: Vec<CompiledAuthoredSignalArgument>,
 }
 
@@ -106,8 +105,8 @@ pub(crate) struct CompiledAuthoredSignalArgument {
 }
 
 /// Numeric/data-only lowering for the public typed value vocabulary. Signal
-/// families are deliberately not enum variants: a published adapter resolves
-/// one semantic id against these values at admission and event time.
+/// families are deliberately not enum variants: an exact statically composed
+/// event contract resolves the signal at admission and event time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "kind",
@@ -192,6 +191,7 @@ pub(crate) fn compile_authored_program(
     content: &ValidatedProjectContentSet,
     prefabs: &GameplayRuntimePrefabBootstrap,
     entity_seeds: &[RuntimeProjectEntitySeed],
+    registry: &GameplayFabricRegistry,
 ) -> Result<Option<CompiledAuthoredProgram>, String> {
     let mut packages = content
         .result()
@@ -304,6 +304,7 @@ pub(crate) fn compile_authored_program(
                 behavior.signal.signal.version,
                 &behavior.signal.arguments,
                 &signal_references,
+                registry,
             )?;
             let predicates = behavior
                 .conditions
@@ -399,9 +400,12 @@ fn compile_signal(
     version: u32,
     arguments: &[AuthoredBehaviorArgumentDto],
     references: &AuthoredSignalCompilationReferences<'_>,
+    registry: &GameplayFabricRegistry,
 ) -> Result<CompiledAuthoredSignal, String> {
-    let adapter = authored_signal_adapter(semantic_id, version)
-        .ok_or_else(|| "unsupported authored signal reached compilation".to_owned())?;
+    let event = registry
+        .published_event(&format!("{semantic_id}.v{version}"))
+        .cloned()
+        .ok_or_else(|| "unpublished authored signal reached compilation".to_owned())?;
     let mut compiled_arguments = arguments
         .iter()
         .map(|source| {
@@ -412,13 +416,10 @@ fn compile_signal(
         })
         .collect::<Result<Vec<_>, String>>()?;
     compiled_arguments.sort_by(|left, right| left.name.cmp(&right.name));
-    let signal = CompiledAuthoredSignal {
-        semantic_id: semantic_id.to_owned(),
-        version,
+    Ok(CompiledAuthoredSignal {
+        event,
         arguments: compiled_arguments,
-    };
-    (adapter.validate_compiled)(&signal)?;
-    Ok(signal)
+    })
 }
 
 fn compile_authored_value(
@@ -702,9 +703,8 @@ impl AuthoredProgramRuntime {
             .iter()
             .enumerate()
             .any(|(behavior_index, behavior)| {
-                authored_signal_adapter(&behavior.signal.semantic_id, behavior.signal.version)
-                    .and_then(|adapter| adapter.prefab_interaction_matches)
-                    .is_some_and(|matches| matches(&behavior.signal, instance, role))
+                behavior.signal.event == StandardGameplayEventKind::PrefabPartInteracted.contract()
+                    && prefab_part_interaction_target_matches(&behavior.signal, instance, role)
                     && self.predicates_match(behavior_index)
             })
     }
@@ -1174,67 +1174,18 @@ fn build_runtime_machines(
         .collect()
 }
 
-type AuthoredSignalCompiledValidator = fn(&CompiledAuthoredSignal) -> Result<(), String>;
-type AuthoredSignalEventMatcher = fn(&CompiledAuthoredSignal, &GameplayEventEnvelope) -> bool;
-type AuthoredPrefabInteractionMatcher = fn(&CompiledAuthoredSignal, u64, &str) -> bool;
-
-struct AuthoredSignalAdapter {
-    semantic_id: &'static str,
-    version: u32,
-    validate_compiled: AuthoredSignalCompiledValidator,
-    event_matches: AuthoredSignalEventMatcher,
-    prefab_interaction_matches: Option<AuthoredPrefabInteractionMatcher>,
-}
-
-fn authored_signal_adapters() -> &'static [AuthoredSignalAdapter] {
-    static ADAPTERS: [AuthoredSignalAdapter; 1] = [AuthoredSignalAdapter {
-        semantic_id: AUTHORED_SIGNAL_PREFAB_PART_INTERACTED,
-        version: AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
-        validate_compiled: validate_compiled_prefab_part_interacted,
-        event_matches: prefab_part_interaction_event_matches,
-        prefab_interaction_matches: Some(prefab_part_interaction_target_matches),
-    }];
-    &ADAPTERS
-}
-
-fn authored_signal_adapter(
-    semantic_id: &str,
-    version: u32,
-) -> Option<&'static AuthoredSignalAdapter> {
-    authored_signal_adapters()
-        .iter()
-        .find(|adapter| adapter.semantic_id == semantic_id && adapter.version == version)
-}
-
 fn signal_matches(signal: &CompiledAuthoredSignal, event: &GameplayEventEnvelope) -> bool {
-    authored_signal_adapter(&signal.semantic_id, signal.version)
-        .is_some_and(|adapter| (adapter.event_matches)(signal, event))
-}
-
-fn validate_compiled_prefab_part_interacted(signal: &CompiledAuthoredSignal) -> Result<(), String> {
-    if signal.arguments.len() == 1
-        && matches!(
-            compiled_signal_argument(signal, "part"),
-            Some(CompiledAuthoredValue::PrefabPart { .. })
-        )
-    {
-        Ok(())
-    } else {
-        Err("prefab-part signal has an invalid compiled value".to_owned())
-    }
-}
-
-fn prefab_part_interaction_event_matches(
-    signal: &CompiledAuthoredSignal,
-    event: &GameplayEventEnvelope,
-) -> bool {
-    if event.event != StandardGameplayEventKind::PrefabPartInteracted.contract() {
+    if signal.event != event.event {
         return false;
     }
-    serde_json::from_slice::<PrefabPartInteractionGameplayPayload>(&event.canonical_payload)
-        .is_ok_and(|payload| {
-            prefab_part_interaction_target_matches(signal, payload.instance, &payload.role)
+    if signal.arguments.is_empty() {
+        return true;
+    }
+    serde_json::from_slice::<Value>(&event.canonical_payload).is_ok_and(|payload| {
+        signal.arguments.iter().all(|argument| {
+            compiled_signal_value_matches(&argument.value, &argument.name, &payload)
         })
+    })
 }
 
 fn prefab_part_interaction_target_matches(
@@ -1258,4 +1209,39 @@ fn compiled_signal_argument<'a>(
         .iter()
         .find(|argument| argument.name == name)
         .map(|argument| &argument.value)
+}
+
+fn compiled_signal_value_matches(
+    expected: &CompiledAuthoredValue,
+    name: &str,
+    payload: &Value,
+) -> bool {
+    let named = payload.get(name);
+    match expected {
+        CompiledAuthoredValue::Entity { entity } => named.and_then(Value::as_u64) == Some(*entity),
+        CompiledAuthoredValue::PrefabPart { instance, role } => {
+            let candidate = named.unwrap_or(payload);
+            candidate.get("instance").and_then(Value::as_u64) == Some(*instance)
+                && candidate.get("role").and_then(Value::as_str) == Some(role.as_str())
+        }
+        CompiledAuthoredValue::Text { value } => {
+            named.and_then(Value::as_str) == Some(value.as_str())
+        }
+        CompiledAuthoredValue::Boolean { value } => named.and_then(Value::as_bool) == Some(*value),
+        CompiledAuthoredValue::Integer { value } => named.and_then(Value::as_i64) == Some(*value),
+        CompiledAuthoredValue::Number { value } => named
+            .and_then(Value::as_f64)
+            .is_some_and(|candidate| candidate == *value),
+        CompiledAuthoredValue::Vector3 { value } => {
+            named.and_then(Value::as_array).is_some_and(|candidate| {
+                candidate.len() == value.len()
+                    && candidate.iter().zip(value).all(|(candidate, expected)| {
+                        candidate
+                            .as_f64()
+                            .is_some_and(|candidate| candidate == f64::from(*expected))
+                    })
+            })
+        }
+        CompiledAuthoredValue::StateMachine { .. } | CompiledAuthoredValue::State { .. } => false,
+    }
 }

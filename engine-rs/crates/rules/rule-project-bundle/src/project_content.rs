@@ -341,6 +341,17 @@ impl ProjectContentGameplayAdmission for GameplayProjectContentAdmission {
         })
     }
 
+    fn resolve_authored_signal(
+        &self,
+        semantic_id: &str,
+        version: u32,
+    ) -> Option<protocol_game_extension::GameplayContractRef> {
+        self.authority
+            .registry()
+            .published_event(&format!("{semantic_id}.v{version}"))
+            .cloned()
+    }
+
     fn entity_definition_matches_reference(
         &self,
         kind: protocol_project_content::ProjectContentReferenceKind,

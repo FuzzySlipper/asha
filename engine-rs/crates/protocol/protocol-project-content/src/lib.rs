@@ -22,8 +22,8 @@ pub const PROJECT_CONTENT_SCHEMA_VERSION: u32 = 1;
 pub const AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION: u32 = 1;
 pub const AUTHORED_BEHAVIOR_VOCABULARY_VERSION: u32 = 1;
 pub const AUTHORED_BEHAVIOR_VOCABULARY_HASH: &str =
-    "asha.authored-behavior.v1:typed-semantic-refs;symbolic-state;direct-owner-verbs";
-pub const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED: &str = "asha.signal.prefab-part-interacted";
+    "asha.authored-behavior.v1:published-event-signals;typed-arguments;symbolic-state;direct-owner-verbs";
+pub const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED: &str = "asha.prefab.part-interacted";
 pub const AUTHORED_PREDICATE_STATE_IS: &str = "asha.predicate.state-is";
 pub const AUTHORED_VERB_TRANSITION_STATE: &str = "asha.verb.transition-state";
 pub const AUTHORED_VERB_SET_RELATIVE_TRANSLATION: &str = "asha.verb.set-relative-translation";
@@ -86,9 +86,11 @@ pub struct AuthoredBehaviorStateMachineDto {
     pub transitions: Vec<AuthoredBehaviorTransitionDto>,
 }
 
-/// Open, versioned reference to one Rust-published authored meaning. Admission
-/// resolves this reference against the closed Engine semantic catalog; runtime
-/// never dispatches an arbitrary method name.
+/// Open, versioned reference to one Rust-published authored meaning. Signal
+/// references resolve against the immutable event contracts in the statically
+/// composed gameplay registry; predicates and verbs resolve against the direct
+/// Rust authority vocabulary. Runtime never dispatches an arbitrary method
+/// name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthoredBehaviorSemanticRefDto {
     pub semantic_id: String,

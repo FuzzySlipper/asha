@@ -352,11 +352,19 @@ impl GameplayFabricRegistry {
     }
 
     pub fn event_is_declared(&self, event: &GameplayContractRef) -> bool {
-        self.modules.values().any(|manifest| {
+        self.published_event(&event.key()) == Some(event)
+    }
+
+    /// Resolve one exact event contract from the immutable, statically
+    /// composed publication registry. The registry builder rejects duplicate
+    /// event keys, so consumers do not need their own event-name catalog.
+    pub fn published_event(&self, key: &str) -> Option<&GameplayContractRef> {
+        self.modules.values().find_map(|manifest| {
             manifest
                 .published_events
                 .iter()
-                .any(|declaration| declaration.event == *event)
+                .find(|declaration| declaration.event.key() == key)
+                .map(|declaration| &declaration.event)
         })
     }
 

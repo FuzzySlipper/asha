@@ -87,6 +87,20 @@ void test('the consumer-shaped door declaration lowers only to Rust semantic ide
   assert.equal(document.documentId, 'behavior.demo-doors');
 });
 
+void test('published gameplay events need no Engine-specific signal helper', () => {
+  const signal = authoredBehavior.publishedEvent('asha.combat', 'entity-defeated');
+
+  assert.deepEqual(signal, {
+    signal: {
+      semanticId: 'asha.combat.entity-defeated',
+      version: 1,
+    },
+    arguments: [],
+  });
+  assert.equal(Object.isFrozen(signal), true);
+  assert.equal(Object.isFrozen(signal.arguments), true);
+});
+
 void test('authored behavior preparation rejects executable and ambient values', () => {
   const executable = doorDraft() as unknown as Record<string, unknown>;
   executable['callback'] = () => 'run at runtime';
