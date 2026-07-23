@@ -6,6 +6,8 @@
 
 #![forbid(unsafe_code)]
 
+mod authored_behavior;
+mod authority_verbs;
 mod interaction;
 mod owner_router;
 mod prefab;
@@ -59,7 +61,7 @@ use rule_gameplay_fabric::{
 use rule_project_bundle::{
     GameplayBindingActivationError, GameplayBoundProjectBundleSession, SessionStateArtifact,
 };
-use rule_scheduler::GameplayActionScheduler;
+use rule_scheduler::{GameplayActionScheduler, GameplaySchedulerCommand};
 use serde::{Deserialize, Serialize};
 
 // These are deliberately re-exported from the public host altitude. Consumers
@@ -90,7 +92,7 @@ pub const GAMEPLAY_RUNTIME_HOST_SNAPSHOT_PATH: &str = "session/gameplay-runtime-
 /// Machine-readable quarantine diagnostic for direct host construction.
 pub const GAMEPLAY_RUNTIME_HOST_COMPATIBILITY_DIAGNOSTIC: &str =
     "asha.compat.wave1.standalone-gameplay-runtime-host";
-const GAMEPLAY_RUNTIME_HOST_SNAPSHOT_VERSION: u32 = 4;
+const GAMEPLAY_RUNTIME_HOST_SNAPSHOT_VERSION: u32 = 5;
 const MAX_REACTION_FRAMES: usize = 256;
 const MAX_DECISION_RECEIPTS: usize = 256;
 
@@ -109,6 +111,7 @@ pub enum GameplayRuntimeHostError {
     Codec(String),
     Scheduler(GameplaySchedulerError),
     SchedulerRouting(GameplayRuntimeDiagnostic),
+    AuthoredProgram(String),
 }
 
 impl core::fmt::Display for GameplayRuntimeHostError {
@@ -165,6 +168,7 @@ pub(crate) struct RuntimeProjectActivationInput {
     pub declared_reads: Vec<GameplayRuntimeDeclaredReadPlan>,
     pub triggers: Vec<GameplayTriggerDefinition>,
     pub scheduler: GameplayRuntimeSchedulerDefinition,
+    pub authored_program: Option<authored_behavior::CompiledAuthoredProgram>,
 }
 
 /// Typed bootstrap data for runtime entities that participate in gameplay
@@ -250,6 +254,7 @@ pub struct GameplayRuntimeHost {
     decision_continuations: GameplayDecisionContinuations,
     decision_receipts: Vec<GameplayDecisionReceipt>,
     scheduler: GameplayActionScheduler,
+    authored_program: Option<authored_behavior::AuthoredProgramRuntime>,
     composition_load_mode: GameplayCompositionLoadMode,
     compatibility_diagnostics: Vec<GameplayCompositionDiagnostic>,
     activated_project: Option<project_activation::ValidatedRuntimeProjectState>,
@@ -302,6 +307,7 @@ impl GameplayRuntimeHost {
         input: RuntimeProjectActivationInput,
         prefabs: GameplayRuntimePrefabBootstrap,
     ) -> Result<Self, GameplayRuntimeHostError> {
+        let authored_program = input.authored_program;
         let mut bundle = rule_project_bundle::execute_load_plan_resolved(
             &input.load_plan,
             &input.artifacts,
@@ -327,18 +333,19 @@ impl GameplayRuntimeHost {
                 scheduler: input.scheduler,
             },
             prefab_registry,
+            authored_program,
         )
     }
 
     /// Validate the authored prefab source and placement commands before
     /// restoring the saved Session. The snapshot remains authoritative for the
     /// live entity/role map and must match the binding activation evidence.
-    #[cfg(test)]
     pub(crate) fn restore_project_with_prefabs(
         input: RuntimeProjectActivationInput,
         prefabs: GameplayRuntimePrefabBootstrap,
         snapshot_text: &str,
     ) -> Result<Self, GameplayRuntimeHostError> {
+        let authored_program = input.authored_program;
         let mut bundle = rule_project_bundle::execute_load_plan_resolved(
             &input.load_plan,
             &input.artifacts,
@@ -365,16 +372,18 @@ impl GameplayRuntimeHost {
             },
             snapshot_text,
             prefab_registry,
+            authored_program,
         )
     }
 
     pub fn activate(input: GameplayRuntimeHostInput) -> Result<Self, GameplayRuntimeHostError> {
-        Self::activate_with_prefab_registry(input, empty_prefab_registry())
+        Self::activate_with_prefab_registry(input, empty_prefab_registry(), None)
     }
 
     fn activate_with_prefab_registry(
         mut input: GameplayRuntimeHostInput,
         prefab_registry: ValidatedPrefabRegistry,
+        authored_program: Option<authored_behavior::CompiledAuthoredProgram>,
     ) -> Result<Self, GameplayRuntimeHostError> {
         prepare_runtime_entities(&mut input)?;
         let composition_identity =
@@ -397,7 +406,11 @@ impl GameplayRuntimeHost {
         compatibility_diagnostics
             .extend(session.activation.compatibility_diagnostics.iter().cloned());
         session.install_trigger_definitions(trigger_definitions)?;
-        validate_scheduler_definition(session.registry(), &input.scheduler)?;
+        validate_scheduler_definition(
+            session.registry(),
+            &input.scheduler,
+            authored_program.is_some(),
+        )?;
         let scheduler = input.scheduler.build();
         Ok(Self {
             session,
@@ -408,6 +421,8 @@ impl GameplayRuntimeHost {
             decision_continuations: GameplayDecisionContinuations::default(),
             decision_receipts: Vec::new(),
             scheduler,
+            authored_program: authored_program
+                .map(authored_behavior::AuthoredProgramRuntime::activate),
             composition_load_mode,
             compatibility_diagnostics,
             activated_project: None,
@@ -418,13 +433,14 @@ impl GameplayRuntimeHost {
         input: GameplayRuntimeHostInput,
         snapshot_text: &str,
     ) -> Result<Self, GameplayRuntimeHostError> {
-        Self::restore_with_prefab_registry(input, snapshot_text, empty_prefab_registry())
+        Self::restore_with_prefab_registry(input, snapshot_text, empty_prefab_registry(), None)
     }
 
     fn restore_with_prefab_registry(
         mut input: GameplayRuntimeHostInput,
         snapshot_text: &str,
         prefab_registry: ValidatedPrefabRegistry,
+        authored_program: Option<authored_behavior::CompiledAuthoredProgram>,
     ) -> Result<Self, GameplayRuntimeHostError> {
         prepare_runtime_entities(&mut input)?;
         let stored: StoredGameplayRuntimeHostSnapshot = serde_json::from_str(snapshot_text)
@@ -465,7 +481,11 @@ impl GameplayRuntimeHost {
         )?;
         compatibility_diagnostics
             .extend(session.activation.compatibility_diagnostics.iter().cloned());
-        validate_scheduler_definition(session.registry(), &input.scheduler)?;
+        validate_scheduler_definition(
+            session.registry(),
+            &input.scheduler,
+            authored_program.is_some(),
+        )?;
         let expected_triggers = rule_trigger_volume::TriggerVolumeRule::new(trigger_definitions)
             .map_err(|error| {
                 GameplayRuntimeHostError::Activation(GameplayBindingActivationError::Trigger(
@@ -489,13 +509,46 @@ impl GameplayRuntimeHost {
                 "authored scheduler definition does not match the saved host".to_owned(),
             ));
         }
-        validate_replayed_scheduler_codecs(session.registry(), &scheduler)?;
+        validate_replayed_scheduler_codecs(
+            session.registry(),
+            &scheduler,
+            authored_program.is_some(),
+        )?;
         validate_replayed_reaction_frames(session.registry(), &stored.reaction_frames)?;
         validate_replayed_decision_evidence(
             session.registry(),
             &stored.decision_continuations,
             &stored.decision_receipts,
         )?;
+        let authored_program = match (authored_program, stored.authored_program) {
+            (Some(plan), Some(snapshot)) => Some(
+                authored_behavior::AuthoredProgramRuntime::restore(plan, snapshot)
+                    .map_err(GameplayRuntimeHostError::Snapshot)?,
+            ),
+            (None, None) => None,
+            _ => {
+                return Err(GameplayRuntimeHostError::Snapshot(
+                    "saved authored-program presence does not match admitted content".to_owned(),
+                ))
+            }
+        };
+        if let Some(program) = &authored_program {
+            program
+                .validate_scheduler(&scheduler)
+                .map_err(GameplayRuntimeHostError::Snapshot)?;
+        } else if scheduler
+            .pending_actions()
+            .iter()
+            .any(|action| action.id().as_str().starts_with("authored."))
+            || scheduler
+                .outstanding_dispatches()
+                .iter()
+                .any(|dispatch| dispatch.action_id.as_str().starts_with("authored."))
+        {
+            return Err(GameplayRuntimeHostError::Snapshot(
+                "saved authored continuation has no admitted program".to_owned(),
+            ));
+        }
         Ok(Self {
             session,
             project_configuration_authority,
@@ -505,6 +558,7 @@ impl GameplayRuntimeHost {
             decision_continuations: stored.decision_continuations,
             decision_receipts: stored.decision_receipts,
             scheduler,
+            authored_program,
             composition_load_mode,
             compatibility_diagnostics,
             activated_project: None,
@@ -532,6 +586,61 @@ impl GameplayRuntimeHost {
         &mut self,
         tick: u64,
     ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
+        let due_authored_actions = self
+            .scheduler
+            .due_action_ids(tick)
+            .into_iter()
+            .filter(|action_id| action_id.as_str().starts_with("authored."))
+            .collect::<Vec<_>>();
+        for action_id in due_authored_actions {
+            self.scheduler
+                .apply(GameplaySchedulerCommand::ExecuteTick {
+                    action_id: action_id.clone(),
+                    tick,
+                    validity: rule_scheduler::ScheduledActionValidity::CURRENT,
+                })?;
+        }
+        let authored_dispatches = self
+            .scheduler
+            .outstanding_dispatches()
+            .into_iter()
+            .filter(|dispatch| {
+                dispatch.proposal.proposal == authored_behavior::authored_program_step_contract()
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        for dispatch in authored_dispatches {
+            let ready = self
+                .authored_program
+                .as_ref()
+                .ok_or_else(|| {
+                    GameplayRuntimeHostError::AuthoredProgram(
+                        "scheduled authored continuation has no active program".to_owned(),
+                    )
+                })?
+                .continuation_is_ready(
+                    &dispatch.proposal,
+                    self.session
+                        .bundle
+                        .runtime_entities
+                        .as_ref()
+                        .ok_or(GameplayRuntimeHostError::MissingEntityAuthority)?,
+                )
+                .map_err(GameplayRuntimeHostError::AuthoredProgram)?;
+            if ready {
+                self.route_scheduled_action(&dispatch.action_id)?;
+            }
+        }
+        let pending_deliveries = self
+            .scheduler
+            .outstanding_event_deliveries()
+            .into_iter()
+            .filter(|delivery| delivery.action_id.as_str().starts_with("authored."))
+            .map(|delivery| delivery.action_id.clone())
+            .collect::<Vec<_>>();
+        for action_id in pending_deliveries {
+            self.route_scheduled_action(&action_id)?;
+        }
         let event = adapt_session_tick(&GameplayOwnerEventContext {
             owner_id: "runtime-session".to_owned(),
             tick,
@@ -578,6 +687,7 @@ impl GameplayRuntimeHost {
                 prefab_registry: &self.prefab_registry,
                 prefab_instances: &self.session.bundle.prefab_instances,
                 declared_reads: &self.declared_reads,
+                scheduler: &self.scheduler,
             },
             self.session.invocation_host(),
             &mut RuntimeSessionDecisionOwner { owner },
@@ -691,6 +801,10 @@ impl GameplayRuntimeHost {
             decision_continuations: self.decision_continuations.clone(),
             decision_receipts: self.decision_receipts.clone(),
             scheduler_snapshot: self.scheduler.encode_snapshot()?,
+            authored_program: self
+                .authored_program
+                .as_ref()
+                .map(|program| program.snapshot()),
             snapshot_hash: String::new(),
         };
         stored.snapshot_hash = gameplay_runtime_snapshot_hash(&stored);
@@ -765,7 +879,17 @@ impl GameplayRuntimeHost {
             .bundle
             .compose_session_state_snapshot()
             .expect("runtime host always owns current entity authority");
-        gameplay_module_payload_hash(authority.text.as_bytes())
+        gameplay_module_payload_hash(
+            format!(
+                "{}|{}",
+                authority.text,
+                self.authored_program
+                    .as_ref()
+                    .map(authored_behavior::AuthoredProgramRuntime::state_hash)
+                    .unwrap_or_else(|| "none".to_owned())
+            )
+            .as_bytes(),
+        )
     }
 
     pub fn prefab_readout(&self) -> GameplayRuntimePrefabReadout {
@@ -799,6 +923,21 @@ impl GameplayRuntimeHost {
         &self.decision_receipts
     }
 
+    /// Rust-computed identity of the currently admitted direct authored program.
+    pub fn authored_program_hash(&self) -> Option<&str> {
+        self.authored_program
+            .as_ref()
+            .map(authored_behavior::AuthoredProgramRuntime::program_hash)
+    }
+
+    /// Bounded diagnostic count of accepted typed owner operations.
+    pub fn authored_program_accepted_fact_count(&self) -> u32 {
+        self.authored_program
+            .as_ref()
+            .map(|program| u32::try_from(program.accepted_facts().len()).unwrap_or(u32::MAX))
+            .unwrap_or(0)
+    }
+
     fn observe_with_source_facts(
         &mut self,
         event: GameplayEventEnvelope,
@@ -823,6 +962,8 @@ impl GameplayRuntimeHost {
     ) -> Result<GameplayRuntimeReactionReceipt, GameplayRuntimeHostError> {
         let state_hash_before = self.session.module_state.state_hash();
         let module_state_checkpoint = self.session.module_state.checkpoint();
+        let scheduler_checkpoint = self.scheduler.clone();
+        let authored_program_checkpoint = self.authored_program.clone();
         let mut authority_entities = self
             .session
             .bundle
@@ -830,6 +971,13 @@ impl GameplayRuntimeHost {
             .take()
             .expect("runtime entity authority initialized");
         let authority_before = authority_entities.clone();
+        if let Some(program) = self.authored_program.as_mut() {
+            if let Err(error) = program.react(&events, &mut authority_entities, &mut self.scheduler)
+            {
+                self.session.bundle.runtime_entities = Some(authority_entities);
+                return Err(GameplayRuntimeHostError::AuthoredProgram(error));
+            }
+        }
         let observe = {
             let cells = self.session.runtime_cells();
             let coordinator = GameplayFabricCoordinator::new(
@@ -844,6 +992,7 @@ impl GameplayRuntimeHost {
                 prefab_registry: &self.prefab_registry,
                 prefab_instances: cells.prefab_instances,
                 declared_reads: &self.declared_reads,
+                scheduler: &self.scheduler,
             };
             if routed {
                 coordinator.observe_routed_events_transactional(
@@ -863,6 +1012,8 @@ impl GameplayRuntimeHost {
             self.session
                 .module_state
                 .restore_checkpoint(module_state_checkpoint);
+            self.scheduler = scheduler_checkpoint;
+            self.authored_program = authored_program_checkpoint;
         }
         self.session.bundle.runtime_entities = Some(authority_entities);
         let mut accepted_facts = Vec::new();
@@ -1062,6 +1213,7 @@ struct StoredGameplayRuntimeHostSnapshot {
     decision_continuations: GameplayDecisionContinuations,
     decision_receipts: Vec<GameplayDecisionReceipt>,
     scheduler_snapshot: Vec<u8>,
+    authored_program: Option<authored_behavior::AuthoredProgramSnapshot>,
     snapshot_hash: String,
 }
 
@@ -1082,7 +1234,7 @@ fn gameplay_runtime_snapshot_hash(snapshot: &StoredGameplayRuntimeHostSnapshot) 
         .expect("decision continuations serialize");
     gameplay_module_payload_hash(
         format!(
-            "{}|{}|{}|{}|{}|{}|{}|{}",
+            "{}|{}|{}|{}|{}|{}|{}|{}|{}",
             snapshot.schema_version,
             snapshot.semantic_compatibility_digest,
             snapshot.artifact_provenance_digest,
@@ -1091,6 +1243,13 @@ fn gameplay_runtime_snapshot_hash(snapshot: &StoredGameplayRuntimeHostSnapshot) 
             decisions,
             continuations,
             gameplay_module_payload_hash(&snapshot.scheduler_snapshot),
+            snapshot
+                .authored_program
+                .as_ref()
+                .map(|program| gameplay_module_payload_hash(
+                    &serde_json::to_vec(program).expect("authored snapshot serializes")
+                ))
+                .unwrap_or_else(|| "none".to_owned()),
         )
         .as_bytes(),
     )
@@ -1104,6 +1263,7 @@ struct RuntimeSessionViews<'a> {
     prefab_registry: &'a ValidatedPrefabRegistry,
     prefab_instances: &'a rule_project_bundle::PrefabInstanceAuthority,
     declared_reads: &'a [GameplayRuntimeDeclaredReadPlan],
+    scheduler: &'a GameplayActionScheduler,
 }
 
 struct RuntimeSessionWaveAuthority<'a> {
@@ -1114,6 +1274,7 @@ struct RuntimeSessionWaveAuthority<'a> {
     prefab_registry: &'a ValidatedPrefabRegistry,
     prefab_instances: &'a rule_project_bundle::PrefabInstanceAuthority,
     declared_reads: &'a [GameplayRuntimeDeclaredReadPlan],
+    scheduler: &'a GameplayActionScheduler,
 }
 
 impl RuntimeSessionWaveAuthority<'_> {
@@ -1126,6 +1287,7 @@ impl RuntimeSessionWaveAuthority<'_> {
             prefab_registry: self.prefab_registry,
             prefab_instances: self.prefab_instances,
             declared_reads: self.declared_reads,
+            scheduler: self.scheduler,
         }
     }
 
@@ -1182,7 +1344,9 @@ impl GameplayWaveAuthority for RuntimeSessionWaveAuthority<'_> {
 
     fn state_hashes(&self) -> GameplayWaveStateHashes {
         GameplayWaveStateHashes {
-            authority_state_hash: self.entities.hash().0.to_string(),
+            authority_state_hash: gameplay_module_payload_hash(
+                format!("{}|{}", self.entities.hash().0, self.scheduler.state_hash()).as_bytes(),
+            ),
             module_state_hash: self.module_state.state_hash(),
             prefab_state_hash: self.prefab_state_hash(),
             trigger_state_hash: self.triggers.snapshot().snapshot_hash,
@@ -1330,7 +1494,7 @@ impl GameplayViewSource for RuntimeSessionViews<'_> {
             epoch: u64::from(wave),
             view_hash: gameplay_module_payload_hash(
                 format!(
-                    "{}|{}|{}|{}|{}|{}|{}",
+                    "{}|{}|{}|{}|{}|{}|{}|{}",
                     self.registry.registry_digest(),
                     self.module_state.state_hash(),
                     self.entities.hash().0,
@@ -1343,6 +1507,7 @@ impl GameplayViewSource for RuntimeSessionViews<'_> {
                         .as_bytes()
                     ),
                     self.triggers.snapshot().snapshot_hash,
+                    self.scheduler.state_hash(),
                     root_id,
                     wave
                 )

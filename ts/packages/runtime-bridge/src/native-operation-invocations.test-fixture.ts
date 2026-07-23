@@ -151,10 +151,15 @@ export function createNativeOperationInvocations(
     })],
     ['applyGameplayPrefabPartInteraction', (bridge) => bridge.applyGameplayPrefabPartInteraction({
       actor: 101,
-      instance: 1,
       role: 'interaction-target',
-      expectedTarget: 777,
+      maxDistanceMillimeters: 2_000,
       tick: 9,
+      expectedRuntimeSessionHash: input.hashA,
+    })],
+    ['readGameplayPrefabPartInteractionTarget', (bridge) => bridge.readGameplayPrefabPartInteractionTarget({
+      actor: 101,
+      role: 'interaction-target',
+      maxDistanceMillimeters: 2_000,
       expectedRuntimeSessionHash: input.hashA,
     })],
     ['invokeGameExtensionWeaponEffect', (bridge) => bridge.invokeGameExtensionWeaponEffect({

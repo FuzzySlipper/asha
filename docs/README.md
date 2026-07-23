@@ -52,6 +52,7 @@ see-also: [design.md, agent-code-atlas.md]
 | Debug replay divergence | `topics/authority/replay.md` |
 | Add CI gate | `topics/ci/guardrail-policy.md` |
 | Author a gameplay module | `topics/authority/gameplay-module-sdk.md` |
+| Author a bounded gameplay behavior | `topics/expression/authored-behavior-packages.md` |
 | Place a prefab | `topics/authority/prefab-authoring-and-placement.md` |
 | Edit voxels | `topics/authority/workspace-authoring-facade.md` |
 

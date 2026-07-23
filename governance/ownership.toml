@@ -441,9 +441,11 @@ lane = "rust-rule"
 # Owns the ProjectBundle runtime linker: it consumes the stored-content border
 # through svc-project-content and converts the validated result into private
 # activation plans. Canonical stored voxel bodies are decoded here so the
-# private plan can carry validated assets into atomic runtime activation. No
-# bridge, renderer, filesystem, or TS authority enters.
-may_depend_on = ["core-entity", "core-ids", "core-math", "core-scene", "gameplay-module-sdk", "protocol-diagnostics", "protocol-entity-authoring", "protocol-game-extension", "protocol-project-bundle", "protocol-project-content", "protocol-voxel-asset", "rule-gameplay-fabric", "rule-project-bundle", "rule-scheduler", "rule-trigger-volume", "serde", "serde_json", "svc-entity-authoring", "svc-gameplay-fabric", "svc-project-content", "svc-serialization", "svc-voxel-asset"]
+# private plan can carry validated assets into atomic runtime activation. The
+# state-machine edge lets closed authored programs reuse its transition owner
+# rather than creating a second symbolic-state implementation. No bridge,
+# renderer, filesystem, or TS authority enters.
+may_depend_on = ["core-entity", "core-ids", "core-math", "core-scene", "gameplay-module-sdk", "protocol-diagnostics", "protocol-entity-authoring", "protocol-game-extension", "protocol-project-bundle", "protocol-project-content", "protocol-voxel-asset", "rule-gameplay-fabric", "rule-project-bundle", "rule-scheduler", "rule-state-machine", "rule-trigger-volume", "serde", "serde_json", "svc-entity-authoring", "svc-gameplay-fabric", "svc-project-content", "svc-serialization", "svc-voxel-asset"]
 may_not_depend_on = ["protocol-render", "render-bridge", "wasm-api"]
 
 [crate."engine-rs/crates/rules/rule-process"]

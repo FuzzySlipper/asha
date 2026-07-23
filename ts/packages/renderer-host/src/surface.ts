@@ -3,6 +3,7 @@
 import type {
   CameraBasis,
   EntityId,
+  InputBindingCatalog,
   PerspectiveProjection,
   RenderFrameDiff,
   RenderHandle,
@@ -75,6 +76,8 @@ export interface AshaRendererSurfaceControlsOptions {
   readonly moveSpeed?: number;
   /** Public RuntimeSession input surface. Controls stay inactive when omitted. */
   readonly inputSession?: BrowserInputSessionPort;
+  /** Optional project-authored extension of the Rust-validated input catalog. */
+  readonly inputCatalog?: InputBindingCatalog;
   readonly initialInputContexts?: readonly string[];
   /** Observes Rust-resolved semantic actions; it never receives raw DOM keys. */
   readonly onResolvedAction?: (action: ResolvedInputAction) => void;
@@ -463,6 +466,7 @@ function createAshaRendererSurfaceFirstPersonControls(
     ? null
     : new BrowserInputHost({
         session: options.inputSession,
+        ...(options.inputCatalog === undefined ? {} : { catalog: options.inputCatalog }),
         initialContexts: options.initialInputContexts ?? ['gameplay'],
         consumers: {
           'gameplay.move.forward': 'renderer.fpsCamera',

@@ -20,7 +20,7 @@ void test('validates the golden asha.game.toml manifest', () => {
   assert.equal(result.manifest.runtime.backendProfile, 'reference');
   assert.deepEqual(result.manifest.runtime.backendProofRefs, []);
   assert.deepEqual(result.manifest.workspace.prefabRoots, ['prefabs']);
-  assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'prefabs', 'assets', 'packages/game-catalogs']);
+  assert.deepEqual(result.manifest.studio.allowedSourceWrites, ['scenes', 'prefabs', 'assets', 'behaviors', 'packages/game-catalogs']);
   assert.deepEqual(result.manifest.devResourceProfile.localRoots, ['assets', 'packages/game-catalogs']);
   assert.equal(result.manifest.devResourceProfile.cacheDir, 'dist/dev-cache');
   assert.equal(result.manifest.devResourceProfile.resolutionPolicy, 'prefer-source');
@@ -32,7 +32,7 @@ void test('validates the golden asha.game.toml manifest', () => {
 void test('accepts a workspace that does not author prefab content', () => {
   const manifest = fixture('asha.game.toml')
     .replace('prefab_roots = ["prefabs"]', 'prefab_roots = []')
-    .replace('allowed_source_writes = ["scenes", "prefabs", "assets", "packages/game-catalogs"]', 'allowed_source_writes = ["scenes", "assets", "packages/game-catalogs"]');
+    .replace('allowed_source_writes = ["scenes", "prefabs", "assets", "behaviors", "packages/game-catalogs"]', 'allowed_source_writes = ["scenes", "assets", "behaviors", "packages/game-catalogs"]');
   const result = parseAshaGameManifestToml(manifest);
   assert.equal(result.ok, true);
   if (!result.ok) {

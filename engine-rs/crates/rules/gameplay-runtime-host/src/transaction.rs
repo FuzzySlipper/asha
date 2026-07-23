@@ -12,6 +12,7 @@ pub struct GameplayRuntimeResetCheckpoint {
     decision_continuations: GameplayDecisionContinuations,
     decision_receipts: Vec<GameplayDecisionReceipt>,
     scheduler: GameplayActionScheduler,
+    authored_program: Option<authored_behavior::AuthoredProgramRuntime>,
 }
 
 /// Opaque evidence checkpoint used by the enclosing RuntimeSession to make a
@@ -36,6 +37,7 @@ impl GameplayRuntimeHost {
             decision_continuations: self.decision_continuations.clone(),
             decision_receipts: self.decision_receipts.clone(),
             scheduler: self.scheduler.clone(),
+            authored_program: self.authored_program.clone(),
         }
     }
 
@@ -50,6 +52,7 @@ impl GameplayRuntimeHost {
         self.decision_continuations = checkpoint.decision_continuations;
         self.decision_receipts = checkpoint.decision_receipts;
         self.scheduler = checkpoint.scheduler;
+        self.authored_program = checkpoint.authored_program;
         Ok(())
     }
 

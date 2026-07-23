@@ -303,6 +303,7 @@ dependencies = [
  "rule-gameplay-fabric",
  "rule-project-bundle",
  "rule-scheduler",
+ "rule-state-machine",
  "rule-trigger-volume",
  "serde",
  "serde_json",

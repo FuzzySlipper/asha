@@ -607,6 +607,17 @@ pub(crate) const GENERATED_BRIDGE_BINDINGS: &[GeneratedBridgeBinding] = &[
         surface: GeneratedBridgeSurface::Stable,
     },
     GeneratedBridgeBinding {
+        manifest_name: "read_gameplay_prefab_part_interaction_target",
+        facade_method: "readGameplayPrefabPartInteractionTarget",
+        capability: "gameplay",
+        input: "protocol_runtime::GameplayPrefabPartInteractionTargetRequest",
+        output: "protocol_runtime::GameplayPrefabPartInteractionTargetReadout",
+        errors: "RuntimeBridgeError",
+        max_input_bytes: 8388608,
+        max_output_bytes: 8388608,
+        surface: GeneratedBridgeSurface::Stable,
+    },
+    GeneratedBridgeBinding {
         manifest_name: "apply_gameplay_prefab_part_interaction",
         facade_method: "applyGameplayPrefabPartInteraction",
         capability: "gameplay",

@@ -27,7 +27,8 @@ pub mod compatibility {
 
 pub use decision::gameplay_payload_hash;
 pub use observe::{
-    gameplay_proposal_hash, verify_gameplay_routing_evidence, GameplayFabricCoordinator,
+    direct_authority_routing_receipt, gameplay_proposal_hash, verify_gameplay_routing_evidence,
+    GameplayFabricCoordinator,
 };
 pub use owner_events::*;
 pub use reaction_adapter::{

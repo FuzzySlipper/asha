@@ -271,7 +271,7 @@ function validateManifest(manifest: AshaRendererAnimatedMeshResourceManifest): v
   const assets = new Set<string>();
   for (const resource of manifest.resources) {
     const validHash = /^(?:sha256:[0-9a-f]{64}|[0-9a-f]{16})$/u.test(resource.contentHash);
-    const validClips = resource.clipIds.length > 0 && new Set(resource.clipIds).size === resource.clipIds.length;
+    const validClips = new Set(resource.clipIds).size === resource.clipIds.length;
     if (resource.asset.length === 0 || resource.resourceUrl.length === 0 || !validHash || !validClips || assets.has(resource.asset)) {
       throw hostError('animated_mesh_manifest_invalid', resource.asset || null, null, 'animated mesh resource descriptor is invalid or duplicated');
     }

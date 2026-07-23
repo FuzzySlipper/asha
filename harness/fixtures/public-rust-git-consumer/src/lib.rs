@@ -12,3 +12,11 @@ pub fn gameplay_composition_builder() -> GameplayStaticCompositionBuilder {
 pub fn runtime_session_builder_type_name() -> &'static str {
     core::any::type_name::<DeferredRuntimeSessionBuilder>()
 }
+
+pub fn authored_behavior_composition() -> asha_gameplay_module_sdk::GameplayStaticComposition {
+    let mut builder = GameplayStaticCompositionBuilder::new();
+    builder.include_standard_owner_events();
+    builder
+        .build()
+        .expect("the public Engine standard owner events compose")
+}

@@ -63,6 +63,8 @@ KNOWN_TRANSITIONAL_PROTOCOL_REFS = {
     "protocol_runtime::ComposedRuntimeSessionReadout",
     "protocol_runtime::GameplayModuleViewRequest",
     "protocol_runtime::GameplayModuleViewSnapshot",
+    "protocol_runtime::GameplayPrefabPartInteractionTargetRequest",
+    "protocol_runtime::GameplayPrefabPartInteractionTargetReadout",
     "protocol_runtime::GameplayPrefabPartInteractionRequest",
     "protocol_runtime::GameplayPrefabPartInteractionReceipt",
     "protocol_runtime::StepInputEnvelope",

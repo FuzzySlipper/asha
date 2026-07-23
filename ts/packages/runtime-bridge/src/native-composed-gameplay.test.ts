@@ -34,21 +34,30 @@ void test('native facade routes composed evidence views and prefab interaction',
     expectedRuntimeSessionHash: HASH_A,
   });
   assert.equal(new TextDecoder().decode(Uint8Array.from(moduleView.canonicalPayload)), '4');
+  const target = bridge.readGameplayPrefabPartInteractionTarget({
+    actor: 101,
+    role: 'interaction/target',
+    maxDistanceMillimeters: 2_000,
+    expectedRuntimeSessionHash: HASH_A,
+  });
+  assert.equal(target.eligible, true);
+  assert.equal(target.target, 777);
   const interaction = bridge.applyGameplayPrefabPartInteraction({
     actor: 101,
-    instance: 700,
     role: 'interaction/target',
-    expectedTarget: 777,
+    maxDistanceMillimeters: 2_000,
     tick: 12,
     expectedRuntimeSessionHash: HASH_A,
   });
   assert.equal(interaction.target, 777);
+  assert.equal(interaction.distanceMillimeters, 850);
   assert.equal(interaction.reactionFrameHash, HASH_C);
   assert.deepEqual(calls, [
     'initialize:1',
     'composedRead',
     'moduleView:fixture.pulse:pulse-state-view:session:none',
-    'prefabInteraction:101:700:interaction/target:777',
+    'prefabInteractionTarget:101:interaction/target:2000',
+    'prefabInteraction:101:interaction/target:2000',
   ]);
 });
 
@@ -99,9 +108,8 @@ void test('composed gameplay requests and native identities fail closed', () => 
   assert.throws(
     () => bridge.applyGameplayPrefabPartInteraction({
       actor: 101,
-      instance: 700,
       role: '   ',
-      expectedTarget: 777,
+      maxDistanceMillimeters: 2_000,
       tick: 12,
       expectedRuntimeSessionHash: HASH_A,
     }),
@@ -126,14 +134,13 @@ void test('composed gameplay requests and native identities fail closed', () => 
   const applyInteraction = addon.applyGameplayPrefabPartInteraction;
   addon.applyGameplayPrefabPartInteraction = (...input) => ({
     ...applyInteraction(...input),
-    target: input[4] + 1,
+    role: 'interaction/tampered',
   });
   assert.throws(
     () => bridge.applyGameplayPrefabPartInteraction({
       actor: 101,
-      instance: 700,
       role: 'interaction/target',
-      expectedTarget: 777,
+      maxDistanceMillimeters: 2_000,
       tick: 12,
       expectedRuntimeSessionHash: HASH_A,
     }),

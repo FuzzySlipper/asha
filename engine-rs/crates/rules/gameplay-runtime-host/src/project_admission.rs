@@ -32,6 +32,7 @@ use svc_serialization::{
 };
 
 use crate::{
+    authored_behavior::{compile_authored_program, CompiledAuthoredProgram},
     GameplayRuntimePrefabBootstrap, GameplayRuntimePrefabCatalog, GameplayRuntimePrefabPlacement,
     GameplayRuntimePrefabPlacementOrigin, GameplayRuntimePrefabTransform,
     GameplayRuntimeSchedulerDefinition, GameplayRuntimeSpatialEntity,
@@ -159,6 +160,7 @@ pub struct ValidatedRuntimeProjectAdmission {
     artifacts: BundleArtifacts,
     voxel_assets: BTreeMap<String, VoxelVolumeAsset>,
     admission_hash: String,
+    authored_program: Option<CompiledAuthoredProgram>,
 }
 
 pub(crate) struct RuntimeProjectActivationParts {
@@ -180,6 +182,7 @@ pub(crate) struct RuntimeProjectActivationParts {
     pub prefabs: GameplayRuntimePrefabBootstrap,
     pub voxel_assets: BTreeMap<String, VoxelVolumeAsset>,
     pub admission_hash: String,
+    pub authored_program: Option<CompiledAuthoredProgram>,
 }
 
 /// Internal typed handoff from canonical scene/bootstrap admission to domain
@@ -228,9 +231,14 @@ impl ValidatedRuntimeProjectAdmission {
     /// not an editable serialization surface; callers cannot recover or mutate
     /// any compiled field from it.
     pub fn compiled_plan_hash(&self) -> String {
+        let authored_program = self
+            .authored_program
+            .as_ref()
+            .map(|plan| serde_json::to_vec(plan).expect("validated authored behavior serializes"))
+            .unwrap_or_default();
         gameplay_module_payload_hash(
             format!(
-                "{:?}|{:?}|{}|{:?}|{:?}|{:?}|{:?}|{}|{}",
+                "{:?}|{:?}|{}|{:?}|{:?}|{:?}|{:?}|{}|{}|{}",
                 self.load_plan,
                 self.bootstrap_resolution,
                 self.bindings.registry_hash,
@@ -240,6 +248,7 @@ impl ValidatedRuntimeProjectAdmission {
                 self.scheduler,
                 self.prefabs.registry_json,
                 self.prefabs.placements.len(),
+                gameplay_module_payload_hash(&authored_program),
             )
             .as_bytes(),
         )
@@ -271,6 +280,7 @@ impl ValidatedRuntimeProjectAdmission {
             prefabs: self.prefabs,
             voxel_assets: self.voxel_assets,
             admission_hash: self.admission_hash,
+            authored_program: self.authored_program,
         }
     }
 }
@@ -402,7 +412,6 @@ pub fn compile_runtime_project_admission(
         }
     };
 
-    let bindings = compiled_bindings(&content);
     let (entity_targets, spatial_entities, runtime_entity_seeds) = derive_entity_authority(
         &content,
         &entity_definition_source_paths,
@@ -410,12 +419,26 @@ pub fn compile_runtime_project_admission(
         &mut report,
     );
     let prefabs = derive_prefab_bootstrap(&content, &bootstrap, &mut report);
+    let authored_program = match compile_authored_program(&content, &prefabs, &runtime_entity_seeds)
+    {
+        Ok(program) => program,
+        Err(message) => {
+            report.push(
+                RuntimeProjectAdmissionDiagnosticCode::ProviderSchemaMismatch,
+                None,
+                "projectContent.authoredBehavior",
+                message,
+            );
+            None
+        }
+    };
+    let bindings = compiled_bindings(&content);
     if !report.is_valid() {
         report.canonicalize();
         return Err(report);
     }
     let declared_reads = composition.declared_reads().to_vec();
-    let scheduler = derive_scheduler(&composition);
+    let scheduler = derive_scheduler(&composition, authored_program.is_some());
     let triggers = content.compiled_gameplay().triggers().to_vec();
     let load_plan = match LoadPlan::build(source.manifest()) {
         Ok(plan) => plan,
@@ -462,6 +485,7 @@ pub fn compile_runtime_project_admission(
         artifacts,
         voxel_assets,
         admission_hash,
+        authored_program,
     })
 }
 
@@ -1174,7 +1198,10 @@ fn prefab_catalog(content: &ValidatedProjectContentSet) -> GameplayRuntimePrefab
     }
 }
 
-fn derive_scheduler(composition: &GameplayStaticComposition) -> GameplayRuntimeSchedulerDefinition {
+fn derive_scheduler(
+    composition: &GameplayStaticComposition,
+    has_authored_program: bool,
+) -> GameplayRuntimeSchedulerDefinition {
     let mut events = BTreeMap::<String, GameplayContractRef>::new();
     let mut proposals = BTreeMap::<String, GameplayContractRef>::new();
     for module_id in composition.registry().module_order() {
@@ -1188,6 +1215,10 @@ fn derive_scheduler(composition: &GameplayStaticComposition) -> GameplayRuntimeS
         for declaration in &module.proposal_kinds {
             proposals.insert(declaration.proposal.key(), declaration.proposal.clone());
         }
+    }
+    if has_authored_program {
+        let contract = crate::authored_behavior::authored_program_step_contract();
+        proposals.insert(contract.key(), contract);
     }
     GameplayRuntimeSchedulerDefinition::new(
         GameplayOwnerRef {
@@ -1380,6 +1411,7 @@ fn map_project_diagnostic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GameplayRuntimeHost;
     use core_ids::{ProjectId, SceneId, SceneNodeId};
     use core_scene::{
         FlatSceneDocument, NodeMetadata, SceneEntityInstance, SceneEntityReference, SceneMetadata,
@@ -1387,11 +1419,25 @@ mod tests {
     };
     use gameplay_module_sdk::GameplayStaticCompositionBuilder;
     use protocol_entity_authoring::{
-        EntityDefinitionCapability, EntityDefinitionMetadataEntry, EntityDefinitionSourceTrace,
+        AuthoringTransform, EntityDefinitionCapability, EntityDefinitionMetadataEntry,
+        EntityDefinitionSourceTrace,
+    };
+    use protocol_project_bundle::{
+        GameplayTriggerDefinition, GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
     };
     use protocol_project_content::{
-        ProjectContentDecodeRequestDto, ProjectContentDocumentKind, ProjectContentSourceDto,
+        AuthoredBehaviorArgumentDto, AuthoredBehaviorConditionDto, AuthoredBehaviorDefinitionDto,
+        AuthoredBehaviorOperationDto, AuthoredBehaviorPackageDto, AuthoredBehaviorProvenanceDto,
+        AuthoredBehaviorSemanticRefDto, AuthoredBehaviorSignalDto, AuthoredBehaviorStateDto,
+        AuthoredBehaviorStateMachineDto, AuthoredBehaviorStepDto, AuthoredBehaviorTransitionDto,
+        AuthoredBehaviorValueDto, ProjectContentDecodeRequestDto, ProjectContentDocumentKind,
+        ProjectContentSourceDto, ProjectGameplayConfigurationDocumentDto,
+        AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION, AUTHORED_BEHAVIOR_VOCABULARY_HASH,
+        AUTHORED_BEHAVIOR_VOCABULARY_VERSION, AUTHORED_PREDICATE_STATE_IS,
+        AUTHORED_SIGNAL_TRIGGER_ENTERED, AUTHORED_VERB_SET_CAPABILITY_ACTIVE,
+        AUTHORED_VERB_SET_RELATIVE_TRANSLATION, AUTHORED_VERB_TRANSITION_STATE,
     };
+    use rule_gameplay_fabric::StandardGameplayEventKind;
     use svc_project_content::{decode_project_content, EmptyProjectContentGameplayAdmission};
     use svc_serialization::{
         encode, validate_runtime_project_source_batch, ArtifactEntry, AssetLockSection,
@@ -1429,6 +1475,289 @@ mod tests {
             metadata: NodeMetadata::default(),
         });
         scene
+    }
+
+    fn authored_behavior_scene(id: u64) -> FlatSceneDocument {
+        let mut scene = empty_scene(id);
+        let instance =
+            |node, instance_id: &str, stable_id: &str, translation: [f32; 3]| SceneNodeRecord {
+                id: SceneNodeId::new(node),
+                parent: None,
+                child_order: u32::try_from(node).expect("fixture node order"),
+                transform: SceneTransform {
+                    translation: core_math::Vec3::new(
+                        translation[0],
+                        translation[1],
+                        translation[2],
+                    ),
+                    ..SceneTransform::IDENTITY
+                },
+                kind: SceneNodeKind::EntityInstance(SceneEntityInstance {
+                    instance_id: instance_id.to_owned(),
+                    reference: SceneEntityReference::EntityDefinition {
+                        stable_id: stable_id.to_owned(),
+                    },
+                    spawn_marker_id: None,
+                }),
+                metadata: NodeMetadata::default(),
+            };
+        scene.nodes = vec![
+            instance(1, "fixture.door.instance", "fixture.door", [0.0, 0.0, 5.0]),
+            instance(
+                2,
+                "fixture.trigger.instance",
+                "fixture.trigger",
+                [10.0, 0.0, 0.0],
+            ),
+            instance(
+                3,
+                "fixture.actor.instance",
+                "fixture.actor",
+                [0.0, 0.0, 0.0],
+            ),
+        ];
+        scene
+    }
+
+    fn spatial_entity_document(stable_id: &str) -> ProjectContentDocumentDto {
+        ProjectContentDocumentDto::EntityDefinition {
+            document_id: format!("entities/{stable_id}.json"),
+            definition: EntityDefinition {
+                stable_id: stable_id.to_owned(),
+                display_name: stable_id.to_owned(),
+                source: EntityDefinitionSourceTrace {
+                    project_bundle: "authored-behavior-fixture".to_owned(),
+                    relative_path: format!("entities/{stable_id}.json"),
+                },
+                tags: Vec::new(),
+                metadata: Vec::new(),
+                capabilities: vec![
+                    EntityDefinitionCapability::Transform {
+                        transform: AuthoringTransform {
+                            translation: [0.0, 0.0, 0.0],
+                            rotation: [0.0, 0.0, 0.0, 1.0],
+                            scale: [1.0, 1.0, 1.0],
+                        },
+                    },
+                    EntityDefinitionCapability::Bounds {
+                        min: [-0.5, -0.5, -0.5],
+                        max: [0.5, 0.5, 0.5],
+                    },
+                    EntityDefinitionCapability::Collision {
+                        static_collider: false,
+                    },
+                    EntityDefinitionCapability::Render { visible: true },
+                ],
+            },
+        }
+    }
+
+    fn authored_behavior_documents() -> Vec<ProjectContentDocumentDto> {
+        let semantic = |semantic_id: &str| AuthoredBehaviorSemanticRefDto {
+            semantic_id: semantic_id.to_owned(),
+            version: AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
+        };
+        let argument = |name: &str, value| AuthoredBehaviorArgumentDto {
+            name: name.to_owned(),
+            value,
+        };
+        let door_entity = || AuthoredBehaviorValueDto::SceneEntity {
+            scene_instance_id: "fixture.door.instance".to_owned(),
+        };
+        let transition = |transition_id: &str| AuthoredBehaviorOperationDto {
+            verb: semantic(AUTHORED_VERB_TRANSITION_STATE),
+            arguments: vec![
+                argument(
+                    "machine",
+                    AuthoredBehaviorValueDto::StateMachine {
+                        machine_id: "door".to_owned(),
+                    },
+                ),
+                argument(
+                    "transition",
+                    AuthoredBehaviorValueDto::Text {
+                        value: transition_id.to_owned(),
+                    },
+                ),
+            ],
+        };
+        let realize = |offset: [f32; 3], active: bool| {
+            vec![
+                AuthoredBehaviorOperationDto {
+                    verb: semantic(AUTHORED_VERB_SET_RELATIVE_TRANSLATION),
+                    arguments: vec![
+                        argument("entity", door_entity()),
+                        argument("value", AuthoredBehaviorValueDto::Vector3 { value: offset }),
+                    ],
+                },
+                AuthoredBehaviorOperationDto {
+                    verb: semantic(AUTHORED_VERB_SET_CAPABILITY_ACTIVE),
+                    arguments: vec![
+                        argument("entity", door_entity()),
+                        argument(
+                            "capability",
+                            AuthoredBehaviorValueDto::Text {
+                                value: "collision".to_owned(),
+                            },
+                        ),
+                        argument(
+                            "active",
+                            AuthoredBehaviorValueDto::Boolean { value: active },
+                        ),
+                    ],
+                },
+            ]
+        };
+        vec![
+            spatial_entity_document("fixture.door"),
+            spatial_entity_document("fixture.trigger"),
+            spatial_entity_document("fixture.actor"),
+            ProjectContentDocumentDto::GameplayConfiguration {
+                document_id: "gameplay/triggers.json".to_owned(),
+                document: ProjectGameplayConfigurationDocumentDto {
+                    schema_version: 1,
+                    configurations: Vec::new(),
+                    bindings: Vec::new(),
+                    overrides: Vec::new(),
+                    triggers: vec![GameplayTriggerDefinition {
+                        schema_version: GAMEPLAY_TRIGGER_DEFINITION_SCHEMA_VERSION,
+                        scene_instance_id: "fixture.trigger.instance".to_owned(),
+                        scope: "fixture.door-switch".to_owned(),
+                        tags: vec!["door-switch".to_owned()],
+                    }],
+                },
+            },
+            ProjectContentDocumentDto::BehaviorPackage {
+                document_id: "behaviors/doors.json".to_owned(),
+                package: AuthoredBehaviorPackageDto {
+                    schema_version: AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION,
+                    package_id: "fixture.doors".to_owned(),
+                    provenance: AuthoredBehaviorProvenanceDto {
+                        sdk_id: "@asha/game-workspace".to_owned(),
+                        sdk_version: AUTHORED_BEHAVIOR_VOCABULARY_VERSION,
+                        vocabulary_hash: AUTHORED_BEHAVIOR_VOCABULARY_HASH.to_owned(),
+                        source_module: "@fixture/gameplay".to_owned(),
+                        source_path: "src/doors.ts".to_owned(),
+                        source_hash: "fnv1a64:fixture-door-source".to_owned(),
+                    },
+                    state_machines: vec![AuthoredBehaviorStateMachineDto {
+                        machine_id: "door".to_owned(),
+                        target_scene_instance_id: "fixture.door.instance".to_owned(),
+                        initial_state_id: "closed".to_owned(),
+                        states: vec![
+                            AuthoredBehaviorStateDto {
+                                state_id: "closed".to_owned(),
+                            },
+                            AuthoredBehaviorStateDto {
+                                state_id: "open".to_owned(),
+                            },
+                        ],
+                        transitions: vec![
+                            AuthoredBehaviorTransitionDto {
+                                transition_id: "open".to_owned(),
+                                from_state_id: "closed".to_owned(),
+                                to_state_id: "open".to_owned(),
+                            },
+                            AuthoredBehaviorTransitionDto {
+                                transition_id: "close".to_owned(),
+                                from_state_id: "open".to_owned(),
+                                to_state_id: "closed".to_owned(),
+                            },
+                        ],
+                    }],
+                    behaviors: vec![AuthoredBehaviorDefinitionDto {
+                        behavior_id: "trigger-opens-door".to_owned(),
+                        signal: AuthoredBehaviorSignalDto {
+                            signal: semantic(AUTHORED_SIGNAL_TRIGGER_ENTERED),
+                            arguments: vec![argument(
+                                "trigger",
+                                AuthoredBehaviorValueDto::SceneEntity {
+                                    scene_instance_id: "fixture.trigger.instance".to_owned(),
+                                },
+                            )],
+                        },
+                        conditions: vec![AuthoredBehaviorConditionDto {
+                            predicate: semantic(AUTHORED_PREDICATE_STATE_IS),
+                            arguments: vec![argument(
+                                "state",
+                                AuthoredBehaviorValueDto::State {
+                                    machine_id: "door".to_owned(),
+                                    state_id: "closed".to_owned(),
+                                },
+                            )],
+                        }],
+                        steps: vec![
+                            AuthoredBehaviorStepDto {
+                                step_id: "open-now".to_owned(),
+                                after_step_ids: Vec::new(),
+                                delay_ticks: 0,
+                                operations: {
+                                    let mut operations = vec![transition("open")];
+                                    operations.extend(realize([0.0, 3.0, 0.0], false));
+                                    operations
+                                },
+                            },
+                            AuthoredBehaviorStepDto {
+                                step_id: "close-later".to_owned(),
+                                after_step_ids: vec!["open-now".to_owned()],
+                                delay_ticks: 120,
+                                operations: {
+                                    let mut operations = vec![transition("close")];
+                                    operations.extend(realize([0.0, 0.0, 0.0], true));
+                                    operations
+                                },
+                            },
+                        ],
+                    }],
+                },
+            },
+        ]
+    }
+
+    fn authored_behavior_composition() -> GameplayStaticComposition {
+        let mut builder = GameplayStaticCompositionBuilder::new();
+        builder.include_standard_owner_events();
+        builder.build().expect("authored behavior composition")
+    }
+
+    fn authored_behavior_batch(
+        scene: &FlatSceneDocument,
+        composition: &GameplayStaticComposition,
+    ) -> AdmittedRuntimeProjectSourceBatch {
+        authored_behavior_batch_with_documents(scene, composition, authored_behavior_documents())
+    }
+
+    fn authored_behavior_batch_with_documents(
+        scene: &FlatSceneDocument,
+        composition: &GameplayStaticComposition,
+        documents: Vec<ProjectContentDocumentDto>,
+    ) -> AdmittedRuntimeProjectSourceBatch {
+        let scene_dto = project_scene_document_dto(scene);
+        let gameplay =
+            GameplayProjectContentAdmission::new(composition.project_configuration_authority());
+        let outcome = validate_project_content_documents(
+            documents,
+            ProjectContentValidationContext {
+                scenes: std::slice::from_ref(&scene_dto),
+                entry_scene_id: Some(scene_dto.id),
+                gameplay: &gameplay,
+                reference_revision: 0,
+            },
+        );
+        assert!(outcome.result.accepted, "{:?}", outcome.result.diagnostics);
+        let files = outcome
+            .result
+            .canonical_files
+            .into_iter()
+            .map(|file| (file.document_id, file.canonical_json.into_bytes()))
+            .collect::<Vec<_>>();
+        admitted_batch(
+            scene,
+            files
+                .iter()
+                .map(|(path, bytes)| (path.as_str(), bytes.clone()))
+                .collect(),
+        )
     }
 
     fn entity_document() -> ProjectContentDocumentDto {
@@ -1828,5 +2157,288 @@ mod tests {
         ] {
             assert_eq!(map_project_diagnostic(diagnostic).code, expected);
         }
+    }
+
+    #[test]
+    fn authored_program_identity_ignores_provenance_but_rejects_semantic_restore_drift() {
+        let scene = authored_behavior_scene(11);
+        let baseline_composition = authored_behavior_composition();
+        let baseline_admission = compile_runtime_project_admission(
+            authored_behavior_batch(&scene, &baseline_composition),
+            baseline_composition,
+        )
+        .expect("baseline authored admission");
+        let baseline_hash = baseline_admission
+            .authored_program
+            .as_ref()
+            .expect("baseline authored program")
+            .program_hash
+            .clone();
+
+        let mut provenance_documents = authored_behavior_documents();
+        let provenance_package = provenance_documents
+            .iter_mut()
+            .find_map(|document| match document {
+                ProjectContentDocumentDto::BehaviorPackage { package, .. } => Some(package),
+                _ => None,
+            })
+            .expect("provenance package");
+        provenance_package.provenance.source_path = "src/renamed-doors.ts".to_owned();
+        provenance_package.provenance.source_hash = "fnv1a64:renamed-source".to_owned();
+        let provenance_composition = authored_behavior_composition();
+        let provenance_admission = compile_runtime_project_admission(
+            authored_behavior_batch_with_documents(
+                &scene,
+                &provenance_composition,
+                provenance_documents,
+            ),
+            provenance_composition,
+        )
+        .expect("provenance-only authored admission");
+        assert_eq!(
+            provenance_admission
+                .authored_program
+                .as_ref()
+                .expect("provenance authored program")
+                .program_hash,
+            baseline_hash,
+            "source location and formatting identity must not alter executable semantics"
+        );
+
+        let mut semantic_documents = authored_behavior_documents();
+        let semantic_package = semantic_documents
+            .iter_mut()
+            .find_map(|document| match document {
+                ProjectContentDocumentDto::BehaviorPackage { package, .. } => Some(package),
+                _ => None,
+            })
+            .expect("semantic package");
+        let open_offset = semantic_package
+            .behaviors
+            .iter_mut()
+            .flat_map(|behavior| behavior.steps.iter_mut())
+            .flat_map(|step| step.operations.iter_mut())
+            .flat_map(|operation| operation.arguments.iter_mut())
+            .find_map(|argument| match &mut argument.value {
+                AuthoredBehaviorValueDto::Vector3 { value } if *value == [0.0, 3.0, 0.0] => {
+                    Some(value)
+                }
+                _ => None,
+            })
+            .expect("open offset");
+        *open_offset = [0.0, 4.0, 0.0];
+        let semantic_composition = authored_behavior_composition();
+        let semantic_admission = compile_runtime_project_admission(
+            authored_behavior_batch_with_documents(
+                &scene,
+                &semantic_composition,
+                semantic_documents,
+            ),
+            semantic_composition,
+        )
+        .expect("semantic-drift authored admission");
+        assert_ne!(
+            semantic_admission
+                .authored_program
+                .as_ref()
+                .expect("semantic authored program")
+                .program_hash,
+            baseline_hash
+        );
+
+        let actor = baseline_admission
+            .runtime_entity_seeds
+            .iter()
+            .find(|seed| seed.instance_id == "fixture.actor.instance")
+            .expect("actor seed")
+            .entity;
+        let mut baseline_host = GameplayRuntimeHost::activate_validated_project(baseline_admission)
+            .expect("baseline activation");
+        baseline_host
+            .set_actor_translation_and_reconcile(actor, [10.0, 0.0, 0.0], 1)
+            .expect("baseline schedules a delayed continuation");
+        let snapshot = baseline_host.compose_snapshot().expect("baseline snapshot");
+        let restore_error = match GameplayRuntimeHost::restore_validated_project(
+            semantic_admission,
+            &snapshot.text,
+        ) {
+            Ok(_) => panic!("semantic drift must reject the saved authored continuation"),
+            Err(error) => error,
+        };
+        assert!(restore_error
+            .to_string()
+            .contains("saved authored program identity does not match admitted content"));
+    }
+
+    #[test]
+    fn authored_behavior_runs_through_project_admission_scheduler_and_fresh_restore() {
+        let scene = authored_behavior_scene(12);
+        let composition = authored_behavior_composition();
+        let admission = compile_runtime_project_admission(
+            authored_behavior_batch(&scene, &composition),
+            composition,
+        )
+        .expect("authored behavior project admission");
+        let door = admission
+            .runtime_entity_seeds
+            .iter()
+            .find(|seed| seed.instance_id == "fixture.door.instance")
+            .expect("door seed")
+            .entity;
+        let actor = admission
+            .runtime_entity_seeds
+            .iter()
+            .find(|seed| seed.instance_id == "fixture.actor.instance")
+            .expect("actor seed")
+            .entity;
+        assert!(admission.authored_program.is_some());
+
+        let mut host = GameplayRuntimeHost::activate_validated_project(admission)
+            .expect("validated behavior project activation");
+        let receipt = host
+            .set_actor_translation_and_reconcile(actor, [10.0, 0.0, 0.0], 1)
+            .expect("entering the authored trigger executes the package");
+        assert!(receipt
+            .gameplay_events
+            .iter()
+            .any(|event| event.event == StandardGameplayEventKind::TriggerEntered.contract()));
+        assert!(
+            receipt
+                .reactions
+                .iter()
+                .all(|reaction| reaction.observe.accepted()),
+            "{:?}",
+            receipt
+                .reactions
+                .iter()
+                .flat_map(|reaction| reaction.observe.diagnostics.iter())
+                .collect::<Vec<_>>()
+        );
+        assert!(
+            receipt
+                .reactions
+                .iter()
+                .flat_map(|reaction| reaction.observe.routing.iter())
+                .all(|routing| routing.accepted),
+            "invocations={:?} routing={:?}",
+            receipt
+                .reactions
+                .iter()
+                .flat_map(|reaction| reaction.observe.invocations.iter())
+                .collect::<Vec<_>>(),
+            receipt
+                .reactions
+                .iter()
+                .flat_map(|reaction| reaction.observe.routing.iter())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            host.authored_program
+                .as_ref()
+                .expect("active authored program")
+                .accepted_facts()
+                .len(),
+            3,
+            "state, transform, and collision must each record an accepted owner fact"
+        );
+        assert_eq!(host.scheduler_readout().pending_action_count, 1);
+
+        let entities = host.take_entity_authority().expect("entity authority");
+        assert_eq!(
+            entities
+                .transform(door)
+                .expect("door transform")
+                .transform
+                .translation
+                .to_array(),
+            [0.0, 3.0, 5.0]
+        );
+        assert_eq!(
+            entities
+                .capability_activation(door, core_entity::ActivatableCapabilityKind::Collision,)
+                .expect("door collision activation")
+                .presence,
+            core_entity::CapabilityActivationPresence::Inactive
+        );
+        host.install_entity_authority(entities)
+            .expect("return entity authority");
+
+        let snapshot = host.compose_snapshot().expect("behavior snapshot");
+        let before_restore = host.readout();
+        drop(host);
+
+        let restore_composition = authored_behavior_composition();
+        let restore_admission = compile_runtime_project_admission(
+            authored_behavior_batch(&scene, &restore_composition),
+            restore_composition,
+        )
+        .expect("fresh-process project admission");
+        let mut restored =
+            GameplayRuntimeHost::restore_validated_project(restore_admission, &snapshot.text)
+                .expect("fresh-process behavior restore");
+        assert_eq!(
+            restored.readout().runtime_host_hash,
+            before_restore.runtime_host_hash
+        );
+        assert_eq!(restored.scheduler_readout().pending_actions.len(), 1);
+        restored
+            .set_actor_translation_and_reconcile(actor, [0.0, 0.0, 5.0], 120)
+            .expect("actor can occupy the closing doorway");
+        restored
+            .tick(121)
+            .expect("unsafe persisted close remains retryable");
+        assert_eq!(
+            restored.scheduler_readout().outstanding_dispatch_count,
+            1,
+            "an occupied door must retain its Rust-owned continuation"
+        );
+        let occupied_entities = restored
+            .take_entity_authority()
+            .expect("occupied authority");
+        assert_eq!(
+            occupied_entities
+                .transform(door)
+                .expect("occupied door transform")
+                .transform
+                .translation
+                .to_array(),
+            [0.0, 3.0, 5.0]
+        );
+        assert_eq!(
+            occupied_entities
+                .capability_activation(door, core_entity::ActivatableCapabilityKind::Collision,)
+                .expect("occupied door collision activation")
+                .presence,
+            core_entity::CapabilityActivationPresence::Inactive
+        );
+        restored
+            .install_entity_authority(occupied_entities)
+            .expect("return occupied authority");
+        restored
+            .set_actor_translation_and_reconcile(actor, [15.0, 0.0, 0.0], 122)
+            .expect("actor clears the closing doorway");
+        restored
+            .tick(122)
+            .expect("the retained authored continuation closes once safe");
+        assert_eq!(restored.scheduler_readout().pending_action_count, 0);
+        let entities = restored
+            .take_entity_authority()
+            .expect("restored authority");
+        assert_eq!(
+            entities
+                .transform(door)
+                .expect("restored door transform")
+                .transform
+                .translation
+                .to_array(),
+            [0.0, 0.0, 5.0]
+        );
+        assert_eq!(
+            entities
+                .capability_activation(door, core_entity::ActivatableCapabilityKind::Collision,)
+                .expect("restored door collision activation")
+                .presence,
+            core_entity::CapabilityActivationPresence::Active
+        );
     }
 }

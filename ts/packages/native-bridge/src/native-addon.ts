@@ -142,8 +142,19 @@ interface NativeGameplayPrefabPartInteractionReceipt {
   readonly instance: number;
   readonly role: string;
   readonly target: number;
+  readonly distanceMillimeters: number;
   readonly eventHash: string;
   readonly reactionFrameHash: string;
+  readonly runtimeSessionHash: string;
+}
+
+interface NativeGameplayPrefabPartInteractionTargetReadout {
+  readonly actor: number;
+  readonly role: string;
+  readonly eligible: boolean;
+  readonly instance: number | null;
+  readonly target: number | null;
+  readonly distanceMillimeters: number | null;
   readonly runtimeSessionHash: string;
 }
 
@@ -300,12 +311,18 @@ interface NativeAddonBindings {
   applyGameplayPrefabPartInteraction(
     handle: number,
     actor: number,
-    instance: number,
     role: string,
-    expectedTarget: number,
+    maxDistanceMillimeters: number,
     tick: number,
     expectedRuntimeSessionHash: string,
   ): NativeGameplayPrefabPartInteractionReceipt;
+  readGameplayPrefabPartInteractionTarget(
+    handle: number,
+    actor: number,
+    role: string,
+    maxDistanceMillimeters: number,
+    expectedRuntimeSessionHash: string,
+  ): NativeGameplayPrefabPartInteractionTargetReadout;
   invokeGameExtensionWeaponEffect(
     handle: number,
     hookJson: string,

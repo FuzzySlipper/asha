@@ -29,6 +29,7 @@ enum SceneInstanceReference {
         transform_ok: bool,
     },
     Prefab {
+        scene_id: SceneId,
         prefab_id: u64,
     },
 }
@@ -66,8 +67,702 @@ pub(super) fn validate_document_set(
         &configuration_schemas,
         &mut diagnostics,
     );
+    validate_authored_behaviors(
+        documents,
+        &index,
+        entry_scene_id,
+        gameplay,
+        &mut diagnostics,
+    );
     validate_presentation(documents, &index, &mut diagnostics);
     diagnostics
+}
+
+fn validate_authored_behaviors(
+    documents: &[ProjectContentDocumentDto],
+    index: &ReferenceIndex<'_>,
+    entry_scene_id: Option<SceneId>,
+    gameplay: &dyn crate::ProjectContentGameplayAdmission,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    let mut package_ids = BTreeSet::new();
+    for document in documents {
+        let ProjectContentDocumentDto::BehaviorPackage {
+            document_id,
+            package,
+        } = document
+        else {
+            continue;
+        };
+        let package_diagnostic_start = diagnostics.len();
+        let base = "package";
+        let _ = gameplay;
+        if package.schema_version != AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidField,
+                Some(document_id),
+                "package.schemaVersion",
+                "unsupported authored-behavior package schema version",
+            );
+        }
+        validate_authored_id(
+            &package.package_id,
+            document_id,
+            "package.packageId",
+            diagnostics,
+        );
+        if !package_ids.insert(package.package_id.as_str()) {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                "package.packageId",
+                "authored-behavior package ids must be unique across the project",
+            );
+        }
+        if package.provenance.sdk_id != "@asha/game-workspace"
+            || package.provenance.sdk_version != AUTHORED_BEHAVIOR_VOCABULARY_VERSION
+            || package.provenance.vocabulary_hash != AUTHORED_BEHAVIOR_VOCABULARY_HASH
+            || !valid_authored_source_module(&package.provenance.source_module)
+            || !valid_authored_source_path(&package.provenance.source_path)
+            || package.provenance.source_hash.trim().is_empty()
+        {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidField,
+                Some(document_id),
+                "package.provenance",
+                "behavior provenance must identify the current generated Engine vocabulary, a stable source module/path, and a nonempty source hash",
+            );
+        }
+        if package.state_machines.is_empty()
+            || package.state_machines.len()
+                > usize::try_from(AUTHORED_BEHAVIOR_MAX_MACHINES).unwrap_or(usize::MAX)
+            || package.behaviors.is_empty()
+            || package.behaviors.len()
+                > usize::try_from(AUTHORED_BEHAVIOR_MAX_BEHAVIORS).unwrap_or(usize::MAX)
+        {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                base,
+                "authored behavior package exceeds its machine/behavior budget or is empty",
+            );
+        }
+
+        let mut machines = BTreeMap::new();
+        for (machine_index, machine) in package.state_machines.iter().enumerate() {
+            let path = format!("package.stateMachines[{machine_index}]");
+            validate_authored_id(
+                &machine.machine_id,
+                document_id,
+                &format!("{path}.machineId"),
+                diagnostics,
+            );
+            if machines
+                .insert(machine.machine_id.as_str(), machine)
+                .is_some()
+            {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::InvalidDocument,
+                    Some(document_id),
+                    &format!("{path}.machineId"),
+                    "machine ids must be unique within a package",
+                );
+            }
+            validate_authored_machine(
+                document_id,
+                &path,
+                machine,
+                index,
+                entry_scene_id,
+                diagnostics,
+            );
+        }
+
+        let trigger_instances = documents
+            .iter()
+            .filter_map(|content| match content {
+                ProjectContentDocumentDto::GameplayConfiguration { document, .. } => {
+                    Some(document.triggers.iter())
+                }
+                _ => None,
+            })
+            .flatten()
+            .map(|trigger| trigger.scene_instance_id.as_str())
+            .collect::<BTreeSet<_>>();
+        let mut behavior_ids = BTreeSet::new();
+        for (behavior_index, behavior) in package.behaviors.iter().enumerate() {
+            let path = format!("package.behaviors[{behavior_index}]");
+            validate_authored_id(
+                &behavior.behavior_id,
+                document_id,
+                &format!("{path}.behaviorId"),
+                diagnostics,
+            );
+            if !behavior_ids.insert(behavior.behavior_id.as_str()) {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::InvalidDocument,
+                    Some(document_id),
+                    &format!("{path}.behaviorId"),
+                    "behavior ids must be unique within a package",
+                );
+            }
+            validate_authored_signal(
+                document_id,
+                &path,
+                &behavior.signal,
+                index,
+                entry_scene_id,
+                &trigger_instances,
+                diagnostics,
+            );
+            validate_authored_sequence(
+                document_id,
+                &path,
+                behavior,
+                &machines,
+                index,
+                entry_scene_id,
+                diagnostics,
+            );
+        }
+        if valid_authored_source_module(&package.provenance.source_module)
+            && valid_authored_source_path(&package.provenance.source_path)
+        {
+            for diagnostic in &mut diagnostics[package_diagnostic_start..] {
+                if diagnostic.document_id.as_deref() == Some(document_id.as_str()) {
+                    diagnostic.message = format!(
+                        "[{}:{}] {}",
+                        package.provenance.source_module,
+                        package.provenance.source_path,
+                        diagnostic.message
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn validate_authored_machine(
+    document_id: &str,
+    path: &str,
+    machine: &AuthoredBehaviorStateMachineDto,
+    index: &ReferenceIndex<'_>,
+    entry_scene_id: Option<SceneId>,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    match index.scene_instances.get(&machine.target_scene_instance_id) {
+        Some(SceneInstanceReference::EntityDefinition { scene_id, .. })
+            if Some(*scene_id) == entry_scene_id => {}
+        _ => push(
+            diagnostics,
+            ProjectContentDiagnosticCode::UnknownReference,
+            Some(document_id),
+            &format!("{path}.targetSceneInstanceId"),
+            "state-machine target must be an entity-definition instance in the entry scene",
+        ),
+    }
+    if machine.states.is_empty()
+        || machine.states.len()
+            > usize::try_from(AUTHORED_BEHAVIOR_MAX_STATES_PER_MACHINE).unwrap_or(usize::MAX)
+        || machine.transitions.is_empty()
+        || machine.transitions.len()
+            > usize::try_from(AUTHORED_BEHAVIOR_MAX_TRANSITIONS_PER_MACHINE).unwrap_or(usize::MAX)
+    {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidDocument,
+            Some(document_id),
+            path,
+            "state machine exceeds its state/transition budget or is empty",
+        );
+    }
+    let mut states = BTreeSet::new();
+    for (state_index, state) in machine.states.iter().enumerate() {
+        validate_authored_id(
+            &state.state_id,
+            document_id,
+            &format!("{path}.states[{state_index}].stateId"),
+            diagnostics,
+        );
+        if !states.insert(state.state_id.as_str()) {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.states[{state_index}].stateId"),
+                "state ids must be unique within a machine",
+            );
+        }
+    }
+    if !states.contains(machine.initial_state_id.as_str()) {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::UnknownReference,
+            Some(document_id),
+            &format!("{path}.initialStateId"),
+            "initial state does not resolve within the machine",
+        );
+    }
+    let mut transitions = BTreeSet::new();
+    for (transition_index, transition) in machine.transitions.iter().enumerate() {
+        validate_authored_id(
+            &transition.transition_id,
+            document_id,
+            &format!("{path}.transitions[{transition_index}].transitionId"),
+            diagnostics,
+        );
+        if !transitions.insert(transition.transition_id.as_str())
+            || transition.from_state_id == transition.to_state_id
+        {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.transitions[{transition_index}]"),
+                "transition ids must be unique and transitions must change state",
+            );
+        }
+        if !states.contains(transition.from_state_id.as_str())
+            || !states.contains(transition.to_state_id.as_str())
+        {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::UnknownReference,
+                Some(document_id),
+                &format!("{path}.transitions[{transition_index}]"),
+                "transition states must resolve within the machine",
+            );
+        }
+    }
+}
+
+fn validate_authored_signal(
+    document_id: &str,
+    path: &str,
+    signal: &AuthoredBehaviorSignalDto,
+    index: &ReferenceIndex<'_>,
+    entry_scene_id: Option<SceneId>,
+    trigger_instances: &BTreeSet<&str>,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    if signal.arguments.len()
+        > usize::try_from(AUTHORED_BEHAVIOR_MAX_ARGUMENTS).unwrap_or(usize::MAX)
+        || !unique_authored_arguments(&signal.arguments)
+        || signal.signal.version != AUTHORED_BEHAVIOR_VOCABULARY_VERSION
+    {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidField,
+            Some(document_id),
+            &format!("{path}.signal"),
+            "signal arguments must be bounded and unique and the signal version must be supported",
+        );
+        return;
+    }
+    match signal.signal.semantic_id.as_str() {
+        AUTHORED_SIGNAL_PREFAB_PART_INTERACTED => {
+            let Some(AuthoredBehaviorValueDto::PrefabPart {
+                scene_instance_id,
+                role,
+            }) = authored_argument(&signal.arguments, "part")
+            else {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::InvalidField,
+                    Some(document_id),
+                    &format!("{path}.signal.arguments"),
+                    "prefab-part-interacted requires one typed `part` argument",
+                );
+                return;
+            };
+            if signal.arguments.len() != 1
+                || !matches!(
+                    index.scene_instances.get(scene_instance_id),
+                    Some(SceneInstanceReference::Prefab {
+                        scene_id,
+                        prefab_id,
+                    }) if Some(*scene_id) == entry_scene_id
+                        && index
+                            .prefabs
+                            .get(prefab_id)
+                            .is_some_and(|roles| roles.contains(role))
+                )
+            {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::UnknownReference,
+                    Some(document_id),
+                    &format!("{path}.signal"),
+                    "prefab interaction signal must resolve an instantiated prefab part role",
+                );
+            }
+        }
+        AUTHORED_SIGNAL_TRIGGER_ENTERED => {
+            let Some(AuthoredBehaviorValueDto::SceneEntity { scene_instance_id }) =
+                authored_argument(&signal.arguments, "trigger")
+            else {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::InvalidField,
+                    Some(document_id),
+                    &format!("{path}.signal.arguments"),
+                    "trigger-entered requires one typed `trigger` argument",
+                );
+                return;
+            };
+            let in_entry_scene = matches!(
+                index.scene_instances.get(scene_instance_id),
+                Some(SceneInstanceReference::EntityDefinition { scene_id, .. })
+                    if Some(*scene_id) == entry_scene_id
+            );
+            if signal.arguments.len() != 1
+                || !in_entry_scene
+                || !trigger_instances.contains(scene_instance_id.as_str())
+            {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::UnknownReference,
+                    Some(document_id),
+                    &format!("{path}.signal"),
+                    "trigger-entered signal must reference an admitted entry-scene trigger definition",
+                );
+            }
+        }
+        AUTHORED_SIGNAL_COMBAT_ENTITY_DEFEATED => {
+            let valid = matches!(
+                authored_argument(&signal.arguments, "target"),
+                Some(AuthoredBehaviorValueDto::SceneEntity { scene_instance_id })
+                    if entry_scene_entity(index, scene_instance_id, entry_scene_id)
+            );
+            if signal.arguments.len() != 1 || !valid {
+                push(
+                    diagnostics,
+                    ProjectContentDiagnosticCode::UnknownReference,
+                    Some(document_id),
+                    &format!("{path}.signal"),
+                    "combat-entity-defeated requires one entry-scene entity `target`",
+                );
+            }
+        }
+        _ => push(
+            diagnostics,
+            ProjectContentDiagnosticCode::UnknownReference,
+            Some(document_id),
+            &format!("{path}.signal.signal.semanticId"),
+            "signal semantic id is not published by the Rust authored-program catalog",
+        ),
+    }
+}
+
+fn validate_authored_sequence(
+    document_id: &str,
+    path: &str,
+    behavior: &AuthoredBehaviorDefinitionDto,
+    machines: &BTreeMap<&str, &AuthoredBehaviorStateMachineDto>,
+    index: &ReferenceIndex<'_>,
+    entry_scene_id: Option<SceneId>,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    if behavior.steps.is_empty()
+        || behavior.steps.len()
+            > usize::try_from(AUTHORED_BEHAVIOR_MAX_STEPS_PER_BEHAVIOR).unwrap_or(usize::MAX)
+    {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidDocument,
+            Some(document_id),
+            &format!("{path}.steps"),
+            "behavior transition sequence exceeds its step budget or is empty",
+        );
+        return;
+    }
+    let mut step_ids = BTreeSet::new();
+    for (step_index, step) in behavior.steps.iter().enumerate() {
+        validate_authored_id(
+            &step.step_id,
+            document_id,
+            &format!("{path}.steps[{step_index}].stepId"),
+            diagnostics,
+        );
+        if !step_ids.insert(step.step_id.as_str()) {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.steps"),
+                "step ids must be unique within a behavior",
+            );
+        }
+        if step.after_step_ids.len() > 1
+            || step.delay_ticks > AUTHORED_BEHAVIOR_MAX_DELAY_TICKS
+            || step.operations.is_empty()
+            || step.operations.len()
+                > usize::try_from(AUTHORED_BEHAVIOR_MAX_OPERATIONS_PER_STEP).unwrap_or(usize::MAX)
+        {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.steps[{step_index}]"),
+                "a behavior step must contain bounded operations, at most one predecessor, and a bounded delay",
+            );
+        }
+        if step.after_step_ids.is_empty() && step.delay_ticks != 0 {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.steps[{step_index}].delayTicks"),
+                "a root step executes immediately; only continuations may be delayed",
+            );
+        }
+        for (operation_index, operation) in step.operations.iter().enumerate() {
+            validate_authored_operation(
+                document_id,
+                &format!("{path}.steps[{step_index}].operations[{operation_index}]"),
+                operation,
+                machines,
+                index,
+                entry_scene_id,
+                diagnostics,
+            );
+        }
+    }
+    let mut remaining = behavior.steps.iter().collect::<Vec<_>>();
+    let mut resolved = BTreeSet::new();
+    while !remaining.is_empty() {
+        let before = remaining.len();
+        remaining.retain(|step| {
+            let ready = step
+                .after_step_ids
+                .iter()
+                .all(|dependency| resolved.contains(dependency.as_str()));
+            if ready {
+                resolved.insert(step.step_id.as_str());
+            }
+            !ready
+        });
+        if remaining.len() == before {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::InvalidDocument,
+                Some(document_id),
+                &format!("{path}.steps"),
+                "step dependencies contain a cycle or unknown step reference",
+            );
+            break;
+        }
+    }
+    for (condition_index, condition) in behavior.conditions.iter().enumerate() {
+        let valid = condition.predicate.version == AUTHORED_BEHAVIOR_VOCABULARY_VERSION
+            && condition.predicate.semantic_id == AUTHORED_PREDICATE_STATE_IS
+            && condition.arguments.len() == 1
+            && unique_authored_arguments(&condition.arguments)
+            && matches!(
+                authored_argument(&condition.arguments, "state"),
+                Some(AuthoredBehaviorValueDto::State { machine_id, state_id })
+                    if authored_state_exists(machines, machine_id, state_id)
+            );
+        if !valid {
+            push(
+                diagnostics,
+                ProjectContentDiagnosticCode::UnknownReference,
+                Some(document_id),
+                &format!("{path}.conditions[{condition_index}]"),
+                "condition must use the published state-is predicate with one valid typed state argument",
+            );
+        }
+    }
+    if !behavior
+        .steps
+        .iter()
+        .any(|step| step.delay_ticks == 0 && step.after_step_ids.is_empty())
+    {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidDocument,
+            Some(document_id),
+            &format!("{path}.steps"),
+            "behavior requires at least one immediate root step",
+        );
+    }
+}
+
+fn validate_authored_operation(
+    document_id: &str,
+    path: &str,
+    operation: &AuthoredBehaviorOperationDto,
+    machines: &BTreeMap<&str, &AuthoredBehaviorStateMachineDto>,
+    index: &ReferenceIndex<'_>,
+    entry_scene_id: Option<SceneId>,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    if operation.verb.version != AUTHORED_BEHAVIOR_VOCABULARY_VERSION
+        || operation.arguments.len()
+            > usize::try_from(AUTHORED_BEHAVIOR_MAX_ARGUMENTS).unwrap_or(usize::MAX)
+        || !unique_authored_arguments(&operation.arguments)
+    {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidField,
+            Some(document_id),
+            path,
+            "verb arguments must be bounded and unique and the verb version must be supported",
+        );
+        return;
+    }
+    let valid = match operation.verb.semantic_id.as_str() {
+        AUTHORED_VERB_TRANSITION_STATE => {
+            operation.arguments.len() == 2
+                && matches!(
+                    authored_argument(&operation.arguments, "machine"),
+                    Some(AuthoredBehaviorValueDto::StateMachine { machine_id })
+                        if machines.contains_key(machine_id.as_str())
+                )
+                && matches!(
+                    (
+                        authored_argument(&operation.arguments, "machine"),
+                        authored_argument(&operation.arguments, "transition"),
+                    ),
+                    (
+                        Some(AuthoredBehaviorValueDto::StateMachine { machine_id }),
+                        Some(AuthoredBehaviorValueDto::Text { value }),
+                    ) if machines.get(machine_id.as_str()).is_some_and(|machine| {
+                        machine.transitions.iter().any(|transition| transition.transition_id == *value)
+                    })
+                )
+        }
+        AUTHORED_VERB_SET_RELATIVE_TRANSLATION => {
+            operation.arguments.len() == 2
+                && matches!(
+                    authored_argument(&operation.arguments, "entity"),
+                    Some(AuthoredBehaviorValueDto::SceneEntity { scene_instance_id })
+                        if entry_scene_entity(index, scene_instance_id, entry_scene_id)
+                )
+                && matches!(
+                    authored_argument(&operation.arguments, "value"),
+                    Some(AuthoredBehaviorValueDto::Vector3 { value })
+                        if value.iter().all(|component| component.is_finite())
+                )
+        }
+        AUTHORED_VERB_SET_CAPABILITY_ACTIVE => {
+            operation.arguments.len() == 3
+                && matches!(
+                    authored_argument(&operation.arguments, "entity"),
+                    Some(AuthoredBehaviorValueDto::SceneEntity { scene_instance_id })
+                        if entry_scene_entity(index, scene_instance_id, entry_scene_id)
+                )
+                && matches!(
+                    authored_argument(&operation.arguments, "capability"),
+                    Some(AuthoredBehaviorValueDto::Text { value }) if value == "collision"
+                )
+                && matches!(
+                    authored_argument(&operation.arguments, "active"),
+                    Some(AuthoredBehaviorValueDto::Boolean { .. })
+                )
+        }
+        _ => false,
+    };
+    if !valid {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::UnknownReference,
+            Some(document_id),
+            path,
+            "verb semantic id or typed arguments are not published by the Rust authored-program catalog",
+        );
+    }
+}
+
+fn authored_state_exists(
+    machines: &BTreeMap<&str, &AuthoredBehaviorStateMachineDto>,
+    machine_id: &str,
+    state_id: &str,
+) -> bool {
+    machines.get(machine_id).is_some_and(|machine| {
+        machine
+            .states
+            .iter()
+            .any(|state| state.state_id == state_id)
+    })
+}
+
+fn authored_argument<'a>(
+    arguments: &'a [AuthoredBehaviorArgumentDto],
+    name: &str,
+) -> Option<&'a AuthoredBehaviorValueDto> {
+    arguments
+        .iter()
+        .find(|argument| argument.name == name)
+        .map(|argument| &argument.value)
+}
+
+fn unique_authored_arguments(arguments: &[AuthoredBehaviorArgumentDto]) -> bool {
+    arguments
+        .iter()
+        .map(|argument| argument.name.as_str())
+        .collect::<BTreeSet<_>>()
+        .len()
+        == arguments.len()
+}
+
+fn entry_scene_entity(
+    index: &ReferenceIndex<'_>,
+    scene_instance_id: &str,
+    entry_scene_id: Option<SceneId>,
+) -> bool {
+    matches!(
+        index.scene_instances.get(scene_instance_id),
+        Some(SceneInstanceReference::EntityDefinition { scene_id, .. })
+            if Some(*scene_id) == entry_scene_id
+    )
+}
+
+fn validate_authored_id(
+    value: &str,
+    document_id: &str,
+    path: &str,
+    diagnostics: &mut Vec<ProjectContentDiagnosticDto>,
+) {
+    let valid = !value.is_empty()
+        && value.len() <= 96
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'));
+    if !valid {
+        push(
+            diagnostics,
+            ProjectContentDiagnosticCode::InvalidField,
+            Some(document_id),
+            path,
+            "authored behavior ids must use 1-96 ASCII letters, digits, dot, dash, or underscore",
+        );
+    }
+}
+
+fn valid_authored_source_module(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 256
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'@' | b'/' | b'.' | b'-' | b'_')
+        })
+}
+
+fn valid_authored_source_path(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 512
+        && !value.starts_with('/')
+        && !value.contains('\\')
+        && value.bytes().all(|byte| byte.is_ascii_graphic())
+        && value
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
 }
 
 fn index_entities<'a>(
@@ -314,6 +1009,7 @@ fn index_scenes(
                         }
                     }
                     SceneInstanceReference::Prefab {
+                        scene_id: scene.id,
                         prefab_id: *prefab_id,
                     }
                 }
@@ -610,7 +1306,7 @@ fn validate_gameplay(
                 );
                 continue;
             };
-            let Some(SceneInstanceReference::Prefab { prefab_id }) =
+            let Some(SceneInstanceReference::Prefab { prefab_id, .. }) =
                 index.scene_instances.get(&layer.scene_instance_id)
             else {
                 push(
@@ -1668,6 +2364,7 @@ pub(super) fn field_metadata(
                     }
                 }
             }
+            ProjectContentDocumentDto::BehaviorPackage { .. } => {}
         }
     }
     fields.sort_by(|left, right| {

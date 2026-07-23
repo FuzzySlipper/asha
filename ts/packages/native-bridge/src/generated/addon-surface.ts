@@ -57,6 +57,7 @@ const GENERATED_NATIVE_ADDON_EXPORT_NAMES = [
   'applyFpsPrimaryFire',
   'readComposedRuntimeSession',
   'readGameplayModuleView',
+  'readGameplayPrefabPartInteractionTarget',
   'applyGameplayPrefabPartInteraction',
   'invokeGameExtensionWeaponEffect',
   'validateGameRuleCatalog',

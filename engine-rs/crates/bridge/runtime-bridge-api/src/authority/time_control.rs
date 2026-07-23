@@ -175,7 +175,7 @@ fn execute_fixed_ticks(
     };
     for offset in 0..count {
         let tick = first_tick + u64::from(offset);
-        let tick_result = execute_fixed_tick(bridge, tick);
+        let tick_result = execute_fixed_tick(bridge, tick)?;
         result.tick = tick_result.tick;
         result.diff_count += tick_result.diff_count;
     }
@@ -184,14 +184,19 @@ fn execute_fixed_ticks(
 
 /// Run one fixed simulation tick. Every cadence and exact-step path must call
 /// this function rather than editing `authority_tick` directly.
-fn execute_fixed_tick(bridge: &mut EngineBridge, tick: u64) -> StepResult {
+fn execute_fixed_tick(bridge: &mut EngineBridge, tick: u64) -> BridgeResult<StepResult> {
+    // Authored delayed verbs advance on the same Rust-owned fixed clock as the
+    // simulation. There is no browser timer or downstream scheduler surrogate.
+    bridge.with_static_gameplay_runtime_at_tick("fixed_tick.authored_gameplay", tick, |host| {
+        host.tick(tick).map(|_| ())
+    })?;
     let outcome = bridge.time.simulation.execute_tick(tick);
     bridge.time.authority_tick = outcome.tick;
-    StepResult {
+    Ok(StepResult {
         tick: outcome.tick,
         diff_count: u32::try_from(outcome.events_applied)
             .expect("bounded fixed-tick event count fits the bridge result"),
-    }
+    })
 }
 
 #[cfg(test)]

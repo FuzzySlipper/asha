@@ -17,7 +17,133 @@ import type { ProjectInputCatalog } from './input.js';
 
 export const PROJECT_CONTENT_SCHEMA_VERSION = 1;
 
-export type ProjectContentDocumentKind = 'entityDefinition' | 'assetCatalog' | 'prefabRegistry' | 'gameplayConfiguration' | 'presentationCatalog' | 'inputCatalog';
+export const AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION = 1;
+
+export const AUTHORED_BEHAVIOR_VOCABULARY_VERSION = 1;
+
+export const AUTHORED_BEHAVIOR_VOCABULARY_HASH = "asha.authored-behavior.v1:typed-semantic-refs;symbolic-state;direct-owner-verbs";
+
+export const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED = "asha.signal.prefab-part-interacted";
+
+export const AUTHORED_SIGNAL_TRIGGER_ENTERED = "asha.signal.trigger-entered";
+
+export const AUTHORED_SIGNAL_COMBAT_ENTITY_DEFEATED = "asha.signal.combat-entity-defeated";
+
+export const AUTHORED_PREDICATE_STATE_IS = "asha.predicate.state-is";
+
+export const AUTHORED_VERB_TRANSITION_STATE = "asha.verb.transition-state";
+
+export const AUTHORED_VERB_SET_RELATIVE_TRANSLATION = "asha.verb.set-relative-translation";
+
+export const AUTHORED_VERB_SET_CAPABILITY_ACTIVE = "asha.verb.set-capability-active";
+
+export const AUTHORED_BEHAVIOR_MAX_MACHINES = 16;
+
+export const AUTHORED_BEHAVIOR_MAX_BEHAVIORS = 64;
+
+export const AUTHORED_BEHAVIOR_MAX_STATES_PER_MACHINE = 8;
+
+export const AUTHORED_BEHAVIOR_MAX_TRANSITIONS_PER_MACHINE = 16;
+
+export const AUTHORED_BEHAVIOR_MAX_STEPS_PER_BEHAVIOR = 8;
+
+export const AUTHORED_BEHAVIOR_MAX_OPERATIONS_PER_STEP = 8;
+
+export const AUTHORED_BEHAVIOR_MAX_ARGUMENTS = 8;
+
+export const AUTHORED_BEHAVIOR_MAX_DELAY_TICKS = 3600;
+
+export type ProjectContentDocumentKind = 'entityDefinition' | 'assetCatalog' | 'prefabRegistry' | 'gameplayConfiguration' | 'presentationCatalog' | 'inputCatalog' | 'behaviorPackage';
+
+// Immutable provenance retained with a TypeScript-authored behavior package. Rust validates these identities and includes them in canonical content; none of them are executable module registration.
+export interface AuthoredBehaviorProvenance {
+  readonly sdkId: string;
+  readonly sdkVersion: number;
+  readonly vocabularyHash: string;
+  readonly sourceModule: string;
+  readonly sourcePath: string;
+  readonly sourceHash: string;
+}
+
+export interface AuthoredBehaviorState {
+  readonly stateId: string;
+}
+
+export interface AuthoredBehaviorTransition {
+  readonly transitionId: string;
+  readonly fromStateId: string;
+  readonly toStateId: string;
+}
+
+export interface AuthoredBehaviorStateMachine {
+  readonly machineId: string;
+  readonly targetSceneInstanceId: string;
+  readonly initialStateId: string;
+  readonly states: readonly AuthoredBehaviorState[];
+  readonly transitions: readonly AuthoredBehaviorTransition[];
+}
+
+// Open, versioned reference to one Rust-published authored meaning. Admission resolves this reference against the closed Engine semantic catalog; runtime never dispatches an arbitrary method name.
+export interface AuthoredBehaviorSemanticRef {
+  readonly semanticId: string;
+  readonly version: number;
+}
+
+// Typed values supplied to a Rust-published signal, predicate, or verb. The selected semantic descriptor owns the exact argument names and types.
+export type AuthoredBehaviorValue =
+  | { readonly kind: 'sceneEntity'; readonly sceneInstanceId: string }
+  | { readonly kind: 'prefabPart'; readonly sceneInstanceId: string; readonly role: string }
+  | { readonly kind: 'stateMachine'; readonly machineId: string }
+  | { readonly kind: 'state'; readonly machineId: string; readonly stateId: string }
+  | { readonly kind: 'text'; readonly value: string }
+  | { readonly kind: 'boolean'; readonly value: boolean }
+  | { readonly kind: 'integer'; readonly value: number }
+  | { readonly kind: 'number'; readonly value: number }
+  | { readonly kind: 'vector3'; readonly value: readonly [number, number, number] };
+
+export interface AuthoredBehaviorArgument {
+  readonly name: string;
+  readonly value: AuthoredBehaviorValue;
+}
+
+export interface AuthoredBehaviorSignal {
+  readonly signal: AuthoredBehaviorSemanticRef;
+  readonly arguments: readonly AuthoredBehaviorArgument[];
+}
+
+export interface AuthoredBehaviorCondition {
+  readonly predicate: AuthoredBehaviorSemanticRef;
+  readonly arguments: readonly AuthoredBehaviorArgument[];
+}
+
+export interface AuthoredBehaviorOperation {
+  readonly verb: AuthoredBehaviorSemanticRef;
+  readonly arguments: readonly AuthoredBehaviorArgument[];
+}
+
+// One bounded, atomically executed operation group. Dependencies form a DAG; delayed groups are persisted by the existing Rust scheduler.
+export interface AuthoredBehaviorStep {
+  readonly stepId: string;
+  readonly afterStepIds: readonly string[];
+  readonly delayTicks: number;
+  readonly operations: readonly AuthoredBehaviorOperation[];
+}
+
+export interface AuthoredBehaviorDefinition {
+  readonly behaviorId: string;
+  readonly signal: AuthoredBehaviorSignal;
+  readonly conditions: readonly AuthoredBehaviorCondition[];
+  readonly steps: readonly AuthoredBehaviorStep[];
+}
+
+// First-version authored behavior vocabulary. This is intentionally a small semantic family for signal-driven state transitions, not a universal graph.
+export interface AuthoredBehaviorPackage {
+  readonly schemaVersion: number;
+  readonly packageId: string;
+  readonly provenance: AuthoredBehaviorProvenance;
+  readonly stateMachines: readonly AuthoredBehaviorStateMachine[];
+  readonly behaviors: readonly AuthoredBehaviorDefinition[];
+}
 
 export interface ProjectContentSource {
   readonly sourcePath: string;
@@ -152,7 +278,8 @@ export type ProjectContentDocument =
   | { readonly kind: 'prefabRegistry'; readonly documentId: string; readonly registry: PrefabRegistry }
   | { readonly kind: 'gameplayConfiguration'; readonly documentId: string; readonly document: ProjectGameplayConfigurationDocument }
   | { readonly kind: 'presentationCatalog'; readonly documentId: string; readonly catalog: ProjectPresentationCatalog }
-  | { readonly kind: 'inputCatalog'; readonly documentId: string; readonly catalog: ProjectInputCatalog };
+  | { readonly kind: 'inputCatalog'; readonly documentId: string; readonly catalog: ProjectInputCatalog }
+  | { readonly kind: 'behaviorPackage'; readonly documentId: string; readonly package: AuthoredBehaviorPackage };
 
 export interface ProjectContentDecodeRequest {
   readonly sources: readonly ProjectContentSource[];

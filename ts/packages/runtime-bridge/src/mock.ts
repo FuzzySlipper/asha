@@ -146,6 +146,7 @@ import {
   type GameRuleRuntimeReadout,
   type GameplayModuleViewSnapshot,
   type GameplayPrefabPartInteractionReceipt,
+  type GameplayPrefabPartInteractionTargetReadout,
   type FpsRuntimeSessionRestartRequest,
   type FpsRuntimeSessionSnapshot,
   type ReplayFixture,
@@ -664,6 +665,13 @@ export class MockRuntimeBridge implements RuntimeBridge, WorkspaceAuthoringOpenA
     throw new RuntimeBridgeError(
       'operation_unimplemented',
       'reference bridge does not claim composed prefab interaction authority',
+    );
+  }
+
+  readGameplayPrefabPartInteractionTarget(): GameplayPrefabPartInteractionTargetReadout {
+    throw new RuntimeBridgeError(
+      'operation_unimplemented',
+      'reference bridge does not claim composed prefab interaction query authority',
     );
   }
 

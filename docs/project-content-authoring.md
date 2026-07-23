@@ -14,7 +14,10 @@ or JSON value bus.
 - `prefabRegistry` — prefab definitions, stable named variants, roles, and
   typed overrides;
 - `gameplayConfiguration` — provider-selected typed configuration values,
-  bindings, stable scene-instance overrides, and trigger definitions; and
+  bindings, stable scene-instance overrides, and trigger definitions;
+- `inputCatalog` — project actions, bindings, and input contexts;
+- `behaviorPackage` — immutable signal, condition, state-machine, and bounded
+  sequence declarations compiled directly by Rust project admission; and
 - `presentationCatalog` — renderer-neutral resources and animation, audio,
   particle, or overlay cue records.
 
@@ -42,6 +45,11 @@ provider, state/read/output contracts and configuration ownership, and resolves
 typed references against the project content set. Provider and
 product-specific combat or weapon vocabulary does not enter the generic
 document contract.
+
+Behavior packages are not provider configuration. They are a separate
+first-class ProjectContent kind with a closed generated vocabulary, strict Rust
+validation, and private runtime compilation. Their first vocabulary is
+documented in `topics/expression/authored-behavior-packages.md`.
 
 ## Public workflow
 

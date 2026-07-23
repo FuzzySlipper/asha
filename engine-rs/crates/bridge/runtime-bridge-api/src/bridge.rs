@@ -334,6 +334,11 @@ pub trait RuntimeBridge {
         &mut self,
         request: GameplayPrefabPartInteractionRequest,
     ) -> BridgeResult<GameplayPrefabPartInteractionReceipt>;
+    /// Resolve the nearest Rust-authorized prefab interaction target for a prompt.
+    fn read_gameplay_prefab_part_interaction_target(
+        &mut self,
+        request: GameplayPrefabPartInteractionTargetRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionTargetReadout>;
     /// Read the generated scene plus ordered non-scene projection frame.
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame>;
     /// Read bounded consumer-facing runtime status records. Observational only;

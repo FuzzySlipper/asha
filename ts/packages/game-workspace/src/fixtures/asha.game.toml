@@ -12,6 +12,7 @@ prefab_roots = ["prefabs"]
 asset_roots = ["assets"]
 replay_roots = ["replays"]
 catalog_packages = ["packages/game-catalogs"]
+behavior_packages = ["behaviors"]
 policy_packages = ["packages/game-policy"]
 
 [runtime]
@@ -25,7 +26,7 @@ backend_proof_refs = []
 [studio]
 workspace_mode = true
 attach_enabled = true
-allowed_source_writes = ["scenes", "prefabs", "assets", "packages/game-catalogs"]
+allowed_source_writes = ["scenes", "prefabs", "assets", "behaviors", "packages/game-catalogs"]
 
 [publish]
 command = "npm run build:publish"

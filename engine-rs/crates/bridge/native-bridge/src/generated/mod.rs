@@ -283,6 +283,12 @@ pub(crate) const REQUIRED_NATIVE_EXPORTS: &[(&str, &str, usize, usize)] = &[
         8388608,
     ),
     (
+        "read_gameplay_prefab_part_interaction_target",
+        "readGameplayPrefabPartInteractionTarget",
+        8388608,
+        8388608,
+    ),
+    (
         "apply_gameplay_prefab_part_interaction",
         "applyGameplayPrefabPartInteraction",
         8388608,

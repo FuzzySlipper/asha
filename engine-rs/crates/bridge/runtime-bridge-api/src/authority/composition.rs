@@ -247,6 +247,54 @@ impl EngineBridge {
         })
     }
 
+    pub fn read_gameplay_prefab_part_interaction_target(
+        &mut self,
+        request: GameplayPrefabPartInteractionTargetRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionTargetReadout> {
+        let before = self.read_composed_runtime_session()?;
+        if request.expected_runtime_session_hash != before.runtime_session_hash {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::InvalidInput,
+                format!(
+                    "prefab interaction query expected RuntimeSession {}, current {}",
+                    request.expected_runtime_session_hash, before.runtime_session_hash
+                ),
+            ));
+        }
+        let intent = GameplayRuntimePrefabInteractionIntent {
+            actor: EntityId::new(request.actor),
+            role: request.role.clone(),
+            max_distance_millimeters: request.max_distance_millimeters,
+            tick: 0,
+        };
+        let target = self
+            .with_static_gameplay_runtime("read_gameplay_prefab_part_interaction_target", |host| {
+                host.resolve_prefab_part_interaction_target(&intent)
+            })?
+            .ok_or_else(|| {
+                RuntimeBridgeError::new(
+                    RuntimeBridgeErrorKind::NotInitialized,
+                    "RuntimeSession was not built with a static gameplay composition",
+                )
+            })?;
+        let after = self.read_composed_runtime_session()?;
+        if after.runtime_session_hash != before.runtime_session_hash {
+            return Err(RuntimeBridgeError::new(
+                RuntimeBridgeErrorKind::Internal,
+                "prefab interaction target query mutated RuntimeSession authority",
+            ));
+        }
+        Ok(GameplayPrefabPartInteractionTargetReadout {
+            actor: request.actor,
+            role: request.role,
+            eligible: target.is_some(),
+            instance: target.as_ref().map(|target| target.instance),
+            target: target.as_ref().map(|target| target.target.raw()),
+            distance_millimeters: target.map(|target| target.distance_millimeters),
+            runtime_session_hash: after.runtime_session_hash,
+        })
+    }
+
     pub fn apply_gameplay_prefab_part_interaction(
         &mut self,
         request: GameplayPrefabPartInteractionRequest,
@@ -265,9 +313,8 @@ impl EngineBridge {
             .with_static_gameplay_runtime("apply_gameplay_prefab_part_interaction", |host| {
                 host.interact_with_prefab_part(GameplayRuntimePrefabInteractionIntent {
                     actor: EntityId::new(request.actor),
-                    instance: request.instance,
                     role: request.role.clone(),
-                    expected_target: EntityId::new(request.expected_target),
+                    max_distance_millimeters: request.max_distance_millimeters,
                     tick: request.tick,
                 })
             })?
@@ -288,9 +335,10 @@ impl EngineBridge {
         let after = self.read_composed_runtime_session()?;
         Ok(GameplayPrefabPartInteractionReceipt {
             actor: request.actor,
-            instance: request.instance,
+            instance: interaction.instance,
             role: request.role,
             target: interaction.target.raw(),
+            distance_millimeters: interaction.distance_millimeters,
             event_hash,
             reaction_frame_hash: interaction.reaction_frame_hash,
             runtime_session_hash: after.runtime_session_hash,
@@ -441,9 +489,8 @@ mod tests {
         let interaction = bridge
             .apply_gameplay_prefab_part_interaction(GameplayPrefabPartInteractionRequest {
                 actor: 1,
-                instance: 1,
                 role: "interaction/target".to_owned(),
-                expected_target: 2,
+                max_distance_millimeters: 2_000,
                 tick: 1,
                 expected_runtime_session_hash: "fnv1a64:0000000000000002".to_owned(),
             })

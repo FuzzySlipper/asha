@@ -158,6 +158,8 @@ import {
   type GameplayModuleViewSnapshot,
   type GameplayPrefabPartInteractionReceipt,
   type GameplayPrefabPartInteractionRequest,
+  type GameplayPrefabPartInteractionTargetReadout,
+  type GameplayPrefabPartInteractionTargetRequest,
   type FpsLifecycleStatus,
   type FpsPrimaryFireRequest,
   type FpsPrimaryFireResult,
@@ -890,9 +892,11 @@ export class NativeRuntimeBridge implements RuntimeBridge, WorkspaceAuthoringOpe
   ): GameplayPrefabPartInteractionReceipt {
     const handle = this.#requireHandle('applyGameplayPrefabPartInteraction');
     const actor = nonNegativeSafeInteger(request.actor, 'actor');
-    const instance = nonNegativeSafeInteger(request.instance, 'instance');
     const role = requiredString(request.role, 'role');
-    const expectedTarget = nonNegativeSafeInteger(request.expectedTarget, 'expectedTarget');
+    const maxDistanceMillimeters = nonNegativeSafeInteger(
+      request.maxDistanceMillimeters,
+      'maxDistanceMillimeters',
+    );
     const tick = nonNegativeSafeInteger(request.tick, 'tick');
     const expectedRuntimeSessionHash = hashString(
       request.expectedRuntimeSessionHash,
@@ -901,27 +905,79 @@ export class NativeRuntimeBridge implements RuntimeBridge, WorkspaceAuthoringOpe
     const result = callNative(() => this.#addon.applyGameplayPrefabPartInteraction(
       handle,
       actor,
-      instance,
       role,
-      expectedTarget,
+      maxDistanceMillimeters,
       tick,
       expectedRuntimeSessionHash,
     ));
     if (
       result.actor !== actor
-      || result.instance !== instance
       || result.role !== role
-      || result.target !== expectedTarget
     ) {
       throw new RuntimeBridgeError('internal', 'native prefab interaction identity did not match the request');
     }
     return {
       actor,
-      instance,
+      instance: nonNegativeSafeInteger(result.instance, 'instance'),
       role,
-      target: expectedTarget,
+      target: nonNegativeSafeInteger(result.target, 'target'),
+      distanceMillimeters: nonNegativeSafeInteger(
+        result.distanceMillimeters,
+        'distanceMillimeters',
+      ),
       eventHash: hashString(result.eventHash, 'eventHash'),
       reactionFrameHash: hashString(result.reactionFrameHash, 'reactionFrameHash'),
+      runtimeSessionHash: hashString(result.runtimeSessionHash, 'runtimeSessionHash'),
+    };
+  }
+
+  readGameplayPrefabPartInteractionTarget(
+    request: GameplayPrefabPartInteractionTargetRequest,
+  ): GameplayPrefabPartInteractionTargetReadout {
+    const handle = this.#requireHandle('readGameplayPrefabPartInteractionTarget');
+    const actor = nonNegativeSafeInteger(request.actor, 'actor');
+    const role = requiredString(request.role, 'role');
+    const maxDistanceMillimeters = nonNegativeSafeInteger(
+      request.maxDistanceMillimeters,
+      'maxDistanceMillimeters',
+    );
+    const expectedRuntimeSessionHash = hashString(
+      request.expectedRuntimeSessionHash,
+      'expectedRuntimeSessionHash',
+    );
+    const result = callNative(() => this.#addon.readGameplayPrefabPartInteractionTarget(
+      handle,
+      actor,
+      role,
+      maxDistanceMillimeters,
+      expectedRuntimeSessionHash,
+    ));
+    if (result.actor !== actor || result.role !== role) {
+      throw new RuntimeBridgeError(
+        'internal',
+        'native prefab interaction target identity did not match the request',
+      );
+    }
+    const instance = result.instance === null || result.instance === undefined
+      ? null
+      : nonNegativeSafeInteger(result.instance, 'instance');
+    const target = result.target === null || result.target === undefined
+      ? null
+      : nonNegativeSafeInteger(result.target, 'target');
+    const distanceMillimeters =
+      result.distanceMillimeters === null || result.distanceMillimeters === undefined
+        ? null
+        : nonNegativeSafeInteger(result.distanceMillimeters, 'distanceMillimeters');
+    if (result.eligible !== (instance !== null && target !== null && distanceMillimeters !== null)) {
+      throw new RuntimeBridgeError('internal', 'native prefab interaction eligibility is inconsistent');
+    }
+    return {
+      actor,
+      role,
+      eligible: result.eligible,
+      instance,
+      target,
+      distanceMillimeters,
       runtimeSessionHash: hashString(result.runtimeSessionHash, 'runtimeSessionHash'),
     };
   }

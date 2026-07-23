@@ -80,7 +80,8 @@ pub use fps::{
     apply_fps_encounter_transition, apply_fps_primary_fire, apply_gameplay_prefab_part_interaction,
     invoke_game_extension_weapon_effect, read_composed_runtime_session,
     read_fps_encounter_director, read_fps_runtime_session, read_game_rule_runtime_readout,
-    read_gameplay_module_view, restart_fps_runtime_session, submit_game_rule_effect_intent,
+    read_gameplay_module_view, read_gameplay_prefab_part_interaction_target,
+    restart_fps_runtime_session, submit_game_rule_effect_intent,
     validate_game_rule_catalog, NativeComposedGameplayReadout, NativeComposedRuntimeSessionReadout,
     NativeFpsEncounterDirectorSnapshot, NativeFpsEncounterLifecycleInput,
     NativeFpsEncounterStateReadout, NativeFpsEncounterTransitionRequest,
@@ -89,6 +90,7 @@ pub use fps::{
     NativeFpsReadSetEvidence, NativeFpsReplayEvidence, NativeFpsRuntimeSessionSnapshot,
     NativeGameExtensionWeaponEffectInvocationResult, NativeGameplayContractRef,
     NativeGameplayModuleViewSnapshot, NativeGameplayPrefabPartInteractionReceipt,
+    NativeGameplayPrefabPartInteractionTargetReadout,
 };
 pub use input_session::{
     apply_input_context_command, configure_input_session, read_input_context_state,

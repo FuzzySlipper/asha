@@ -5,6 +5,7 @@ export type AshaAuthoringOperationKind =
   | 'authoring.prefab.save_source'
   | 'authoring.catalog.save_source'
   | 'authoring.asset.save_source'
+  | 'authoring.behavior.save_source'
   | 'authoring.policy.save_source';
 
 export type AshaAuthoringSourceFormat =
@@ -12,6 +13,7 @@ export type AshaAuthoringSourceFormat =
   | 'prefab-registry-json.v1'
   | 'asset-catalog-json.v1'
   | 'inline-asset-json.v1'
+  | 'behavior-package-json.v1'
   | 'policy-json.deferred';
 
 export type AshaAuthoringDiagnosticCode =
@@ -180,6 +182,12 @@ function authoringWriteScopes(manifest: AshaGameManifest): readonly AshaAuthorin
       requiredValidator: 'validateAshaCatalogAssetPayload',
     },
     {
+      operationKind: 'authoring.behavior.save_source',
+      allowedRoots: allowedRoots(manifest.workspace.behaviorPackages),
+      format: 'behavior-package-json.v1',
+      requiredValidator: 'ProjectContent BehaviorPackage Rust admission',
+    },
+    {
       operationKind: 'authoring.policy.save_source',
       allowedRoots: allowedRoots(manifest.workspace.policyPackages),
       format: 'policy-json.deferred',
@@ -251,6 +259,16 @@ function validateAuthoringExtension(
       'invalid_extension',
       'relativePath',
       'asset authoring saves must target *.mesh.json, *.material.json, *.texture.json, or *.avxl.json',
+    ));
+  }
+  if (
+    scope.operationKind === 'authoring.behavior.save_source'
+    && !normalizedPath.endsWith('.behavior.json')
+  ) {
+    diagnostics.push(authoringDiag(
+      'invalid_extension',
+      'relativePath',
+      'behavior authoring saves must target *.behavior.json',
     ));
   }
 }

@@ -194,11 +194,27 @@ export interface ComposedRuntimeSessionReadout {
 
 export interface GameplayPrefabPartInteractionRequest {
   readonly actor: number;
-  readonly instance: number;
   readonly role: string;
-  readonly expectedTarget: number;
+  readonly maxDistanceMillimeters: number;
   readonly tick: number;
   readonly expectedRuntimeSessionHash: string;
+}
+
+export interface GameplayPrefabPartInteractionTargetRequest {
+  readonly actor: number;
+  readonly role: string;
+  readonly maxDistanceMillimeters: number;
+  readonly expectedRuntimeSessionHash: string;
+}
+
+export interface GameplayPrefabPartInteractionTargetReadout {
+  readonly actor: number;
+  readonly role: string;
+  readonly eligible: boolean;
+  readonly instance: number | null;
+  readonly target: number | null;
+  readonly distanceMillimeters: number | null;
+  readonly runtimeSessionHash: string;
 }
 
 export interface GameplayPrefabPartInteractionReceipt {
@@ -206,6 +222,7 @@ export interface GameplayPrefabPartInteractionReceipt {
   readonly instance: number;
   readonly role: string;
   readonly target: number;
+  readonly distanceMillimeters: number;
   readonly eventHash: string;
   readonly reactionFrameHash: string;
   readonly runtimeSessionHash: string;

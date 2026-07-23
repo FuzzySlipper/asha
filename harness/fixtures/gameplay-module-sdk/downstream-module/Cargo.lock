@@ -421,6 +421,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "protocol-input"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "protocol-project-bundle"
 version = "0.1.0"
 dependencies = [
@@ -436,6 +443,7 @@ dependencies = [
  "protocol-assets",
  "protocol-entity-authoring",
  "protocol-game-extension",
+ "protocol-input",
  "protocol-project-bundle",
  "protocol-render",
  "protocol-scene",
@@ -523,6 +531,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "rule-input"
+version = "0.1.0"
+dependencies = [
+ "protocol-input",
+]
+
+[[package]]
+name = "rule-lifecycle"
+version = "0.1.0"
+dependencies = [
+ "core-entity",
+ "core-ids",
+ "core-space",
+ "protocol-entity-authoring",
+ "protocol-game-extension",
+ "protocol-game-rules",
+ "rule-gameplay-fabric",
+ "svc-collision",
+ "svc-combat",
+ "svc-entity-authoring",
+ "svc-game-rules",
+ "svc-pathfinding",
+]
+
+[[package]]
 name = "rule-project-bundle"
 version = "0.1.0"
 dependencies = [
@@ -536,11 +569,15 @@ dependencies = [
  "core-voxel",
  "gameplay-module-sdk",
  "protocol-diagnostics",
+ "protocol-entity-authoring",
  "protocol-game-extension",
+ "protocol-input",
  "protocol-project-bundle",
  "protocol-project-content",
  "protocol-voxel-annotation",
  "rule-gameplay-fabric",
+ "rule-input",
+ "rule-lifecycle",
  "rule-trigger-volume",
  "rule-voxel-edit",
  "serde",
@@ -731,6 +768,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "svc-pathfinding"
+version = "0.1.0"
+dependencies = [
+ "core-math",
+ "core-space",
+ "svc-spatial",
+]
+
+[[package]]
 name = "svc-project-content"
 version = "0.1.0"
 dependencies = [
@@ -741,6 +787,7 @@ dependencies = [
  "protocol-assets",
  "protocol-entity-authoring",
  "protocol-game-extension",
+ "protocol-input",
  "protocol-project-bundle",
  "protocol-project-content",
  "protocol-scene",

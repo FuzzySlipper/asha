@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 use core_entity::EntityStore;
 use protocol_game_extension::{GameplayContractRef, GameplayEventEnvelope, GameplayOwnerRef};
 use rule_gameplay_fabric::{
-    GameplayFabricCoordinator, GameplayReactionSourceFact, GameplayRoutingEvidence,
+    direct_authority_routing_receipt, GameplayFabricCoordinator, GameplayOwnerRoutingOutput,
+    GameplayReactionSourceFact, GameplayRoutingEvidence,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +19,8 @@ pub use rule_scheduler::{
 use rule_scheduler::{GameplayActionScheduler, GameplaySchedulerCommand};
 
 use crate::{
-    limits_from_registry, GameplayRuntimeHost, GameplayRuntimeHostError, RuntimeSessionOwnerRouter,
+    authority_verbs::DIRECT_AUTHORITY_OWNER_ID, limits_from_registry, GameplayRuntimeHost,
+    GameplayRuntimeHostError, RuntimeSessionOwnerRouter,
 };
 
 const MAX_SCHEDULER_READOUT_ITEMS: usize = 256;
@@ -220,7 +222,7 @@ impl GameplayRuntimeHost {
 
     /// Route one recoverable scheduled dispatch through the same closed fabric
     /// registry and concrete RuntimeSession owner router used by module output.
-    fn route_scheduled_action(
+    pub(crate) fn route_scheduled_action(
         &mut self,
         action_id: &ScheduledActionId,
     ) -> Result<GameplayRuntimeSchedulerRoutingReceipt, GameplayRuntimeHostError> {
@@ -256,6 +258,10 @@ impl GameplayRuntimeHost {
             .find(|dispatch| &dispatch.action_id == action_id)
             .cloned()
             .ok_or(GameplaySchedulerError::UnknownAction)?;
+        if dispatch.proposal.proposal == crate::authored_behavior::authored_program_step_contract()
+        {
+            return self.route_authored_program_action(action_id, dispatch);
+        }
         let mut entities = self
             .session
             .bundle
@@ -313,6 +319,96 @@ impl GameplayRuntimeHost {
                 self.session.bundle.runtime_entities =
                     Some(EntityStore::from_snapshot(authority_before));
                 self.scheduler = scheduler_before;
+                self.reaction_frames.truncate(reaction_frame_count_before);
+            }
+            return delivered;
+        }
+        Ok(GameplayRuntimeSchedulerRoutingReceipt {
+            routing: routing_evidence,
+            fact,
+            delivery_fact: None,
+            delivered_events: Vec::new(),
+            reaction: None,
+            readout: self.scheduler_readout(),
+        })
+    }
+
+    fn route_authored_program_action(
+        &mut self,
+        action_id: &ScheduledActionId,
+        dispatch: GameplayScheduledDispatch,
+    ) -> Result<GameplayRuntimeSchedulerRoutingReceipt, GameplayRuntimeHostError> {
+        let mut entities = self
+            .session
+            .bundle
+            .runtime_entities
+            .take()
+            .ok_or(GameplayRuntimeHostError::MissingEntityAuthority)?;
+        let entity_checkpoint = entities.clone();
+        let scheduler_checkpoint = self.scheduler.clone();
+        let authored_checkpoint = self.authored_program.clone();
+        let reaction_frame_count_before = self.reaction_frames.len();
+
+        let execution = match self.authored_program.as_mut() {
+            Some(program) => {
+                program.execute_continuation(&dispatch.proposal, &mut entities, &mut self.scheduler)
+            }
+            None => Err("authored program is unavailable".to_owned()),
+        };
+        let output = match execution {
+            Ok(execution) => GameplayOwnerRoutingOutput {
+                accepted: true,
+                fact_hashes: execution
+                    .facts
+                    .into_iter()
+                    .map(|fact| fact.fact_hash)
+                    .collect(),
+                events: execution.events,
+                ..GameplayOwnerRoutingOutput::default()
+            },
+            Err(code) => {
+                entities = entity_checkpoint.clone();
+                self.scheduler = scheduler_checkpoint.clone();
+                self.authored_program = authored_checkpoint.clone();
+                GameplayOwnerRoutingOutput {
+                    accepted: false,
+                    diagnostic_codes: vec![code],
+                    ..GameplayOwnerRoutingOutput::default()
+                }
+            }
+        };
+        let receipt =
+            direct_authority_routing_receipt(&dispatch.proposal, DIRECT_AUTHORITY_OWNER_ID, output);
+        let routing_evidence = receipt.evidence().clone();
+        let recorded = self
+            .scheduler
+            .apply(GameplaySchedulerCommand::RecordRouting {
+                action_id: action_id.clone(),
+                receipt,
+            });
+        let recorded = match recorded {
+            Ok(recorded) => recorded,
+            Err(error) => {
+                self.session.bundle.runtime_entities = Some(entity_checkpoint);
+                self.scheduler = scheduler_checkpoint;
+                self.authored_program = authored_checkpoint;
+                return Err(error.into());
+            }
+        };
+        self.session.bundle.runtime_entities = Some(entities);
+        let GameplaySchedulerReceipt { fact, .. } = recorded;
+        if let Some(delivery) = self
+            .scheduler
+            .outstanding_event_deliveries()
+            .into_iter()
+            .find(|delivery| &delivery.action_id == action_id)
+            .cloned()
+        {
+            let delivered = self.deliver_scheduled_events(delivery, fact.clone());
+            if delivered.is_err() {
+                self.session.bundle.runtime_entities = Some(entity_checkpoint);
+                self.scheduler = scheduler_checkpoint;
+                self.authored_program = authored_checkpoint;
                 self.reaction_frames.truncate(reaction_frame_count_before);
             }
             return delivered;
@@ -461,10 +557,17 @@ fn validate_scheduler_command_codecs(
 pub(crate) fn validate_replayed_scheduler_codecs(
     registry: &svc_gameplay_fabric::GameplayFabricRegistry,
     scheduler: &GameplayActionScheduler,
+    allow_authored_program: bool,
 ) -> Result<(), GameplayRuntimeHostError> {
     for fact in scheduler.facts() {
         match fact {
             GameplaySchedulerFact::Scheduled { action } => {
+                if allow_authored_program
+                    && scheduled_action_proposal(action).proposal
+                        == crate::authored_behavior::authored_program_step_contract()
+                {
+                    continue;
+                }
                 registry
                     .admit_proposal(scheduled_action_proposal(action))
                     .map_err(|error| {
@@ -513,6 +616,7 @@ fn scheduled_action_proposal(
 pub(crate) fn validate_scheduler_definition(
     registry: &svc_gameplay_fabric::GameplayFabricRegistry,
     definition: &GameplayRuntimeSchedulerDefinition,
+    allow_authored_program: bool,
 ) -> Result<(), GameplayRuntimeHostError> {
     if definition.owner.owner_id.trim().is_empty()
         || definition.owner.provider_id.trim().is_empty()
@@ -541,11 +645,11 @@ pub(crate) fn validate_scheduler_definition(
     {
         return Err(GameplaySchedulerError::UndeclaredEvent.into());
     }
-    if definition
-        .declared_proposals
-        .iter()
-        .any(|proposal| registry.proposal_owner(proposal).is_none())
-    {
+    if definition.declared_proposals.iter().any(|proposal| {
+        !(allow_authored_program
+            && *proposal == crate::authored_behavior::authored_program_step_contract())
+            && registry.proposal_owner(proposal).is_none()
+    }) {
         return Err(GameplaySchedulerError::UndeclaredProposal.into());
     }
     Ok(())

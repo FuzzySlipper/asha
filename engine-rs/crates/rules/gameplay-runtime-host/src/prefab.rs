@@ -582,6 +582,7 @@ mod tests {
                 Vec::new(),
                 Vec::new(),
             ),
+            authored_program: None,
         }
     }
 

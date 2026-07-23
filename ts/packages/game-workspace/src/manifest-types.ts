@@ -13,6 +13,7 @@ export interface AshaGameManifest {
     readonly assetRoots: readonly string[];
     readonly replayRoots: readonly string[];
     readonly catalogPackages: readonly string[];
+    readonly behaviorPackages: readonly string[];
     readonly policyPackages: readonly string[];
   };
   readonly runtime: {

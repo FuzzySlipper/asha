@@ -4,6 +4,7 @@ type ComposedGameplayHandlers = Pick<
   NativeAddon,
   | 'readComposedRuntimeSession'
   | 'readGameplayModuleView'
+  | 'readGameplayPrefabPartInteractionTarget'
   | 'applyGameplayPrefabPartInteraction'
 >;
 
@@ -77,22 +78,41 @@ export function createNativeComposedGameplayHandlers(
     applyGameplayPrefabPartInteraction: (
       handle,
       actor,
-      instance,
       role,
-      expectedTarget,
+      maxDistanceMillimeters,
       tick,
       expectedRuntimeSessionHash,
     ) => {
       void handle;
       void tick;
-      calls.push(`prefabInteraction:${actor}:${instance}:${role}:${expectedTarget}`);
+      calls.push(`prefabInteraction:${actor}:${role}:${maxDistanceMillimeters}`);
       return {
         actor,
-        instance,
+        instance: 700,
         role,
-        target: expectedTarget,
+        target: 777,
+        distanceMillimeters: 850,
         eventHash: hashB,
         reactionFrameHash: hashC,
+        runtimeSessionHash: expectedRuntimeSessionHash,
+      };
+    },
+    readGameplayPrefabPartInteractionTarget: (
+      handle,
+      actor,
+      role,
+      maxDistanceMillimeters,
+      expectedRuntimeSessionHash,
+    ) => {
+      void handle;
+      calls.push(`prefabInteractionTarget:${actor}:${role}:${maxDistanceMillimeters}`);
+      return {
+        actor,
+        role,
+        eligible: true,
+        instance: 700,
+        target: 777,
+        distanceMillimeters: 850,
         runtimeSessionHash: expectedRuntimeSessionHash,
       };
     },

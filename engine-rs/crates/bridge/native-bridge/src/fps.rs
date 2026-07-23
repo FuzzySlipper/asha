@@ -10,6 +10,7 @@ use runtime_bridge_api::{
     GameExtensionWeaponEffectInvocationRequest, GameRuleEffectIntentRequest, GameplayContractRef,
     GameplayModuleViewRequest, GameplayModuleViewScope, GameplayModuleViewSnapshot,
     GameplayPrefabPartInteractionReceipt, GameplayPrefabPartInteractionRequest, RuntimeBridge,
+    GameplayPrefabPartInteractionTargetReadout, GameplayPrefabPartInteractionTargetRequest,
     RuntimeBridgeError, RuntimeBridgeErrorKind,
 };
 
@@ -175,8 +176,20 @@ pub struct NativeGameplayPrefabPartInteractionReceipt {
     pub instance: i64,
     pub role: String,
     pub target: i64,
+    pub distance_millimeters: i64,
     pub event_hash: String,
     pub reaction_frame_hash: String,
+    pub runtime_session_hash: String,
+}
+
+#[napi(object)]
+pub struct NativeGameplayPrefabPartInteractionTargetReadout {
+    pub actor: i64,
+    pub role: String,
+    pub eligible: bool,
+    pub instance: Option<i64>,
+    pub target: Option<i64>,
+    pub distance_millimeters: Option<i64>,
     pub runtime_session_hash: String,
 }
 
@@ -600,8 +613,25 @@ impl From<GameplayPrefabPartInteractionReceipt> for NativeGameplayPrefabPartInte
             instance: value.instance as i64,
             role: value.role,
             target: value.target as i64,
+            distance_millimeters: value.distance_millimeters as i64,
             event_hash: value.event_hash,
             reaction_frame_hash: value.reaction_frame_hash,
+            runtime_session_hash: value.runtime_session_hash,
+        }
+    }
+}
+
+impl From<GameplayPrefabPartInteractionTargetReadout>
+    for NativeGameplayPrefabPartInteractionTargetReadout
+{
+    fn from(value: GameplayPrefabPartInteractionTargetReadout) -> Self {
+        Self {
+            actor: value.actor as i64,
+            role: value.role,
+            eligible: value.eligible,
+            instance: value.instance.map(|value| value as i64),
+            target: value.target.map(|value| value as i64),
+            distance_millimeters: value.distance_millimeters.map(|value| value as i64),
             runtime_session_hash: value.runtime_session_hash,
         }
     }
@@ -712,20 +742,46 @@ pub fn read_gameplay_module_view(
 }
 
 #[napi]
+pub fn read_gameplay_prefab_part_interaction_target(
+    handle: i64,
+    actor: i64,
+    role: String,
+    max_distance_millimeters: i64,
+    expected_runtime_session_hash: String,
+) -> napi::Result<NativeGameplayPrefabPartInteractionTargetReadout> {
+    let request = GameplayPrefabPartInteractionTargetRequest {
+        actor: u64_input(actor, "actor")?,
+        role,
+        max_distance_millimeters: u64_input(
+            max_distance_millimeters,
+            "maxDistanceMillimeters",
+        )?,
+        expected_runtime_session_hash,
+    };
+    with_bridge(handle, |bridge| {
+        bridge
+            .read_gameplay_prefab_part_interaction_target(request)
+            .map(NativeGameplayPrefabPartInteractionTargetReadout::from)
+            .map_err(to_napi)
+    })
+}
+
+#[napi]
 pub fn apply_gameplay_prefab_part_interaction(
     handle: i64,
     actor: i64,
-    instance: i64,
     role: String,
-    expected_target: i64,
+    max_distance_millimeters: i64,
     tick: i64,
     expected_runtime_session_hash: String,
 ) -> napi::Result<NativeGameplayPrefabPartInteractionReceipt> {
     let request = GameplayPrefabPartInteractionRequest {
         actor: u64_input(actor, "actor")?,
-        instance: u64_input(instance, "instance")?,
         role,
-        expected_target: u64_input(expected_target, "expectedTarget")?,
+        max_distance_millimeters: u64_input(
+            max_distance_millimeters,
+            "maxDistanceMillimeters",
+        )?,
         tick: u64_input(tick, "tick")?,
         expected_runtime_session_hash,
     };

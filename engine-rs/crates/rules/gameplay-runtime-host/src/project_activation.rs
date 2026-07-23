@@ -71,8 +71,52 @@ impl GameplayRuntimeHost {
                 declared_reads: parts.declared_reads,
                 triggers: parts.triggers,
                 scheduler: parts.scheduler,
+                authored_program: parts.authored_program,
             },
             parts.prefabs,
+        )?;
+        host.activated_project = Some(state);
+        Ok(host)
+    }
+
+    /// Restore one previously snapshotted RuntimeSession from a freshly
+    /// compiled opaque project admission. The stored source and static Rust
+    /// composition are linked again before the snapshot can supply live
+    /// authority, so authored behavior plans cannot be injected or recovered
+    /// from caller-controlled snapshot data.
+    pub fn restore_validated_project(
+        admission: ValidatedRuntimeProjectAdmission,
+        snapshot_text: &str,
+    ) -> Result<Self, GameplayRuntimeHostError> {
+        let parts = admission.into_activation_parts();
+        let state = ValidatedRuntimeProjectState {
+            identity: GameplayRuntimeActivatedProjectIdentity {
+                project_id: parts.project_id,
+                manifest_hash: parts.manifest_hash,
+                admission_hash: parts.admission_hash,
+            },
+            entry_scene: parts.entry_scene,
+            content_readout: parts.content_readout,
+            voxel_assets: parts.voxel_assets,
+            runtime_entity_seeds: parts.runtime_entity_seeds,
+        };
+        let mut host = Self::restore_project_with_prefabs(
+            RuntimeProjectActivationInput {
+                load_plan: parts.load_plan,
+                artifacts: parts.artifacts,
+                bootstrap_resolution: parts.bootstrap_resolution,
+                composition: parts.composition,
+                composition_requirement: None,
+                bindings: parts.bindings,
+                entity_targets: parts.entity_targets,
+                spatial_entities: parts.spatial_entities,
+                declared_reads: parts.declared_reads,
+                triggers: parts.triggers,
+                scheduler: parts.scheduler,
+                authored_program: parts.authored_program,
+            },
+            parts.prefabs,
+            snapshot_text,
         )?;
         host.activated_project = Some(state);
         Ok(host)

@@ -19,6 +19,25 @@ use protocol_voxel_asset::{
 };
 
 pub const PROJECT_CONTENT_SCHEMA_VERSION: u32 = 1;
+pub const AUTHORED_BEHAVIOR_PACKAGE_SCHEMA_VERSION: u32 = 1;
+pub const AUTHORED_BEHAVIOR_VOCABULARY_VERSION: u32 = 1;
+pub const AUTHORED_BEHAVIOR_VOCABULARY_HASH: &str =
+    "asha.authored-behavior.v1:typed-semantic-refs;symbolic-state;direct-owner-verbs";
+pub const AUTHORED_SIGNAL_PREFAB_PART_INTERACTED: &str = "asha.signal.prefab-part-interacted";
+pub const AUTHORED_SIGNAL_TRIGGER_ENTERED: &str = "asha.signal.trigger-entered";
+pub const AUTHORED_SIGNAL_COMBAT_ENTITY_DEFEATED: &str = "asha.signal.combat-entity-defeated";
+pub const AUTHORED_PREDICATE_STATE_IS: &str = "asha.predicate.state-is";
+pub const AUTHORED_VERB_TRANSITION_STATE: &str = "asha.verb.transition-state";
+pub const AUTHORED_VERB_SET_RELATIVE_TRANSLATION: &str = "asha.verb.set-relative-translation";
+pub const AUTHORED_VERB_SET_CAPABILITY_ACTIVE: &str = "asha.verb.set-capability-active";
+pub const AUTHORED_BEHAVIOR_MAX_MACHINES: u32 = 16;
+pub const AUTHORED_BEHAVIOR_MAX_BEHAVIORS: u32 = 64;
+pub const AUTHORED_BEHAVIOR_MAX_STATES_PER_MACHINE: u32 = 8;
+pub const AUTHORED_BEHAVIOR_MAX_TRANSITIONS_PER_MACHINE: u32 = 16;
+pub const AUTHORED_BEHAVIOR_MAX_STEPS_PER_BEHAVIOR: u32 = 8;
+pub const AUTHORED_BEHAVIOR_MAX_OPERATIONS_PER_STEP: u32 = 8;
+pub const AUTHORED_BEHAVIOR_MAX_ARGUMENTS: u32 = 8;
+pub const AUTHORED_BEHAVIOR_MAX_DELAY_TICKS: u32 = 3_600;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectContentDocumentKind {
@@ -28,6 +47,142 @@ pub enum ProjectContentDocumentKind {
     GameplayConfiguration,
     PresentationCatalog,
     InputCatalog,
+    BehaviorPackage,
+}
+
+/// Immutable provenance retained with a TypeScript-authored behavior package.
+/// Rust validates these identities and includes them in canonical content;
+/// none of them are executable module registration.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoredBehaviorProvenanceDto {
+    pub sdk_id: String,
+    pub sdk_version: u32,
+    pub vocabulary_hash: String,
+    /// Consumer package/module that owns the readable declaration.
+    pub source_module: String,
+    /// Stable project-relative TypeScript source path used in diagnostics.
+    pub source_path: String,
+    pub source_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoredBehaviorStateDto {
+    pub state_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoredBehaviorTransitionDto {
+    pub transition_id: String,
+    pub from_state_id: String,
+    pub to_state_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoredBehaviorStateMachineDto {
+    pub machine_id: String,
+    /// Stable scene-instance identity. Runtime admission resolves this to the
+    /// EntityStore entity created by canonical scene bootstrap.
+    pub target_scene_instance_id: String,
+    pub initial_state_id: String,
+    pub states: Vec<AuthoredBehaviorStateDto>,
+    pub transitions: Vec<AuthoredBehaviorTransitionDto>,
+}
+
+/// Open, versioned reference to one Rust-published authored meaning. Admission
+/// resolves this reference against the closed Engine semantic catalog; runtime
+/// never dispatches an arbitrary method name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoredBehaviorSemanticRefDto {
+    pub semantic_id: String,
+    pub version: u32,
+}
+
+/// Typed values supplied to a Rust-published signal, predicate, or verb.
+/// The selected semantic descriptor owns the exact argument names and types.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AuthoredBehaviorValueDto {
+    SceneEntity {
+        scene_instance_id: String,
+    },
+    PrefabPart {
+        scene_instance_id: String,
+        role: String,
+    },
+    StateMachine {
+        machine_id: String,
+    },
+    State {
+        machine_id: String,
+        state_id: String,
+    },
+    Text {
+        value: String,
+    },
+    Boolean {
+        value: bool,
+    },
+    Integer {
+        value: i64,
+    },
+    Number {
+        value: f64,
+    },
+    Vector3 {
+        value: [f32; 3],
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorArgumentDto {
+    pub name: String,
+    pub value: AuthoredBehaviorValueDto,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorSignalDto {
+    pub signal: AuthoredBehaviorSemanticRefDto,
+    pub arguments: Vec<AuthoredBehaviorArgumentDto>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorConditionDto {
+    pub predicate: AuthoredBehaviorSemanticRefDto,
+    pub arguments: Vec<AuthoredBehaviorArgumentDto>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorOperationDto {
+    pub verb: AuthoredBehaviorSemanticRefDto,
+    pub arguments: Vec<AuthoredBehaviorArgumentDto>,
+}
+
+/// One bounded, atomically executed operation group. Dependencies form a DAG;
+/// delayed groups are persisted by the existing Rust scheduler.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorStepDto {
+    pub step_id: String,
+    pub after_step_ids: Vec<String>,
+    pub delay_ticks: u32,
+    pub operations: Vec<AuthoredBehaviorOperationDto>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorDefinitionDto {
+    pub behavior_id: String,
+    pub signal: AuthoredBehaviorSignalDto,
+    pub conditions: Vec<AuthoredBehaviorConditionDto>,
+    pub steps: Vec<AuthoredBehaviorStepDto>,
+}
+
+/// First-version authored behavior vocabulary. This is intentionally a small
+/// semantic family for signal-driven state transitions, not a universal graph.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AuthoredBehaviorPackageDto {
+    pub schema_version: u32,
+    pub package_id: String,
+    pub provenance: AuthoredBehaviorProvenanceDto,
+    pub state_machines: Vec<AuthoredBehaviorStateMachineDto>,
+    pub behaviors: Vec<AuthoredBehaviorDefinitionDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -275,6 +430,10 @@ pub enum ProjectContentDocumentDto {
         document_id: String,
         catalog: protocol_input::ProjectInputCatalog,
     },
+    BehaviorPackage {
+        document_id: String,
+        package: AuthoredBehaviorPackageDto,
+    },
 }
 
 impl ProjectContentDocumentDto {
@@ -285,7 +444,8 @@ impl ProjectContentDocumentDto {
             | Self::PrefabRegistry { document_id, .. }
             | Self::GameplayConfiguration { document_id, .. }
             | Self::PresentationCatalog { document_id, .. }
-            | Self::InputCatalog { document_id, .. } => document_id,
+            | Self::InputCatalog { document_id, .. }
+            | Self::BehaviorPackage { document_id, .. } => document_id,
         }
     }
 
@@ -297,6 +457,7 @@ impl ProjectContentDocumentDto {
             Self::GameplayConfiguration { .. } => ProjectContentDocumentKind::GameplayConfiguration,
             Self::PresentationCatalog { .. } => ProjectContentDocumentKind::PresentationCatalog,
             Self::InputCatalog { .. } => ProjectContentDocumentKind::InputCatalog,
+            Self::BehaviorPackage { .. } => ProjectContentDocumentKind::BehaviorPackage,
         }
     }
 }

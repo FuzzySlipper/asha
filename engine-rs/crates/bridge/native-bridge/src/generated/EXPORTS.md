@@ -59,6 +59,7 @@ handwritten semantic exports. Quarantined compatibility wiring is explicit.
 | `apply_fps_primary_fire` | `gameplay` | stable | `protocol_runtime::FpsPrimaryFireRequest` | `protocol_runtime::FpsPrimaryFireResult` | `RuntimeBridgeError` |
 | `read_composed_runtime_session` | `gameplay` | stable | `Unit` | `protocol_runtime::ComposedRuntimeSessionReadout` | `RuntimeBridgeError` |
 | `read_gameplay_module_view` | `gameplay` | stable | `protocol_runtime::GameplayModuleViewRequest` | `protocol_runtime::GameplayModuleViewSnapshot` | `RuntimeBridgeError` |
+| `read_gameplay_prefab_part_interaction_target` | `gameplay` | stable | `protocol_runtime::GameplayPrefabPartInteractionTargetRequest` | `protocol_runtime::GameplayPrefabPartInteractionTargetReadout` | `RuntimeBridgeError` |
 | `apply_gameplay_prefab_part_interaction` | `gameplay` | stable | `protocol_runtime::GameplayPrefabPartInteractionRequest` | `protocol_runtime::GameplayPrefabPartInteractionReceipt` | `RuntimeBridgeError` |
 | `invoke_game_extension_weapon_effect` | `gameplay` | quarantined | `protocol_runtime::GameExtensionWeaponEffectInvocationRequest` | `protocol_runtime::GameExtensionWeaponEffectInvocationResult` | `RuntimeBridgeError` |
 | `validate_game_rule_catalog` | `gameplay` | stable | `protocol_game_rules::GameRuleCatalog` | `protocol_runtime::GameRuleCatalogValidationReceipt` | `RuntimeBridgeError` |

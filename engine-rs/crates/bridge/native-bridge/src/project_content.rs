@@ -322,6 +322,8 @@ fn document_json(file: &ProjectContentCanonicalFileDto) -> napi::Result<Value> {
         ProjectContentDocumentKind::PrefabRegistry => ("prefabRegistry", "registry"),
         ProjectContentDocumentKind::GameplayConfiguration => ("gameplayConfiguration", "document"),
         ProjectContentDocumentKind::PresentationCatalog => ("presentationCatalog", "catalog"),
+        ProjectContentDocumentKind::InputCatalog => ("inputCatalog", "catalog"),
+        ProjectContentDocumentKind::BehaviorPackage => ("behaviorPackage", "package"),
     };
     let mut object = Map::new();
     object.insert("kind".to_owned(), Value::String(kind.to_owned()));
@@ -409,6 +411,8 @@ fn document_kind_tag(value: ProjectContentDocumentKind) -> &'static str {
         ProjectContentDocumentKind::PrefabRegistry => "prefabRegistry",
         ProjectContentDocumentKind::GameplayConfiguration => "gameplayConfiguration",
         ProjectContentDocumentKind::PresentationCatalog => "presentationCatalog",
+        ProjectContentDocumentKind::InputCatalog => "inputCatalog",
+        ProjectContentDocumentKind::BehaviorPackage => "behaviorPackage",
     }
 }
 

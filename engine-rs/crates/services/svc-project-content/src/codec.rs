@@ -33,6 +33,7 @@ enum ProjectContentDocumentKindWire {
     GameplayConfiguration,
     PresentationCatalog,
     InputCatalog,
+    BehaviorPackage,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -230,6 +231,143 @@ struct GameplayDocumentWire {
     bindings: Vec<protocol_game_extension::GameplayModuleBinding>,
     overrides: Vec<protocol_game_extension::GameplayModuleBindingOverride>,
     triggers: Vec<protocol_project_bundle::GameplayTriggerDefinition>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorProvenanceWire {
+    sdk_id: String,
+    sdk_version: u32,
+    vocabulary_hash: String,
+    source_module: String,
+    source_path: String,
+    source_hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorStateWire {
+    state_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorTransitionWire {
+    transition_id: String,
+    from_state_id: String,
+    to_state_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorStateMachineWire {
+    machine_id: String,
+    target_scene_instance_id: String,
+    initial_state_id: String,
+    states: Vec<AuthoredBehaviorStateWire>,
+    transitions: Vec<AuthoredBehaviorTransitionWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorSemanticRefWire {
+    semantic_id: String,
+    version: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+enum AuthoredBehaviorValueWire {
+    SceneEntity {
+        scene_instance_id: String,
+    },
+    PrefabPart {
+        scene_instance_id: String,
+        role: String,
+    },
+    StateMachine {
+        machine_id: String,
+    },
+    State {
+        machine_id: String,
+        state_id: String,
+    },
+    Text {
+        value: String,
+    },
+    Boolean {
+        value: bool,
+    },
+    Integer {
+        value: i64,
+    },
+    Number {
+        value: f64,
+    },
+    Vector3 {
+        value: [f32; 3],
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorArgumentWire {
+    name: String,
+    value: AuthoredBehaviorValueWire,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorSignalWire {
+    signal: AuthoredBehaviorSemanticRefWire,
+    arguments: Vec<AuthoredBehaviorArgumentWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorConditionWire {
+    predicate: AuthoredBehaviorSemanticRefWire,
+    arguments: Vec<AuthoredBehaviorArgumentWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorOperationWire {
+    verb: AuthoredBehaviorSemanticRefWire,
+    arguments: Vec<AuthoredBehaviorArgumentWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorStepWire {
+    step_id: String,
+    after_step_ids: Vec<String>,
+    delay_ticks: u32,
+    operations: Vec<AuthoredBehaviorOperationWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorDefinitionWire {
+    behavior_id: String,
+    signal: AuthoredBehaviorSignalWire,
+    conditions: Vec<AuthoredBehaviorConditionWire>,
+    steps: Vec<AuthoredBehaviorStepWire>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AuthoredBehaviorPackageWire {
+    schema_version: u32,
+    package_id: String,
+    provenance: AuthoredBehaviorProvenanceWire,
+    state_machines: Vec<AuthoredBehaviorStateMachineWire>,
+    behaviors: Vec<AuthoredBehaviorDefinitionWire>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -493,6 +631,13 @@ fn decode_source(source: &ProjectContentSourceDto) -> Result<ProjectContentDocum
                 catalog,
             })
         }
+        ProjectContentDocumentKind::BehaviorPackage => {
+            let package: AuthoredBehaviorPackageWire = strict_json(&source.source_text)?;
+            Ok(ProjectContentDocumentDto::BehaviorPackage {
+                document_id: source.document_id.clone(),
+                package: package.into(),
+            })
+        }
     }
 }
 
@@ -741,6 +886,52 @@ fn canonical_document(document: &ProjectContentDocumentDto) -> Result<String, St
                 .sort_by(|left, right| left.binding_id.cmp(&right.binding_id));
             pretty(&canonical)
         }
+        ProjectContentDocumentDto::BehaviorPackage { package, .. } => {
+            let mut canonical = package.clone();
+            canonical
+                .state_machines
+                .sort_by(|left, right| left.machine_id.cmp(&right.machine_id));
+            for machine in &mut canonical.state_machines {
+                machine
+                    .states
+                    .sort_by(|left, right| left.state_id.cmp(&right.state_id));
+                machine
+                    .transitions
+                    .sort_by(|left, right| left.transition_id.cmp(&right.transition_id));
+            }
+            canonical
+                .behaviors
+                .sort_by(|left, right| left.behavior_id.cmp(&right.behavior_id));
+            for behavior in &mut canonical.behaviors {
+                behavior
+                    .signal
+                    .arguments
+                    .sort_by(|left, right| left.name.cmp(&right.name));
+                behavior.conditions.sort_by(|left, right| {
+                    (left.predicate.semantic_id.as_str(), left.predicate.version).cmp(&(
+                        right.predicate.semantic_id.as_str(),
+                        right.predicate.version,
+                    ))
+                });
+                for condition in &mut behavior.conditions {
+                    condition
+                        .arguments
+                        .sort_by(|left, right| left.name.cmp(&right.name));
+                }
+                behavior
+                    .steps
+                    .sort_by(|left, right| left.step_id.cmp(&right.step_id));
+                for step in &mut behavior.steps {
+                    step.after_step_ids.sort();
+                    for operation in &mut step.operations {
+                        operation
+                            .arguments
+                            .sort_by(|left, right| left.name.cmp(&right.name));
+                    }
+                }
+            }
+            pretty(&AuthoredBehaviorPackageWire::from(canonical))
+        }
     }
 }
 
@@ -790,6 +981,7 @@ impl From<ProjectContentDocumentKind> for ProjectContentDocumentKindWire {
             ProjectContentDocumentKind::GameplayConfiguration => Self::GameplayConfiguration,
             ProjectContentDocumentKind::PresentationCatalog => Self::PresentationCatalog,
             ProjectContentDocumentKind::InputCatalog => Self::InputCatalog,
+            ProjectContentDocumentKind::BehaviorPackage => Self::BehaviorPackage,
         }
     }
 }
@@ -803,6 +995,7 @@ impl From<ProjectContentDocumentKindWire> for ProjectContentDocumentKind {
             ProjectContentDocumentKindWire::GameplayConfiguration => Self::GameplayConfiguration,
             ProjectContentDocumentKindWire::PresentationCatalog => Self::PresentationCatalog,
             ProjectContentDocumentKindWire::InputCatalog => Self::InputCatalog,
+            ProjectContentDocumentKindWire::BehaviorPackage => Self::BehaviorPackage,
         }
     }
 }
@@ -1522,6 +1715,286 @@ impl From<ProjectGameplayConfigurationDocumentDto> for GameplayDocumentWire {
             bindings: value.bindings,
             overrides: value.overrides,
             triggers: value.triggers,
+        }
+    }
+}
+
+impl From<AuthoredBehaviorPackageWire> for AuthoredBehaviorPackageDto {
+    fn from(value: AuthoredBehaviorPackageWire) -> Self {
+        Self {
+            schema_version: value.schema_version,
+            package_id: value.package_id,
+            provenance: AuthoredBehaviorProvenanceDto {
+                sdk_id: value.provenance.sdk_id,
+                sdk_version: value.provenance.sdk_version,
+                vocabulary_hash: value.provenance.vocabulary_hash,
+                source_module: value.provenance.source_module,
+                source_path: value.provenance.source_path,
+                source_hash: value.provenance.source_hash,
+            },
+            state_machines: value
+                .state_machines
+                .into_iter()
+                .map(|machine| AuthoredBehaviorStateMachineDto {
+                    machine_id: machine.machine_id,
+                    target_scene_instance_id: machine.target_scene_instance_id,
+                    initial_state_id: machine.initial_state_id,
+                    states: machine
+                        .states
+                        .into_iter()
+                        .map(|state| AuthoredBehaviorStateDto {
+                            state_id: state.state_id,
+                        })
+                        .collect(),
+                    transitions: machine
+                        .transitions
+                        .into_iter()
+                        .map(|transition| AuthoredBehaviorTransitionDto {
+                            transition_id: transition.transition_id,
+                            from_state_id: transition.from_state_id,
+                            to_state_id: transition.to_state_id,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            behaviors: value
+                .behaviors
+                .into_iter()
+                .map(|behavior| AuthoredBehaviorDefinitionDto {
+                    behavior_id: behavior.behavior_id,
+                    signal: behavior.signal.into(),
+                    conditions: behavior.conditions.into_iter().map(Into::into).collect(),
+                    steps: behavior.steps.into_iter().map(Into::into).collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorPackageDto> for AuthoredBehaviorPackageWire {
+    fn from(value: AuthoredBehaviorPackageDto) -> Self {
+        Self {
+            schema_version: value.schema_version,
+            package_id: value.package_id,
+            provenance: AuthoredBehaviorProvenanceWire {
+                sdk_id: value.provenance.sdk_id,
+                sdk_version: value.provenance.sdk_version,
+                vocabulary_hash: value.provenance.vocabulary_hash,
+                source_module: value.provenance.source_module,
+                source_path: value.provenance.source_path,
+                source_hash: value.provenance.source_hash,
+            },
+            state_machines: value
+                .state_machines
+                .into_iter()
+                .map(|machine| AuthoredBehaviorStateMachineWire {
+                    machine_id: machine.machine_id,
+                    target_scene_instance_id: machine.target_scene_instance_id,
+                    initial_state_id: machine.initial_state_id,
+                    states: machine
+                        .states
+                        .into_iter()
+                        .map(|state| AuthoredBehaviorStateWire {
+                            state_id: state.state_id,
+                        })
+                        .collect(),
+                    transitions: machine
+                        .transitions
+                        .into_iter()
+                        .map(|transition| AuthoredBehaviorTransitionWire {
+                            transition_id: transition.transition_id,
+                            from_state_id: transition.from_state_id,
+                            to_state_id: transition.to_state_id,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            behaviors: value
+                .behaviors
+                .into_iter()
+                .map(|behavior| AuthoredBehaviorDefinitionWire {
+                    behavior_id: behavior.behavior_id,
+                    signal: behavior.signal.into(),
+                    conditions: behavior.conditions.into_iter().map(Into::into).collect(),
+                    steps: behavior.steps.into_iter().map(Into::into).collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorSemanticRefWire> for AuthoredBehaviorSemanticRefDto {
+    fn from(value: AuthoredBehaviorSemanticRefWire) -> Self {
+        Self {
+            semantic_id: value.semantic_id,
+            version: value.version,
+        }
+    }
+}
+
+impl From<AuthoredBehaviorSemanticRefDto> for AuthoredBehaviorSemanticRefWire {
+    fn from(value: AuthoredBehaviorSemanticRefDto) -> Self {
+        Self {
+            semantic_id: value.semantic_id,
+            version: value.version,
+        }
+    }
+}
+
+impl From<AuthoredBehaviorValueWire> for AuthoredBehaviorValueDto {
+    fn from(value: AuthoredBehaviorValueWire) -> Self {
+        match value {
+            AuthoredBehaviorValueWire::SceneEntity { scene_instance_id } => {
+                Self::SceneEntity { scene_instance_id }
+            }
+            AuthoredBehaviorValueWire::PrefabPart {
+                scene_instance_id,
+                role,
+            } => Self::PrefabPart {
+                scene_instance_id,
+                role,
+            },
+            AuthoredBehaviorValueWire::StateMachine { machine_id } => {
+                Self::StateMachine { machine_id }
+            }
+            AuthoredBehaviorValueWire::State {
+                machine_id,
+                state_id,
+            } => Self::State {
+                machine_id,
+                state_id,
+            },
+            AuthoredBehaviorValueWire::Text { value } => Self::Text { value },
+            AuthoredBehaviorValueWire::Boolean { value } => Self::Boolean { value },
+            AuthoredBehaviorValueWire::Integer { value } => Self::Integer { value },
+            AuthoredBehaviorValueWire::Number { value } => Self::Number { value },
+            AuthoredBehaviorValueWire::Vector3 { value } => Self::Vector3 { value },
+        }
+    }
+}
+
+impl From<AuthoredBehaviorValueDto> for AuthoredBehaviorValueWire {
+    fn from(value: AuthoredBehaviorValueDto) -> Self {
+        match value {
+            AuthoredBehaviorValueDto::SceneEntity { scene_instance_id } => {
+                Self::SceneEntity { scene_instance_id }
+            }
+            AuthoredBehaviorValueDto::PrefabPart {
+                scene_instance_id,
+                role,
+            } => Self::PrefabPart {
+                scene_instance_id,
+                role,
+            },
+            AuthoredBehaviorValueDto::StateMachine { machine_id } => {
+                Self::StateMachine { machine_id }
+            }
+            AuthoredBehaviorValueDto::State {
+                machine_id,
+                state_id,
+            } => Self::State {
+                machine_id,
+                state_id,
+            },
+            AuthoredBehaviorValueDto::Text { value } => Self::Text { value },
+            AuthoredBehaviorValueDto::Boolean { value } => Self::Boolean { value },
+            AuthoredBehaviorValueDto::Integer { value } => Self::Integer { value },
+            AuthoredBehaviorValueDto::Number { value } => Self::Number { value },
+            AuthoredBehaviorValueDto::Vector3 { value } => Self::Vector3 { value },
+        }
+    }
+}
+
+impl From<AuthoredBehaviorArgumentWire> for AuthoredBehaviorArgumentDto {
+    fn from(value: AuthoredBehaviorArgumentWire) -> Self {
+        Self {
+            name: value.name,
+            value: value.value.into(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorArgumentDto> for AuthoredBehaviorArgumentWire {
+    fn from(value: AuthoredBehaviorArgumentDto) -> Self {
+        Self {
+            name: value.name,
+            value: value.value.into(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorSignalWire> for AuthoredBehaviorSignalDto {
+    fn from(value: AuthoredBehaviorSignalWire) -> Self {
+        Self {
+            signal: value.signal.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorSignalDto> for AuthoredBehaviorSignalWire {
+    fn from(value: AuthoredBehaviorSignalDto) -> Self {
+        Self {
+            signal: value.signal.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorConditionWire> for AuthoredBehaviorConditionDto {
+    fn from(value: AuthoredBehaviorConditionWire) -> Self {
+        Self {
+            predicate: value.predicate.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorConditionDto> for AuthoredBehaviorConditionWire {
+    fn from(value: AuthoredBehaviorConditionDto) -> Self {
+        Self {
+            predicate: value.predicate.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorOperationWire> for AuthoredBehaviorOperationDto {
+    fn from(value: AuthoredBehaviorOperationWire) -> Self {
+        Self {
+            verb: value.verb.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorOperationDto> for AuthoredBehaviorOperationWire {
+    fn from(value: AuthoredBehaviorOperationDto) -> Self {
+        Self {
+            verb: value.verb.into(),
+            arguments: value.arguments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorStepWire> for AuthoredBehaviorStepDto {
+    fn from(value: AuthoredBehaviorStepWire) -> Self {
+        Self {
+            step_id: value.step_id,
+            after_step_ids: value.after_step_ids,
+            delay_ticks: value.delay_ticks,
+            operations: value.operations.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<AuthoredBehaviorStepDto> for AuthoredBehaviorStepWire {
+    fn from(value: AuthoredBehaviorStepDto) -> Self {
+        Self {
+            step_id: value.step_id,
+            after_step_ids: value.after_step_ids,
+            delay_ticks: value.delay_ticks,
+            operations: value.operations.into_iter().map(Into::into).collect(),
         }
     }
 }

@@ -59,6 +59,7 @@ function decodeAndValidateManifest(document: TomlDocument): AshaGameManifestVali
       assetRoots: getStringArray(document, 'workspace', 'asset_roots', diagnostics),
       replayRoots: getStringArray(document, 'workspace', 'replay_roots', diagnostics),
       catalogPackages: getStringArray(document, 'workspace', 'catalog_packages', diagnostics),
+      behaviorPackages: getStringArray(document, 'workspace', 'behavior_packages', diagnostics),
       policyPackages: getStringArray(document, 'workspace', 'policy_packages', diagnostics),
     },
     runtime: {
@@ -119,6 +120,7 @@ function validateManifest(manifest: AshaGameManifest, diagnostics: AshaGameManif
     ...manifest.workspace.prefabRoots,
     ...manifest.workspace.assetRoots,
     ...manifest.workspace.catalogPackages,
+    ...manifest.workspace.behaviorPackages,
     ...manifest.workspace.policyPackages,
   ];
   for (const writeScope of manifest.studio.allowedSourceWrites) {
@@ -141,6 +143,7 @@ function validateResourceProfiles(manifest: AshaGameManifest, diagnostics: AshaG
     ...manifest.workspace.assetRoots,
     ...manifest.workspace.replayRoots,
     ...manifest.workspace.catalogPackages,
+    ...manifest.workspace.behaviorPackages,
     ...manifest.workspace.policyPackages,
   ];
   for (const root of manifest.devResourceProfile.localRoots) {

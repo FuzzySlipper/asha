@@ -773,11 +773,29 @@ pub struct GameplayModuleViewSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameplayPrefabPartInteractionRequest {
     pub actor: u64,
-    pub instance: u64,
     pub role: String,
-    pub expected_target: u64,
+    pub max_distance_millimeters: u64,
     pub tick: u64,
     pub expected_runtime_session_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayPrefabPartInteractionTargetRequest {
+    pub actor: u64,
+    pub role: String,
+    pub max_distance_millimeters: u64,
+    pub expected_runtime_session_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameplayPrefabPartInteractionTargetReadout {
+    pub actor: u64,
+    pub role: String,
+    pub eligible: bool,
+    pub instance: Option<u64>,
+    pub target: Option<u64>,
+    pub distance_millimeters: Option<u64>,
+    pub runtime_session_hash: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -786,6 +804,7 @@ pub struct GameplayPrefabPartInteractionReceipt {
     pub instance: u64,
     pub role: String,
     pub target: u64,
+    pub distance_millimeters: u64,
     pub event_hash: String,
     pub reaction_frame_hash: String,
     pub runtime_session_hash: String,

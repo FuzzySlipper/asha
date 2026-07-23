@@ -19,6 +19,7 @@ void test('authoring persistence contract exposes bounded public write scopes', 
       'authoring.prefab.save_source',
       'authoring.catalog.save_source',
       'authoring.asset.save_source',
+      'authoring.behavior.save_source',
       'authoring.policy.save_source',
     ],
   );
@@ -26,6 +27,7 @@ void test('authoring persistence contract exposes bounded public write scopes', 
   assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.prefab.save_source')?.allowedRoots, ['prefabs']);
   assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.catalog.save_source')?.allowedRoots, ['packages/game-catalogs']);
   assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.asset.save_source')?.allowedRoots, ['assets']);
+  assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.behavior.save_source')?.allowedRoots, ['behaviors']);
   assert.deepEqual(contract.writeScopes.find((scope) => scope.operationKind === 'authoring.policy.save_source')?.allowedRoots, []);
   assert.ok(contract.forbiddenRoots.includes('harness/out'));
   assert.ok(contract.nonClaims.includes('not_repo_crawler'));
@@ -88,6 +90,16 @@ void test('authoring write target resolver accepts normalized scene catalog and 
     throw new Error('voxel asset authoring path should resolve');
   }
   assert.equal(voxelAsset.allowedRoot, 'assets');
+
+  const behavior = resolveAshaAuthoringWriteTarget(manifest, {
+    operationKind: 'authoring.behavior.save_source',
+    relativePath: 'behaviors/demo-door.behavior.json',
+  });
+  assert.equal(behavior.ok, true);
+  if (!behavior.ok) {
+    throw new Error('behavior authoring path should resolve');
+  }
+  assert.equal(behavior.format, 'behavior-package-json.v1');
 });
 
 void test('authoring write target resolver fails closed on disallowed paths and hatches', () => {

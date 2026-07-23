@@ -42,6 +42,8 @@ export type {
   GameplayModuleViewSnapshot,
   GameplayPrefabPartInteractionReceipt,
   GameplayPrefabPartInteractionRequest,
+  GameplayPrefabPartInteractionTargetReadout,
+  GameplayPrefabPartInteractionTargetRequest,
   StepResult,
   WorkspaceAuthoringCloseInput,
   WorkspaceAuthoringCloseReceipt,

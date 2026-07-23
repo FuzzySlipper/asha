@@ -1140,6 +1140,62 @@ mod tests {
         }
     }
 
+    fn authored_behavior_source(source_text: impl Into<String>) -> ProjectContentSourceDto {
+        source(
+            "behaviors/reference-door.json",
+            ProjectContentDocumentKind::BehaviorPackage,
+            &source_text.into(),
+        )
+    }
+
+    fn authored_behavior_json() -> String {
+        format!(
+            r#"{{
+              "schemaVersion":1,
+              "packageId":"reference.doors",
+              "provenance":{{
+                "sdkId":"@asha/game-workspace",
+                "sdkVersion":1,
+                "vocabularyHash":"{}",
+                "sourceModule":"@fixture/gameplay",
+                "sourcePath":"src/doors.ts",
+                "sourceHash":"fnv1a64:0123456789abcdef"
+              }},
+              "stateMachines":[{{
+                "machineId":"door",
+                "targetSceneInstanceId":"reference.trigger.instance",
+                "initialStateId":"closed",
+                "states":[
+                  {{"stateId":"open"}},
+                  {{"stateId":"closed"}}
+                ],
+                "transitions":[
+                  {{"transitionId":"open","fromStateId":"closed","toStateId":"open"}},
+                  {{"transitionId":"close","fromStateId":"open","toStateId":"closed"}}
+                ]
+              }}],
+              "behaviors":[{{
+                "behaviorId":"trigger-opens-door",
+                "signal":{{"signal":{{"semanticId":"asha.signal.trigger-entered","version":1}},"arguments":[{{"name":"trigger","value":{{"kind":"sceneEntity","sceneInstanceId":"reference.trigger.instance"}}}}]}},
+                "conditions":[{{"predicate":{{"semanticId":"asha.predicate.state-is","version":1}},"arguments":[{{"name":"state","value":{{"kind":"state","machineId":"door","stateId":"closed"}}}}]}}],
+                "steps":[
+                  {{"stepId":"open-now","afterStepIds":[],"delayTicks":0,"operations":[
+                    {{"verb":{{"semanticId":"asha.verb.transition-state","version":1}},"arguments":[{{"name":"machine","value":{{"kind":"stateMachine","machineId":"door"}}}},{{"name":"transition","value":{{"kind":"text","value":"open"}}}}]}},
+                    {{"verb":{{"semanticId":"asha.verb.set-relative-translation","version":1}},"arguments":[{{"name":"entity","value":{{"kind":"sceneEntity","sceneInstanceId":"reference.trigger.instance"}}}},{{"name":"value","value":{{"kind":"vector3","value":[0,3,0]}}}}]}},
+                    {{"verb":{{"semanticId":"asha.verb.set-capability-active","version":1}},"arguments":[{{"name":"entity","value":{{"kind":"sceneEntity","sceneInstanceId":"reference.trigger.instance"}}}},{{"name":"capability","value":{{"kind":"text","value":"collision"}}}},{{"name":"active","value":{{"kind":"boolean","value":false}}}}]}}
+                  ]}},
+                  {{"stepId":"close-later","afterStepIds":["open-now"],"delayTicks":120,"operations":[
+                    {{"verb":{{"semanticId":"asha.verb.transition-state","version":1}},"arguments":[{{"name":"machine","value":{{"kind":"stateMachine","machineId":"door"}}}},{{"name":"transition","value":{{"kind":"text","value":"close"}}}}]}},
+                    {{"verb":{{"semanticId":"asha.verb.set-relative-translation","version":1}},"arguments":[{{"name":"entity","value":{{"kind":"sceneEntity","sceneInstanceId":"reference.trigger.instance"}}}},{{"name":"value","value":{{"kind":"vector3","value":[0,0,0]}}}}]}},
+                    {{"verb":{{"semanticId":"asha.verb.set-capability-active","version":1}},"arguments":[{{"name":"entity","value":{{"kind":"sceneEntity","sceneInstanceId":"reference.trigger.instance"}}}},{{"name":"capability","value":{{"kind":"text","value":"collision"}}}},{{"name":"active","value":{{"kind":"boolean","value":true}}}}]}}
+                  ]}}
+                ]
+              }}]
+            }}"#,
+            AUTHORED_BEHAVIOR_VOCABULARY_HASH
+        )
+    }
+
     #[test]
     fn demo_shaped_documents_decode_validate_and_reopen_as_a_canonical_set() {
         let decoded = decode(request());
@@ -1186,6 +1242,119 @@ mod tests {
             .iter()
             .any(|document| document.document_id() == stable_document_id));
         assert_ne!(moved.result.set_hash, decoded.result.set_hash);
+    }
+
+    #[test]
+    fn authored_behavior_is_strict_canonical_project_content() {
+        let mut request = request();
+        request
+            .sources
+            .push(authored_behavior_source(authored_behavior_json()));
+        let decoded = decode(request);
+        assert!(decoded.result.accepted, "{:?}", decoded.result.diagnostics);
+        assert!(matches!(
+            decoded.result.documents.last(),
+            Some(ProjectContentDocumentDto::BehaviorPackage { package, .. })
+                if package.package_id == "reference.doors"
+        ));
+        assert!(decoded
+            .result
+            .field_metadata
+            .iter()
+            .all(|field| { field.document_id != "behaviors/reference-door.json" }));
+
+        let behavior_file = decoded
+            .result
+            .canonical_files
+            .iter()
+            .find(|file| file.kind == ProjectContentDocumentKind::BehaviorPackage)
+            .expect("canonical behavior package");
+        let reopened = decode(ProjectContentDecodeRequestDto {
+            sources: decoded
+                .result
+                .canonical_files
+                .iter()
+                .map(|file| ProjectContentSourceDto {
+                    source_path: file.source_path.clone().expect("canonical source path"),
+                    document_id: file.document_id.clone(),
+                    kind: file.kind,
+                    source_text: file.canonical_json.clone(),
+                })
+                .collect(),
+        });
+        assert!(
+            reopened.result.accepted,
+            "{:?}",
+            reopened.result.diagnostics
+        );
+        assert_eq!(
+            reopened
+                .result
+                .canonical_files
+                .iter()
+                .find(|file| file.kind == ProjectContentDocumentKind::BehaviorPackage)
+                .expect("reopened behavior package")
+                .canonical_json,
+            behavior_file.canonical_json
+        );
+    }
+
+    #[test]
+    fn authored_behavior_rejects_unknown_code_references_cycles_versions_and_budgets() {
+        let cases = [
+            (
+                authored_behavior_json().replace(
+                    "\"stateId\":\"open\"",
+                    "\"stateId\":\"open\",\"callback\":\"runTs\"",
+                ),
+                ProjectContentDiagnosticCode::UnknownField,
+            ),
+            (
+                authored_behavior_json().replace(
+                    "\"targetSceneInstanceId\":\"reference.trigger.instance\"",
+                    "\"targetSceneInstanceId\":\"missing.door\"",
+                ),
+                ProjectContentDiagnosticCode::UnknownReference,
+            ),
+            (
+                authored_behavior_json().replace("\"schemaVersion\":1", "\"schemaVersion\":2"),
+                ProjectContentDiagnosticCode::InvalidField,
+            ),
+            (
+                authored_behavior_json().replace(
+                    "\"stepId\":\"open-now\",\"afterStepIds\":[]",
+                    "\"stepId\":\"open-now\",\"afterStepIds\":[\"close-later\"]",
+                ),
+                ProjectContentDiagnosticCode::InvalidDocument,
+            ),
+            (
+                authored_behavior_json().replace("\"delayTicks\":120", "\"delayTicks\":3601"),
+                ProjectContentDiagnosticCode::InvalidDocument,
+            ),
+        ];
+        for (source_text, expected) in cases {
+            let mut request = request();
+            request.sources.push(authored_behavior_source(source_text));
+            let rejected = decode(request);
+            assert!(!rejected.result.accepted);
+            assert!(
+                rejected
+                    .result
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.code == expected),
+                "expected {expected:?}: {:?}",
+                rejected.result.diagnostics
+            );
+            if expected != ProjectContentDiagnosticCode::UnknownField {
+                assert!(rejected.result.diagnostics.iter().any(|diagnostic| {
+                    diagnostic.document_id.as_deref() == Some("behaviors/reference-door.json")
+                        && diagnostic
+                            .message
+                            .starts_with("[@fixture/gameplay:src/doors.ts]")
+                }));
+            }
+        }
     }
 
     #[test]

@@ -185,6 +185,31 @@ void test('renderer-host accepts the manifest-native FNV resource hash used by P
   }
 });
 
+void test('renderer-host accepts a GLTF mesh with no animation clips for retained static presentation', async () => {
+  const testGlobal = globalThis as unknown as { self: unknown };
+  const priorSelf = testGlobal.self;
+  testGlobal.self = globalThis;
+  const priorWarn = console.warn;
+  console.warn = () => undefined;
+  try {
+    const manifest = {
+      ...ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST,
+      resources: ASHA_RENDERER_HOST_ANIMATED_MESH_FIXTURE_MANIFEST.resources.map(resource => ({
+        ...resource,
+        clipIds: [],
+      })),
+    };
+    const projection = await createAshaRendererAnimatedMeshProjection({
+      manifest,
+      resolveResource: fixtureResolver,
+    });
+    assert.ok(projection);
+  } finally {
+    console.warn = priorWarn;
+    testGlobal.self = priorSelf;
+  }
+});
+
 void test('renderer-host animation resources and playback fail closed with typed diagnostics', async () => {
   const testGlobal = globalThis as unknown as { self: unknown };
   const priorSelf = testGlobal.self;

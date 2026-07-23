@@ -1350,6 +1350,13 @@ impl RuntimeBridge for EngineBridge {
         EngineBridge::apply_gameplay_prefab_part_interaction(self, request)
     }
 
+    fn read_gameplay_prefab_part_interaction_target(
+        &mut self,
+        request: GameplayPrefabPartInteractionTargetRequest,
+    ) -> BridgeResult<GameplayPrefabPartInteractionTargetReadout> {
+        EngineBridge::read_gameplay_prefab_part_interaction_target(self, request)
+    }
+
     fn read_projection_frame(&self, cursor: u64) -> BridgeResult<RuntimeProjectionFrame> {
         self.require_initialized("read_projection_frame")?;
         let frame = self.projection.projection_frame.as_ref().ok_or_else(|| {

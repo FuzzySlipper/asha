@@ -1401,6 +1401,71 @@ pub fn verify_gameplay_routing_evidence(
     routing_hash(&evidence.proposal_hash, &evidence.owner_id, &output) == evidence.routing_hash
 }
 
+/// Build scheduler-compatible evidence for a Rust-owned direct authority route.
+///
+/// This is not a public payload-dispatch seam: the caller has already executed
+/// a typed owner operation. It only canonicalizes the resulting facts/events so
+/// the existing recoverable scheduler can retire or resume the continuation.
+#[doc(hidden)]
+pub fn direct_authority_routing_receipt(
+    proposal: &GameplayProposalEnvelope,
+    owner_id: &str,
+    mut output: crate::GameplayOwnerRoutingOutput,
+) -> GameplayRoutingReceipt {
+    output.fact_hashes.sort();
+    output.diagnostic_codes.sort();
+    if !output.accepted {
+        output.events.clear();
+    }
+    for event in &mut output.events {
+        canonicalize_headers(event);
+    }
+    output.events.sort_by(|left, right| {
+        (left.event.key(), semantic_event_hash(left))
+            .cmp(&(right.event.key(), semantic_event_hash(right)))
+    });
+    let next_wave = proposal.wave.saturating_add(1);
+    for (offset, event) in output.events.iter_mut().enumerate() {
+        let sequence = u32::try_from(offset).unwrap_or(u32::MAX);
+        event.event_id = format!(
+            "{}/event/{next_wave}/{sequence}",
+            proposal.causation.root_id
+        );
+        event.tick = proposal.tick;
+        event.root_sequence = proposal.root_sequence;
+        event.wave = next_wave;
+        event.event_sequence = sequence;
+        event.phase = GameplayEventPhase::PostCommit;
+        event.emitter = GameplayEmitterRef::Owner {
+            owner_id: owner_id.to_owned(),
+        };
+        event.causation = GameplayCausationRef {
+            root_id: proposal.causation.root_id.clone(),
+            parent_event_id: proposal
+                .originating_event_id
+                .clone()
+                .or_else(|| proposal.causation.parent_event_id.clone()),
+            decision_id: proposal.causation.decision_id.clone(),
+        };
+    }
+    let proposal_hash = gameplay_proposal_hash(proposal);
+    let evidence = GameplayRoutingEvidence {
+        registry_digest: "asha.direct-authority-kernel.v1".to_owned(),
+        proposal_id: proposal.proposal_id.clone(),
+        proposal_kind: proposal.proposal.key(),
+        proposal_hash: proposal_hash.clone(),
+        owner_id: owner_id.to_owned(),
+        accepted: output.accepted,
+        fact_hashes: output.fact_hashes.clone(),
+        diagnostic_codes: output.diagnostic_codes.clone(),
+        routing_hash: routing_hash(&proposal_hash, owner_id, &output),
+    };
+    GameplayRoutingReceipt {
+        evidence,
+        accepted_events: output.events,
+    }
+}
+
 fn receipt_hash(state: &ObserveState<'_>) -> String {
     let mut parts = vec![
         state.registry.registry_digest().to_owned(),

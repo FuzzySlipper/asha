@@ -142,6 +142,7 @@
         "apply_fps_primary_fire",
         "read_composed_runtime_session",
         "read_gameplay_module_view",
+        "read_gameplay_prefab_part_interaction_target",
         "apply_gameplay_prefab_part_interaction",
         "invoke_game_extension_weapon_effect",
         "validate_game_rule_catalog",
@@ -1490,6 +1491,30 @@
       "outputWire": {
         "owner": "custom",
         "name": "GameplayModuleViewSnapshot",
+        "repeated": false
+      },
+      "errors": "RuntimeBridgeError"
+    },
+    {
+      "manifestName": "read_gameplay_prefab_part_interaction_target",
+      "facadeMethod": "readGameplayPrefabPartInteractionTarget",
+      "capability": "gameplay",
+      "surface": "stable",
+      "nativeWired": true,
+      "maxInputBytes": 8388608,
+      "maxOutputBytes": 8388608,
+      "input": "protocol_runtime::GameplayPrefabPartInteractionTargetRequest",
+      "output": "protocol_runtime::GameplayPrefabPartInteractionTargetReadout",
+      "facadeInput": null,
+      "facadeOutput": null,
+      "inputWire": {
+        "owner": "custom",
+        "name": "GameplayPrefabPartInteractionTargetRequest",
+        "repeated": false
+      },
+      "outputWire": {
+        "owner": "custom",
+        "name": "GameplayPrefabPartInteractionTargetReadout",
         "repeated": false
       },
       "errors": "RuntimeBridgeError"

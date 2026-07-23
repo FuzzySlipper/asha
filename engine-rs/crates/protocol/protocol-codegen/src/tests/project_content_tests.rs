@@ -11,6 +11,27 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
         variant_coverage_key("projectContent", "ProjectConfigurationValue", "number"),
         variant_coverage_key("projectContent", "ProjectConfigurationValue", "string"),
         variant_coverage_key("projectContent", "ProjectConfigurationValue", "reference"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorProvenance"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorState"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorTransition"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorStateMachine"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorSemanticRef"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "sceneEntity"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "prefabPart"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "stateMachine"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "state"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "text"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "boolean"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "integer"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "number"),
+        variant_coverage_key("projectContent", "AuthoredBehaviorValue", "vector3"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorArgument"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorSignal"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorCondition"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorOperation"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorStep"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorDefinition"),
+        interface_coverage_key("projectContent", "AuthoredBehaviorPackage"),
         interface_coverage_key("projectContent", "ProjectConfigurationFieldValue"),
         interface_coverage_key("projectContent", "ProjectGameplayConfiguration"),
         interface_coverage_key("projectContent", "ProjectGameplayConfigurationDocument"),
@@ -43,6 +64,11 @@ pub(super) fn extend_round_trip_coverage(coverage: &mut BTreeSet<String>) {
             "presentationCatalog",
         ),
         variant_coverage_key("projectContent", "ProjectContentDocument", "inputCatalog"),
+        variant_coverage_key(
+            "projectContent",
+            "ProjectContentDocument",
+            "behaviorPackage",
+        ),
         interface_coverage_key("projectContent", "ProjectContentDecodeRequest"),
         interface_coverage_key("projectContent", "ProjectContentEncodeRequest"),
         interface_coverage_key("projectContent", "ProjectContentDiagnostic"),
@@ -205,6 +231,114 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
             "extension": null
         }]
     });
+    let behavior_provenance = json!({
+        "sdkId": "@asha/game-workspace",
+        "sdkVersion": 1,
+        "vocabularyHash": "fnv1a64:authored-behavior-v1",
+        "sourceModule": "@demo/content",
+        "sourcePath": "src/content/main-door.ts",
+        "sourceHash": "fnv1a64:source"
+    });
+    let closed_state = json!({ "stateId": "closed" });
+    let open_state = json!({ "stateId": "open" });
+    let open_transition = json!({
+        "transitionId": "open-door",
+        "fromStateId": "closed",
+        "toStateId": "open"
+    });
+    let close_transition = json!({
+        "transitionId": "close-door",
+        "fromStateId": "open",
+        "toStateId": "closed"
+    });
+    let behavior_machine = json!({
+        "machineId": "main-door",
+        "targetSceneInstanceId": "scene.main/door",
+        "initialStateId": "closed",
+        "states": [closed_state, open_state],
+        "transitions": [open_transition, close_transition]
+    });
+    let semantic_ref = json!({ "semanticId": "asha.signal.prefab-part-interacted", "version": 1 });
+    let values = [
+        (
+            "sceneEntity",
+            json!({ "kind": "sceneEntity", "sceneInstanceId": "scene.main/door" }),
+        ),
+        (
+            "prefabPart",
+            json!({ "kind": "prefabPart", "sceneInstanceId": "scene.main/switch", "role": "button" }),
+        ),
+        (
+            "stateMachine",
+            json!({ "kind": "stateMachine", "machineId": "main-door" }),
+        ),
+        (
+            "state",
+            json!({ "kind": "state", "machineId": "main-door", "stateId": "closed" }),
+        ),
+        ("text", json!({ "kind": "text", "value": "open-door" })),
+        ("boolean", json!({ "kind": "boolean", "value": true })),
+        ("integer", json!({ "kind": "integer", "value": 12 })),
+        ("number", json!({ "kind": "number", "value": 1.5 })),
+        (
+            "vector3",
+            json!({ "kind": "vector3", "value": [0.0, 3.0, 0.0] }),
+        ),
+    ];
+    for (tag, value) in &values {
+        compare_object_to_variant(&project, "AuthoredBehaviorValue", tag, value).unwrap();
+    }
+    let prefab_argument = json!({ "name": "part", "value": values[1].1 });
+    let prefab_signal = json!({
+        "signal": semantic_ref,
+        "arguments": [prefab_argument]
+    });
+    let trigger_signal = json!({
+        "signal": { "semanticId": "asha.signal.trigger-entered", "version": 1 },
+        "arguments": [{ "name": "trigger", "value": values[0].1 }]
+    });
+    let behavior_condition = json!({
+        "predicate": { "semanticId": "asha.predicate.state-is", "version": 1 },
+        "arguments": [{ "name": "state", "value": values[3].1 }]
+    });
+    let transition_operation = json!({
+        "verb": { "semanticId": "asha.verb.transition-state", "version": 1 },
+        "arguments": [
+            { "name": "machine", "value": values[2].1 },
+            { "name": "transition", "value": values[4].1 }
+        ]
+    });
+    let immediate_step = json!({
+        "stepId": "open",
+        "afterStepIds": [],
+        "delayTicks": 0,
+        "operations": [transition_operation]
+    });
+    let delayed_step = json!({
+        "stepId": "close",
+        "afterStepIds": ["open"],
+        "delayTicks": 120,
+        "operations": [{
+            "verb": { "semanticId": "asha.verb.transition-state", "version": 1 },
+            "arguments": [
+                { "name": "machine", "value": values[2].1 },
+                { "name": "transition", "value": { "kind": "text", "value": "close-door" } }
+            ]
+        }]
+    });
+    let behavior_definition = json!({
+        "behaviorId": "open-then-close",
+        "signal": prefab_signal,
+        "conditions": [behavior_condition],
+        "steps": [immediate_step, delayed_step]
+    });
+    let behavior_package = json!({
+        "schemaVersion": 1,
+        "packageId": "demo.main-door",
+        "provenance": behavior_provenance,
+        "stateMachines": [behavior_machine],
+        "behaviors": [behavior_definition]
+    });
 
     compare_object_to_interface(&project, "ProjectContentSource", &source).unwrap();
     compare_object_to_interface(&project, "ProjectConfigurationField", &field).unwrap();
@@ -226,6 +360,23 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
     )
     .unwrap();
     compare_object_to_interface(&project, "ProjectPresentationCatalog", &presentation).unwrap();
+    for (name, value) in [
+        ("AuthoredBehaviorProvenance", &behavior_provenance),
+        ("AuthoredBehaviorState", &closed_state),
+        ("AuthoredBehaviorTransition", &open_transition),
+        ("AuthoredBehaviorStateMachine", &behavior_machine),
+        ("AuthoredBehaviorSemanticRef", &semantic_ref),
+        ("AuthoredBehaviorArgument", &prefab_argument),
+        ("AuthoredBehaviorSignal", &prefab_signal),
+        ("AuthoredBehaviorCondition", &behavior_condition),
+        ("AuthoredBehaviorOperation", &transition_operation),
+        ("AuthoredBehaviorStep", &immediate_step),
+        ("AuthoredBehaviorDefinition", &behavior_definition),
+        ("AuthoredBehaviorPackage", &behavior_package),
+    ] {
+        compare_object_to_interface(&project, name, value).unwrap();
+    }
+    compare_object_to_interface(&project, "AuthoredBehaviorSignal", &trigger_signal).unwrap();
 
     let documents = [
         (
@@ -251,6 +402,10 @@ fn project_content_samples_match_closed_generated_ir_shapes() {
         (
             "inputCatalog",
             json!({ "kind": "inputCatalog", "documentId": "input/demo", "catalog": input_catalog }),
+        ),
+        (
+            "behaviorPackage",
+            json!({ "kind": "behaviorPackage", "documentId": "behavior/main-door", "package": behavior_package }),
         ),
     ];
     for (tag, document) in &documents {
